@@ -1,0 +1,259 @@
+-- Manages forge leveling, smelting queues, and crafting.
+
+local GameConfig        = require(game.ReplicatedStorage.Shared.Data.GameConfig)
+local ForgeData         = require(game.ReplicatedStorage.Shared.Data.ForgeData)
+local MaterialData      = require(game.ReplicatedStorage.Shared.Data.MaterialData)
+local Utils             = require(game.ReplicatedStorage.Shared.Modules.Utils)
+local PlayerDataService = require(script.Parent.PlayerDataService)
+
+local ForgeService = {}
+
+-- Storage Vault upgrade recipe (craftable once, upgrades StorageTier 0→1)
+local STORAGE_VAULT_RECIPE = {
+    forgeLevelRequired = 4,
+    materialsRequired = {
+        { id = "RefinedOre",     qty = 200 },
+        { id = "ElementalIngot", qty = 50  },
+        { id = "Coal",           qty = 100 },
+    },
+}
+
+-- Active smelt timers: userId → array of smelt job records
+local smeltJobs = {}
+
+-- ── Forge XP & Leveling ──────────────────────────────────────────────────────
+function ForgeService.AddForgeXP(player, xp)
+    local data = PlayerDataService.Get(player)
+    if not data then return false end
+
+    data.ForgeXP = (data.ForgeXP or 0) + xp
+    PlayerDataService.MarkDirty(player)
+
+    -- Check for level-up
+    local leveledUp = false
+    while data.ForgeLevel < GameConfig.MAX_FORGE_LEVEL do
+        local fd  = ForgeData.Get(data.ForgeLevel)
+        local nfd = ForgeData.Get(data.ForgeLevel + 1)
+        if nfd and data.ForgeXP >= nfd.xpRequired then
+            data.ForgeLevel = data.ForgeLevel + 1
+            leveledUp = true
+
+            -- Grant any golem slot unlock at this level
+            if nfd.golemSlotUnlock then
+                data.GolemSlots = math.max(data.GolemSlots, nfd.golemSlotUnlock)
+            end
+        else
+            break
+        end
+    end
+
+    if leveledUp then
+        local ChallengeService = require(script.Parent.ChallengeService)
+        ChallengeService.TrackEvent(player, "ForgeLevelUp", { level = data.ForgeLevel })
+    end
+
+    return leveledUp
+end
+
+-- ── Smelting ─────────────────────────────────────────────────────────────────
+-- Queue a material for smelting; returns job record or nil + error
+function ForgeService.StartSmelt(player, materialId, quantity)
+    local data = PlayerDataService.Get(player)
+    if not data then return nil, "No player data" end
+
+    local mat = MaterialData.Raw[materialId]
+    if not mat then return nil, "Not a smeltable material" end
+    if not mat.smeltOutput then return nil, "Material has no smelt output" end
+    if mat.smeltTime <= 0 then return nil, "Material smelts instantly" end
+
+    quantity = math.max(1, math.floor(quantity))
+
+    -- Check material availability
+    local have = data.Inventory[materialId] or 0
+    if have < quantity then return nil, "Insufficient material" end
+
+    -- Check smelt queue capacity
+    local userId = tostring(player.UserId)
+    smeltJobs[userId] = smeltJobs[userId] or {}
+    local forgeLvl = ForgeData.Get(data.ForgeLevel)
+    local maxSlots = forgeLvl and forgeLvl.unlocks.smeltSlots or GameConfig.BASE_SMELT_SLOTS
+    if #smeltJobs[userId] >= maxSlots then
+        return nil, "Smelt queue full"
+    end
+
+    -- Consume raw materials
+    if not PlayerDataService.RemoveMaterial(player, materialId, quantity) then
+        return nil, "Failed to consume material"
+    end
+
+    -- Speed bonus: forge level + element mastery (if mat has an element association)
+    local speedBonus = forgeLvl and forgeLvl.smeltSpeedBonus or 0
+    local masteryXP  = ((data.MasteryLevels or {})[mat.element or ""] or 0)
+    local masteryLvl = 0
+    local thresholds = GameConfig.MASTERY_XP_THRESHOLDS
+    for lvl = #thresholds, 1, -1 do
+        if masteryXP >= (thresholds[lvl] or 0) then masteryLvl = lvl; break end
+    end
+    if masteryLvl >= 15 then speedBonus = math.min(0.55, speedBonus + 0.15) end
+
+    local duration = math.floor(mat.smeltTime * quantity * (1 - speedBonus))
+
+    local job = {
+        id          = Utils.GenerateId(),
+        materialId  = materialId,
+        quantity    = quantity,
+        outputId    = mat.smeltOutput,
+        outputQty   = math.floor(quantity / (mat.smeltRatio or 1)),
+        startTime   = Utils.UnixTimestamp(),
+        endTime     = Utils.UnixTimestamp() + duration,
+        duration    = duration,
+        completed   = false,
+    }
+
+    table.insert(smeltJobs[userId], job)
+
+    -- Store active jobs on player data so they survive server restart
+    data.SmeltQueue = data.SmeltQueue or {}
+    table.insert(data.SmeltQueue, job)
+    PlayerDataService.MarkDirty(player)
+
+    return job, nil
+end
+
+-- Instantly complete a smelt job (speed-up item)
+function ForgeService.SpeedUpSmelt(player, jobId)
+    local data   = PlayerDataService.Get(player)
+    local userId = tostring(player.UserId)
+    if not data or not smeltJobs[userId] then return false, "No active jobs" end
+
+    for i, job in ipairs(smeltJobs[userId]) do
+        if job.id == jobId and not job.completed then
+            job.endTime   = Utils.UnixTimestamp()
+            job.completed = true
+            table.remove(smeltJobs[userId], i)
+
+            -- Award output
+            PlayerDataService.AddMaterial(player, job.outputId, job.outputQty)
+
+            -- Remove from data.SmeltQueue
+            data.SmeltQueue = data.SmeltQueue or {}
+            for j, sq in ipairs(data.SmeltQueue) do
+                if sq.id == jobId then
+                    table.remove(data.SmeltQueue, j)
+                    break
+                end
+            end
+
+            PlayerDataService.MarkDirty(player)
+            return true, job
+        end
+    end
+    return false, "Job not found"
+end
+
+-- Tick smelt jobs (call each 5s from Main) — awards completed jobs
+function ForgeService.TickSmeltJobs(player)
+    local userId = tostring(player.UserId)
+    local data   = PlayerDataService.Get(player)
+    if not data or not smeltJobs[userId] then return {} end
+
+    local now = Utils.UnixTimestamp()
+    local completed = {}
+
+    for i = #smeltJobs[userId], 1, -1 do
+        local job = smeltJobs[userId][i]
+        if not job.completed and now >= job.endTime then
+            job.completed = true
+            table.remove(smeltJobs[userId], i)
+
+            -- Award refined materials
+            PlayerDataService.AddMaterial(player, job.outputId, job.outputQty)
+
+            -- Forge XP for smelting
+            ForgeService.AddForgeXP(player, GameConfig.XP_PER_SMELT * job.quantity)
+
+            -- Clean from persisted queue
+            data.SmeltQueue = data.SmeltQueue or {}
+            for j, sq in ipairs(data.SmeltQueue) do
+                if sq.id == job.id then
+                    table.remove(data.SmeltQueue, j)
+                    break
+                end
+            end
+
+            table.insert(completed, job)
+        end
+    end
+
+    if #completed > 0 then
+        PlayerDataService.MarkDirty(player)
+    end
+    return completed
+end
+
+-- Restore smelt jobs from DataStore on player join
+function ForgeService.RestoreSmeltJobs(player)
+    local data   = PlayerDataService.Get(player)
+    local userId = tostring(player.UserId)
+    if not data then return end
+
+    smeltJobs[userId] = {}
+    local now = Utils.UnixTimestamp()
+    data.SmeltQueue = data.SmeltQueue or {}
+
+    local stillActive = {}
+    for _, job in ipairs(data.SmeltQueue) do
+        if job.completed then
+            -- Already done — award immediately
+            PlayerDataService.AddMaterial(player, job.outputId, job.outputQty)
+        elseif now >= job.endTime then
+            -- Completed while offline
+            PlayerDataService.AddMaterial(player, job.outputId, job.outputQty)
+        else
+            -- Still in progress
+            table.insert(smeltJobs[userId], job)
+            table.insert(stillActive, job)
+        end
+    end
+    data.SmeltQueue = stillActive
+    PlayerDataService.MarkDirty(player)
+end
+
+-- Get active smelt jobs for a player (for UI)
+function ForgeService.GetSmeltQueue(player)
+    local userId = tostring(player.UserId)
+    return smeltJobs[userId] or {}
+end
+
+-- ── Storage Vault Craft ───────────────────────────────────────────────────────
+-- Upgrades StorageTier from 0 → 1 by consuming materials. Tier 2 is Robux-only.
+function ForgeService.CraftStorageVault(player)
+    local data = PlayerDataService.Get(player)
+    if not data then return false, "No player data" end
+
+    if (data.StorageTier or 0) >= 1 then
+        return false, "Storage Vault already built"
+    end
+    if (data.ForgeLevel or 1) < STORAGE_VAULT_RECIPE.forgeLevelRequired then
+        return false, "Forge level too low (need Forge " .. STORAGE_VAULT_RECIPE.forgeLevelRequired .. ")"
+    end
+    if not PlayerDataService.ConsumeMaterials(player, STORAGE_VAULT_RECIPE.materialsRequired) then
+        return false, "Insufficient materials"
+    end
+
+    data.StorageTier = 1
+    PlayerDataService.MarkDirty(player)
+    return true, nil
+end
+
+function ForgeService.GetStorageVaultRecipe()
+    return STORAGE_VAULT_RECIPE
+end
+
+-- Clean up on leave
+function ForgeService.OnPlayerLeave(player)
+    local userId = tostring(player.UserId)
+    smeltJobs[userId] = nil
+end
+
+return ForgeService

@@ -1,0 +1,122 @@
+-- Centralised RemoteEvent / RemoteFunction references.
+-- Both server and client require this module to get typed handles.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local FOLDER_NAME = "EmberForgeRemotes"
+
+local RemoteEvents = {}
+
+-- Event definitions: name → "event" or "function"
+local DEFINITIONS = {
+    -- Resource collection
+    CollectResources    = "event",
+    ResourcesCollected  = "event",   -- server → client confirmation
+
+    -- Smelting
+    StartSmelt          = "event",
+    SmeltQueued         = "event",   -- server → client
+    SmeltCompleted      = "event",   -- server → client
+
+    -- Crafting
+    CraftGolem          = "event",
+    GolemCrafted        = "event",   -- server → client
+
+    -- Deployment
+    DeployGolem         = "event",
+    GolemDeployed       = "event",   -- server → client
+    ReturnGolem         = "event",
+    GolemReturned       = "event",   -- server → client
+
+    -- Trading
+    InitiateTrade       = "event",
+    TradeOffer          = "event",   -- server → client (incoming offer)
+    AcceptTrade         = "event",
+    DeclineTrade        = "event",
+    TradeCompleted      = "event",   -- server → client
+    ListOnMarket        = "event",
+    BuyFromMarket       = "event",
+
+    -- Purchases
+    PurchaseItem        = "event",
+    PurchaseResult      = "event",   -- server → client
+
+    -- Forge crafting (non-golem)
+    CraftStorageVault   = "event",
+    StorageVaultCrafted = "event",   -- server → client
+    RepairGolem         = "event",
+    GolemRepaired       = "event",   -- server → client
+
+    -- Golem fusion
+    FuseGolems          = "event",
+    GolemFused          = "event",   -- server → client
+
+    -- Season Pass
+    ClaimSeasonReward   = "event",
+
+    -- Challenge reward claiming
+    ClaimChallengeReward   = "event",
+    ChallengeRewardClaimed = "event",  -- server → client
+
+    -- UI data sync (RemoteFunctions — client requests, server responds)
+    GetPlayerData       = "function",
+    GetMarketListings   = "function",
+    GetLeaderboard      = "function",
+
+    -- Player progression events (server → client)
+    LevelUp             = "event",
+    MasteryLevelUp      = "event",
+    ForgeUpgraded       = "event",
+    ChallengeCompleted  = "event",
+    AchievementUnlocked = "event",
+
+    -- Challenge tracking
+    UpdateChallengeProgress = "event",  -- server → client UI update
+
+    -- Daily login reward
+    DailyReward             = "event",  -- server → client (amount)
+
+    -- Forge zone visiting (world-based, like Adopt Me / Grow a Garden)
+    ForgeZoneEntered        = "event",  -- server → client (ownerUserId, ownerName, forgeData)
+    ForgeZoneLeft           = "event",  -- server → client
+    GetForgeZoneData        = "function",  -- client requests snapshot of a player's forge
+}
+
+-- On server: create all remotes in a folder
+function RemoteEvents.CreateOnServer()
+    local folder = Instance.new("Folder")
+    folder.Name = FOLDER_NAME
+    folder.Parent = ReplicatedStorage
+
+    for name, remoteType in pairs(DEFINITIONS) do
+        local remote
+        if remoteType == "event" then
+            remote = Instance.new("RemoteEvent")
+        else
+            remote = Instance.new("RemoteFunction")
+        end
+        remote.Name = name
+        remote.Parent = folder
+    end
+
+    return folder
+end
+
+-- On client (or server after creation): bind references
+function RemoteEvents.Load()
+    local folder = ReplicatedStorage:WaitForChild(FOLDER_NAME, 30)
+    if not folder then
+        error("[RemoteEvents] Remote folder not found within timeout")
+    end
+
+    for name, remoteType in pairs(DEFINITIONS) do
+        local remote = folder:WaitForChild(name, 10)
+        if not remote then
+            warn("[RemoteEvents] Missing remote: " .. name)
+        else
+            RemoteEvents[name] = remote
+        end
+    end
+end
+
+return RemoteEvents

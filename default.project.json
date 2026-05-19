@@ -1,0 +1,35 @@
+{
+  "name": "EmberForge",
+  "tree": {
+    "$className": "DataModel",
+
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "EmberForge": {
+        "$path": "src/Server"
+      }
+    },
+
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "Shared": {
+        "$path": "src/Shared"
+      }
+    },
+
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "EmberForge": {
+          "$path": "src/Client"
+        }
+      }
+    },
+
+    "StarterGui": {
+      "$className": "StarterGui",
+      "$path": "src/StarterGui"
+    }
+  }
+}
