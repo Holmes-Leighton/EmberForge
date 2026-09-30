@@ -40,10 +40,15 @@ TutorialController.Init(playerData)
 
 RemoteEvents.ResourcesCollected.OnClientEvent:Connect(function(gains, elapsed)
     InventoryController.OnResourcesCollected(gains)
+    ForgeController.OnResourcesCollected(gains)
     HUDController.OnResourceUpdate(gains)
     if next(gains) == nil then
         HUDController.ShowNotification("Nothing to collect", "Deploy Golems from the Forge menu to start mining.")
     end
+end)
+
+RemoteEvents.Notify.OnClientEvent:Connect(function(title, message)
+    HUDController.ShowNotification(tostring(title), tostring(message))
 end)
 
 RemoteEvents.GolemCrafted.OnClientEvent:Connect(function(golem, newLevel)

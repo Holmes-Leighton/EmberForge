@@ -12,7 +12,8 @@ local PlayerDataService = require(script.Parent.PlayerDataService)
 local PadService = {}
 
 local pads = {}      -- { def, part }
-local tickCount = {} -- userId → seconds spent on pads (for the coal cadence)
+local tickCount = {} -- userId → ticks spent on pads (for the coal cadence)
+local lastLockedNotice = {}   -- userId → os.clock() of the last "locked" message
 
 local function IsAdmin(player)
     if RunService:IsStudio() then return true end   -- so you can test the Admin pad
@@ -116,11 +117,17 @@ local function Payout()
     for _, player in ipairs(Players:GetPlayers()) do
         local data = PlayerDataService.Get(player)
         local def = data and PadUnderPlayer(player)
-        if def and CanUse(player, def, data) then
+        if def and not CanUse(player, def, data) then
+            local last = lastLockedNotice[player.UserId] or 0
+            if os.clock() - last > 4 then
+                lastLockedNotice[player.UserId] = os.clock()
+                RemoteEvents.Notify:FireClient(player, def.displayName .. " locked", RequirementText(def))
+            end
+        elseif def then
             local n = (tickCount[player.UserId] or 0) + 1
             tickCount[player.UserId] = n
 
-            local gains = { BasicOre = PadData.ORE_PER_SECOND * def.multiplier }
+            local gains = { BasicOre = PadData.ORE_PER_TICK * def.multiplier }
             if n % PadData.COAL_EVERY_N == 0 then
                 gains.Coal = def.multiplier
             end
@@ -142,11 +149,27 @@ function PadService.Init()
         table.insert(pads, { def = def, part = BuildPad(world, def) })
     end
 
-    Players.PlayerRemoving:Connect(function(p) tickCount[p.UserId] = nil end)
+    Players.PlayerRemoving:Connect(function(p)
+        tickCount[p.UserId] = nil
+        lastLockedNotice[p.UserId] = nil
+    end)
+
+    local function WelcomeAdmin(player)
+        if IsAdmin(player) then
+            print("[PadService] " .. player.Name .. " is an admin (Admin Pad unlocked)")
+            task.delay(6, function()
+                if player.Parent then
+                    RemoteEvents.Notify:FireClient(player, "Admin mode", "You can use the 100x Admin Pad.")
+                end
+            end)
+        end
+    end
+    Players.PlayerAdded:Connect(WelcomeAdmin)
+    for _, p in ipairs(Players:GetPlayers()) do WelcomeAdmin(p) end
 
     task.spawn(function()
         while true do
-            task.wait(1)
+            task.wait(PadData.TICK_SECONDS)
             Payout()
         end
     end)

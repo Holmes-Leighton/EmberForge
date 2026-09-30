@@ -28,6 +28,9 @@ function ForgeController.Init(playerData)
         ForgeController._BuildSmeltPanel()
         ForgeController._BuildDeployPanel()
         ForgeController._StartSmeltCountdowns()
+        forgeGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+            if forgeGui.Enabled then ForgeController.Resync() end
+        end)
         ForgeController._WireFuseButton()
     end)
 end
@@ -187,39 +190,116 @@ function ForgeController._StartSmeltCountdowns()
     end)
 end
 
+-- ── Live data / refresh ───────────────────────────────────────────────────────
+-- The server is the source of truth: after any change, pull a fresh copy and redraw.
+function ForgeController.Refresh()
+    if not forgeGui or not ForgeController._data then return end
+    ForgeController._BuildBlueprintList()
+    ForgeController._BuildDeployPanel()
+end
+
+function ForgeController.Resync()
+    task.spawn(function()
+        local fresh = RemoteEvents.GetPlayerData:InvokeServer()
+        if fresh then
+            ForgeController._data = fresh
+            ForgeController.Refresh()
+        end
+    end)
+end
+
+-- Materials arrive from pads/golems: keep the ✓/✗ counts honest while the menu is open
+function ForgeController.OnResourcesCollected(gains)
+    local data = ForgeController._data
+    if not data then return end
+    data.Inventory = data.Inventory or {}
+    for matId, qty in pairs(gains or {}) do
+        if type(qty) == "number" and matId:sub(1, 12) ~= "__blueprint:" then
+            data.Inventory[matId] = (data.Inventory[matId] or 0) + qty
+        end
+    end
+    if forgeGui and forgeGui.Enabled then ForgeController._BuildBlueprintList() end
+end
+
 -- ── Deployment Panel ──────────────────────────────────────────────────────────
 function ForgeController._BuildDeployPanel()
     if not forgeGui then return end
-    -- Zone selection and golem deployment UI scaffold
-    local deployPanel = forgeGui:FindFirstChild("DeployPanel", true)
-    if not deployPanel then return end
-
-    -- Populate zone buttons from unlocked zones
+    local Theme = require(game.ReplicatedStorage.Shared.Modules.Theme)
     local MiningZoneData = require(game.ReplicatedStorage.Shared.Data.MiningZoneData)
-    local unlocked = MiningZoneData.GetUnlocked(ForgeController._data)
+    local data = ForgeController._data
 
-    for i, zoneId in ipairs(unlocked) do
-        local zone = MiningZoneData.Get(zoneId)
-        local btn  = Instance.new("TextButton")
-        btn.Name   = zoneId
-        btn.Size   = UDim2.new(0, 160, 0, 50)
-        btn.Position = UDim2.new(0, (i - 1) * 170 + 5, 0, 5)
-        btn.BackgroundColor3 = Color3.fromRGB(50, 90, 50)
-        btn.Text   = zone and zone.displayName or zoneId
-        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        btn.Font   = Enum.Font.Gotham
-        btn.TextSize = 13
-        btn.BorderSizePixel = 0
-        btn.Parent = deployPanel
+    -- Zone buttons (only unlocked zones)
+    local strip = forgeGui:FindFirstChild("ZoneStrip", true)
+    if strip then
+        for _, child in ipairs(strip:GetChildren()) do
+            if child:IsA("GuiButton") or child:IsA("TextLabel") then child:Destroy() end
+        end
+        local unlocked = MiningZoneData.GetUnlocked(data)
+        if #unlocked == 0 then
+            local lbl = Theme.Label(strip, "Forge a Golem to unlock a mining zone.", Theme.TextSize.Body,
+                Theme.Colors.TextSecondary, Theme.Fonts.Body)
+            lbl.Size = UDim2.new(0, 360, 1, 0)
+        end
+        for _, zoneId in ipairs(unlocked) do
+            local zone = MiningZoneData.Get(zoneId)
+            local btn = Theme.Button(strip, "⛏ " .. (zone and zone.displayName or zoneId),
+                Theme.Colors.Success, Color3.fromRGB(255, 255, 255), zoneId)
+            btn.Size = UDim2.new(0, 170, 0, 56)
+            btn.TextSize = 14
+            btn.MouseButton1Click:Connect(function()
+                ForgeController._OpenGolemSelectForDeploy(zoneId)
+            end)
+        end
+    end
 
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 5)
-        corner.Parent = btn
+    -- Golem list
+    local scroll = forgeGui:FindFirstChild("GolemDeployScroll", true)
+    if not scroll then return end
+    if not scroll:FindFirstChildOfClass("UIListLayout") then
+        Theme.AddListLayout(scroll, Enum.FillDirection.Vertical, 6)
+    end
+    for _, child in ipairs(scroll:GetChildren()) do
+        if child:IsA("Frame") or child:IsA("TextLabel") then child:Destroy() end
+    end
 
-        btn.MouseButton1Click:Connect(function()
-            -- Show golem selection for deployment
-            ForgeController._OpenGolemSelectForDeploy(zoneId)
-        end)
+    local golems = data and data.Golems or {}
+    if #golems == 0 then
+        local empty = Theme.Label(scroll, "No Golems yet. Forge one at the Golem Anvil near spawn.",
+            Theme.TextSize.Body, Theme.Colors.TextSecondary, Theme.Fonts.Body)
+        empty.Size = UDim2.new(1, -8, 0, 40)
+        return
+    end
+
+    for _, g in ipairs(golems) do
+        local card = Instance.new("Frame")
+        card.Name = g.id
+        card.Size = UDim2.new(1, -8, 0, 54)
+        card.BackgroundColor3 = Theme.Colors.Panel
+        card.BorderSizePixel = 0
+        card.Parent = scroll
+        Theme.AddCorner(card, Theme.Corner.Small)
+
+        local color = Theme.Colors[g.element] or Theme.Colors.TextPrimary
+        local title = Theme.Label(card, string.format("%s Golem  •  Tier %d", tostring(g.element), g.tier or 1),
+            Theme.TextSize.Body, color, Theme.Fonts.Heading)
+        title.Size = UDim2.new(0.6, 0, 0, 22)
+        title.Position = UDim2.new(0, 10, 0, 6)
+
+        local zone = g.zoneId and MiningZoneData.Get(g.zoneId)
+        local status = Theme.Label(card,
+            g.deployed and ("⚡ Mining in " .. (zone and zone.displayName or tostring(g.zoneId))) or "💤 Idle",
+            Theme.TextSize.Small, g.deployed and Theme.Colors.Success or Theme.Colors.TextSecondary)
+        status.Size = UDim2.new(0.6, 0, 0, 18)
+        status.Position = UDim2.new(0, 10, 0, 30)
+
+        if g.deployed then
+            local recall = Theme.Button(card, "Recall", Theme.Colors.PanelAlt, Theme.Colors.AccentBright)
+            recall.Size = UDim2.new(0, 84, 0, 30)
+            recall.Position = UDim2.new(1, -94, 0.5, -15)
+            recall.MouseButton1Click:Connect(function()
+                RemoteEvents.ReturnGolem:FireServer(g.id)
+            end)
+        end
     end
 end
 
@@ -272,34 +352,15 @@ end
 
 -- ── Server response handlers ──────────────────────────────────────────────────
 function ForgeController.OnGolemCrafted(golem)
-    -- Re-render blueprint list to update material counts
-    if ForgeController._data then
-        ForgeController._BuildBlueprintList()
-    end
+    ForgeController.Resync()
 end
 
 function ForgeController.OnGolemDeployed(ok, golemId, zoneId, err)
-    if ok and ForgeController._data then
-        for _, g in ipairs(ForgeController._data.Golems or {}) do
-            if g.id == golemId then
-                g.deployed = true
-                g.zoneId   = zoneId
-                break
-            end
-        end
-    end
+    ForgeController.Resync()
 end
 
 function ForgeController.OnGolemReturned(result, golemId, err)
-    if result and ForgeController._data then
-        for _, g in ipairs(ForgeController._data.Golems or {}) do
-            if g.id == golemId then
-                g.deployed = false
-                g.zoneId   = nil
-                break
-            end
-        end
-    end
+    ForgeController.Resync()
 end
 
 local function _AddSmeltJobCard(job)
@@ -357,10 +418,7 @@ function ForgeController.OnSmeltCompleted(job)
 end
 
 function ForgeController.OnGolemFused(ok, golem1Id, err)
-    if ok and ForgeController._data then
-        -- Refresh lists after fusion (one golem removed, survivor boosted)
-        ForgeController._BuildBlueprintList()
-    end
+    if ok then ForgeController.Resync() end
 end
 
 function ForgeController.OnForgeUpgraded(newLevel)

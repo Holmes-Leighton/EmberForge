@@ -19,6 +19,7 @@ local DEFINITIONS = {
     SmeltCompleted      = "event",   -- server → client
 
     -- Crafting
+    Notify              = "event",   -- server → client (title, message)
     CraftGolem          = "event",
     GolemCrafted        = "event",   -- server → client
 

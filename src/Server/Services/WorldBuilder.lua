@@ -104,7 +104,7 @@ local function BuildStarterStation(world)
             RemoteEvents.GolemCrafted:FireClient(player, golem, leveled and level or nil)
             if leveled then RemoteEvents.LevelUp:FireClient(player, level) end
         else
-            RemoteEvents.GolemCrafted:FireClient(player, nil, err)
+            RemoteEvents.Notify:FireClient(player, "Can't forge yet", tostring(err))
         end
     end)
 end

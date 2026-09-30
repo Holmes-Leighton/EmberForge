@@ -18,9 +18,10 @@ PadData.Pads = {
 
 PadData.SIZE = Vector3.new(22, 1, 22)
 
--- Per-second yield at 1x. Coal is produced every other second so Ore:Coal is 2:1,
--- matching the Tier 1 recipes (10 Basic Ore + 5 Coal).
-PadData.ORE_PER_SECOND  = 1
+-- Pads pay out every TICK_SECONDS. Coal comes every COAL_EVERY_N ticks so Ore:Coal is
+-- 2:1, matching the Tier 1 recipes (10 Basic Ore + 5 Coal). At 1x that is 4 Ore/s.
+PadData.TICK_SECONDS    = 0.25
+PadData.ORE_PER_TICK    = 1
 PadData.COAL_EVERY_N    = 2
 
 return PadData
