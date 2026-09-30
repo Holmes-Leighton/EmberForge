@@ -284,7 +284,7 @@ local HUB_CEIL       = 110
 local CH_Z2          = 334               -- back wall of the zone caves
 local CH_CEIL        = 60
 local ARCH_W, ARCH_H = 36, 28
-local ROCK           = Color3.fromRGB(62, 54, 52)
+local ROCK           = Color3.fromRGB(84, 56, 46)
 
 -- A box from corner to corner, split so no single part exceeds Roblox's 2048-stud limit
 local function Slab(parent, name, x1, x2, y1, y2, z1, z2, color, material)
@@ -322,11 +322,19 @@ local ZONE_ROCK = {
 CarveTerrain = function(terrain)
     local ok, err = pcall(function()
         local rng = Random.new(4242)
-        terrain:SetMaterialColor(Enum.Material.Rock, Color3.fromRGB(84, 72, 66))
-        terrain:SetMaterialColor(Enum.Material.Slate, Color3.fromRGB(66, 60, 62))
-        terrain:SetMaterialColor(Enum.Material.Basalt, Color3.fromRGB(48, 42, 44))
-        terrain:SetMaterialColor(Enum.Material.Limestone, Color3.fromRGB(122, 108, 92))
-        local hubMats = { Enum.Material.Rock, Enum.Material.Rock, Enum.Material.Slate, Enum.Material.Basalt, Enum.Material.Limestone }
+        -- warm banded rust and brown rock (layered sandstone strata), not cold grey
+        terrain:SetMaterialColor(Enum.Material.Sandstone, Color3.fromRGB(128, 74, 52))
+        terrain:SetMaterialColor(Enum.Material.Mud, Color3.fromRGB(70, 44, 36))
+        terrain:SetMaterialColor(Enum.Material.Rock, Color3.fromRGB(86, 58, 48))
+        terrain:SetMaterialColor(Enum.Material.Slate, Color3.fromRGB(66, 48, 44))
+        terrain:SetMaterialColor(Enum.Material.Basalt, Color3.fromRGB(44, 32, 30))
+        terrain:SetMaterialColor(Enum.Material.Limestone, Color3.fromRGB(128, 98, 78))
+        terrain.WaterColor = Color3.fromRGB(40, 120, 128)
+        terrain.WaterTransparency = 0.7
+        terrain.WaterReflectance = 0.8
+        terrain.WaterWaveSize = 0.08
+        local hubMats = { Enum.Material.Sandstone, Enum.Material.Sandstone, Enum.Material.Sandstone, Enum.Material.Rock,
+            Enum.Material.Mud, Enum.Material.Basalt, Enum.Material.Slate }
         local n = 0
         local function Ball(x, y, z, r, mats)
             mats = mats or hubMats
@@ -395,13 +403,13 @@ local function BuildCave(world)
     local rng = Random.new(77)
 
     -- floor (named Ground)
-    Slab(world, "Ground", HUB_X1, HUB_X2, -2, 0, HUB_Z1, CH_Z2 + 4, Color3.fromRGB(58, 50, 47), Enum.Material.Slate)
+    Slab(world, "Ground", HUB_X1, HUB_X2, -2, 0, HUB_Z1, CH_Z2 + 4, Color3.fromRGB(104, 72, 56), Enum.Material.Ground)
 
     -- outer walls and ceiling
     Slab(cave, "WallSouth", HUB_X1 - 6, HUB_X2 + 6, 0, HUB_CEIL + 6, HUB_Z1 - 6, HUB_Z1)
     Slab(cave, "WallWest", HUB_X1 - 6, HUB_X1, 0, HUB_CEIL + 6, HUB_Z1, CH_Z2 + 4)
     Slab(cave, "WallEast", HUB_X2, HUB_X2 + 6, 0, HUB_CEIL + 6, HUB_Z1, CH_Z2 + 4)
-    Slab(cave, "Ceiling", HUB_X1 - 6, HUB_X2 + 6, HUB_CEIL, HUB_CEIL + 6, HUB_Z1 - 6, HUB_Z2 + 10, Color3.fromRGB(46, 40, 40))
+    Slab(cave, "Ceiling", HUB_X1 - 6, HUB_X2 + 6, HUB_CEIL, HUB_CEIL + 6, HUB_Z1 - 6, HUB_Z2 + 10, Color3.fromRGB(70, 46, 38))
 
     -- the north wall, pierced by an archway for each zone
     local cursor = HUB_X1 - 6
@@ -438,15 +446,24 @@ local function BuildCave(world)
     end
 
     -- stalactites hanging from the great ceiling
-    for _ = 1, 90 do
+    -- each one tapers to a point (five stacked, narrowing segments, leaning slightly)
+    for _ = 1, 140 do
         local x = rng:NextInteger(HUB_X1 + 10, HUB_X2 - 10)
         local z = rng:NextInteger(HUB_Z1 + 10, HUB_Z2 - 16)
-        local h = rng:NextInteger(14, 42)
-        local w = rng:NextInteger(6, 12)
-        Part({ Name = "StalactiteBase", Material = Enum.Material.Slate, Color = Color3.fromRGB(70, 62, 58), Size = Vector3.new(w, h * 0.55, w),
-            CFrame = CFrame.new(x, HUB_CEIL - h * 0.275, z), CanCollide = false }, cave)
-        Part({ Name = "StalactiteTip", Material = Enum.Material.Slate, Color = Color3.fromRGB(78, 68, 62), Size = Vector3.new(w * 0.5, h * 0.5, w * 0.5),
-            CFrame = CFrame.new(x, HUB_CEIL - h * 0.8, z), CanCollide = false }, cave)
+        local h = rng:NextInteger(16, 52)
+        local w = rng:NextInteger(6, 13)
+        local lean = rng:NextNumber(-0.05, 0.05)
+        local tint = rng:NextNumber()
+        local y = HUB_CEIL
+        for i = 1, 5 do
+            local segH = h / 5
+            local segW = w * (1 - (i - 1) * 0.2)
+            Part({ Name = "Stalactite", Material = Enum.Material.Sandstone,
+                Color = Color3.fromRGB(96, 60, 46):Lerp(Color3.fromRGB(150, 92, 62), tint),
+                Size = Vector3.new(segW, segH + 0.4, segW),
+                CFrame = CFrame.new(x + lean * (i - 1) * segH, y - segH / 2, z), CanCollide = false }, cave)
+            y -= segH
+        end
     end
 
     -- hanging lanterns give the cavern its warm pools of light
@@ -819,6 +836,112 @@ local function BuildDiscoveryBoard(world)
     end)
 end
 
+-- Natural cavern dressing (after a reference of a banded, flowing rock cave with a still pool and a
+-- shaft of cool light): boulders strewn near the walls, teal pools, and light shafts from the ceiling.
+-- Everything stays off the roads, plots, spawn, pad plaza and tunnel lanes.
+local POOLS = { { x = -140, z = 118, r = 24 }, { x = 140, z = 118, r = 24 } }
+
+local function BuildDressing(world)
+    local rng = Random.new(31337)
+    local folder = Instance.new("Folder")
+    folder.Name = "CavernDressing"
+    folder.Parent = world
+
+    local mats = { Enum.Material.Rock, Enum.Material.Basalt, Enum.Material.Slate, Enum.Material.Sandstone }
+    local function Free(x, z, pad)
+        pad = pad or 0
+        if z > 55 and z < 82 then return false end                                          -- main road
+        for i = 1, #ZONE_LAYOUT do
+            if z > 55 and math.abs(x - ZoneX(i)) < 18 + pad then return false end           -- tunnel lanes
+        end
+        for _, p in ipairs(POOLS) do
+            if (x - p.x) ^ 2 + (z - p.z) ^ 2 < (p.r + 4 + pad) ^ 2 then return false end    -- pools (rims are placed apart)
+        end
+        if math.abs(x + 45) < 10 and z < 70 and z > -90 then return false end               -- spawn road
+        if z > -225 and z < -85 and math.abs(x) < 210 then return false end                 -- pad plaza
+        if z > -40 and z < 55 and x > -60 then return false end                             -- forge plots
+        return true
+    end
+    local function Boulder(x, z, size)
+        local sx, sy, sz = size * rng:NextNumber(0.8, 1.3), size * rng:NextNumber(0.5, 0.9), size * rng:NextNumber(0.8, 1.3)
+        Part({ Name = "Boulder", Shape = Enum.PartType.Ball, Material = mats[rng:NextInteger(1, #mats)],
+            Color = Color3.fromRGB(86, 58, 48):Lerp(Color3.fromRGB(138, 98, 72), rng:NextNumber()),
+            Size = Vector3.new(sx, sy, sz),
+            CFrame = CFrame.new(x, sy * 0.3, z) * CFrame.Angles(rng:NextNumber(0, 0.5), rng:NextNumber(0, 6.28), rng:NextNumber(0, 0.5)) }, folder)
+    end
+    local function Scatter(count, x1, x2, z1, z2, smin, smax)
+        local placed, tries = 0, 0
+        while placed < count and tries < count * 6 do
+            tries += 1
+            local x, z = rng:NextNumber(x1, x2), rng:NextNumber(z1, z2)
+            if Free(x, z) then
+                Boulder(x, z, rng:NextNumber(smin, smax))
+                placed += 1
+            end
+        end
+    end
+    Scatter(90, HUB_X1 + 12, 480, 84, 160, 3, 11)                  -- north band, between the tunnel lanes
+    Scatter(70, HUB_X1 + 12, 480, HUB_Z1 + 10, -226, 4, 14)       -- south wall
+    Scatter(40, HUB_X1 + 12, HUB_X1 + 46, HUB_Z1 + 10, 160, 4, 13) -- west wall
+    Scatter(70, 480, HUB_X2 - 12, HUB_Z1 + 10, -226, 4, 14)       -- far east: south wall
+    Scatter(60, 480, HUB_X2 - 12, 120, 176, 4, 12)                -- far east: north wall
+
+    -- pools: a thin sheet of teal water on the floor, ringed with rocks and lit from within
+    local terrain = GetTerrain()
+    for _, p in ipairs(POOLS) do
+        if terrain and terrain.FillCylinder then
+            terrain:FillCylinder(CFrame.new(p.x, 0.9, p.z), 1.8, p.r, Enum.Material.Water)
+        end
+        for i = 1, 20 do
+            local a = i / 20 * math.pi * 2 + rng:NextNumber(-0.1, 0.1)
+            local rr = p.r + rng:NextNumber(0.5, 4)
+            Boulder(p.x + math.cos(a) * rr, p.z + math.sin(a) * rr, rng:NextNumber(3, 8))
+        end
+        for _, off in ipairs({ -8, 8 }) do
+            Part({ Name = "PoolGlow", Shape = Enum.PartType.Ball, Material = Enum.Material.Neon, Color = Color3.fromRGB(90, 220, 215),
+                Transparency = 0.85, Size = Vector3.new(4, 1.2, 4), CFrame = CFrame.new(p.x + off, 0.3, p.z + off * 0.4), CanCollide = false }, folder)
+        end
+        local glow = Instance.new("PointLight")
+        glow.Color = Color3.fromRGB(110, 220, 215)
+        glow.Range = 44
+        glow.Brightness = 0.9
+        glow.Parent = folder:FindFirstChild("PoolGlow", true)
+    end
+
+    -- shafts of cool daylight: a skylight disc in the ceiling, a faint beam down to the floor, drifting dust
+    local function Shaft(x, z)
+        local top = Part({ Name = "Skylight", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Neon, Color = Color3.fromRGB(215, 235, 255),
+            Transparency = 0.1, Size = Vector3.new(1.5, 38, 38), CFrame = CFrame.new(x, HUB_CEIL - 1.2, z) * CFrame.Angles(0, 0, math.pi / 2),
+            CanCollide = false, CastShadow = false }, folder)
+        for i, dia in ipairs({ 32, 20 }) do
+            Part({ Name = "LightShaft", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Neon, Color = Color3.fromRGB(185, 220, 255),
+                Transparency = 0.93 - (i - 1) * 0.02, Size = Vector3.new(HUB_CEIL - 3, dia, dia),
+                CFrame = CFrame.new(x, HUB_CEIL / 2, z) * CFrame.Angles(0, 0, math.pi / 2), CanCollide = false, CanQuery = false, CastShadow = false }, folder)
+        end
+        local spot = Instance.new("SpotLight")
+        spot.Face = Enum.NormalId.Left          -- the cylinder's long axis after the rotation above points down
+        spot.Color = Color3.fromRGB(175, 210, 255)
+        spot.Angle = 75
+        spot.Range = 150
+        spot.Brightness = 3
+        spot.Parent = top
+        local dust = Instance.new("ParticleEmitter")
+        dust.Color = ColorSequence.new(Color3.fromRGB(220, 235, 255))
+        dust.Rate = 6
+        dust.Lifetime = NumberRange.new(8, 12)
+        dust.Speed = NumberRange.new(1, 3)
+        dust.SpreadAngle = Vector2.new(12, 12)
+        dust.EmissionDirection = Enum.NormalId.Left
+        dust.Size = NumberSequence.new(0.5)
+        dust.Transparency = NumberSequence.new(0.6)
+        dust.LightEmission = 0.8
+        dust.Parent = top
+    end
+    for _, p in ipairs(POOLS) do Shaft(p.x, p.z) end
+    Shaft(-300, -160)
+    Shaft(300, -160)
+end
+
 WorldBuilder.CarveTerrain = function(terrain) return CarveTerrain(terrain) end   -- exposed for tests
 
 function WorldBuilder.Build()
@@ -865,21 +988,34 @@ function WorldBuilder.Build()
     end
 
     BuildScenery(world)
+    BuildDressing(world)
 
-    -- Lighting: a lit cavern (no sun reaches in, so the ambient light does the work)
+    -- Lighting: a lit cavern (no sun reaches in, so the ambient light does the work): warm rust ambient,
+    -- a rusty haze for depth, and a gentle warm grade
     Lighting.ClockTime = 14
     Lighting.Brightness = 1
-    Lighting.Ambient = Color3.fromRGB(125, 108, 100)
-    Lighting.OutdoorAmbient = Color3.fromRGB(125, 108, 100)
+    Lighting.Ambient = Color3.fromRGB(112, 84, 74)
+    Lighting.OutdoorAmbient = Color3.fromRGB(112, 84, 74)
     Lighting.GlobalShadows = false
-    if not Lighting:FindFirstChildOfClass("Atmosphere") then
-        local atm = Instance.new("Atmosphere")
-        atm.Density = 0.22
-        atm.Color = Color3.fromRGB(190, 150, 120)
-        atm.Decay = Color3.fromRGB(120, 60, 40)
-        atm.Haze = 1.2
+    local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+    if not atm then
+        atm = Instance.new("Atmosphere")
         atm.Parent = Lighting
     end
+    atm.Density = 0.3
+    atm.Offset = 0.1
+    atm.Color = Color3.fromRGB(196, 136, 104)
+    atm.Decay = Color3.fromRGB(104, 52, 36)
+    atm.Glare = 0
+    atm.Haze = 1.6
+    local cc = Lighting:FindFirstChildOfClass("ColorCorrectionEffect")
+    if not cc then
+        cc = Instance.new("ColorCorrectionEffect")
+        cc.Parent = Lighting
+    end
+    cc.Contrast = 0.16
+    cc.Saturation = -0.04
+    cc.TintColor = Color3.fromRGB(255, 240, 228)
 end
 
 return WorldBuilder
