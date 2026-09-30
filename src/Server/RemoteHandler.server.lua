@@ -3,6 +3,7 @@
 local Players = game:GetService("Players")
 
 local RemoteEvents      = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
+RemoteEvents.Load()   -- waits for init.server.lua to create the remotes
 local GameConfig        = require(game.ReplicatedStorage.Shared.Data.GameConfig)
 local PlayerDataService = require(script.Parent.Services.PlayerDataService)
 local IdleEngine        = require(script.Parent.Services.IdleEngine)

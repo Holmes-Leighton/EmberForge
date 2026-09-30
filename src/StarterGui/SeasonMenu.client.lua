@@ -142,7 +142,7 @@ for i, name in ipairs(trackNames) do
     lbl.Size = UDim2.new(1, -8, 0, trackH - 8)
     lbl.Position = UDim2.new(0, 4, 0, (i-1) * trackH + 4)
     lbl.TextXAlignment = Enum.TextXAlignment.Center
-    lbl.TextYAlignment = Enum.VerticalAlignment.Center
+    lbl.TextYAlignment = Enum.TextYAlignment.Center
     lbl.TextWrapped = true
 end
 

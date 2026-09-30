@@ -97,6 +97,7 @@ function RemoteEvents.CreateOnServer()
         end
         remote.Name = name
         remote.Parent = folder
+        RemoteEvents[name] = remote
     end
 
     return folder

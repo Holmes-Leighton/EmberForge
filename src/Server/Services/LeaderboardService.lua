@@ -9,12 +9,14 @@ local Utils            = require(game.ReplicatedStorage.Shared.Modules.Utils)
 
 local LeaderboardService = {}
 
+local SafeDataStore = require(script.Parent.SafeDataStore)
+
 -- One OrderedDataStore per category
 local stores = {
-    ResourcesMined = DataStoreService:GetOrderedDataStore("EF_LB_Resources_v1"),
-    GolemsCrafted  = DataStoreService:GetOrderedDataStore("EF_LB_Golems_v1"),
-    ForgeLevel     = DataStoreService:GetOrderedDataStore("EF_LB_ForgeLevel_v1"),
-    TradeCount     = DataStoreService:GetOrderedDataStore("EF_LB_Trades_v1"),
+    ResourcesMined = SafeDataStore.GetOrderedDataStore("EF_LB_Resources_v1"),
+    GolemsCrafted  = SafeDataStore.GetOrderedDataStore("EF_LB_Golems_v1"),
+    ForgeLevel     = SafeDataStore.GetOrderedDataStore("EF_LB_ForgeLevel_v1"),
+    TradeCount     = SafeDataStore.GetOrderedDataStore("EF_LB_Trades_v1"),
 }
 
 -- In-memory session counters — flushed to DataStore on leave and periodically

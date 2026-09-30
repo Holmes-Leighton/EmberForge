@@ -57,6 +57,16 @@ local function BuildZone(player, plotIndex)
     part.CastShadow        = false
     part.Parent            = zonesFolder
 
+    -- Visible ground platform so the plot is easy to see
+    local pad = Instance.new("Part")
+    pad.Name          = "ForgePad_" .. player.UserId
+    pad.Size          = Vector3.new(ZONE_SIZE.X, 1, ZONE_SIZE.Z)
+    pad.CFrame        = CFrame.new(PlotCentre(plotIndex).X, 0.5, PlotCentre(plotIndex).Z)
+    pad.Anchored      = true
+    pad.Material      = Enum.Material.Slate
+    pad.Color         = Color3.fromRGB(70, 55, 45)
+    pad.Parent        = zonesFolder
+
     -- Label above zone
     local billboard = Instance.new("BillboardGui")
     billboard.Size        = UDim2.new(0, 200, 0, 36)

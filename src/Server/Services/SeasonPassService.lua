@@ -7,7 +7,8 @@ local PlayerDataService = require(script.Parent.PlayerDataService)
 
 local SeasonPassService = {}
 
-local communityStore = DataStoreService:GetDataStore("EmberForge_Community_v1")
+local SafeDataStore = require(script.Parent.SafeDataStore)
+local communityStore = SafeDataStore.GetDataStore("EmberForge_Community_v1")
 
 -- Returns which week of the current season the player is on
 local function CurrentSeasonWeek()

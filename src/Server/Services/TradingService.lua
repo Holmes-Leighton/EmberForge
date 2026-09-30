@@ -12,7 +12,8 @@ local pendingTrades = {}
 
 -- Market listings: in-memory cache backed by DataStore
 local marketListings = {}  -- listingId → listing
-local marketStore    = DataStoreService:GetDataStore("EmberForge_Market_v1")
+local SafeDataStore = require(script.Parent.SafeDataStore)
+local marketStore    = SafeDataStore.GetDataStore("EmberForge_Market_v1")
 local MARKET_KEY     = "listings_v1"
 
 local function PersistMarket()

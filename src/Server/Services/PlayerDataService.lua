@@ -12,8 +12,9 @@ local Utils        = require(game.ReplicatedStorage.Shared.Modules.Utils)
 local PlayerDataService = {}
 
 -- DataStore instances
-local primaryStore = DataStoreService:GetDataStore("EmberForge_v1")
-local backupStore  = DataStoreService:GetDataStore("EmberForge_v1_backup")
+local SafeDataStore = require(script.Parent.SafeDataStore)
+local primaryStore = SafeDataStore.GetDataStore("EmberForge_v1")
+local backupStore  = SafeDataStore.GetDataStore("EmberForge_v1_backup")
 
 -- In-memory cache: userId → { data, dirty }
 local cache = {}
