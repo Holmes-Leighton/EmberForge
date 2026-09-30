@@ -13,6 +13,12 @@ ProductData.Products = {
     MaterialMagnet    = { id = 0, displayName = "Material Magnet (24h)", robux = 199  },
     EventCatalyst     = { id = 0, displayName = "Event Catalyst",        robux = 400  },
 
+    -- Pet eggs (paid random items: odds are shown in the Pets menu; hidden where Roblox restricts them).
+    -- `eggId` / `count` tell ShopService how many pets to hatch from PetData.Eggs[eggId].
+    RoyalEgg_x1       = { id = 0, displayName = "Royal Egg",        robux = 99,  eggId = "Royal", count = 1  },
+    RoyalEgg_x5       = { id = 0, displayName = "Royal Egg x5",     robux = 449, eggId = "Royal", count = 5  },
+    RoyalEgg_x10      = { id = 0, displayName = "Royal Egg x10",    robux = 849, eggId = "Royal", count = 10 },
+
     -- Season Pass
     SeasonPass_Standard = { id = 0, displayName = "Season Pass (Standard)", robux = 699  },
     SeasonPass_Premium  = { id = 0, displayName = "Season Pass (Premium)",  robux = 1299 },

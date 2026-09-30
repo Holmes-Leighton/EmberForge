@@ -63,6 +63,17 @@ PRODUCT_HANDLERS.EventCatalyst = function(player)
     return true
 end
 
+-- ── Pet eggs: hatch `count` pets from the egg and show each one (Robux has already been paid, so the
+-- grant always goes through, even if the pet box is full) ──────────────────────────────────────────
+for key, product in pairs(ProductData.Products) do
+    if product.eggId then
+        PRODUCT_HANDLERS[key] = function(player)
+            local pets = require(script.Parent.PetService).HatchPaid(player, product.eggId, product.count)
+            return #pets == product.count
+        end
+    end
+end
+
 -- ── Season Pass (perks are derived from SeasonPassTier; no slots are granted here) ─
 PRODUCT_HANDLERS.SeasonPass_Standard = function(player)
     return withData(player, function(d)

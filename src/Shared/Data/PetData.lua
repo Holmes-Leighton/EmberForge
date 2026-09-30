@@ -50,7 +50,7 @@ PetData.Looks = {
 }
 
 -- Eggs: pick one, pay, get a random pet from its pool (weights are shown to the player)
-PetData.EggOrder = { "Basic", "Crystal" }
+PetData.EggOrder = { "Basic", "Crystal", "Royal" }
 PetData.Eggs = {
     Basic = {
         displayName = "Golem Egg", cost = 150, color = Color3.fromRGB(210, 170, 110),
@@ -71,6 +71,19 @@ PetData.Eggs = {
             { item = "Storm", weight = 21.9 }, { item = "Void", weight = 21.9 }, { item = "Patchwork", weight = 21.9 }, { item = "Woven", weight = 21.9 },
             { item = "Coral", weight = 3 }, { item = "Clockwork", weight = 3 }, { item = "Alchemist", weight = 3 }, { item = "Gargoyle", weight = 3 },
             { item = "StormJar", weight = 0.05 }, { item = "Dragonbone", weight = 0.05 }, { item = "All", weight = 0.001 },
+        },
+    },
+    -- Bought with Robux (developer products, see ProductData RoyalEgg_*): always a Rare pet or better. It is a
+    -- paid random item, so its odds are always shown and the buy buttons are hidden wherever Roblox
+    -- restricts paid random items (PolicyService).
+    Royal = {
+        displayName = "Royal Egg", robux = true, color = Color3.fromRGB(255, 205, 90),
+        blurb = "A gilded egg: always a Rare pet or better.",
+        bundles = { { count = 1, key = "RoyalEgg_x1" }, { count = 5, key = "RoyalEgg_x5" }, { count = 10, key = "RoyalEgg_x10" } },
+        -- Rare ~24.9% each, Epic 0.2% each (1 in 500), Legendary 0.005% (1 in ~20,000)
+        pool = {
+            { item = "Coral", weight = 24.7 }, { item = "Clockwork", weight = 24.7 }, { item = "Alchemist", weight = 24.7 }, { item = "Gargoyle", weight = 24.7 },
+            { item = "StormJar", weight = 0.2 }, { item = "Dragonbone", weight = 0.2 }, { item = "All", weight = 0.005 },
         },
     },
 }

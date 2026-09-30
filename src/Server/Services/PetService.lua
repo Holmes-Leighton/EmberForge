@@ -33,6 +33,7 @@ function PetService.Hatch(player, eggId)
     if not data then return nil, "No player data" end
     local egg = PetData.Eggs[eggId]
     if not egg then return nil, "Unknown egg" end
+    if egg.robux then return nil, "That egg is bought with Robux" end
     data.OwnedPets = data.OwnedPets or {}
     if #data.OwnedPets >= PetData.MAX_OWNED then return nil, "Your pet box is full" end
     if (data.EmberCoins or 0) < egg.cost then
@@ -48,6 +49,28 @@ function PetService.Hatch(player, eggId)
     PlayerDataService.MarkDirty(player)
     PetService.Sync(player)
     return pet, nil
+end
+
+-- Hatch `count` pets from a Robux egg. Payment is already taken (ProcessReceipt), so this never refuses
+-- because the pet box is full. Each pet is sent to the client for its reveal. Returns the pets hatched.
+function PetService.HatchPaid(player, eggId, count)
+    local data = PlayerDataService.Get(player)
+    local egg = PetData.Eggs[eggId]
+    local pets = {}
+    if not data or not egg then return pets end
+    data.OwnedPets = data.OwnedPets or {}
+    data.EquippedPets = data.EquippedPets or {}
+    local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
+    for _ = 1, math.max(1, count or 1) do
+        local pet = { id = Utils.GenerateId(), type = Utils.WeightedRandom(egg.pool), hatchedAt = Utils.UnixTimestamp() }
+        table.insert(data.OwnedPets, pet)
+        if #data.EquippedPets < PetData.SLOTS then table.insert(data.EquippedPets, pet.id) end
+        table.insert(pets, pet)
+        RemoteEvents.PetHatched:FireClient(player, true, pet)
+    end
+    PlayerDataService.MarkDirty(player)
+    PetService.Sync(player)
+    return pets
 end
 
 -- Wear or put away a pet. Returns true, or false + a reason.

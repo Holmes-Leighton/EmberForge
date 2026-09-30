@@ -9,6 +9,10 @@ local ScaleUI      = require(game.ReplicatedStorage.Shared.Modules.ScaleUI)
 local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local PetModel     = require(game.ReplicatedStorage.Shared.Modules.PetModel)
 local PetData      = require(game.ReplicatedStorage.Shared.Data.PetData)
+local ProductData  = require(game.ReplicatedStorage.Shared.Data.ProductData)
+local MarketplaceService = game:GetService("MarketplaceService")
+local PolicyService = game:GetService("PolicyService")
+local paidRandomRestricted = true        -- hidden until Roblox confirms paid random items are allowed here
 local Utils        = require(game.ReplicatedStorage.Shared.Modules.Utils)
 
 RemoteEvents.Load()
@@ -218,15 +222,22 @@ revealOk.Position = UDim2.new(0.5, 0, 0, 308)
 revealOk.ZIndex = 21
 
 local spinModel, spinConn
+local revealQueue = {}          -- pets waiting to be shown (a Robux bundle hatches several at once)
+local ShowReveal
 local function CloseReveal()
     reveal.Visible = false
     if spinConn then spinConn:Disconnect() spinConn = nil end
     if spinModel then spinModel:Destroy() spinModel = nil end
 end
-revealOk.MouseButton1Click:Connect(CloseReveal)
-
-local function ShowReveal(pet)
+revealOk.MouseButton1Click:Connect(function()
     CloseReveal()
+    local nextPet = table.remove(revealQueue, 1)
+    if nextPet then ShowReveal(nextPet) end
+end)
+
+ShowReveal = function(pet)
+    CloseReveal()
+    revealOk.Text = #revealQueue > 0 and string.format("Next (%d more)", #revealQueue) or "Nice!"
     local def = PetData.Get(pet.type)
     if not def then return end
     local model = PetModel.Build(pet.type, pet.variant)
@@ -235,7 +246,7 @@ local function ShowReveal(pet)
         model.Parent = viewport
         local box, size = model:GetBoundingBox()
         local centre = box.Position
-        local dist = math.max(size.X, size.Y, size.Z) * 1.6 + 4
+        local dist = math.max(size.X, size.Y, size.Z) * 1.9 + 1
         local angle = 0
         spinConn = RunService.RenderStepped:Connect(function(dt)
             angle += dt * 1.2
@@ -252,6 +263,18 @@ local function ShowReveal(pet)
     revealName.TextColor3 = rc
     revealSub.Text = string.upper(def.rarity) .. "  -  " .. PetData.BoostText(pet)
     reveal.Visible = true
+end
+
+-- Shows a new pet now, or queues it behind the one on screen. Opens the menu so a purchase made from
+-- anywhere still gets its hatch reveal.
+local function Enqueue(pet)
+    gui.Enabled = true
+    if reveal.Visible then
+        table.insert(revealQueue, pet)
+        revealOk.Text = string.format("Next (%d more)", #revealQueue)
+    else
+        ShowReveal(pet)
+    end
 end
 
 -- ── Content ───────────────────────────────────────────────────────────────────
@@ -272,10 +295,30 @@ local function Reload()
             .. PetData.SLOTS .. " at a time.", 44)
         for _, eggId in ipairs(PetData.EggOrder) do
             local egg = PetData.Eggs[eggId]
-            local canAfford = (data.EmberCoins or 0) >= egg.cost
-            Row(egg.displayName, egg.blurb, egg.color,
-                string.format("Hatch  %d", egg.cost), canAfford and Theme.Colors.Accent or Theme.Colors.PanelAlt,
-                function() RemoteEvents.HatchPet:FireServer(eggId) end, canAfford, 64)
+            if egg.robux then
+                -- Robux eggs are paid random items: hidden unless Roblox confirms they are allowed here
+                if paidRandomRestricted then
+                    Note("Robux eggs aren't available in your region.", 28)
+                    continue
+                end
+                local unit = ProductData.Products[egg.bundles[1].key].robux
+                for _, b in ipairs(egg.bundles) do
+                    local product = ProductData.Products[b.key]
+                    local available = ProductData.IsAvailable(b.key)
+                    local save = b.count > 1 and math.floor((1 - product.robux / (unit * b.count)) * 100 + 0.5) or 0
+                    Row(egg.displayName .. (b.count > 1 and ("  x" .. b.count) or ""),
+                        egg.blurb .. (save > 0 and ("  Save " .. save .. "%.") or ""), egg.color,
+                        available and ("R$ " .. product.robux) or "Coming soon",
+                        available and Theme.Colors.Success or Theme.Colors.PanelAlt,
+                        function() pcall(function() MarketplaceService:PromptProductPurchase(LocalPlayer, product.id) end) end,
+                        available, 64)
+                end
+            else
+                local canAfford = (data.EmberCoins or 0) >= egg.cost
+                Row(egg.displayName, egg.blurb, egg.color,
+                    string.format("Hatch  %d", egg.cost), canAfford and Theme.Colors.Accent or Theme.Colors.PanelAlt,
+                    function() RemoteEvents.HatchPet:FireServer(eggId) end, canAfford, 64)
+            end
             -- what can come out, rarest first
             local odds = PetData.Odds(eggId)
             table.sort(odds, function(a, b) return a.chance < b.chance end)
@@ -284,7 +327,7 @@ local function Reload()
                 local d = PetData.Get(o.type)
                 table.insert(parts, d.displayName .. " " .. PetData.FormatOdds(o.chance))
             end
-            Note("Odds: " .. table.concat(parts, "  |  "), 92)
+            Note("Odds: " .. table.concat(parts, "  |  "), 66)
         end
         return
     end
@@ -350,12 +393,21 @@ for id, b in pairs(tabButtons) do
 end
 
 gui:GetPropertyChangedSignal("Enabled"):Connect(function()
-    if gui.Enabled then task.spawn(Reload) else CloseReveal() end
+    if gui.Enabled then task.spawn(Reload) else table.clear(revealQueue) CloseReveal() end
+end)
+
+-- Paid random items are restricted in some regions: keep the Robux eggs hidden until Roblox says it's fine
+task.spawn(function()
+    local ok, info = pcall(function() return PolicyService:GetPolicyInfoForPlayerAsync(LocalPlayer) end)
+    if ok and info and info.ArePaidRandomItemsRestricted == false then
+        paidRandomRestricted = false
+        if gui.Enabled then Reload() end
+    end
 end)
 
 RemoteEvents.PetsMerged.OnClientEvent:Connect(function(ok, result)
     if ok and type(result) == "table" then
-        ShowReveal(result)
+        Enqueue(result)
         task.delay(0.3, Reload)
     else
         statusLbl.Text = tostring(result or "Couldn't merge those pets")
@@ -366,7 +418,7 @@ end)
 
 RemoteEvents.PetHatched.OnClientEvent:Connect(function(ok, result)
     if ok and type(result) == "table" then
-        ShowReveal(result)
+        Enqueue(result)
         task.delay(0.3, Reload)
     else
         statusLbl.Text = tostring(result or "Couldn't hatch that egg")
