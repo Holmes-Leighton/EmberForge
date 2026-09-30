@@ -8,7 +8,6 @@ local RunService = game:GetService("RunService")
 local GameConfig   = require(game.ReplicatedStorage.Shared.Data.GameConfig)
 local RecipeData   = require(game.ReplicatedStorage.Shared.Data.RecipeData)
 local Utils        = require(game.ReplicatedStorage.Shared.Modules.Utils)
-local GolemData    = require(game.ReplicatedStorage.Shared.Data.GolemData)
 
 local PlayerDataService = {}
 
@@ -20,28 +19,6 @@ local backupStore  = SafeDataStore.GetDataStore("EmberForge_v1_backup")
 -- In-memory cache: userId → { data, dirty }
 local cache = {}
 
--- Free Tier 1 Ember Golem given to every new player so they can start mining
--- immediately (it also unlocks the Ember Depths zone).
-local function StarterGolem()
-    local tierData = GolemData.Tiers[1]
-    local durabilitySeconds = (tierData and tierData.durabilityHours or 72) * 3600
-    return {
-        id = Utils.GenerateId(),
-        blueprintId = "BP_Ember_T1",
-        element = "Ember",
-        tier = 1,
-        skinId = "default",
-        deployed = false,
-        zoneId = nil,
-        fusionBonus = nil,
-        _carriedResources = 0,
-        _accumulatedResources = 0,
-        _durabilitySeconds = durabilitySeconds,
-        _maxDurabilitySeconds = durabilitySeconds,
-        craftedAt = Utils.UnixTimestamp(),
-    }
-end
-
 -- ── Default data schema ─────────────────────────────────────────────────────
 local function DefaultData()
     return {
@@ -49,8 +26,8 @@ local function DefaultData()
         PlayerXP        = 0,
         ForgeLevel      = 1,
         ForgeXP         = 0,
-        Golems          = { StarterGolem() },   -- array of GolemObjects (starts with one free Ember Golem)
-        Inventory       = { BasicOre = 30, Coal = 15 },   -- starter kit: enough for a few Tier 1 Golems
+        Golems          = {},          -- array of GolemObjects
+        Inventory       = {},          -- materialId → quantity
         Blueprints      = Utils.DeepCopy(RecipeData.StartingBlueprintIds),
         LastOnline      = Utils.UnixTimestamp(),
         MasteryLevels   = {            -- elementId → xp

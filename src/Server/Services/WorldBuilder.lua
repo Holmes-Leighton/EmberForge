@@ -4,6 +4,10 @@
 
 local Lighting = game:GetService("Lighting")
 local MiningZoneData = require(game.ReplicatedStorage.Shared.Data.MiningZoneData)
+local RemoteEvents   = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
+local PlayerDataService  = require(script.Parent.PlayerDataService)
+local GolemService       = require(script.Parent.GolemService)
+local ProgressionService = require(script.Parent.ProgressionService)
 
 local WorldBuilder = {}
 
@@ -59,6 +63,78 @@ local function Sign(parent, text, subText, position, color)
     sub.TextScaled = true
     sub.TextStrokeTransparency = 0.5
     sub.Parent = bb
+end
+
+-- ── Starter station: hand-mine materials, then forge a random first Golem ─────
+local STARTER_BLUEPRINTS = { "BP_Ember_T1", "BP_Stone_T1", "BP_Frost_T1", "BP_Storm_T1" }
+
+local function AddPrompt(part, action, objectText, hold)
+    local prompt = Instance.new("ProximityPrompt")
+    prompt.ActionText = action
+    prompt.ObjectText = objectText
+    prompt.HoldDuration = hold
+    prompt.MaxActivationDistance = 12
+    prompt.RequiresLineOfSight = false
+    prompt.Parent = part
+    return prompt
+end
+
+local function BuildMiningNode(world, name, position, color, materialId, amount, label)
+    local rock = Part({
+        Name = name, Material = Enum.Material.Slate, Color = color:Lerp(Color3.new(0, 0, 0), 0.5),
+        Size = Vector3.new(9, 7, 9), CFrame = CFrame.new(position),
+    }, world)
+    for i = 1, 4 do
+        local chip = Part({
+            Name = "Chip", Material = Enum.Material.Neon, Color = color, CanCollide = false,
+            Size = Vector3.new(1.6, 2.4, 1.6),
+            CFrame = CFrame.new(position + Vector3.new(math.cos(i * 1.6) * 3.4, 2.2 + i % 2, math.sin(i * 1.6) * 3.4))
+                * CFrame.Angles(i, i * 0.7, 0),
+        }, world)
+    end
+    Sign(world, label, "Hold E to mine", position + Vector3.new(0, 9, 0), color)
+
+    local debounce = {}
+    AddPrompt(rock, "Mine", label, 0.35).Triggered:Connect(function(player)
+        if debounce[player] and os.clock() - debounce[player] < 0.25 then return end
+        debounce[player] = os.clock()
+        if not PlayerDataService.Get(player) then return end
+        PlayerDataService.AddMaterial(player, materialId, amount)
+        RemoteEvents.ResourcesCollected:FireClient(player, { [materialId] = amount }, 0)
+    end)
+end
+
+local function BuildStarterStation(world)
+    BuildMiningNode(world, "OreVein",  Vector3.new(-28, 3.5, -92), Color3.fromRGB(200, 160, 110), "BasicOre", 2, "Ore Vein")
+    BuildMiningNode(world, "CoalSeam", Vector3.new(28, 3.5, -92),  Color3.fromRGB(90, 90, 100),   "Coal",     1, "Coal Seam")
+
+    local anvil = Part({
+        Name = "GolemAnvil", Material = Enum.Material.Metal, Color = Color3.fromRGB(70, 70, 78),
+        Size = Vector3.new(8, 5, 5), CFrame = CFrame.new(0, 2.5, -100),
+    }, world)
+    Part({ Name = "AnvilTop", Material = Enum.Material.Metal, Color = Color3.fromRGB(110, 110, 120),
+        Size = Vector3.new(10, 1.5, 6), CFrame = CFrame.new(0, 5.7, -100) }, world)
+    local glow = Instance.new("PointLight")
+    glow.Color = Color3.fromRGB(255, 140, 50); glow.Range = 24; glow.Parent = anvil
+    Sign(world, "Golem Anvil", "Hold E: spend 10 Basic Ore + 5 Coal to forge a random Tier 1 Golem",
+        Vector3.new(0, 13, -100), Color3.fromRGB(255, 170, 60))
+
+    local debounce = {}
+    AddPrompt(anvil, "Forge Golem", "Golem Anvil", 1.2).Triggered:Connect(function(player)
+        if debounce[player] and os.clock() - debounce[player] < 1 then return end
+        debounce[player] = os.clock()
+        if not PlayerDataService.Get(player) then return end
+
+        local bpId = STARTER_BLUEPRINTS[math.random(#STARTER_BLUEPRINTS)]
+        local golem, err = GolemService.CraftGolem(player, bpId, "default")
+        if golem then
+            local leveled, level = ProgressionService.OnGolemCrafted(player, golem)
+            RemoteEvents.GolemCrafted:FireClient(player, golem, leveled and level or nil)
+            if leveled then RemoteEvents.LevelUp:FireClient(player, level) end
+        else
+            RemoteEvents.GolemCrafted:FireClient(player, nil, err)
+        end
+    end)
 end
 
 local function UnlockText(zone)
@@ -183,8 +259,10 @@ function WorldBuilder.Build()
     spawn.Parent = world
 
     Sign(world, "Welcome to EmberForge",
-        "1) Open Forge  2) Deploy your free Golem  3) Collect resources  4) Craft more Golems",
+        "1) Mine ore + coal  2) Forge a Golem at the Anvil  3) Deploy it in the Forge menu",
         Vector3.new(0, 22, -60), Color3.fromRGB(255, 170, 60))
+
+    BuildStarterStation(world)
 
     for i, layout in ipairs(ZONE_LAYOUT) do
         BuildLandmark(world, i, layout)

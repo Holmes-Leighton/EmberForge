@@ -50,10 +50,12 @@ RemoteEvents.GolemCrafted.OnClientEvent:Connect(function(golem, newLevel)
     if golem then
         ForgeController.OnGolemCrafted(golem)
         InventoryController.OnGolemAdded(golem)
-        HUDController.ShowNotification("Golem Crafted!", golem.blueprintId)
+        HUDController.ShowNotification("Golem Crafted!", tostring(golem.element) .. " Golem (Tier " .. tostring(golem.tier) .. ")")
         if newLevel then
             HUDController.ShowLevelUp(newLevel)
         end
+    else
+        HUDController.ShowNotification("Can't forge yet", tostring(newLevel or "Not enough materials"))
     end
 end)
 
