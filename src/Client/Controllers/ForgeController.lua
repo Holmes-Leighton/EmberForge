@@ -308,11 +308,11 @@ function ForgeController._RenderNeon()
     intro.BorderSizePixel = 0
     intro.Parent = scroll
     Theme.AddCorner(intro, Theme.Corner.Medium)
-    local h = Theme.Label(intro, "Neon Cave", Theme.TextSize.Heading, Theme.Colors.AccentBright, Theme.Fonts.Heading)
+    local h = Theme.Label(intro, "Elite Forge", Theme.TextSize.Heading, Theme.Colors.AccentBright, Theme.Fonts.Heading)
     h.Position = UDim2.new(0, 14, 0, 6)
     h.Size = UDim2.new(1, -28, 0, 22)
     local t = Theme.Label(intro, string.format(
-        "Fuse %d identical idle Golems (same element and tier) into 1 Neon Golem: glowing, and %d%% stronger.\nFuse %d Neons into a Mega Neon: rainbow, and %d%% stronger. Deployed Golems can't be fused.",
+        "Fuse %d identical idle Golems (same element and tier) into 1 Elite Golem: bigger, gold-armoured, and %d%% stronger.\nFuse %d Elites into a Supreme: royal cape, wings and halo, and %d%% stronger. Deployed Golems can't be fused.",
         need, math.floor((GolemData.Variants.Neon.statMultiplier - 1) * 100 + 0.5), need,
         math.floor((GolemData.Variants.MegaNeon.statMultiplier - 1) * 100 + 0.5)),
         Theme.TextSize.Small, Theme.Colors.TextSecondary, Theme.Fonts.Body)
@@ -366,7 +366,7 @@ function ForgeController._RenderNeon()
         countL.Position = UDim2.new(0, 12, 0, 34)
         countL.Size = UDim2.new(1, -230, 0, 18)
 
-        local result = grp.variant == "Neon" and "Mega Neon" or "Neon"
+        local result = grp.variant == "Neon" and "Supreme" or "Elite"
         local btn = Theme.Button(card, "Fuse " .. need .. "  >  " .. result, ready and Theme.Colors.Accent or Theme.Colors.PanelAlt,
             ready and Color3.fromRGB(255, 255, 255) or Theme.Colors.TextDim)
         btn.AnchorPoint = Vector2.new(1, 0.5)

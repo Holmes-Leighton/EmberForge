@@ -78,7 +78,7 @@ tabLayout.Padding = UDim.new(0, 2)
 tabLayout.Parent = tabBar
 Theme.AddPadding(tabBar, 4, 4, 4, 8)
 
-local tabs = { "Blueprints", "Smelt Queue", "Deploy", "Neon Cave", "Upgrades" }
+local tabs = { "Blueprints", "Smelt Queue", "Deploy", "Elite Forge", "Upgrades" }
 local tabBtns = {}
 local panels = {}
 
@@ -196,7 +196,7 @@ neonPanel.Visible = false
 local neonScroll = Theme.ScrollFrame(neonPanel, "NeonScroll")
 neonScroll.Size = UDim2.new(1, -16, 1, -8)
 neonScroll.Position = UDim2.new(0, 8, 0, 4)
-panels["Neon Cave"] = neonPanel
+panels["Elite Forge"] = neonPanel
 
 -- ── Upgrades Panel (forge level progress + Storage Vault) ─────────────────────
 local upgradesPanel = Theme.Panel(contentArea, "UpgradesPanel", Theme.Colors.Background)

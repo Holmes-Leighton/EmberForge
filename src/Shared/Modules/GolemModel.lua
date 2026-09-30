@@ -166,9 +166,10 @@ function GolemModel.Build(element, tier, options)
         color = color:Lerp(skinColor, 0.65)
     end
     local dark  = color:Lerp(Color3.new(0, 0, 0), 0.35)
-    local s     = 1 + (tier - 1) * 0.18
     local variant = options.variant
-    local isNeon = variant == "Neon" or variant == "MegaNeon"
+    local isNeon = variant == "Neon" or variant == "MegaNeon"     -- internal ids; players see them as Elite / Supreme
+    -- an Elite is a little bigger than a normal Golem of its tier, a Supreme bigger still
+    local s     = (1 + (tier - 1) * 0.18) * (variant == "MegaNeon" and 1.14 or (variant == "Neon" and 1.06 or 1))
 
     local model, root, mode, addOns
     if template then
@@ -524,32 +525,64 @@ function GolemModel.Build(element, tier, options)
         end
     end
 
-    -- ── Neon / Mega Neon mark (uploaded models keep their own body) ──────────────
-    -- A glowing crown floating over the head, a glowing pad under the feet and rising sparkles.
-    -- Mega Neon is bigger and rainbow (its parts carry the "Tint" attribute the animator cycles).
+    -- ── Elite / Supreme gear (uploaded models keep their own body and gain status features) ──────────
+    -- (internal variant ids are "Neon" and "MegaNeon"; players see Elite and Supreme)
+    -- Elite: gold pauldrons with spikes, a gold chest plate and circlet, each set with a gem in the type's colour.
+    -- Supreme: all of that, plus a royal cape, wings of light, a halo and orbiting gems, and it is bigger still.
+    -- Gems carry the "Tint" attribute: they pulse on an Elite and cycle the rainbow on a Supreme.
     if isNeon and A then
-        local mega = variant == "MegaNeon"
-        local glowColour = mega and Color3.fromRGB(255, 140, 220) or elementColor
-        local crownY = A.H.Y + A.hhy + (mega and 1.5 or 1.1) * s
-        local cw = A.hhx * (mega and 2.0 or 1.7)
-        local crown = {}
-        table.insert(crown, part("NeonCrownBand", Vector3.new(cw, 0.5, A.hhz * (mega and 2.0 or 1.7)) / s, glowColour, Enum.Material.Neon,
-            CFrame.new(A.H.X, crownY, A.H.Z), 0.1, true))
-        for i = 0, (mega and 6 or 4) do
-            local a = i / (mega and 7 or 5) * math.pi * 2
-            table.insert(crown, part("NeonCrownPoint", Vector3.new(0.6, mega and 1.8 or 1.3, 0.6) / s, glowColour, Enum.Material.Neon,
-                CFrame.new(A.H.X + math.cos(a) * cw * 0.42, crownY + (mega and 1.1 or 0.85) * s, A.H.Z + math.sin(a) * cw * 0.42), 0.1, true))
+        local supreme = variant == "MegaNeon"
+        local gold, goldDark = Color3.fromRGB(255, 205, 90), Color3.fromRGB(214, 160, 50)
+        local gem = elementColor
+        local function P(name, size, colour, material, cf, transparency, tint, shape)
+            local p = part(name, size / s, colour, material, cf, transparency, tint)
+            if shape then p.Shape = shape end
+            return p
         end
-        local padSize = math.max(A.hx, A.hz) * 2 * 1.9
-        local pad = part("NeonPad", Vector3.new(0.3, padSize, padSize) / s, glowColour, Enum.Material.Neon,
-            CFrame.new(A.T.X, 0.12, A.T.Z) * CFrame.Angles(0, 0, math.pi / 2), mega and 0.4 or 0.55, mega)
-        pad.Shape = Enum.PartType.Cylinder
+        local front, back = A.T.Z - A.hz, A.T.Z + A.hz
+
+        for _, side in ipairs({ -1, 1 }) do
+            P("Pauldron", Vector3.new(A.hx * 0.8, A.hy * 0.34, A.hz * 0.95), gold, Enum.Material.Metal,
+                CFrame.new(A.T.X + side * A.hx * 0.95, A.T.Y + A.hy * 0.88, A.T.Z) * CFrame.Angles(0, 0, side * -0.25), 0, nil, Enum.PartType.Ball)
+            P("PauldronSpike", Vector3.new(0.5, 1.3, 0.5), goldDark, Enum.Material.Metal,
+                CFrame.new(A.T.X + side * A.hx * 1.08, A.T.Y + A.hy * 1.15, A.T.Z) * CFrame.Angles(0, 0, side * -0.4))
+        end
+        P("ChestPlate", Vector3.new(A.hx * 1.05, A.hy * 0.75, 0.35), gold, Enum.Material.Metal,
+            CFrame.new(A.T.X, A.T.Y + A.hy * 0.05, front - 0.12))
+        P("ChestGem", Vector3.new(A.hx * 0.3, A.hx * 0.3, 0.4), gem, Enum.Material.Neon,
+            CFrame.new(A.T.X, A.T.Y + A.hy * 0.05, front - 0.4), 0.1, true, Enum.PartType.Ball)
+        P("Circlet", Vector3.new(A.hhx * 1.95, 0.4, A.hhz * 1.95), gold, Enum.Material.Metal,
+            CFrame.new(A.H.X, A.H.Y + A.hhy * 0.72, A.H.Z))
+        P("CircletGem", Vector3.new(0.7, 0.7, 0.4), gem, Enum.Material.Neon,
+            CFrame.new(A.H.X, A.H.Y + A.hhy * 0.72, A.H.Z - A.hhz * 0.98 - 0.15), 0.1, true, Enum.PartType.Ball)
+
+        if supreme then
+            P("Halo", Vector3.new(0.25, A.hhx * 3, A.hhx * 3), gold, Enum.Material.Neon,
+                CFrame.new(A.H.X, A.H.Y + A.hhy + 1.7 * s, A.H.Z) * CFrame.Angles(0, 0, math.pi / 2), 0.15, nil, Enum.PartType.Cylinder)
+            local crimson = Color3.fromRGB(170, 35, 55)
+            for i = -1, 1 do
+                P("CapePanel", Vector3.new(A.hx * 0.72, A.hy * 2.1, 0.22), crimson, Enum.Material.Fabric,
+                    CFrame.new(A.T.X + i * A.hx * 0.7, A.T.Y - A.hy * 0.1, back + 0.5) * CFrame.Angles(0.1, 0, i * 0.05))
+            end
+            P("CapeTrim", Vector3.new(A.hx * 2.5, 0.4, 0.5), gold, Enum.Material.Metal, CFrame.new(A.T.X, A.T.Y + A.hy * 0.92, back + 0.45))
+            for _, side in ipairs({ -1, 1 }) do
+                for i = 0, 2 do
+                    P("Wing", Vector3.new(0.14, A.hy * (1.6 - i * 0.3), A.hx * 0.6), elementColor:Lerp(Color3.new(1, 1, 1), 0.35), Enum.Material.Neon,
+                        CFrame.new(A.T.X + side * (A.hx * 1.25 + i * A.hx * 0.5), A.T.Y + A.hy * (0.75 - i * 0.15), back + 1.3)
+                            * CFrame.Angles(0, side * (0.55 + 0.18 * i), side * -(0.4 + 0.12 * i)), 0.35)
+                end
+            end
+            for i = 1, 3 do
+                local a = i / 3 * math.pi * 2 + 0.5
+                P("OrbitGem", Vector3.new(0.9, 1.3, 0.9), gem, Enum.Material.Neon,
+                    CFrame.new(A.H.X + math.cos(a) * A.hhx * 2.3, A.H.Y + (i - 2) * A.hhy * 0.6, A.H.Z + math.sin(a) * A.hhz * 2.3)
+                        * CFrame.Angles(i, i * 0.6, 0), 0.1, true)
+            end
+        end
+
         local sparkles = Instance.new("ParticleEmitter")
-        sparkles.Color = mega and ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 120, 120)), ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 240, 120)),
-            ColorSequenceKeypoint.new(0.66, Color3.fromRGB(120, 255, 200)), ColorSequenceKeypoint.new(1, Color3.fromRGB(190, 140, 255)),
-        }) or ColorSequence.new(glowColour)
-        sparkles.Rate = mega and 22 or 10
+        sparkles.Color = ColorSequence.new(supreme and gold or elementColor)
+        sparkles.Rate = supreme and 20 or 8
         sparkles.Lifetime = NumberRange.new(1.2, 2.2)
         sparkles.Speed = NumberRange.new(2, 5)
         sparkles.EmissionDirection = Enum.NormalId.Top
@@ -558,7 +591,6 @@ function GolemModel.Build(element, tier, options)
         sparkles.Size = NumberSequence.new(0.6, 0)
         sparkles.Parent = root
     end
-
     -- ── Tier details ──────────────────────────────────────────────────────────
     if tier >= 2 and A then                            -- shoulder plates on the uploaded model
         for _, side in ipairs({ -1, 1 }) do

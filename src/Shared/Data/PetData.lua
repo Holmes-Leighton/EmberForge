@@ -55,19 +55,22 @@ PetData.Eggs = {
     Basic = {
         displayName = "Golem Egg", cost = 150, color = Color3.fromRGB(210, 170, 110),
         blurb = "A plain stone egg. Something small is rattling inside.",
+        -- odds (weights sum to ~100): each Common ~26%, Uncommons 7% and ~4%
         pool = {
-            { item = "Ember", weight = 24 }, { item = "Stone", weight = 24 }, { item = "Frost", weight = 24 },
-            { item = "Storm", weight = 10 }, { item = "Void", weight = 10 },
-            { item = "Patchwork", weight = 4 }, { item = "Woven", weight = 4 },
+            { item = "Ember", weight = 26 }, { item = "Stone", weight = 26 }, { item = "Frost", weight = 26 },
+            { item = "Storm", weight = 7 }, { item = "Void", weight = 7 },
+            { item = "Patchwork", weight = 3.9 }, { item = "Woven", weight = 3.9 },
         },
     },
     Crystal = {
         displayName = "Crystal Egg", cost = 1000, color = Color3.fromRGB(150, 210, 255),
         blurb = "A glittering egg humming with power. Much rarer pets inside.",
+        -- Odds fall steeply with each rarity step (weights sum to ~99.7, so they read almost as percentages):
+        --   Uncommon ~22% each, Rare ~3% each, Epic 0.05% each (1 in 2,000), Legendary 0.001% (1 in 100,000)
         pool = {
-            { item = "Storm", weight = 14 }, { item = "Void", weight = 14 }, { item = "Patchwork", weight = 12 }, { item = "Woven", weight = 12 },
-            { item = "Coral", weight = 9 }, { item = "Clockwork", weight = 9 }, { item = "Alchemist", weight = 9 }, { item = "Gargoyle", weight = 9 },
-            { item = "StormJar", weight = 4 }, { item = "Dragonbone", weight = 4 }, { item = "All", weight = 1 },
+            { item = "Storm", weight = 21.9 }, { item = "Void", weight = 21.9 }, { item = "Patchwork", weight = 21.9 }, { item = "Woven", weight = 21.9 },
+            { item = "Coral", weight = 3 }, { item = "Clockwork", weight = 3 }, { item = "Alchemist", weight = 3 }, { item = "Gargoyle", weight = 3 },
+            { item = "StormJar", weight = 0.05 }, { item = "Dragonbone", weight = 0.05 }, { item = "All", weight = 0.001 },
         },
     },
 }
@@ -76,8 +79,8 @@ PetData.Eggs = {
 -- Neon pets become one Mega Neon pet. A variant pet keeps its type's rarity but boosts more and glows.
 PetData.MERGE_COUNT = 4
 PetData.Variants = {
-    Neon     = { id = "Neon",     label = "Neon",      mult = 1.5, next = "MegaNeon" },
-    MegaNeon = { id = "MegaNeon", label = "Mega Neon", mult = 2.0 },
+    Neon     = { id = "Neon",     label = "Elite",     mult = 1.5, next = "MegaNeon" },
+    MegaNeon = { id = "MegaNeon", label = "Supreme",   mult = 2.0 },
 }
 
 function PetData.Get(typeId) return PetData.Pets[typeId] end
@@ -100,6 +103,22 @@ function PetData.BoostText(pet)
     if def.stat == "all" then return string.format("+%.1f%% mining, carry, luck and efficiency", def.value * v.mult * 100) end
     local names = { rate = "mining speed", carry = "carry capacity", luck = "luck", eff = "efficiency", bp = "blueprint finds" }
     return string.format("+%.1f%% %s", def.value * v.mult * 100, names[def.stat] or def.stat)
+end
+
+-- "26%", "3.0%", "0.05% (1 in 2,000)", "0.001% (1 in 100,000)": readable at every scale
+function PetData.FormatOdds(chance)
+    local pct = chance * 100
+    local text
+    if pct >= 10 then text = string.format("%.0f%%", pct)
+    elseif pct >= 1 then text = string.format("%.1f%%", pct)
+    elseif pct >= 0.1 then text = string.format("%.2f%%", pct)
+    else text = string.format("%.3f%%", pct) end
+    if chance > 0 and chance < 0.01 then
+        local n = math.floor(1 / chance + 0.5)
+        local s = tostring(n):reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", "")
+        text ..= " (1 in " .. s .. ")"
+    end
+    return text
 end
 
 -- The chance (0..1) of each pet in an egg, for the odds list in the UI

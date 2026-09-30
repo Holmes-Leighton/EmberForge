@@ -238,8 +238,8 @@ end
 
 -- Variants: fuse 4 identical Golems -> Neon; fuse 4 identical Neons -> Mega Neon.
 GolemData.Variants = {
-    Neon     = { id = "Neon",     label = "Neon",      statMultiplier = 1.25, next = "MegaNeon" },
-    MegaNeon = { id = "MegaNeon", label = "Mega Neon", statMultiplier = 1.60 },
+    Neon     = { id = "Neon",     label = "Elite",     statMultiplier = 1.25, next = "MegaNeon" },
+    MegaNeon = { id = "MegaNeon", label = "Supreme",   statMultiplier = 1.60 },
 }
 GolemData.NEON_FUSION_COUNT = 4
 

@@ -26,7 +26,7 @@ end
 
 function PetModel.Build(petType, variant)
     local look = PetData.Looks[petType] or {}
-    local size = look.size or DEFAULT_SIZE
+    local size = (look.size or DEFAULT_SIZE) * (variant == "MegaNeon" and 1.18 or (variant == "Neon" and 1.08 or 1))   -- Elite / Supreme are bigger
     local model
     local template = PetModel.Template(petType)
     if template then
@@ -47,43 +47,62 @@ function PetModel.Build(petType, variant)
             d.Enabled = false                            -- keep a crowd of pets cheap
         end
     end
-    -- Neon / Mega Neon: a flat glowing body in the pet's colour (a MeshPart ignores Color while it has a
-    -- texture, so the texture goes). Mega Neon parts are tagged "Tint" so the controller can cycle the colour.
+    -- Elite / Supreme: the pet keeps its own model and gains status gear (internal ids "Neon" / "MegaNeon").
+    -- Elite: a gold crown and a gold chest pendant with a gem in the pet's colour (and a little bigger).
+    -- Supreme: adds a halo, a tiny royal cape, wings of light and orbiting gems (and is bigger still).
+    -- Gems carry the "Tint" attribute: they pulse on an Elite and cycle the rainbow on a Supreme.
     if variant and PetData.Variants[variant] then
-        local mega = variant == "MegaNeon"
-        local colour = Theme.Colors[petType] or Color3.fromRGB(255, 200, 120)
-        if math.max(colour.R, colour.G, colour.B) > 0.8 then colour = colour:Lerp(Color3.fromRGB(200, 140, 60), 0.55) end   -- pale types would wash out
-        if mega then colour = Color3.fromRGB(255, 140, 220) end
+        local supreme = variant == "MegaNeon"
+        local gold = Color3.fromRGB(255, 205, 90)
+        local gem = Theme.Colors[petType] or Color3.fromRGB(255, 200, 120)
+        if math.max(gem.R, gem.G, gem.B) > 0.8 then gem = gem:Lerp(Color3.fromRGB(200, 140, 60), 0.55) end   -- pale types would wash out
         local centre, bs = model:GetBoundingBox()
-        local function glowPart(name, size, cf, transparency, tint, shape)
+        local function gear(name, size, cf, colour, material, transparency, tint, shape)
             local p = Instance.new("Part")
             p.Name, p.Size, p.CFrame = name, size, cf
-            p.Color, p.Material, p.Transparency = colour, Enum.Material.Neon, transparency
+            p.Color, p.Material, p.Transparency = colour, material, transparency or 0
             p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
             if shape then p.Shape = shape end
-            if tint then p:SetAttribute("Tint", true) end      -- Mega Neon: the controller cycles these through the rainbow
+            if tint then p:SetAttribute("Tint", true) end
             p.Parent = model
             return p
         end
-        -- a small glowing crown floating over its head
-        local topY = centre.Position.Y + bs.Y / 2 + (mega and 0.55 or 0.4)
-        local w = math.max(bs.X, bs.Z) * (mega and 0.7 or 0.55)
-        glowPart("NeonCrownBand", Vector3.new(w, 0.16, w), CFrame.new(centre.Position.X, topY, centre.Position.Z), 0.1, true)
-        for i = 0, (mega and 6 or 4) do
-            local a = i / (mega and 7 or 5) * math.pi * 2
-            glowPart("NeonCrownPoint", Vector3.new(0.16, mega and 0.6 or 0.45, 0.16),
-                CFrame.new(centre.Position.X + math.cos(a) * w * 0.4, topY + 0.3, centre.Position.Z + math.sin(a) * w * 0.4), 0.1, true)
+        local cx, cz = centre.Position.X, centre.Position.Z
+        local top = centre.Position.Y + bs.Y / 2
+        local front, back = cz - bs.Z / 2, cz + bs.Z / 2
+        local w = math.max(bs.X, bs.Z) * 0.6
+
+        gear("CrownBand", Vector3.new(w, 0.14, w), CFrame.new(cx, top + 0.04, cz), gold, Enum.Material.Metal)
+        for i = 0, 4 do
+            local a = i / 5 * math.pi * 2
+            gear("CrownPoint", Vector3.new(0.14, 0.4, 0.14), CFrame.new(cx + math.cos(a) * w * 0.4, top + 0.25, cz + math.sin(a) * w * 0.4), gold, Enum.Material.Metal)
         end
-        -- a glowing pad under it and rising sparkles
-        local padSize = math.max(bs.X, bs.Z) * 1.7
-        glowPart("NeonPad", Vector3.new(0.1, padSize, padSize),
-            CFrame.new(centre.Position.X, centre.Position.Y - bs.Y / 2 + 0.04, centre.Position.Z) * CFrame.Angles(0, 0, math.pi / 2), 0.55, mega, Enum.PartType.Cylinder)
+        gear("CrownGem", Vector3.new(0.22, 0.22, 0.22), CFrame.new(cx, top + 0.18, front + w * 0.3), gem, Enum.Material.Neon, 0.1, true, Enum.PartType.Ball)
+        gear("Pendant", Vector3.new(0.4, 0.4, 0.08), CFrame.new(cx, centre.Position.Y, front - 0.03) * CFrame.Angles(0, 0, math.pi / 2), gold, Enum.Material.Metal, 0, nil, Enum.PartType.Cylinder)
+        gear("PendantGem", Vector3.new(0.22, 0.22, 0.22), CFrame.new(cx, centre.Position.Y, front - 0.1), gem, Enum.Material.Neon, 0.1, true, Enum.PartType.Ball)
+
+        if supreme then
+            gear("Halo", Vector3.new(0.08, w * 1.5, w * 1.5), CFrame.new(cx, top + 0.85, cz) * CFrame.Angles(0, 0, math.pi / 2), gold, Enum.Material.Neon, 0.15, nil, Enum.PartType.Cylinder)
+            gear("Cape", Vector3.new(bs.X * 0.75, bs.Y * 0.6, 0.08), CFrame.new(cx, centre.Position.Y, back + 0.1) * CFrame.Angles(0.12, 0, 0), Color3.fromRGB(170, 35, 55), Enum.Material.Fabric)
+            gear("CapeTrim", Vector3.new(bs.X * 0.8, 0.1, 0.12), CFrame.new(cx, centre.Position.Y + bs.Y * 0.3, back + 0.1), gold, Enum.Material.Metal)
+            for _, side in ipairs({ -1, 1 }) do
+                for i = 0, 1 do
+                    gear("Wing", Vector3.new(0.05, bs.Y * (0.7 - i * 0.2), bs.X * 0.3), CFrame.new(cx + side * (bs.X * 0.5 + i * bs.X * 0.25), centre.Position.Y + bs.Y * 0.1, back + 0.3)
+                        * CFrame.Angles(0, side * (0.5 + 0.2 * i), side * -0.4), gem:Lerp(Color3.new(1, 1, 1), 0.4), Enum.Material.Neon, 0.35)
+                end
+            end
+            for i = 1, 2 do
+                local a = i * math.pi + 0.6
+                gear("OrbitGem", Vector3.new(0.2, 0.3, 0.2), CFrame.new(cx + math.cos(a) * bs.X * 0.9, centre.Position.Y + bs.Y * 0.2, cz + math.sin(a) * bs.Z * 0.9)
+                    * CFrame.Angles(i, i * 0.6, 0), gem, Enum.Material.Neon, 0.1, true)
+            end
+            gear("GoldPad", Vector3.new(0.06, math.max(bs.X, bs.Z) * 1.7, math.max(bs.X, bs.Z) * 1.7),
+                CFrame.new(cx, centre.Position.Y - bs.Y / 2 + 0.04, cz) * CFrame.Angles(0, 0, math.pi / 2), gold, Enum.Material.Neon, 0.6, nil, Enum.PartType.Cylinder)
+        end
+
         local sparkles = Instance.new("ParticleEmitter")
-        sparkles.Color = mega and ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 120, 120)), ColorSequenceKeypoint.new(0.5, Color3.fromRGB(120, 255, 200)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(190, 140, 255)),
-        }) or ColorSequence.new(colour)
-        sparkles.Rate = mega and 12 or 6
+        sparkles.Color = ColorSequence.new(supreme and gold or gem)
+        sparkles.Rate = supreme and 12 or 5
         sparkles.Lifetime = NumberRange.new(0.8, 1.4)
         sparkles.Speed = NumberRange.new(1, 2.5)
         sparkles.EmissionDirection = Enum.NormalId.Top
@@ -91,9 +110,9 @@ function PetModel.Build(petType, variant)
         sparkles.Size = NumberSequence.new(0.25, 0)
         sparkles.Parent = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
         local glow = Instance.new("PointLight")
-        glow.Color = colour
-        glow.Range = mega and 10 or 7
-        glow.Brightness = mega and 1.6 or 1.0
+        glow.Color = supreme and gold or gem
+        glow.Range = supreme and 10 or 7
+        glow.Brightness = supreme and 1.6 or 1.0
         glow.Parent = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
         model:SetAttribute("Variant", variant)
     end

@@ -477,7 +477,7 @@ RemoteEvents.NeonFuse.OnServerEvent:Connect(function(player, element, tier, vari
         if golem then
             ChallengeService.TrackEvent(player, golem.variant == "MegaNeon" and "MegaMade" or "NeonMade", { count = 1 })
             local GolemNames = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
-            Tell(player, golem.variant == "MegaNeon" and "MEGA NEON!" or "NEON!", GolemNames.Describe(golem).name .. " created")
+            Tell(player, golem.variant == "MegaNeon" and "SUPREME!" or "ELITE!", GolemNames.Describe(golem).name .. " created")
             Analytics.Custom(player, "NeonFuse", 1, { variant = golem.variant, tier = golem.tier })
         else
             Tell(player, "Can't fuse", tostring(err))

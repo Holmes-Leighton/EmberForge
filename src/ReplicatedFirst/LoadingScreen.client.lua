@@ -67,7 +67,7 @@ Instance.new("UICorner", bar).CornerRadius = UDim.new(1, 0)
 
 local tips = {
     "Stand on a glowing pad to gather Ore and Coal.",
-    "Fuse 4 identical Golems at the Neon Cave to make a Neon.",
+    "Fuse 4 identical Golems at the Elite Forge to make an Elite.",
     "Your Golems keep mining while you are away.",
     "Higher Forge levels unlock stronger Golem tiers.",
     "Visit other players' forges and trade with them.",

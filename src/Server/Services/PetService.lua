@@ -83,7 +83,7 @@ function PetService.Merge(player, petType, variant)
     local from = variant and PetData.Variants[variant]
     if variant and not from then return nil, "Unknown variant" end
     local nextId = from and from.next or "Neon"            -- a plain pet becomes Neon
-    if from and not from.next then return nil, "Mega Neon pets can't be merged any further" end
+    if from and not from.next then return nil, "Supreme pets can't be merged any further" end
 
     data.EquippedPets = data.EquippedPets or {}
     local candidates = {}

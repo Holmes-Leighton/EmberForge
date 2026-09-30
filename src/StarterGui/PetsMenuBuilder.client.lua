@@ -247,7 +247,7 @@ local function ShowReveal(pet)
     revealBanner.Text = BANNERS[def.rarity] or "NEW PET!"
     revealBanner.TextColor3 = rc
     revealStroke.Color = rc
-    if pet.variant == "MegaNeon" then revealBanner.Text = "🌈 MEGA NEON!!! 🌈" elseif pet.variant == "Neon" then revealBanner.Text = "✨ NEON! ✨" end
+    if pet.variant == "MegaNeon" then revealBanner.Text = "👑 SUPREME!!! 👑" elseif pet.variant == "Neon" then revealBanner.Text = "⭐ ELITE! ⭐" end
     revealName.Text = PetData.DisplayName(pet)
     revealName.TextColor3 = rc
     revealSub.Text = string.upper(def.rarity) .. "  -  " .. PetData.BoostText(pet)
@@ -282,9 +282,9 @@ local function Reload()
             local parts = {}
             for _, o in ipairs(odds) do
                 local d = PetData.Get(o.type)
-                table.insert(parts, string.format("%s %.0f%%", d.displayName, o.chance * 100))
+                table.insert(parts, d.displayName .. " " .. PetData.FormatOdds(o.chance))
             end
-            Note("Odds: " .. table.concat(parts, "  |  "), 50)
+            Note("Odds: " .. table.concat(parts, "  |  "), 92)
         end
         return
     end
