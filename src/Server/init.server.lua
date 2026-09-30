@@ -40,7 +40,19 @@ PlayerDataService.StartAutoSave()
 LeaderboardService.StartFlushLoop()
 
 -- ── Player join ───────────────────────────────────────────────────────────────
+-- Roblox's default character script loads a facial "mood" animation that Studio can't fetch for an
+-- unpublished place, which logs "Failed to load animation ... 114302219876492" on every spawn. The game has
+-- no facial animation, so that one animation is removed as the character is created (before it reaches the client).
+local function StripMoodAnimation(character)
+    local animate = character:WaitForChild("Animate", 5)
+    local mood = animate and animate:FindFirstChild("mood")
+    if mood then mood:Destroy() end
+end
+
 local function OnPlayerAdded(player)
+    player.CharacterAdded:Connect(function(character) task.spawn(StripMoodAnimation, character) end)
+    if player.Character then task.spawn(StripMoodAnimation, player.Character) end
+
     -- Load data
     local data = PlayerDataService.Load(player)
     if not data then

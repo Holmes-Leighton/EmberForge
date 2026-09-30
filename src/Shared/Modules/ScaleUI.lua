@@ -16,7 +16,10 @@ function ScaleUI.Apply(frame, w, h, margin)
     scale.Parent = frame
     local function update()
         local _, vp = Viewport()
-        scale.Scale = math.clamp(math.min((vp.X - margin) / w, (vp.Y - margin) / h), 0.4, 1)
+        -- the ScreenGui starts below Roblox's top bar, so that strip isn't available to the window
+        local okInset, inset = pcall(function() return game:GetService("GuiService"):GetGuiInset() end)
+        local topBar = okInset and inset and inset.Y or 0
+        scale.Scale = math.clamp(math.min((vp.X - margin) / w, (vp.Y - topBar - margin) / h), 0.35, 1)
     end
     update()
     local cam = Viewport()

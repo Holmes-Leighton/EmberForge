@@ -224,17 +224,29 @@ Theme.AddCorner(hotbar, UDim.new(0, 24))
 Theme.AddStroke(hotbar, Color3.fromRGB(24, 17, 14), 3, 0.2)
 ScaleUI.ApplyHud(hotbar)
 
+local nSecondary = #NAV - nPrimary
 local sidebar = Instance.new("Frame")
 sidebar.Name = "Sidebar"
 sidebar.AnchorPoint = Vector2.new(1, 0.5)
 sidebar.Position = UDim2.new(1, -12, 0.5, 0)
-sidebar.Size = UDim2.new(0, 56 + 16, 0, 5 * 56 + 4 * 8 + 16)
+sidebar.Size = UDim2.new(0, 56 + 16, 0, nSecondary * 64 + 8)          -- tall enough for every icon (it grows as tiles are added)
 sidebar.BackgroundColor3 = Theme.Colors.Panel
 sidebar.BackgroundTransparency = 0.25
 sidebar.BorderSizePixel = 0
 sidebar.Parent = gui
 Theme.AddCorner(sidebar, UDim.new(0, 20))
 ScaleUI.ApplyHud(sidebar)
+
+-- On a short (landscape phone) screen the centred column runs into the jump button at the bottom right,
+-- so it sits at the top edge instead; on a tall screen it stays centred.
+local function PlaceSidebar()
+    local cam = workspace.CurrentCamera
+    local short = cam and cam.ViewportSize.Y < 520
+    sidebar.AnchorPoint = short and Vector2.new(1, 0) or Vector2.new(1, 0.5)
+    sidebar.Position = short and UDim2.new(1, -8, 0, 8) or UDim2.new(1, -12, 0.5, 0)
+end
+PlaceSidebar()
+if workspace.CurrentCamera then workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(PlaceSidebar) end
 
 local pi, si = 0, 0
 for _, nav in ipairs(NAV) do
