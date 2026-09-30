@@ -16,6 +16,7 @@ local ShopController         = require(script.Controllers.ShopController)
 local ChallengesController   = require(script.Controllers.ChallengesController)
 local LeaderboardController  = require(script.Controllers.LeaderboardController)
 local ForgeZoneController    = require(script.Controllers.ForgeZoneController)
+local TutorialController     = require(script.Controllers.TutorialController)
 
 -- Fetch initial data from server
 local playerData = RemoteEvents.GetPlayerData:InvokeServer()
@@ -33,6 +34,7 @@ ShopController.Init(playerData)
 ChallengesController.Init(playerData)
 LeaderboardController.Init(playerData)
 ForgeZoneController.Init(playerData)
+TutorialController.Init(playerData)
 
 -- ── Global event listeners ────────────────────────────────────────────────────
 
@@ -129,10 +131,6 @@ end)
 
 RemoteEvents.ForgeZoneLeft.OnClientEvent:Connect(function()
     ForgeZoneController.OnZoneLeft()
-end)
-
-task.delay(2, function()
-    HUDController.ShowNotification("Welcome to EmberForge!", "Open Forge, craft a Golem, then deploy it to a mining zone.")
 end)
 
 print("[EmberForge Client] Initialised for " .. LocalPlayer.Name)
