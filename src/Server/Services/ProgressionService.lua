@@ -16,6 +16,10 @@ function ProgressionService.AddPlayerXP(player, xp)
     local data = PlayerDataService.Get(player)
     if not data then return false end
 
+    -- Live events (Double XP weekends etc.)
+    local LiveOps = require(script.Parent.LiveOpsService)
+    xp = math.floor(xp * LiveOps.GetMultiplier("xp"))
+
     data.PlayerXP = (data.PlayerXP or 0) + xp
     PlayerDataService.MarkDirty(player)
 
@@ -33,6 +37,7 @@ function ProgressionService.AddPlayerXP(player, xp)
 
     if leveledUp then
         ProgressionService.GrantLevelRewards(player, startLevel + 1, data.PlayerLevel)
+        require(script.Parent.AnalyticsHelper).Progression(player, "PlayerLevel", "Complete", data.PlayerLevel)
     end
     return leveledUp, data.PlayerLevel
 end

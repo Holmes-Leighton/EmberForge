@@ -11,6 +11,7 @@ local RunService        = game:GetService("RunService")
 local RemoteEvents      = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 local ChallengeService  = require(script.Parent.ChallengeService)
+local ForgeBuilder      = require(script.Parent.ForgeBuilder)
 
 local ForgeZoneService = {}
 
@@ -67,53 +68,37 @@ local function BuildZone(player, plotIndex)
     pad.Color         = Color3.fromRGB(70, 55, 45)
     pad.Parent        = zonesFolder
 
-    -- Level 1 forge: small stone forge with a fire pit
-    local c = PlotCentre(plotIndex)
-    local forge = Instance.new("Part")
-    forge.Name = "StoneForge"
-    forge.Anchored = true
-    forge.Size = Vector3.new(8, 6, 6)
-    forge.Material = Enum.Material.Cobblestone
-    forge.Color = Color3.fromRGB(95, 90, 88)
-    forge.CFrame = CFrame.new(c.X, 4, c.Z - 10)
-    forge.Parent = zonesFolder
-
-    local pit = Instance.new("Part")
-    pit.Name = "FirePit"
-    pit.Anchored = true
-    pit.Shape = Enum.PartType.Cylinder
-    pit.Size = Vector3.new(1, 5, 5)
-    pit.Material = Enum.Material.Basalt
-    pit.Color = Color3.fromRGB(35, 30, 28)
-    pit.CFrame = CFrame.new(c.X, 1.5, c.Z + 4) * CFrame.Angles(0, 0, math.pi / 2)
-    pit.Parent = zonesFolder
-
-    local fire = Instance.new("Fire")
-    fire.Heat = 9
-    fire.Size = 7
-    fire.Parent = pit
-    local glow = Instance.new("PointLight")
-    glow.Color = Color3.fromRGB(255, 140, 50)
-    glow.Range = 30
-    glow.Brightness = 2
-    glow.Parent = pit
-
-    -- Label above zone
+    -- Label above the zone: owner name, then forge level + equipped title (see Refresh)
     local billboard = Instance.new("BillboardGui")
-    billboard.Size        = UDim2.new(0, 200, 0, 36)
-    billboard.StudsOffset = Vector3.new(0, ZONE_SIZE.Y / 2 + 3, 0)
+    billboard.Name        = "PlotSign"
+    billboard.Size        = UDim2.new(0, 260, 0, 56)
+    billboard.StudsOffset = Vector3.new(0, ZONE_SIZE.Y / 2 + 4, 0)
+    billboard.MaxDistance = 300
     billboard.AlwaysOnTop = false
     billboard.Parent      = part
 
     local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size               = UDim2.new(1, 0, 1, 0)
+    nameLabel.Name               = "Owner"
+    nameLabel.Size               = UDim2.new(1, 0, 0.55, 0)
     nameLabel.BackgroundTransparency = 1
-    nameLabel.Text               = "🔥 " .. player.DisplayName .. "'s Forge"
+    nameLabel.Text               = player.DisplayName .. "'s Forge"
     nameLabel.TextColor3         = Color3.fromRGB(255, 200, 80)
     nameLabel.Font               = Enum.Font.GothamBold
-    nameLabel.TextSize           = 14
+    nameLabel.TextScaled         = true
     nameLabel.TextStrokeTransparency = 0.4
     nameLabel.Parent             = billboard
+
+    local subLabel = Instance.new("TextLabel")
+    subLabel.Name                = "Sub"
+    subLabel.Position            = UDim2.new(0, 0, 0.55, 0)
+    subLabel.Size                = UDim2.new(1, 0, 0.45, 0)
+    subLabel.BackgroundTransparency = 1
+    subLabel.Text                = ""
+    subLabel.TextColor3          = Color3.fromRGB(235, 235, 235)
+    subLabel.Font                = Enum.Font.Gotham
+    subLabel.TextScaled          = true
+    subLabel.TextStrokeTransparency = 0.5
+    subLabel.Parent              = billboard
 
     return part
 end
@@ -132,6 +117,28 @@ local function WireZoneTouched(ownerPlayer, part)
         local visitor = GetPlayerFromHit(hit)
         if not visitor or visitor.UserId == ownerPlayer.UserId then return end
         if entry.playersInside[visitor.UserId] then return end
+
+        -- Friends-only forges turn strangers away (spec 7.2)
+        local ownerData = PlayerDataService.Get(ownerPlayer)
+        if ownerData and ownerData.Settings and ownerData.Settings.ForgeFriendsOnly then
+            entry.friendCache = entry.friendCache or {}
+            local isFriend = entry.friendCache[visitor.UserId]
+            if isFriend == nil then
+                local ok, res = pcall(function() return visitor:IsFriendsWith(ownerPlayer.UserId) end)
+                isFriend = ok and res or false
+                entry.friendCache[visitor.UserId] = isFriend
+            end
+            if not isFriend then
+                entry.turnedAway = entry.turnedAway or {}
+                if not entry.turnedAway[visitor.UserId] or os.clock() - entry.turnedAway[visitor.UserId] > 5 then
+                    entry.turnedAway[visitor.UserId] = os.clock()
+                    RemoteEvents.Notify:FireClient(visitor, "Private forge", ownerPlayer.DisplayName .. "'s forge is friends-only.")
+                end
+                local char = visitor.Character
+                if char then char:PivotTo(CFrame.new(entry.part.Position.X, 6, entry.part.Position.Z - 45)) end
+                return
+            end
+        end
 
         entry.playersInside[visitor.UserId] = true
 
@@ -189,14 +196,52 @@ local function WireZoneTouched(ownerPlayer, part)
 end
 
 -- ── Public API ────────────────────────────────────────────────────────────────
+local function FreePlotIndex()
+    local used = {}
+    for _, idx in pairs(plotAssignments) do used[idx] = true end
+    local i = 1
+    while used[i] do i += 1 end
+    return i
+end
+
+-- Rebuild a player's forge (level / skin / decoration) and refresh its sign
+function ForgeZoneService.Refresh(player)
+    local entry = zones[player.UserId]
+    local idx = plotAssignments[player.UserId]
+    local data = PlayerDataService.Get(player)
+    if not entry or not idx or not data then return end
+
+    if entry.forge then entry.forge:Destroy() end
+    EnsureFolder()
+    entry.forge = ForgeBuilder.Build(zonesFolder, PlotCentre(idx), data.ForgeLevel or 1, data.Equipped)
+
+    local sign = entry.part:FindFirstChild("PlotSign")
+    local sub = sign and sign:FindFirstChild("Sub")
+    if sub then
+        local title = data.Equipped and data.Equipped.Title
+        sub.Text = "Forge Level " .. (data.ForgeLevel or 1) .. (title and ("  -  " .. title) or "")
+                   .. ((data.Settings and data.Settings.ForgeFriendsOnly) and "  (friends only)" or "")
+    end
+end
+
 function ForgeZoneService.OnPlayerAdded(player)
-    local plotIndex = nextPlotIndex
-    nextPlotIndex = nextPlotIndex + 1
+    local plotIndex = FreePlotIndex()
     plotAssignments[player.UserId] = plotIndex
 
     local part = BuildZone(player, plotIndex)
     zones[player.UserId] = { part = part, playersInside = {} }
     WireZoneTouched(player, part)
+    ForgeZoneService.Refresh(player)
+end
+
+-- Move a player's character to their own forge
+function ForgeZoneService.Teleport(player)
+    local idx = plotAssignments[player.UserId]
+    local char = player.Character
+    if not idx or not char then return false end
+    local c = PlotCentre(idx)
+    char:PivotTo(CFrame.lookAt(Vector3.new(c.X, 6, c.Z + 20), Vector3.new(c.X, 6, c.Z - 10)))
+    return true
 end
 
 function ForgeZoneService.OnPlayerLeave(player)
@@ -212,12 +257,15 @@ function ForgeZoneService.OnPlayerLeave(player)
         if entry.part and entry.part.Parent then
             entry.part:Destroy()
         end
+        if entry.forge then entry.forge:Destroy() end
+        local pad = zonesFolder and zonesFolder:FindFirstChild("ForgePad_" .. player.UserId)
+        if pad then pad:Destroy() end
         zones[player.UserId] = nil
     end
     plotAssignments[player.UserId] = nil
 end
 
--- Returns the world CFrame of a player's forge plot (so clients can teleport to it)
+-- Returns the world CFrame of a player's forge plot
 function ForgeZoneService.GetPlotCFrame(userId)
     local idx = plotAssignments[userId]
     if not idx then return nil end

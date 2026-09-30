@@ -114,6 +114,8 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
         data.ProcessedReceipts[receiptKey] = true
         PlayerDataService.MarkDirty(player)
         PlayerDataService.Save(player, true)   -- persist the grant + receipt immediately
+        require(script.Parent.AnalyticsHelper).Custom(player, "Purchase", ProductData.Products[key].robux,
+            { product = key })
         RemoteEvents_Notify(player, "Purchase complete", ProductData.Products[key].displayName)
         return Enum.ProductPurchaseDecision.PurchaseGranted
     end

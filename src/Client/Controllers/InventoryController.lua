@@ -128,6 +128,11 @@ local RARITY_COLORS = {
     Legendary = Color3.fromRGB(255, 180, 30),
 }
 
+local ELEMENT_COLORS_FOR_ICON = {
+    Ember = Color3.fromRGB(200, 80, 30), Stone = Color3.fromRGB(120, 100, 70), Frost = Color3.fromRGB(80, 150, 210),
+    Storm = Color3.fromRGB(130, 90, 210), Void = Color3.fromRGB(90, 50, 150),
+}
+
 function InventoryController._CreateMaterialRow(matId, qty, mat, yOff, pending)
     local row = Instance.new("Frame")
     row.Name = matId
@@ -155,10 +160,28 @@ function InventoryController._CreateMaterialRow(matId, qty, mat, yOff, pending)
     stripeCorner.CornerRadius = UDim.new(0, 5)
     stripeCorner.Parent = stripe
 
+    -- Icon tile: element colour (or rarity colour) with the material's initials
+    local displayName = (mat and mat.displayName) or matId
+    local initials = ""
+    for word in displayName:gmatch("%a+") do initials = initials .. word:sub(1, 1):upper() end
+    local tile = Instance.new("TextLabel")
+    tile.Size = UDim2.new(0, 30, 0, 30)
+    tile.Position = UDim2.new(0, 12, 0.5, -15)
+    tile.BackgroundColor3 = (mat and mat.element and ELEMENT_COLORS_FOR_ICON[mat.element]) or rarityColor
+    tile.BorderSizePixel = 0
+    tile.Text = initials:sub(1, 2)
+    tile.TextColor3 = Color3.fromRGB(255, 255, 255)
+    tile.Font = Enum.Font.GothamBold
+    tile.TextSize = 13
+    tile.Parent = row
+    local tileCorner = Instance.new("UICorner")
+    tileCorner.CornerRadius = UDim.new(0, 6)
+    tileCorner.Parent = tile
+
     -- Name
     local nameLbl = Instance.new("TextLabel")
-    nameLbl.Size = UDim2.new(0.65, 0, 0, 40)
-    nameLbl.Position = UDim2.new(0, 12, 0, 0)
+    nameLbl.Size = UDim2.new(0.65, -34, 0, 40)
+    nameLbl.Position = UDim2.new(0, 50, 0, 0)
     nameLbl.BackgroundTransparency = 1
     nameLbl.Text = (mat and mat.displayName) or matId
     nameLbl.TextColor3 = Color3.fromRGB(220, 210, 200)

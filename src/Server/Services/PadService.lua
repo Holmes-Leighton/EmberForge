@@ -16,17 +16,7 @@ local tickCount = {} -- userId → ticks spent on pads (for the coal cadence)
 local lastFullNotice   = {}   -- userId → os.clock() of the last "stock full" message
 local lastLockedNotice = {}   -- userId → os.clock() of the last "locked" message
 
-local function IsAdmin(player)
-    if RunService:IsStudio() then return true end   -- so you can test the Admin pad
-    for _, id in ipairs(GameConfig.ADMIN_USER_IDS or {}) do
-        if id == player.UserId then return true end
-    end
-    if game.CreatorType == Enum.CreatorType.User then
-        return game.CreatorId == player.UserId
-    end
-    local ok, rank = pcall(function() return player:GetRankInGroup(game.CreatorId) end)
-    return ok and rank >= 250
-end
+local IsAdmin = require(script.Parent.AdminService).IsAdmin
 
 local function CanUse(player, def, data)
     if def.adminOnly then return IsAdmin(player) end
@@ -146,6 +136,7 @@ local function Payout()
                 end
             end
             if next(gains) then
+                require(script.Parent.AnalyticsHelper).Funnel(player, data, "pad", 1, "FirstPadMined")
                 RemoteEvents.ResourcesCollected:FireClient(player, gains, 0)
             elseif not anyRoom then
                 local last = lastFullNotice[player.UserId] or 0

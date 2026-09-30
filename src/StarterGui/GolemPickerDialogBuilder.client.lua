@@ -123,7 +123,8 @@ local function RenderGolems(golems, mode)
     end
     selectedGolemId = nil
 
-    local GolemData = require(game.ReplicatedStorage.Shared.Data.GolemData)
+    local GolemNames = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
+local GolemData = require(game.ReplicatedStorage.Shared.Data.GolemData)
     local Utils     = require(game.ReplicatedStorage.Shared.Modules.Utils)
 
     local shown = 0
@@ -162,8 +163,8 @@ local function RenderGolems(golems, mode)
 
         -- Name + element
         local nameLbl = Theme.Label(card,
-            (tierDef and tierDef.name or "Golem") .. " — " .. golem.element,
-            Theme.TextSize.Heading, elemColor, Theme.Fonts.Heading)
+            GolemNames.Describe(golem).name .. "  [" .. GolemNames.Describe(golem).rarity .. "]",
+            Theme.TextSize.Heading, GolemNames.Describe(golem).rarityColor, Theme.Fonts.Heading)
         nameLbl.Size = UDim2.new(0.55, 0, 0, 22)
         nameLbl.Position = UDim2.new(0, 48, 0, 6)
 
@@ -188,7 +189,7 @@ local function RenderGolems(golems, mode)
 
         -- Fusion bonus indicator
         if golem.fusionBonus then
-            local fusedLbl = Theme.Label(card, "✦ Fused", Theme.TextSize.Small, Theme.Colors.Legendary)
+            local fusedLbl = Theme.Label(card, "Fused", Theme.TextSize.Small, Theme.Colors.Legendary)
             fusedLbl.Size = UDim2.new(0, 60, 0, 16)
             fusedLbl.Position = UDim2.new(0, 48, 0, 60)
         end

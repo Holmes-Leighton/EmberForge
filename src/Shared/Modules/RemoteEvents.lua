@@ -64,6 +64,11 @@ local DEFINITIONS = {
     NeonFuse            = "event",   -- client → server (element, tier, variant)
     GolemNeoned         = "event",   -- server → client (ok, golem or reason)
 
+    -- Style & access
+    EquipCosmetic       = "event",   -- client → server (slot, id or nil)
+    SetForgeAccess      = "event",   -- client → server (friendsOnly: boolean)
+    GoToMyForge         = "event",   -- client → server
+
     -- Season Pass
     ClaimSeasonReward   = "event",
 

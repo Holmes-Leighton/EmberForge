@@ -17,6 +17,7 @@ local LeaderboardController  = require(script.Controllers.LeaderboardController)
 local ForgeZoneController    = require(script.Controllers.ForgeZoneController)
 local TutorialController     = require(script.Controllers.TutorialController)
 local GolemAnimator          = require(script.Controllers.GolemAnimator)
+local SoundController        = require(script.Controllers.SoundController)
 
 -- Fetch initial data from server
 -- The server may still be loading our save when we arrive: keep asking for a while
@@ -44,6 +45,7 @@ LeaderboardController.Init(playerData)
 ForgeZoneController.Init(playerData)
 TutorialController.Init(playerData)
 GolemAnimator.Init()
+SoundController.Init()
 
 -- ── Global event listeners ────────────────────────────────────────────────────
 

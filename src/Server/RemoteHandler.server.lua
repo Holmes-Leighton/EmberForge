@@ -13,6 +13,9 @@ local ProgressionService = require(script.Parent.Services.ProgressionService)
 local ChallengeService  = require(script.Parent.Services.ChallengeService)
 local TradingService    = require(script.Parent.Services.TradingService)
 local ShopService       = require(script.Parent.Services.ShopService)
+local CosmeticService   = require(script.Parent.Services.CosmeticService)
+local Analytics         = require(script.Parent.Services.AnalyticsHelper)
+local ForgeZoneService  = require(script.Parent.Services.ForgeZoneService)
 local SeasonPassService = require(script.Parent.Services.SeasonPassService)
 local LeaderboardService = require(script.Parent.Services.LeaderboardService)
 local Utils             = require(game.ReplicatedStorage.Shared.Modules.Utils)
@@ -81,6 +84,7 @@ RemoteEvents.CollectResources.OnServerEvent:Connect(function(player)
         end
 
         ChallengeService.TrackEvent(player, "GolemCollect", { count = 1 })
+        Analytics.Funnel(player, data, "collect", 4, "FirstCollect")
         RemoteEvents.ResourcesCollected:FireClient(player, gains, -1)   -- -1 marks a manual collect
     end)
 end)
@@ -181,6 +185,8 @@ local function CraftOnce(player, blueprintId, skinId)
             end
 
             RemoteEvents.GolemCrafted:FireClient(player, golem, leveled and level or nil)
+            Analytics.Funnel(player, PlayerDataService.Get(player), "craft", 2, "FirstGolemCrafted")
+            Analytics.Custom(player, "GolemCrafted", 1, { tier = golem.tier, element = golem.element })
 
             if leveled then
                 RemoteEvents.LevelUp:FireClient(player, level)
@@ -212,6 +218,7 @@ RemoteEvents.DeployGolem.OnServerEvent:Connect(function(player, golemId, zoneId)
         local ok, err = GolemService.DeployGolem(player, golemId, zoneId)
         if ok then
             ChallengeService.TrackEvent(player, "GolemDeploy", { count = 1 })
+            Analytics.Funnel(player, PlayerDataService.Get(player), "deploy", 3, "FirstGolemDeployed")
         end
         RemoteEvents.GolemDeployed:FireClient(player, ok, golemId, zoneId, err)
     end)
@@ -358,6 +365,33 @@ RemoteEvents.GetMyListings.OnServerInvoke = function(player)
     return TradingService.GetMyListings(player)
 end
 
+-- ── Style & access ────────────────────────────────────────────────────────────
+RemoteEvents.EquipCosmetic.OnServerEvent:Connect(function(player, slot, id)
+    SafeCall(player, function()
+        local ok, err = CosmeticService.Equip(player, slot, id)
+        if not ok then
+            Tell(player, "Can't equip", tostring(err))
+            return
+        end
+        if slot == "ForgeSkin" or slot == "ForgeDecoration" or slot == "Title" or slot == "ForgeEffect" then
+            ForgeZoneService.Refresh(player)
+        end
+    end)
+end)
+
+RemoteEvents.SetForgeAccess.OnServerEvent:Connect(function(player, friendsOnly)
+    SafeCall(player, function()
+        if CosmeticService.SetFriendsOnly(player, friendsOnly) then
+            ForgeZoneService.Refresh(player)
+            Tell(player, "Forge access", friendsOnly and "Only your friends can visit." or "Everyone can visit your forge.")
+        end
+    end)
+end)
+
+RemoteEvents.GoToMyForge.OnServerEvent:Connect(function(player)
+    SafeCall(player, function() ForgeZoneService.Teleport(player) end)
+end)
+
 -- ── FuseGolems ────────────────────────────────────────────────────────────────
 RemoteEvents.FuseGolems.OnServerEvent:Connect(function(player, golem1Id, golem2Id)
     SafeCall(player, function()
@@ -378,6 +412,7 @@ RemoteEvents.NeonFuse.OnServerEvent:Connect(function(player, element, tier, vari
             ChallengeService.TrackEvent(player, golem.variant == "MegaNeon" and "MegaMade" or "NeonMade", { count = 1 })
             local GolemNames = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
             Tell(player, golem.variant == "MegaNeon" and "MEGA NEON!" or "NEON!", GolemNames.Describe(golem).name .. " created")
+            Analytics.Custom(player, "NeonFuse", 1, { variant = golem.variant, tier = golem.tier })
         else
             Tell(player, "Can't fuse", tostring(err))
         end

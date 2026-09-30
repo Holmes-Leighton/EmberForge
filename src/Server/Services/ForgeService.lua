@@ -45,6 +45,10 @@ function ForgeService.AddForgeXP(player, xp)
         ForgeService.GrantMilestoneBlueprints(player)
         local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
         if RemoteEvents.ForgeUpgraded then RemoteEvents.ForgeUpgraded:FireClient(player, data.ForgeLevel) end
+        task.defer(function()
+            local ok, ForgeZoneService = pcall(function() return require(script.Parent.ForgeZoneService) end)
+            if ok then ForgeZoneService.Refresh(player) end
+        end)
     end
 
     return leveledUp

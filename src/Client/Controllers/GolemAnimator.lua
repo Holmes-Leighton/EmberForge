@@ -3,6 +3,7 @@
 -- camera are skipped (a simple level-of-detail) so phones stay smooth.
 
 local RunService = game:GetService("RunService")
+local CollectionService = game:GetService("CollectionService")
 
 local GolemAnimator = {}
 
@@ -10,6 +11,7 @@ local NEAR = 170            -- studs: animate fully
 local SWING_SPEED = 4
 
 local golems = {}           -- model -> { parts... }
+local spinners = {}         -- part -> { cf = original CFrame, speed = rad/s }  (forge gears)
 
 local function Track(model)
     if golems[model] then return end
@@ -32,6 +34,15 @@ local function Step()
     if not cam then return end
     local camPos = cam.CFrame.Position
     local t = os.clock()
+
+    -- forge machinery
+    for part, info in pairs(spinners) do
+        if not part.Parent then
+            spinners[part] = nil
+        elseif (part.Position - camPos).Magnitude < NEAR * 1.5 then
+            part.CFrame = info.cf * CFrame.Angles(t * info.speed, 0, 0)
+        end
+    end
 
     for model, info in pairs(golems) do
         if not model.Parent then
@@ -72,6 +83,18 @@ local function Step()
 end
 
 function GolemAnimator.Init()
+    -- forge gears (tagged by the server, any number of plots)
+    local function AddSpinner(part)
+        if part:IsA("BasePart") then
+            spinners[part] = { cf = part.CFrame, speed = part:GetAttribute("SpinSpeed") or 1 }
+        end
+    end
+    for _, p in ipairs(CollectionService:GetTagged("EFSpin")) do AddSpinner(p) end
+    CollectionService:GetInstanceAddedSignal("EFSpin"):Connect(AddSpinner)
+    CollectionService:GetInstanceRemovedSignal("EFSpin"):Connect(function(p) spinners[p] = nil end)
+    RunService.RenderStepped:Connect(Step)
+
+    -- deployed Golems
     task.spawn(function()
         local world = workspace:WaitForChild("EmberWorld", 60)
         if not world then return end
@@ -80,7 +103,6 @@ function GolemAnimator.Init()
         for _, m in ipairs(folder:GetChildren()) do Track(m) end
         folder.ChildAdded:Connect(function(m) task.wait() Track(m) end)
         folder.ChildRemoved:Connect(Untrack)
-        RunService.RenderStepped:Connect(Step)
     end)
 end
 

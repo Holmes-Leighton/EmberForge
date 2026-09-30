@@ -130,6 +130,7 @@ function IdleEngine.CalculateOfflineProduction(playerData)
     -- Material Magnet: 2× resource output for 24h after purchase
     local magnetActive = (playerData.MaterialMagnetExpiry or 0) > Utils.UnixTimestamp()
     if magnetActive then eventMult = eventMult * 2 end
+    eventMult = eventMult * require(script.Parent.LiveOpsService).GetMultiplier("drops")
 
     local stormBoost = StormBoost(playerData)
     for _, golem in ipairs(playerData.Golems or {}) do
@@ -182,6 +183,7 @@ function IdleEngine.TickOnlineProduction(playerData, deltaSeconds)
     local eventMult = SeasonPassService.GetEventDropMultiplier(currentSeason__ and currentSeason__.id) or 1.0
     local magnetActive = (playerData.MaterialMagnetExpiry or 0) > Utils.UnixTimestamp()
     if magnetActive then eventMult = eventMult * 2 end
+    eventMult = eventMult * require(script.Parent.LiveOpsService).GetMultiplier("drops")
 
     local stormBoost = StormBoost(playerData)
     for _, golem in ipairs(playerData.Golems or {}) do

@@ -30,7 +30,11 @@ local function FreeSlot(zoneId)
     return 0
 end
 
-local function Build(golem, ownerName)
+local function StyleKey(golem, equipped)
+    return table.concat({ golem.variant or "", golem.zoneId or "", equipped.GolemAccessory or "", equipped.ParticleEffect or "" }, "|")
+end
+
+local function Build(golem, ownerName, equipped)
     local center = WorldBuilder.GetZoneCenter(golem.zoneId)
     if not center then return nil end
 
@@ -41,7 +45,9 @@ local function Build(golem, ownerName)
     local base   = CFrame.lookAt(pos, Vector3.new(center.X, pos.Y, center.Z))
     local scale  = 1 + ((golem.tier or 1) - 1) * 0.18
 
-    local model = GolemModel.Build(golem.element, golem.tier, { variant = golem.variant })
+    local model = GolemModel.Build(golem.element, golem.tier, {
+        variant = golem.variant, accessory = equipped.GolemAccessory, particle = equipped.ParticleEffect,
+    })
     model.Name = "Golem_" .. golem.id
     model:PivotTo(base * CFrame.new(0, 5 * scale, 0))          -- torso sits 5 studs up
     model:SetAttribute("Base", base)                             -- ground-level pose, used by the animator
@@ -81,14 +87,14 @@ local function Build(golem, ownerName)
     end
 
     model.Parent = folder
-    return { model = model, zoneId = golem.zoneId, slot = slot, variant = golem.variant }
+    return { model = model, zoneId = golem.zoneId, slot = slot, style = StyleKey(golem, equipped) }
 end
 
 local function Remove(id)
     local e = entries[id]
     if not e then return end
     if usedSlots[e.zoneId] then usedSlots[e.zoneId][e.slot] = nil end
-    e.model:Destroy()
+    if e.model then e.model:Destroy() end
     entries[id] = nil
 end
 
@@ -99,9 +105,10 @@ local function Reconcile()
         for _, g in ipairs(data and data.Golems or {}) do
             if g.deployed and g.zoneId then
                 seen[g.id] = true
+                local equipped = (data and data.Equipped) or {}
                 local e = entries[g.id]
-                if e and (e.zoneId ~= g.zoneId or e.variant ~= g.variant) then Remove(g.id) e = nil end
-                if not e then entries[g.id] = Build(g, player.DisplayName) end
+                if e and e.style ~= StyleKey(g, equipped) then Remove(g.id) e = nil end
+                if not e then entries[g.id] = Build(g, player.DisplayName, equipped) end
             end
         end
     end

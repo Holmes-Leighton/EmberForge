@@ -9,6 +9,7 @@
 -- pickaxe are named ArmL / ArmR / PickHandle / PickHead so the client can swing them.
 
 local Theme = require(script.Parent.Theme)
+local CosmeticData = require(script.Parent.Parent.Data.CosmeticData)
 
 local GolemModel = {}
 
@@ -117,6 +118,45 @@ function GolemModel.Build(element, tier, options)
         local halo = part("Halo", Vector3.new(0.3, 3.4, 3.4), look.accent, Enum.Material.Neon,
             at(0, 11.2, 0) * CFrame.Angles(0, 0, math.pi / 2), 0.1)
         halo.Shape = Enum.PartType.Cylinder
+    end
+
+    -- ── Equipped cosmetics (never affect stats) ───────────────────────────────
+    if options.accessory then
+        local d = CosmeticData.Describe(options.accessory)
+        local id = options.accessory
+        local c = d.color
+        if id:find("Crown") then
+            part("CrownBand", Vector3.new(2.6, 0.4, 2.6), c, Enum.Material.Neon, at(0, 9.5, 0), 0.1)
+            for i = 0, 4 do
+                local a = i / 5 * math.pi * 2
+                part("CrownSpike", Vector3.new(0.4, 1.1, 0.4), c, Enum.Material.Neon, at(math.cos(a) * 1.1, 10.1, math.sin(a) * 1.1))
+            end
+        elseif id:find("Helm") then
+            local cap = part("Helm", Vector3.new(2.8, 2.2, 2.8), c, Enum.Material.Metal, at(0, 9.0, 0), 0.05)
+            cap.Shape = Enum.PartType.Ball
+            part("HelmVisor", Vector3.new(2.5, 0.35, 0.3), c:Lerp(Color3.new(0, 0, 0), 0.5), Enum.Material.Metal, at(0, 8.7, -1.3))
+        elseif id:find("Hat") then
+            part("HatBrim", Vector3.new(3.4, 0.25, 3.4), c, Enum.Material.Fabric, at(0, 9.5, 0))
+            part("HatTop", Vector3.new(2, 1.4, 2), c, Enum.Material.Fabric, at(0, 10.2, 0))
+        else
+            local orb = part("Orb", Vector3.new(1.1, 1.1, 1.1), c, Enum.Material.Neon, at(0, 11, 0), 0.1)
+            orb.Shape = Enum.PartType.Ball
+        end
+    end
+    if options.particle then
+        local d = CosmeticData.Describe(options.particle)
+        local target = model:FindFirstChild("PickHead")
+        if target then
+            local e = Instance.new("ParticleEmitter")
+            e.Color = ColorSequence.new(d.color)
+            e.Rate = 14
+            e.Lifetime = NumberRange.new(0.6, 1.2)
+            e.Speed = NumberRange.new(3, 7)
+            e.SpreadAngle = Vector2.new(180, 180)
+            e.LightEmission = 1
+            e.Size = NumberSequence.new(0.5, 0)
+            e.Parent = target
+        end
     end
 
     -- ── Variant glow ──────────────────────────────────────────────────────────

@@ -21,10 +21,14 @@ local ForgeZoneService   = require(script.Services.ForgeZoneService)
 local WorldBuilder       = require(script.Services.WorldBuilder)
 local PadService         = require(script.Services.PadService)
 local GolemVisuals       = require(script.Services.GolemVisuals)
+local LiveOpsService     = require(script.Services.LiveOpsService)
+local AdminService       = require(script.Services.AdminService)
 local Utils              = require(game.ReplicatedStorage.Shared.Modules.Utils)
 local GameConfig         = require(game.ReplicatedStorage.Shared.Data.GameConfig)
 
 -- Build the world (ground, spawn, mining-zone landmarks) before anyone joins
+LiveOpsService.Init()
+AdminService.Init(LiveOpsService, function(p, title, msg) RemoteEvents.Notify:FireClient(p, title, msg) end)
 WorldBuilder.Build()
 PadService.Init()
 GolemVisuals.Init()
@@ -71,6 +75,14 @@ local function OnPlayerAdded(player)
 
     -- Check slot milestones
     GolemService.CheckSlotMilestones(player)
+
+    -- Tell them about any live events (Double XP weekend etc.)
+    task.delay(8, function()
+        if not player.Parent then return end
+        for _, e in ipairs(LiveOpsService.ActiveEvents()) do
+            RemoteEvents.Notify:FireClient(player, e.name or "Event", string.format("%s x%g is active!", e.kind == "xp" and "XP" or "Resource drops", e.multiplier))
+        end
+    end)
 
     -- Assign a forge plot in the shared world
     ForgeZoneService.OnPlayerAdded(player)

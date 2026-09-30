@@ -114,6 +114,8 @@ local navData = {
     { name = "ShopButton",        label = "💎 Shop",       targetGui = "ShopMenu"        },
     { name = "SeasonButton",      label = "🌟 Season",     targetGui = "SeasonMenu"      },
     { name = "ChallengesButton",  label = "📋 Challenges", targetGui = "ChallengesMenu"  },
+    { name = "StyleButton",       label = "🎨 Style",      targetGui = "StyleMenu"       },
+    { name = "HomeButton",        label = "🏠 My Forge",   action = "GoToMyForge"        },
     { name = "LeaderboardBtn",    label = "🏆 Leaders",    targetGui = "LeaderboardMenu" },
 }
 
@@ -138,6 +140,12 @@ for i, nav in ipairs(navData) do
     btn.TextSize = 13
 
     btn.MouseButton1Click:Connect(function()
+        if nav.action then
+            local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
+            RemoteEvents.Load()
+            RemoteEvents[nav.action]:FireServer()
+            return
+        end
         local pg = LocalPlayer:WaitForChild("PlayerGui")
         local target = pg:FindFirstChild(nav.targetGui)
         if target then

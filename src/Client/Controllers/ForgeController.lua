@@ -443,6 +443,51 @@ function ForgeController._RenderUpgrades()
         Text(card, "Maximum Forge level reached.", 80, nil, Theme.Colors.Gold)
     end
 
+    -- Elemental mastery (spec 6.2)
+    do
+        local thresholds = GameConfigM.MASTERY_XP_THRESHOLDS
+        local BONUS = { [5] = "+5% mining rate", [10] = "+10% rare drop luck", [15] = "+15% smelt speed", [20] = "+20% all stats + title" }
+        local mc = Card(28 + 5 * 46)
+        Text(mc, "Elemental Mastery", 8, Theme.TextSize.Heading, Theme.Colors.AccentBright, Theme.Fonts.Heading, 22)
+        for i, element in ipairs({ "Ember", "Stone", "Frost", "Storm", "Void" }) do
+            local xp = (data.MasteryLevels or {})[element] or 0
+            local lvl = 1
+            for l = #thresholds, 1, -1 do
+                if xp >= thresholds[l] then lvl = l break end
+            end
+            local nextXP = thresholds[lvl + 1]
+            local frac = nextXP and math.clamp((xp - thresholds[lvl]) / (nextXP - thresholds[lvl]), 0, 1) or 1
+            local nextBonus
+            for l = lvl + 1, 20 do if BONUS[l] then nextBonus = l break end end
+
+            local y = 32 + (i - 1) * 46
+            local n = Theme.Label(mc, string.format("%s  Lv %d", element, lvl), Theme.TextSize.Body, Theme.Colors[element], Theme.Fonts.Heading)
+            n.Position = UDim2.new(0, 14, 0, y)
+            n.Size = UDim2.new(0, 120, 0, 20)
+            local bg = Instance.new("Frame")
+            bg.Position = UDim2.new(0, 140, 0, y + 5)
+            bg.Size = UDim2.new(0, 220, 0, 10)
+            bg.BackgroundColor3 = Theme.Colors.Background
+            bg.BorderSizePixel = 0
+            bg.Parent = mc
+            Theme.AddCorner(bg, UDim.new(0, 5))
+            local fill = Instance.new("Frame")
+            fill.Size = UDim2.new(frac, 0, 1, 0)
+            fill.BackgroundColor3 = Theme.Colors[element]
+            fill.BorderSizePixel = 0
+            fill.Parent = bg
+            Theme.AddCorner(fill, UDim.new(0, 5))
+            local t = Theme.Label(mc, lvl >= 20 and "MAX  -  all bonuses unlocked" or
+                (nextBonus and string.format("Lv %d: %s", nextBonus, BONUS[nextBonus]) or ""),
+                Theme.TextSize.Small, Theme.Colors.TextSecondary, Theme.Fonts.Body)
+            t.Position = UDim2.new(0, 372, 0, y)
+            t.Size = UDim2.new(1, -386, 0, 20)
+            local sub = Theme.Label(mc, "Mine with " .. element .. " Golems to raise it", Theme.TextSize.Small, Theme.Colors.TextDim, Theme.Fonts.Body)
+            sub.Position = UDim2.new(0, 14, 0, y + 20)
+            sub.Size = UDim2.new(1, -28, 0, 16)
+        end
+    end
+
     -- Storage
     local tier = data.StorageTier or 0
     local hours = tier >= 2 and GameConfigM.OFFLINE_STORAGE_PREMIUM_HOURS or (tier >= 1 and GameConfigM.OFFLINE_STORAGE_UPGRADED_HOURS or GameConfigM.OFFLINE_STORAGE_BASE_HOURS)
