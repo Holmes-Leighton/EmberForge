@@ -1,6 +1,6 @@
 -- First-run onboarding: a "How to Play" pop-up, a step-by-step objective tracker
 -- that advances as the player does each thing, and a Help button to reopen it.
--- Players who already own a Golem skip the tracker automatically.
+-- Players who already deployed or crafted beyond the starter Golem skip the tracker.
 
 local Players     = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -12,18 +12,18 @@ local Theme        = require(game.ReplicatedStorage.Shared.Modules.Theme)
 local TutorialController = {}
 
 local STEPS = {
-    { title = "Open the Forge",       hint = "Click the 🔥 Forge button on the right sidebar." },
-    { title = "Craft your first Golem", hint = "Pick a Tier 1 blueprint in the Forge menu and press Craft." },
-    { title = "Deploy it to a zone",   hint = "Select your Golem in the Forge menu and send it to its mining zone." },
-    { title = "Collect resources",     hint = "Golems mine on their own. Wait a few seconds, then press ⛏ Collect Resources." },
+    { title = "Open the Forge",         hint = "Click the 🔥 Forge button on the right sidebar." },
+    { title = "Deploy your free Golem", hint = "You start with an Ember Golem. In the Forge menu, send it to Ember Depths to start mining." },
+    { title = "Collect resources",      hint = "Golems mine on their own. Wait a few seconds, then press ⛏ Collect Resources." },
+    { title = "Craft another Golem",    hint = "Pick a Tier 1 blueprint (like Stone or Frost) in the Forge menu and press Craft. Each new element unlocks a new zone." },
 }
 
 local HOW_TO_PLAY = table.concat({
     "EmberForge is an idle crafting game. Your Golems mine while you play, and while you're away.",
     "",
-    "1.  Open the 🔥 Forge and craft a Golem from a Tier 1 blueprint (you start with the materials).",
-    "2.  Deploy the Golem to its mining zone so it can gather materials for you.",
-    "3.  Press ⛏ Collect Resources to bank what your Golems mined.",
+    "1.  You start with a free Ember Golem. Open the 🔥 Forge and deploy it to a mining zone.",
+    "2.  Press ⛏ Collect Resources to bank what your Golems mined.",
+    "3.  Craft more Golems from blueprints (you start with some Basic Ore and Coal). Each new element unlocks a new zone.",
     "4.  Smelt raw materials in the Forge, then craft stronger Golems and level up your Forge.",
     "5.  Finish 📋 Challenges for rewards, trade in the 🏪 Market, and check 🏆 Leaders.",
     "",
@@ -152,7 +152,11 @@ end
 function TutorialController.Init(playerData)
     Build()
 
-    local returning = playerData and playerData.Golems and #playerData.Golems > 0
+    local returning = false
+    for _, g in ipairs((playerData and playerData.Golems) or {}) do
+        if g.deployed then returning = true end
+    end
+    if playerData and playerData.Golems and #playerData.Golems > 1 then returning = true end
     if returning then return end   -- already played: no forced tutorial, Help button still works
 
     active = true
@@ -170,14 +174,14 @@ function TutorialController.Init(playerData)
     end)
 
     -- Steps 2-4 follow the server's events
-    RemoteEvents.GolemCrafted.OnClientEvent:Connect(function(golem)
-        if golem then Advance(2) end
-    end)
     RemoteEvents.GolemDeployed.OnClientEvent:Connect(function(ok)
-        if ok then Advance(3) end
+        if ok then Advance(2) end
     end)
     RemoteEvents.ResourcesCollected.OnClientEvent:Connect(function(gains)
-        if gains and next(gains) ~= nil then Advance(4) end
+        if gains and next(gains) ~= nil then Advance(3) end
+    end)
+    RemoteEvents.GolemCrafted.OnClientEvent:Connect(function(golem)
+        if golem then Advance(4) end
     end)
 end
 

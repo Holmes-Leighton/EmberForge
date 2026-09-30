@@ -183,7 +183,7 @@ function WorldBuilder.Build()
     spawn.Parent = world
 
     Sign(world, "Welcome to EmberForge",
-        "1) Open Forge and craft a Golem  2) Deploy it to a mining zone  3) Collect resources",
+        "1) Open Forge  2) Deploy your free Golem  3) Collect resources  4) Craft more Golems",
         Vector3.new(0, 22, -60), Color3.fromRGB(255, 170, 60))
 
     for i, layout in ipairs(ZONE_LAYOUT) do
