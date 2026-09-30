@@ -349,7 +349,7 @@ RemoteEvents.BuyFromMarket.OnServerEvent:Connect(function(player, listingId)
         else
             Tell(player, "Couldn't buy it", tostring(result))
         end
-        RemoteEvents.PurchaseResult:FireClient(player, ok, ok and result or nil, ok and nil or result)
+        RemoteEvents.PurchaseResult:FireClient(player, ok, if ok then result else nil, if ok then nil else result)
     end)
 end)
 
@@ -464,7 +464,7 @@ RemoteEvents.ClaimSeasonReward.OnServerEvent:Connect(function(player, seasonId, 
         else
             Tell(player, "Can't claim", tostring(reward))
         end
-        RemoteEvents.PurchaseResult:FireClient(player, ok, ok and reward or nil, ok and nil or reward)
+        RemoteEvents.PurchaseResult:FireClient(player, ok, if ok then reward else nil, if ok then nil else reward)
     end)
 end)
 

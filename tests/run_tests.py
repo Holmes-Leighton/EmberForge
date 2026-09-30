@@ -29,6 +29,8 @@ def bundle(test_file):
                 out.append("  [%r] = %s," % (rel, long_string(open(path, encoding="utf8").read())))
     out.append("}")
     out.append(open(os.path.join(HERE, "mock_env.lua"), encoding="utf8").read())
+    if os.path.basename(test_file).startswith("test_ui"):
+        out.append(open(os.path.join(HERE, "ui_env.lua"), encoding="utf8").read())
     out.append(open(test_file, encoding="utf8").read())
     return "\n".join(out)
 

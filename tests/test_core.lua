@@ -3,6 +3,7 @@ local RemoteEvents = load("game/ReplicatedStorage/Shared/Modules/RemoteEvents")
 RemoteEvents.Notify = fireCounter()
 RemoteEvents.AchievementUnlocked = fireCounter()
 RemoteEvents.ChallengeCompleted = fireCounter()
+RemoteEvents.LevelUp = fireCounter()
 local Safe = load("SSS/EmberForge/Services/SafeDataStore")
 local PDS = load("SSS/EmberForge/Services/PlayerDataService")
 local Utils = load("game/ReplicatedStorage/Shared/Modules/Utils")
@@ -56,6 +57,21 @@ local c1 = Chal.TrackEvent(p3, "GolemDeploy", { count = 1 })
 local c2 = Chal.TrackEvent(p3, "GolemDeploy", { count = 1 })
 expect(#c1 == 1 and #c2 == 0, "completion reported once, not on every later event")
 expect(RemoteEvents.ChallengeCompleted.n == 1, "client told once about the completed challenge")
+
+print("== lifetime achievements auto-pay when they unlock")
+local p4 = newPlayer(20, "Achiever"); local d4 = PDS.Load(p4)
+d4.Inventory = { BasicOre = 50, Coal = 50 }
+local GolemS = load("SSS/EmberForge/Services/GolemService")
+local xp0 = d4.PlayerXP
+Chal.TrackEvent(p4, "GolemCrafted", { tier = 1, count = 1 })
+expect(Utils.TableContains(d4.Achievements, "ach_first_golem"), "achievement unlocked")
+expect(d4.ClaimedAchievements.ach_first_golem == true and d4.PlayerXP > xp0, "and its reward was paid immediately")
+expect(Utils.TableContains(d4.Titles, "Forge Initiate"), "title granted")
+-- older save with an unclaimed achievement
+d4.Achievements = { "ach_first_golem", "ach_first_tier2" }
+d4.ClaimedAchievements = { ach_first_golem = true }
+Chal.ClaimPendingLifetime(p4)
+expect(d4.ClaimedAchievements.ach_first_tier2 == true, "unclaimed achievements are paid on join")
 
 print("== Season claims")
 local Season = load("SSS/EmberForge/Services/SeasonPassService")

@@ -16,13 +16,18 @@ local playerData
 -- Seconds until midnight UTC (approximate daily reset)
 local function SecondsUntilDailyReset()
     local now = os.time()
-    local midnight = math.ceil(now / 86400) * 86400
-    return midnight - now
+    if playerData and (playerData.LastDailyReset or 0) > 0 then
+        return math.max(0, playerData.LastDailyReset + 86400 - now)   -- the server resets 24h after the last reset
+    end
+    return math.ceil(now / 86400) * 86400 - now
 end
 
 -- Seconds until next Monday midnight UTC (weekly reset)
 local function SecondsUntilWeeklyReset()
     local now      = os.time()
+    if playerData and (playerData.LastWeeklyReset or 0) > 0 then
+        return math.max(0, playerData.LastWeeklyReset + 604800 - now)
+    end
     local dayOfWeek = tonumber(os.date("*t", now).wday)  -- 1=Sun … 7=Sat
     local daysUntilMonday = (9 - dayOfWeek) % 7
     if daysUntilMonday == 0 then daysUntilMonday = 7 end

@@ -67,6 +67,9 @@ local function OnPlayerAdded(player)
     -- Restore smelt jobs
     ForgeService.RestoreSmeltJobs(player)
 
+    -- Pay out any lifetime achievements that were never claimed
+    ChallengeService.ClaimPendingLifetime(player)
+
     -- Check challenge resets; award daily coin if applicable
     local resets = ChallengeService.CheckResets(player)
     if resets.daily then

@@ -161,12 +161,27 @@ function ChallengeService.TrackEvent(player, eventName, eventData)
             local def = ChallengeData.Get(id)
             if def and def.type == ChallengeData.Type.Lifetime then
                 RemoteEvents.AchievementUnlocked:FireClient(player, id)
+                -- lifetime achievements pay out the moment they unlock
+                local ok, _, newLevel = ChallengeService.ClaimReward(player, id)
+                if ok and newLevel then RemoteEvents.LevelUp:FireClient(player, newLevel) end
             else
                 RemoteEvents.ChallengeCompleted:FireClient(player, id)
             end
         end
     end
     return completed
+end
+
+-- Pays out any lifetime achievement that was completed but never claimed (older saves, crashes)
+function ChallengeService.ClaimPendingLifetime(player)
+    local data = PlayerDataService.Get(player)
+    if not data then return end
+    data.ClaimedAchievements = data.ClaimedAchievements or {}
+    for _, id in ipairs(data.Achievements or {}) do
+        if not data.ClaimedAchievements[id] then
+            ChallengeService.ClaimReward(player, id)
+        end
+    end
 end
 
 -- ── Claim reward ──────────────────────────────────────────────────────────────

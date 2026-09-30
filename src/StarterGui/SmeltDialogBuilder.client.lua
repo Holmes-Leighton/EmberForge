@@ -64,6 +64,7 @@ listLayout.Parent = scroll
 Theme.AddPadding(scroll, 4, 4, 4, 4)
 
 -- Selected state
+local qtyInput, maxQtyLbl   -- created further down; declared here so the material buttons can reach them
 local selectedMaterialId = nil
 local selectedCard = nil
 
@@ -211,7 +212,7 @@ minusBtn.Size = UDim2.new(0, 34, 0, 30)
 minusBtn.Position = UDim2.new(0, 92, 0, 8)
 minusBtn.TextSize = 18
 
-local qtyInput = Instance.new("TextBox")
+qtyInput = Instance.new("TextBox")
 qtyInput.Name = "QtyInput"
 qtyInput.Size = UDim2.new(0, 60, 0, 30)
 qtyInput.Position = UDim2.new(0, 132, 0, 8)
@@ -225,7 +226,7 @@ qtyInput.PlaceholderText = "1"
 qtyInput.Parent = qtyRow
 Theme.AddCorner(qtyInput, Theme.Corner.Small)
 
-local maxQtyLbl = Theme.Label(qtyRow, "/ ?", Theme.TextSize.Body, Theme.Colors.TextDim,
+maxQtyLbl = Theme.Label(qtyRow, "/ ?", Theme.TextSize.Body, Theme.Colors.TextDim,
     Theme.Fonts.Body, "MaxQtyLabel")
 maxQtyLbl.Size = UDim2.new(0, 50, 0, 30)
 maxQtyLbl.Position = UDim2.new(0, 198, 0, 8)
