@@ -19,11 +19,13 @@ local SeasonPassService  = require(script.Services.SeasonPassService)
 local LeaderboardService = require(script.Services.LeaderboardService)
 local ForgeZoneService   = require(script.Services.ForgeZoneService)
 local WorldBuilder       = require(script.Services.WorldBuilder)
+local PadService         = require(script.Services.PadService)
 local Utils              = require(game.ReplicatedStorage.Shared.Modules.Utils)
 local GameConfig         = require(game.ReplicatedStorage.Shared.Data.GameConfig)
 
 -- Build the world (ground, spawn, mining-zone landmarks) before anyone joins
 WorldBuilder.Build()
+PadService.Init()
 
 -- Start periodic auto-save and leaderboard flush
 PlayerDataService.StartAutoSave()

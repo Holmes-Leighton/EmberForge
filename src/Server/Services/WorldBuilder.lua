@@ -79,35 +79,7 @@ local function AddPrompt(part, action, objectText, hold)
     return prompt
 end
 
-local function BuildMiningNode(world, name, position, color, materialId, amount, label)
-    local rock = Part({
-        Name = name, Material = Enum.Material.Slate, Color = color:Lerp(Color3.new(0, 0, 0), 0.5),
-        Size = Vector3.new(9, 7, 9), CFrame = CFrame.new(position),
-    }, world)
-    for i = 1, 4 do
-        local chip = Part({
-            Name = "Chip", Material = Enum.Material.Neon, Color = color, CanCollide = false,
-            Size = Vector3.new(1.6, 2.4, 1.6),
-            CFrame = CFrame.new(position + Vector3.new(math.cos(i * 1.6) * 3.4, 2.2 + i % 2, math.sin(i * 1.6) * 3.4))
-                * CFrame.Angles(i, i * 0.7, 0),
-        }, world)
-    end
-    Sign(world, label, "Hold E to mine", position + Vector3.new(0, 9, 0), color)
-
-    local debounce = {}
-    AddPrompt(rock, "Mine", label, 0.35).Triggered:Connect(function(player)
-        if debounce[player] and os.clock() - debounce[player] < 0.25 then return end
-        debounce[player] = os.clock()
-        if not PlayerDataService.Get(player) then return end
-        PlayerDataService.AddMaterial(player, materialId, amount)
-        RemoteEvents.ResourcesCollected:FireClient(player, { [materialId] = amount }, 0)
-    end)
-end
-
 local function BuildStarterStation(world)
-    BuildMiningNode(world, "OreVein",  Vector3.new(-28, 3.5, -92), Color3.fromRGB(200, 160, 110), "BasicOre", 2, "Ore Vein")
-    BuildMiningNode(world, "CoalSeam", Vector3.new(28, 3.5, -92),  Color3.fromRGB(90, 90, 100),   "Coal",     1, "Coal Seam")
-
     local anvil = Part({
         Name = "GolemAnvil", Material = Enum.Material.Metal, Color = Color3.fromRGB(70, 70, 78),
         Size = Vector3.new(8, 5, 5), CFrame = CFrame.new(0, 2.5, -100),
@@ -197,7 +169,7 @@ local function BuildScenery(world)
         local z = rng:NextInteger(-380, 420)
         local inPlots   = math.abs(z) < 60
         local inZones   = z > ZONE_Z - 70 and z < ZONE_Z + 70 and x > -520 and x < 520
-        local nearSpawn = math.abs(x) < 60 and z < -20 and z > -120
+        local nearSpawn = math.abs(x) < 170 and z < -20 and z > -230
         if not (inPlots or inZones or nearSpawn) then
             if rng:NextNumber() < 0.6 then
                 -- tree
@@ -259,7 +231,7 @@ function WorldBuilder.Build()
     spawn.Parent = world
 
     Sign(world, "Welcome to EmberForge",
-        "1) Mine ore + coal  2) Forge a Golem at the Anvil  3) Deploy it in the Forge menu",
+        "1) Stand on the Starter Pad  2) Forge a Golem at the Anvil  3) Deploy it in the Forge menu",
         Vector3.new(0, 22, -60), Color3.fromRGB(255, 170, 60))
 
     BuildStarterStation(world)

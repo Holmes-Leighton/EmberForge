@@ -54,6 +54,9 @@ GameConfig.DAILY_COIN_REWARD = 100
 GameConfig.COIN_PER_CHALLENGE = 50
 GameConfig.STARTING_COINS = 200
 
+-- Admins who may use the Admin mining pad (UserIds). The place owner and Studio always can.
+GameConfig.ADMIN_USER_IDS = {}
+
 -- Server
 GameConfig.MAX_PLAYERS_PER_SERVER = 20
 

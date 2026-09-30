@@ -12,7 +12,7 @@ local Theme        = require(game.ReplicatedStorage.Shared.Modules.Theme)
 local TutorialController = {}
 
 local STEPS = {
-    { title = "Mine some materials",  hint = "Walk to the Ore Vein and Coal Seam near spawn. Hold E to mine 10 Basic Ore and 5 Coal." },
+    { title = "Stand on the Starter Pad", hint = "Walk south to the glowing Starter Pad and stand on it. It mines for you: you need 10 Basic Ore and 5 Coal." },
     { title = "Forge your first Golem", hint = "Take them to the Golem Anvil and hold E. You'll get a random Tier 1 Golem!" },
     { title = "Deploy your Golem",    hint = "Open the 🔥 Forge menu (right sidebar) and send your Golem to its mining zone." },
     { title = "Collect resources",    hint = "Golems mine on their own. Wait a few seconds, then press ⛏ Collect Resources." },
@@ -21,11 +21,11 @@ local STEPS = {
 local HOW_TO_PLAY = table.concat({
     "EmberForge is an idle crafting game. Your Golems mine while you play, and while you're away.",
     "",
-    "1.  Walk to the Ore Vein and Coal Seam near spawn and hold E to mine 10 Basic Ore and 5 Coal.",
+    "1.  Stand on the glowing Starter Pad south of spawn. It mines for you (10 Basic Ore + 5 Coal is enough for a Golem).",
     "2.  Hold E at the Golem Anvil to forge your first Golem. Its element is random!",
     "3.  Open the 🔥 Forge menu and deploy it to a mining zone, then press ⛏ Collect Resources.",
     "4.  Craft more Golems from blueprints. Each new element unlocks a new mining zone.",
-    "5.  Finish 📋 Challenges for rewards, trade in the 🏪 Market, and check 🏆 Leaders.",
+    "5.  Level up to unlock stronger pads (3x, 5x, 10x). Finish 📋 Challenges, trade in the 🏪 Market, check 🏆 Leaders.",
     "",
     "Tip: walk north to see the six mining zones. Visit other players' forges to trade.",
 }, "\n")
