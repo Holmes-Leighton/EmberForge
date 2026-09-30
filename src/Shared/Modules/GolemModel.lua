@@ -150,6 +150,8 @@ function GolemModel.Build(element, tier, options)
     local look = ELEMENT_LOOK[element] or ELEMENT_LOOK.Stone
     local color = Theme.Colors[element] or Color3.fromRGB(150, 150, 150)
     local elementColor = color
+    -- pale types (bone, marble) would blow out to pure white under Neon glow, so their glow colour is deeper
+    if math.max(color.R, color.G, color.B) > 0.8 then elementColor = color:Lerp(Color3.fromRGB(200, 140, 60), 0.55) end
     local skinColor
     local template = GolemModel.FindAsset(element)
     -- A type with its own uploaded model (AssetData.Golem.Elements.<Name>.assetId) carries its own look, so

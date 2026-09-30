@@ -78,6 +78,8 @@ local DEFINITIONS = {
     PetHatched          = "event",   -- server → client (ok, pet or reason)
     EquipPet            = "event",   -- client → server (petId, on)
     ReleasePet          = "event",   -- client → server (petId)
+    MergePets           = "event",   -- client → server (petType, variant or nil): 4 identical -> 1 rarer
+    PetsMerged          = "event",   -- server → client (ok, pet or reason)
 
     -- Season Pass
     ClaimSeasonReward   = "event",

@@ -62,11 +62,11 @@ AssetData.Golem = {
 -- One upload holding every Golem (the easiest way to ship all of them): put the Golems in one Model,
 -- each child Model named EF_<Type> (EF_Ember, EF_Stone, EF_Frost, EF_Storm, EF_Void, EF_Patchwork ...),
 -- upload it once and set its id here. A type that has its own `assetId` below uses that instead.
-AssetData.Pack = { assetId = 0 }
+AssetData.Pack = { assetId = 102188644843321 }
 
 -- The same idea for pets (PetData): one Model whose children are named PET_<Type> (PET_Ember, PET_Coral ...).
 -- Each pet is shown at the size in PetData.Looks. Pets without a model show a mini Golem.
-AssetData.PetPack = { assetId = 0 }
+AssetData.PetPack = { assetId = 94911546053505 }
 
 local MODES = { Auto = true, Skinned = true, Parts = true, Static = true }
 

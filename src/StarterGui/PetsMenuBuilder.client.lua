@@ -104,7 +104,7 @@ local function Note(text, height)
     return l
 end
 
-local function Row(name, sub, color, buttonText, buttonColor, onClick, enabled, height, nameColor, glow)
+local function Row(name, sub, color, buttonText, buttonColor, onClick, enabled, height, nameColor, glow, extra)
     local row = Instance.new("Frame")
     row.Size = UDim2.new(1, -8, 0, height or 58)
     row.BackgroundColor3 = Theme.Colors.Panel
@@ -129,10 +129,10 @@ local function Row(name, sub, color, buttonText, buttonColor, onClick, enabled, 
 
     local n = Theme.Label(row, name, Theme.TextSize.Heading, nameColor or Theme.Colors.TextPrimary, Theme.Fonts.Heading)
     n.Position = UDim2.new(0, 22, 0, 6)
-    n.Size = UDim2.new(1, -150, 0, 22)
+    n.Size = UDim2.new(1, extra and -270 or -150, 0, 22)
     local s = Theme.Label(row, sub, Theme.TextSize.Small, Theme.Colors.TextSecondary, Theme.Fonts.Body)
     s.Position = UDim2.new(0, 22, 0, 30)
-    s.Size = UDim2.new(1, -150, 0, (height or 58) - 34)
+    s.Size = UDim2.new(1, extra and -270 or -150, 0, (height or 58) - 34)
     s.TextWrapped = true
     s.TextYAlignment = Enum.TextYAlignment.Top
 
@@ -146,6 +146,14 @@ local function Row(name, sub, color, buttonText, buttonColor, onClick, enabled, 
         b.MouseButton1Click:Connect(function()
             if enabled ~= false and onClick then onClick() end
         end)
+    end
+    if extra then                                   -- a second button to the left (e.g. Merge)
+        local b2 = Theme.Button(row, extra.text, extra.color, Color3.fromRGB(255, 255, 255))
+        b2.AnchorPoint = Vector2.new(1, 0.5)
+        b2.Position = UDim2.new(1, -130, 0.5, 0)
+        b2.Size = UDim2.new(0, 110, 0, 34)
+        b2.TextSize = 13
+        b2.MouseButton1Click:Connect(function() if extra.onClick then extra.onClick() end end)
     end
     return row
 end
@@ -221,7 +229,7 @@ local function ShowReveal(pet)
     CloseReveal()
     local def = PetData.Get(pet.type)
     if not def then return end
-    local model = PetModel.Build(pet.type)
+    local model = PetModel.Build(pet.type, pet.variant)
     if model then
         spinModel = model
         model.Parent = viewport
@@ -239,9 +247,10 @@ local function ShowReveal(pet)
     revealBanner.Text = BANNERS[def.rarity] or "NEW PET!"
     revealBanner.TextColor3 = rc
     revealStroke.Color = rc
-    revealName.Text = def.displayName
+    if pet.variant == "MegaNeon" then revealBanner.Text = "🌈 MEGA NEON!!! 🌈" elseif pet.variant == "Neon" then revealBanner.Text = "✨ NEON! ✨" end
+    revealName.Text = PetData.DisplayName(pet)
     revealName.TextColor3 = rc
-    revealSub.Text = string.upper(def.rarity) .. "  -  " .. def.text
+    revealSub.Text = string.upper(def.rarity) .. "  -  " .. PetData.BoostText(pet)
     reveal.Visible = true
 end
 
@@ -290,24 +299,49 @@ local function Reload()
         Note("You have no pets yet. Hatch an egg in the Eggs tab!", 40)
         return
     end
-    local list = {}
+    -- group identical pets (same type and variant) so duplicates show as "x4" with a Merge button
+    local groups, list = {}, {}
     for _, pet in ipairs(owned) do
         local def = PetData.Get(pet.type)
-        if def then table.insert(list, { pet = pet, def = def }) end
+        if def then
+            local key = pet.type .. "|" .. (pet.variant or "")
+            local g = groups[key]
+            if not g then
+                g = { type = pet.type, variant = pet.variant, def = def, pets = {}, wornIds = {} }
+                groups[key] = g
+                table.insert(list, g)
+            end
+            table.insert(g.pets, pet)
+            if worn[pet.id] then table.insert(g.wornIds, pet.id) end
+        end
     end
+    local VARIANT_ORDER = { MegaNeon = 1, Neon = 2 }
     table.sort(list, function(a, b)
         if a.def.rarity ~= b.def.rarity then return RARITY_ORDER[a.def.rarity] < RARITY_ORDER[b.def.rarity] end
-        return a.def.displayName < b.def.displayName
+        if a.type ~= b.type then return a.def.displayName < b.def.displayName end
+        return (VARIANT_ORDER[a.variant or ""] or 9) < (VARIANT_ORDER[b.variant or ""] or 9)
     end)
-    for _, e in ipairs(list) do
-        local isWorn = worn[e.pet.id]
-        local rc = Theme.Colors[e.def.rarity] or Theme.Colors.Common
-        Row(e.def.displayName, string.upper(e.def.rarity) .. "  -  " .. e.def.text, rc,
+    for _, g in ipairs(list) do
+        local sample = g.pets[1]
+        local isWorn = #g.wornIds > 0
+        local rc = Theme.Colors[g.def.rarity] or Theme.Colors.Common
+        local count = #g.pets
+        local canMerge = count >= PetData.MERGE_COUNT and g.variant ~= "MegaNeon"
+        local nextLabel = g.variant and PetData.Variants[g.variant] and PetData.Variants[g.variant].next
+        nextLabel = nextLabel and PetData.Variants[nextLabel].label or "Neon"
+        local sub = string.upper(g.def.rarity) .. "  -  " .. PetData.BoostText(sample)
+        if g.variant ~= "MegaNeon" then
+            sub ..= string.format("   (merge %d -> %s)", PetData.MERGE_COUNT, nextLabel)
+        end
+        Row(PetData.DisplayName(sample) .. (count > 1 and ("  x" .. count) or ""), sub, rc,
             isWorn and "Put away" or "Wear", isWorn and Theme.Colors.PanelAlt or Theme.Colors.Accent,
             function()
-                RemoteEvents.EquipPet:FireServer(e.pet.id, not isWorn)
+                local id = isWorn and g.wornIds[1] or g.pets[1].id
+                RemoteEvents.EquipPet:FireServer(id, not isWorn)
                 task.delay(0.4, Reload)
-            end, true, nil, rc, (RARITY_ORDER[e.def.rarity] or 5) <= 3 and ((RARITY_ORDER[e.def.rarity] == 1) and 3 or 2) or nil)
+            end, true, 64, rc, (RARITY_ORDER[g.def.rarity] or 5) <= 3 and ((RARITY_ORDER[g.def.rarity] == 1) and 3 or 2) or nil,
+            canMerge and { text = "Merge " .. PetData.MERGE_COUNT, color = Theme.Colors.Success,
+                onClick = function() RemoteEvents.MergePets:FireServer(g.type, g.variant) end } or nil)
     end
 end
 
@@ -317,6 +351,17 @@ end
 
 gui:GetPropertyChangedSignal("Enabled"):Connect(function()
     if gui.Enabled then task.spawn(Reload) else CloseReveal() end
+end)
+
+RemoteEvents.PetsMerged.OnClientEvent:Connect(function(ok, result)
+    if ok and type(result) == "table" then
+        ShowReveal(result)
+        task.delay(0.3, Reload)
+    else
+        statusLbl.Text = tostring(result or "Couldn't merge those pets")
+        statusLbl.Visible = true
+        task.delay(3.5, function() statusLbl.Visible = false end)
+    end
 end)
 
 RemoteEvents.PetHatched.OnClientEvent:Connect(function(ok, result)

@@ -25,11 +25,20 @@ local function Destroy(state)
 end
 
 -- Builds one pet (its own model, or a mini Golem until one is uploaded; see PetModel)
-local function MakePet(petType)
-    local model, feet, hover = PetModel.Build(petType)
+local function MakePet(entry)
+    local petType, variant = entry:match("^([^:]+):?(.*)$")
+    variant = variant ~= "" and variant or nil
+    local model, feet, hover = PetModel.Build(petType, variant)
     if not model then return nil end
     model.Parent = folder
-    return { model = model, feet = feet, hover = hover, pos = nil, yaw = nil, phase = math.random() * 6.28 }
+    local pet = { model = model, feet = feet, hover = hover, variant = variant, pos = nil, yaw = nil, phase = math.random() * 6.28 }
+    if variant == "MegaNeon" then                    -- Mega Neon cycles through the rainbow
+        pet.tinted = {}
+        for _, d in ipairs(model:GetDescendants()) do
+            if d:IsA("BasePart") and d:GetAttribute("Tint") then table.insert(pet.tinted, d) end
+        end
+    end
+    return pet
 end
 
 local function Rebuild(player, state, types)
@@ -44,8 +53,9 @@ end
 
 local function Parse(value)
     local types = {}
-    for t in tostring(value or ""):gmatch("[^,]+") do
-        if PetData.Get(t) then table.insert(types, t) end
+    for t in tostring(value or ""):gmatch("[^,]+") do          -- "Ember" or "Ember:Neon"
+        local petType, variant = t:match("^([^:]+):?(.*)$")
+        if PetData.Get(petType) and (variant == "" or PetData.Variants[variant]) then table.insert(types, t) end
     end
     return types
 end
@@ -101,6 +111,10 @@ local function Step(dt)
             -- floating pets (sprites, ghosts) hover and drift a little higher than walkers bob
             local p = Vector3.new(pet.pos.X, pet.pos.Y + pet.feet + pet.hover + bob + (pet.hover > 0 and math.sin(t * 2.5 + pet.phase) * 0.15 or 0), pet.pos.Z)
             pet.model:PivotTo(CFrame.new(p) * CFrame.Angles(0, pet.yaw or 0, 0))
+            if pet.tinted then
+                local c = Color3.fromHSV((t * 0.25 + pet.phase) % 1, 0.65, 1)
+                for _, part in ipairs(pet.tinted) do part.Color = c end
+            end
         end
     end
 end

@@ -438,6 +438,18 @@ RemoteEvents.EquipPet.OnServerEvent:Connect(function(player, petId, on)
     end)
 end)
 
+RemoteEvents.MergePets.OnServerEvent:Connect(function(player, petType, variant)
+    SafeCall(player, function()
+        if type(petType) ~= "string" or (variant ~= nil and type(variant) ~= "string") then return end
+        local pet, err = require(script.Parent.Services.PetService).Merge(player, petType, variant)
+        RemoteEvents.PetsMerged:FireClient(player, pet ~= nil, pet or err)
+        if pet then
+            ChallengeService.TrackEvent(player, "PetMerged", { count = 1 })
+            Analytics.Custom(player, "PetMerged", 1, { pet = petType, variant = pet.variant })
+        end
+    end)
+end)
+
 RemoteEvents.ReleasePet.OnServerEvent:Connect(function(player, petId)
     SafeCall(player, function()
         if type(petId) ~= "string" then return end

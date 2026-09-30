@@ -22,7 +22,7 @@ function PetService.Sync(player)
     local types = {}
     for _, id in ipairs(data.EquippedPets or {}) do
         local pet = FindPet(data, id)
-        if pet then table.insert(types, pet.type) end
+        if pet then table.insert(types, pet.type .. (pet.variant and (":" .. pet.variant) or "")) end
     end
     player:SetAttribute("EFPets", table.concat(types, ","))
 end
@@ -71,6 +71,51 @@ function PetService.Equip(player, petId, on)
     PlayerDataService.MarkDirty(player)
     PetService.Sync(player)
     return true
+end
+
+-- Merge 4 identical pets (same type, same variant) into one rarer variant: pet -> Neon -> Mega Neon.
+-- Pets you are not wearing are used up first. If a worn pet was used, the new one takes its place.
+-- Returns the new pet, or nil + a reason.
+function PetService.Merge(player, petType, variant)
+    local data = PlayerDataService.Get(player)
+    if not data then return nil, "No player data" end
+    if not PetData.Pets[petType] then return nil, "Unknown pet" end
+    local from = variant and PetData.Variants[variant]
+    if variant and not from then return nil, "Unknown variant" end
+    local nextId = from and from.next or "Neon"            -- a plain pet becomes Neon
+    if from and not from.next then return nil, "Mega Neon pets can't be merged any further" end
+
+    data.EquippedPets = data.EquippedPets or {}
+    local candidates = {}
+    for _, pet in ipairs(data.OwnedPets or {}) do
+        if pet.type == petType and pet.variant == variant then table.insert(candidates, pet) end
+    end
+    if #candidates < PetData.MERGE_COUNT then
+        return nil, string.format("You need %d matching pets (you have %d)", PetData.MERGE_COUNT, #candidates)
+    end
+    -- spare ones first, worn ones last
+    table.sort(candidates, function(a, b)
+        local aw, bw = table.find(data.EquippedPets, a.id) ~= nil, table.find(data.EquippedPets, b.id) ~= nil
+        if aw ~= bw then return not aw end
+        return (a.hatchedAt or 0) < (b.hatchedAt or 0)
+    end)
+
+    local wasWorn = false
+    for i = 1, PetData.MERGE_COUNT do
+        local pet = candidates[i]
+        local worn = table.find(data.EquippedPets, pet.id)
+        if worn then table.remove(data.EquippedPets, worn) wasWorn = true end
+        for j, owned in ipairs(data.OwnedPets) do
+            if owned.id == pet.id then table.remove(data.OwnedPets, j) break end
+        end
+    end
+
+    local merged = { id = Utils.GenerateId(), type = petType, variant = nextId, hatchedAt = Utils.UnixTimestamp() }
+    table.insert(data.OwnedPets, merged)
+    if wasWorn and #data.EquippedPets < PetData.SLOTS then table.insert(data.EquippedPets, merged.id) end
+    PlayerDataService.MarkDirty(player)
+    PetService.Sync(player)
+    return merged, nil
 end
 
 -- Say goodbye to a pet you no longer want

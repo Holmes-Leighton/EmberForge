@@ -72,7 +72,35 @@ PetData.Eggs = {
     },
 }
 
+-- Merging (same idea as Golem Neon fusion): 4 identical pets become one rarer Neon pet, and 4 identical
+-- Neon pets become one Mega Neon pet. A variant pet keeps its type's rarity but boosts more and glows.
+PetData.MERGE_COUNT = 4
+PetData.Variants = {
+    Neon     = { id = "Neon",     label = "Neon",      mult = 1.5, next = "MegaNeon" },
+    MegaNeon = { id = "MegaNeon", label = "Mega Neon", mult = 2.0 },
+}
+
 function PetData.Get(typeId) return PetData.Pets[typeId] end
+
+-- "Neon Ember Pup"
+function PetData.DisplayName(pet)
+    local def = PetData.Pets[pet.type]
+    if not def then return tostring(pet.type) end
+    local v = pet.variant and PetData.Variants[pet.variant]
+    return (v and (v.label .. " ") or "") .. def.displayName
+end
+
+-- The boost text for a pet, scaled by its variant ("+4.5% luck")
+function PetData.BoostText(pet)
+    local def = PetData.Pets[pet.type]
+    if not def then return "" end
+    local v = pet.variant and PetData.Variants[pet.variant]
+    if not v then return def.text end
+    if def.stat == "wear" then return string.format("Golems wear out %.1f%% slower", def.value * v.mult * 100) end
+    if def.stat == "all" then return string.format("+%.1f%% mining, carry, luck and efficiency", def.value * v.mult * 100) end
+    local names = { rate = "mining speed", carry = "carry capacity", luck = "luck", eff = "efficiency", bp = "blueprint finds" }
+    return string.format("+%.1f%% %s", def.value * v.mult * 100, names[def.stat] or def.stat)
+end
 
 -- The chance (0..1) of each pet in an egg, for the odds list in the UI
 function PetData.Odds(eggId)
@@ -94,10 +122,12 @@ function PetData.Boosts(data)
         local pet = byId[id]
         local def = pet and PetData.Pets[pet.type]
         if def then
+            local v = pet.variant and PetData.Variants[pet.variant]
+            local value = def.value * (v and v.mult or 1)
             if def.stat == "all" then
-                b.rate += def.value; b.carry += def.value; b.luck += def.value; b.eff += def.value
+                b.rate += value; b.carry += value; b.luck += value; b.eff += value
             else
-                b[def.stat] += def.value
+                b[def.stat] += value
             end
         end
     end
