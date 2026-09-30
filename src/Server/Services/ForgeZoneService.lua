@@ -67,6 +67,37 @@ local function BuildZone(player, plotIndex)
     pad.Color         = Color3.fromRGB(70, 55, 45)
     pad.Parent        = zonesFolder
 
+    -- Level 1 forge: small stone forge with a fire pit
+    local c = PlotCentre(plotIndex)
+    local forge = Instance.new("Part")
+    forge.Name = "StoneForge"
+    forge.Anchored = true
+    forge.Size = Vector3.new(8, 6, 6)
+    forge.Material = Enum.Material.Cobblestone
+    forge.Color = Color3.fromRGB(95, 90, 88)
+    forge.CFrame = CFrame.new(c.X, 4, c.Z - 10)
+    forge.Parent = zonesFolder
+
+    local pit = Instance.new("Part")
+    pit.Name = "FirePit"
+    pit.Anchored = true
+    pit.Shape = Enum.PartType.Cylinder
+    pit.Size = Vector3.new(1, 5, 5)
+    pit.Material = Enum.Material.Basalt
+    pit.Color = Color3.fromRGB(35, 30, 28)
+    pit.CFrame = CFrame.new(c.X, 1.5, c.Z + 4) * CFrame.Angles(0, 0, math.pi / 2)
+    pit.Parent = zonesFolder
+
+    local fire = Instance.new("Fire")
+    fire.Heat = 9
+    fire.Size = 7
+    fire.Parent = pit
+    local glow = Instance.new("PointLight")
+    glow.Color = Color3.fromRGB(255, 140, 50)
+    glow.Range = 30
+    glow.Brightness = 2
+    glow.Parent = pit
+
     -- Label above zone
     local billboard = Instance.new("BillboardGui")
     billboard.Size        = UDim2.new(0, 200, 0, 36)

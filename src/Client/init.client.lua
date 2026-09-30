@@ -131,4 +131,8 @@ RemoteEvents.ForgeZoneLeft.OnClientEvent:Connect(function()
     ForgeZoneController.OnZoneLeft()
 end)
 
+task.delay(2, function()
+    HUDController.ShowNotification("Welcome to EmberForge!", "Open Forge, craft a Golem, then deploy it to a mining zone.")
+end)
+
 print("[EmberForge Client] Initialised for " .. LocalPlayer.Name)

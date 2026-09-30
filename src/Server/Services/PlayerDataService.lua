@@ -27,7 +27,7 @@ local function DefaultData()
         ForgeLevel      = 1,
         ForgeXP         = 0,
         Golems          = {},          -- array of GolemObjects
-        Inventory       = {},          -- materialId → quantity
+        Inventory       = { BasicOre = 30, Coal = 15 },   -- starter kit: enough for a few Tier 1 Golems
         Blueprints      = Utils.DeepCopy(RecipeData.StartingBlueprintIds),
         LastOnline      = Utils.UnixTimestamp(),
         MasteryLevels   = {            -- elementId → xp

@@ -117,12 +117,24 @@ local navData = {
     { name = "LeaderboardBtn",    label = "🏆 Leaders",    targetGui = "LeaderboardMenu" },
 }
 
-local xRight = 0
+-- Right-hand sidebar, vertically centred
+local BTN_H, BTN_GAP, SIDE_W = 38, 6, 132
+local sidebar = Instance.new("Frame")
+sidebar.Name = "Sidebar"
+sidebar.AnchorPoint = Vector2.new(1, 0.5)
+sidebar.Size = UDim2.new(0, SIDE_W, 0, #navData * (BTN_H + BTN_GAP) + BTN_GAP)
+sidebar.Position = UDim2.new(1, -8, 0.5, 0)
+sidebar.BackgroundColor3 = Theme.Colors.Panel
+sidebar.BackgroundTransparency = 0.15
+sidebar.BorderSizePixel = 0
+sidebar.Parent = gui
+Theme.AddCorner(sidebar, Theme.Corner.Large)
+
 for i, nav in ipairs(navData) do
-    local btn = Theme.Button(mainFrame, nav.label, Theme.Colors.PanelAlt, Theme.Colors.AccentBright, nav.name)
-    btn.Size = UDim2.new(0, 100, 0, 34)
-    btn.Position = UDim2.new(1, -(#navData - i + 1) * 108, 0, 7)
-    btn.TextSize = 11
+    local btn = Theme.Button(sidebar, nav.label, Theme.Colors.PanelAlt, Theme.Colors.AccentBright, nav.name)
+    btn.Size = UDim2.new(1, -12, 0, BTN_H)
+    btn.Position = UDim2.new(0, 6, 0, BTN_GAP + (i - 1) * (BTN_H + BTN_GAP))
+    btn.TextSize = 13
 
     btn.MouseButton1Click:Connect(function()
         local pg = LocalPlayer:WaitForChild("PlayerGui")
