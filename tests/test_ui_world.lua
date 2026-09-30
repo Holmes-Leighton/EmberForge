@@ -116,7 +116,12 @@ expect(world:FindFirstChild("PadPlaza") ~= nil, "pad plaza exists")
 for _, id in ipairs({ "EmberDepths", "GlacialPeaks", "TheDeepForge" }) do
     expect(countNamed(world:FindFirstChild("Zone_" .. id), "ArchTrim") == 3, id .. " has a glowing tunnel mouth")
 end
-expect(countNamed(cave, "Outcrop") > 700, "walls and ceiling are built from rock outcrops, not flat slabs (" .. countNamed(cave, "Outcrop") .. ")")
+expect(countNamed(cave, "Outcrop") > 20, "without Terrain the walls fall back to rounded boulders (" .. countNamed(cave, "Outcrop") .. ")")
+local mineFolder = world:FindFirstChild("Mine")
+expect(mineFolder ~= nil and countNamed(mineFolder, "TimberPost") > 60, "timber support frames line the mine (" .. (mineFolder and countNamed(mineFolder, "TimberPost") or 0) .. ")")
+expect(countNamed(mineFolder, "Rail") >= 18 and countNamed(mineFolder, "CartBody") == 12, "minecart track and ore carts")
+expect(countNamed(mineFolder, "OreVein") > 100, "glowing ore veins in the walls")
+expect(countNamed(mineFolder, "MineLantern") > 30, "warm hanging lanterns")
 for _, id in ipairs({ "EmberDepths", "GlacialPeaks", "StormriftCliffs", "TheHollow", "TheDeepForge", "GraniteCaverns" }) do
     expect(countNamed(world:FindFirstChild("Zone_" .. id), "ZonePlaque") == 1, id .. " has a name plaque on the wall")
 end
@@ -130,6 +135,22 @@ for _, d in ipairs(world:GetDescendants()) do
     if d:IsA("BasePart") and (d.Size.X > 2048 or d.Size.Y > 2048 or d.Size.Z > 2048) then tooBig += 1 end
 end
 expect(tooBig == 0, "no part exceeds Roblox's 2048-stud size limit")
+
+print("== terrain carving")
+do
+    local fills, colors, mats = 0, 0, {}
+    local fake = { FillBall = function(_, _, r, m) fills += 1 mats[tostring(m)] = true assert(r > 0) end,
+                   FillBlock = function() end, SetMaterialColor = function() colors += 1 end }
+    local WB = load("SSS/EmberForge/Services/WorldBuilder")
+    local realWait = task.wait
+    task.wait = function(t) return t or 0 end      -- run the whole carve in one go
+    local ok2, err2 = pcall(WB.CarveTerrain, fake)
+    task.wait = realWait
+    expect(ok2, "terrain carving runs" .. (ok2 and "" or (": " .. tostring(err2))))
+    expect(fills > 1500, "the cavern is carved from Terrain balls (" .. fills .. ")")
+    expect(colors >= 4, "rock colours are set")
+    expect(#(function() local t = {} for k in pairs(mats) do t[#t + 1] = k end return t end)() >= 4, "several rock materials are used")
+end
 
 print("== pads and deployed golems")
 local PadService = load("SSS/EmberForge/Services/PadService")

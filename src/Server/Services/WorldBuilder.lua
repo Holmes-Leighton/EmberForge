@@ -299,6 +299,95 @@ end
 
 local function ZoneX(index) return (index - 3.5) * ZONE_SPACING end
 
+local CarveTerrain
+local function GetTerrain()
+    local ok, t = pcall(function() return workspace.Terrain end)
+    if ok and t and t.FillBall and t.SetMaterialColor then return t end
+    return nil
+end
+
+-- What each zone cave's rock is made of
+local ZONE_ROCK = {
+    EmberDepths     = { Enum.Material.Basalt, Enum.Material.Basalt, Enum.Material.CrackedLava },
+    GraniteCaverns  = { Enum.Material.Rock, Enum.Material.Slate, Enum.Material.Limestone },
+    GlacialPeaks    = { Enum.Material.Glacier, Enum.Material.Ice, Enum.Material.Snow },
+    StormriftCliffs = { Enum.Material.Slate, Enum.Material.Rock, Enum.Material.Basalt },
+    TheHollow       = { Enum.Material.Basalt, Enum.Material.Slate },
+    TheDeepForge    = { Enum.Material.Slate, Enum.Material.Basalt, Enum.Material.Rock },
+}
+
+-- Real rock: overlapping Terrain balls along the walls and ceiling give the smooth, organic surfaces
+-- of a natural cave (a wall of separate parts always looks like boxes). Runs in the background and
+-- yields regularly so the server stays responsive while it works.
+CarveTerrain = function(terrain)
+    local ok, err = pcall(function()
+        local rng = Random.new(4242)
+        terrain:SetMaterialColor(Enum.Material.Rock, Color3.fromRGB(84, 72, 66))
+        terrain:SetMaterialColor(Enum.Material.Slate, Color3.fromRGB(66, 60, 62))
+        terrain:SetMaterialColor(Enum.Material.Basalt, Color3.fromRGB(48, 42, 44))
+        terrain:SetMaterialColor(Enum.Material.Limestone, Color3.fromRGB(122, 108, 92))
+        local hubMats = { Enum.Material.Rock, Enum.Material.Rock, Enum.Material.Slate, Enum.Material.Basalt, Enum.Material.Limestone }
+        local n = 0
+        local function Ball(x, y, z, r, mats)
+            mats = mats or hubMats
+            terrain:FillBall(Vector3.new(x, y, z), r, mats[rng:NextInteger(1, #mats)])
+            n += 1
+            if n % 150 == 0 then task.wait() end
+        end
+        local function ClearOfArch(x, y, r)
+            for i = 1, #ZONE_LAYOUT do
+                if math.abs(x - ZoneX(i)) < ARCH_W / 2 + r and y - r < ARCH_H + 6 then return false end
+            end
+            return true
+        end
+
+        -- hub walls
+        for x = HUB_X1, HUB_X2, 16 do
+            for y = 0, HUB_CEIL, 16 do
+                local r = rng:NextInteger(9, 19)
+                local jx, jy = x + rng:NextInteger(-5, 5), y + rng:NextInteger(-5, 5)
+                Ball(jx, jy, HUB_Z1 + rng:NextInteger(0, 5), r)
+                if ClearOfArch(jx, jy, r) then Ball(jx, jy, HUB_Z2 - 10 - rng:NextInteger(0, 4), r) end
+            end
+        end
+        for z = HUB_Z1, HUB_Z2 - 10, 16 do
+            for y = 0, HUB_CEIL, 16 do
+                local r = rng:NextInteger(9, 19)
+                Ball(HUB_X1 + rng:NextInteger(0, 5), y + rng:NextInteger(-5, 5), z + rng:NextInteger(-5, 5), r)
+                Ball(HUB_X2 - rng:NextInteger(0, 5), y + rng:NextInteger(-5, 5), z + rng:NextInteger(-5, 5), r)
+            end
+        end
+        -- lumpy ceiling
+        for x = HUB_X1, HUB_X2, 26 do
+            for z = HUB_Z1, HUB_Z2 - 10, 26 do
+                Ball(x + rng:NextInteger(-8, 8), HUB_CEIL + rng:NextInteger(-3, 4), z + rng:NextInteger(-8, 8), rng:NextInteger(14, 26))
+            end
+        end
+
+        -- each zone cave in its own rock
+        for i, layout in ipairs(ZONE_LAYOUT) do
+            local cx, mats = ZoneX(i), ZONE_ROCK[layout.id]
+            for x = cx - 64, cx + 64, 16 do
+                for y = 0, CH_CEIL, 16 do
+                    Ball(x + rng:NextInteger(-4, 4), y + rng:NextInteger(-4, 4), CH_Z2 - rng:NextInteger(0, 4), rng:NextInteger(9, 17), mats)
+                end
+            end
+            for z = HUB_Z2 + 18, CH_Z2 - 6, 16 do
+                for y = 0, CH_CEIL, 16 do
+                    Ball(cx - ZONE_SPACING / 2 + rng:NextInteger(0, 3), y + rng:NextInteger(-4, 4), z, rng:NextInteger(8, 15), mats)
+                    Ball(cx + ZONE_SPACING / 2 - rng:NextInteger(0, 3), y + rng:NextInteger(-4, 4), z, rng:NextInteger(8, 15), mats)
+                end
+            end
+            for x = cx - 60, cx + 60, 22 do
+                for z = HUB_Z2 + 18, CH_Z2 - 6, 22 do
+                    Ball(x + rng:NextInteger(-6, 6), CH_CEIL + rng:NextInteger(-2, 3), z + rng:NextInteger(-6, 6), rng:NextInteger(12, 20), mats)
+                end
+            end
+        end
+    end)
+    if not ok then warn("[WorldBuilder] terrain carving stopped: " .. tostring(err)) end
+end
+
 local function BuildCave(world)
     local cave = Instance.new("Folder")
     cave.Name = "Cave"
@@ -332,56 +421,24 @@ local function BuildCave(world)
     Slab(cave, "ChamberBack", ZoneX(1) - ZONE_SPACING / 2 - 2, ZoneX(#ZONE_LAYOUT) + ZONE_SPACING / 2 + 2, 0, CH_CEIL + 4, CH_Z2, CH_Z2 + 4)
     Slab(cave, "ChamberRoof", ZoneX(1) - ZONE_SPACING / 2 - 2, ZoneX(#ZONE_LAYOUT) + ZONE_SPACING / 2 + 2, CH_CEIL, CH_CEIL + 4, HUB_Z2 + 10, CH_Z2 + 4, Color3.fromRGB(46, 40, 40))
 
-    -- Rock outcrops break up the flat walls and ceiling so it reads as a cavern, not a box
-    local function Rock(x, y, z, sx, sy, sz, tint)
-        local c = ROCK:Lerp(Color3.fromRGB(110, 95, 85), rng:NextNumber(0, 0.5))
-        c = c:Lerp(tint or c, 0.15)
-        local isBall = rng:NextNumber() < 0.45
-        Part({ Name = "Outcrop", Shape = isBall and Enum.PartType.Ball or Enum.PartType.Block,
-            Material = rng:NextNumber() < 0.5 and Enum.Material.Rock or Enum.Material.Slate, Color = c,
-            Size = Vector3.new(sx, sy, sz),
-            CFrame = CFrame.new(x, y, z) * CFrame.Angles(rng:NextNumber(-0.5, 0.5), rng:NextNumber(0, 6.28), rng:NextNumber(-0.5, 0.5)) }, cave)
-    end
-    local STEP = 30
-    for x = HUB_X1, HUB_X2, STEP do
-        for layer = 0, 3 do
-            local y = layer * 27 + rng:NextInteger(0, 12)
-            local jx = x + rng:NextInteger(-8, 8)
-            -- south wall
-            Rock(jx, y, HUB_Z1 + rng:NextInteger(0, 5), rng:NextInteger(16, 34), rng:NextInteger(16, 34), rng:NextInteger(12, 24))
-            -- north wall (leave every tunnel mouth clear)
-            local blocked = false
-            for i = 1, #ZONE_LAYOUT do
-                if math.abs(jx - ZoneX(i)) < ARCH_W / 2 + 14 and y < ARCH_H + 16 then blocked = true end
+    -- Natural rock: carve the walls and ceiling as real Terrain (see CarveTerrain). Without Terrain
+    -- (tests, odd places) fall back to rounded boulder parts.
+    local terrain = GetTerrain()
+    if terrain then
+        task.spawn(CarveTerrain, terrain)
+    else
+        for x = HUB_X1, HUB_X2, 34 do
+            for layer = 0, 3 do
+                local y = layer * 27 + rng:NextInteger(0, 12)
+                local d = rng:NextInteger(18, 34)
+                Part({ Name = "Outcrop", Shape = Enum.PartType.Ball, Material = Enum.Material.Rock, Color = ROCK:Lerp(Color3.fromRGB(110, 95, 85), rng:NextNumber(0, 0.4)),
+                    Size = Vector3.new(d, d * 1.2, d), CFrame = CFrame.new(x, y, HUB_Z1 + rng:NextInteger(0, 5)) }, cave)
             end
-            if not blocked then
-                Rock(jx, y, HUB_Z2 - 10 - rng:NextInteger(0, 5), rng:NextInteger(16, 34), rng:NextInteger(16, 34), rng:NextInteger(12, 24))
-            end
-        end
-    end
-    for z = HUB_Z1, HUB_Z2, STEP do
-        for layer = 0, 3 do
-            local y = layer * 27 + rng:NextInteger(0, 12)
-            Rock(HUB_X1 + rng:NextInteger(0, 5), y, z + rng:NextInteger(-8, 8), rng:NextInteger(12, 24), rng:NextInteger(16, 34), rng:NextInteger(16, 34))
-            Rock(HUB_X2 - rng:NextInteger(0, 5), y, z + rng:NextInteger(-8, 8), rng:NextInteger(12, 24), rng:NextInteger(16, 34), rng:NextInteger(16, 34))
-        end
-    end
-    for _ = 1, 230 do                       -- lumpy ceiling
-        local sx, sz = rng:NextInteger(26, 60), rng:NextInteger(26, 60)
-        Rock(rng:NextInteger(HUB_X1, HUB_X2), HUB_CEIL - rng:NextInteger(0, 8), rng:NextInteger(HUB_Z1, HUB_Z2 - 12), sx, rng:NextInteger(14, 26), sz)
-    end
-    for i = 1, #ZONE_LAYOUT do              -- rough rock around the caves' inner walls and roofs
-        local cx = ZoneX(i)
-        for _ = 1, 14 do
-            Rock(cx + rng:NextInteger(-64, 64), rng:NextInteger(0, CH_CEIL - 6), CH_Z2 - rng:NextInteger(0, 4), rng:NextInteger(10, 22), rng:NextInteger(12, 26), rng:NextInteger(8, 16))
-        end
-        for _ = 1, 10 do
-            Rock(cx + rng:NextInteger(-60, 60), CH_CEIL - rng:NextInteger(0, 4), rng:NextInteger(HUB_Z2 + 16, CH_Z2 - 6), rng:NextInteger(16, 30), rng:NextInteger(8, 16), rng:NextInteger(16, 30))
         end
     end
 
     -- stalactites hanging from the great ceiling
-    for _ = 1, 170 do
+    for _ = 1, 90 do
         local x = rng:NextInteger(HUB_X1 + 10, HUB_X2 - 10)
         local z = rng:NextInteger(HUB_Z1 + 10, HUB_Z2 - 16)
         local h = rng:NextInteger(14, 42)
@@ -392,18 +449,153 @@ local function BuildCave(world)
             CFrame = CFrame.new(x, HUB_CEIL - h * 0.8, z), CanCollide = false }, cave)
     end
 
-    -- glowing ceiling veins and hanging lanterns give the cavern its light
+    -- hanging lanterns give the cavern its warm pools of light
     for i = 0, 55 do
         local x = HUB_X1 + 30 + i * ((HUB_X2 - HUB_X1 - 60) / 55)
         local z = rng:NextInteger(-200, 150)
-        local glow = Part({ Name = "CeilingLamp", Shape = Enum.PartType.Ball, Material = Enum.Material.Neon,
-            Color = i % 3 == 0 and Color3.fromRGB(255, 150, 70) or Color3.fromRGB(255, 200, 130),
-            Size = Vector3.new(6, 6, 6), CFrame = CFrame.new(x, HUB_CEIL - 8, z), CanCollide = false }, cave)
+        Part({ Name = "LanternChain", Material = Enum.Material.Metal, Color = Color3.fromRGB(40, 38, 40), Size = Vector3.new(0.4, 24, 0.4),
+            CFrame = CFrame.new(x, HUB_CEIL - 12, z), CanCollide = false }, cave)
+        local lamp = Part({ Name = "CeilingLamp", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 176, 90),
+            Size = Vector3.new(3, 4, 3), CFrame = CFrame.new(x, HUB_CEIL - 26, z), CanCollide = false }, cave)
         local l = Instance.new("PointLight")
-        l.Color = glow.Color
-        l.Range = 90
-        l.Brightness = 1.6
-        l.Parent = glow
+        l.Color = Color3.fromRGB(255, 186, 110)
+        l.Range = 80
+        l.Brightness = 1.8
+        l.Parent = lamp
+    end
+end
+
+-- ── Mine dressing: what makes a cavern read as a working mine ─────────────────
+-- Timber support frames with hanging lanterns, minecart track along the main road, carts full of
+-- ore, glowing ore veins in the walls, and timber frames around every tunnel mouth.
+local WOOD      = Color3.fromRGB(96, 66, 42)
+local WOOD_DARK = Color3.fromRGB(70, 48, 32)
+local IRON      = Color3.fromRGB(58, 58, 64)
+
+local function Lantern(parent, x, y, z, range)
+    local lamp = Part({ Name = "MineLantern", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 190, 100),
+        Size = Vector3.new(1.6, 2.2, 1.6), CFrame = CFrame.new(x, y, z), CanCollide = false }, parent)
+    Part({ Name = "MineLanternCap", Material = Enum.Material.Metal, Color = IRON, Size = Vector3.new(2.2, 0.5, 2.2),
+        CFrame = CFrame.new(x, y + 1.4, z), CanCollide = false }, parent)
+    local l = Instance.new("PointLight")
+    l.Color = Color3.fromRGB(255, 190, 110)
+    l.Range = range or 55
+    l.Brightness = 2
+    l.Parent = lamp
+end
+
+-- A timber frame: two posts and a beam, with corner braces
+local function TimberFrame(parent, cx, cz, width, height, alongX)
+    local half = width / 2
+    local function at(dx, y, dz)
+        if alongX then return Vector3.new(cx + dx, y, cz + dz) end
+        return Vector3.new(cx + dz, y, cz + dx)
+    end
+    for _, side in ipairs({ -1, 1 }) do
+        Part({ Name = "TimberPost", Material = Enum.Material.Wood, Color = WOOD, Size = Vector3.new(2.6, height, 2.6),
+            CFrame = CFrame.new(at(side * half, height / 2, 0)) }, parent)
+    end
+    local beamSize = alongX and Vector3.new(width + 5, 2.6, 3.2) or Vector3.new(3.2, 2.6, width + 5)
+    Part({ Name = "TimberBeam", Material = Enum.Material.Wood, Color = WOOD_DARK, Size = beamSize, CFrame = CFrame.new(at(0, height + 0.6, 0)) }, parent)
+    for _, side in ipairs({ -1, 1 }) do
+        local brace = Part({ Name = "TimberBrace", Material = Enum.Material.Wood, Color = WOOD, Size = Vector3.new(1.4, 7, 1.4),
+            CFrame = CFrame.new(at(side * (half - 3), height - 3, 0)), CanCollide = false }, parent)
+        brace.CFrame = brace.CFrame * (alongX and CFrame.Angles(0, 0, -side * 0.7) or CFrame.Angles(side * 0.7, 0, 0))
+    end
+    return at(0, height - 2, 0)
+end
+
+local function BuildMine(world)
+    local mine = Instance.new("Folder")
+    mine.Name = "Mine"
+    mine.Parent = world
+    local rng = Random.new(909)
+    local x1, x2 = HUB_X1 + 20, HUB_X2 - 20
+
+    -- minecart track along the main road (z = 60)
+    local pieces = 3
+    for i = 0, pieces - 1 do
+        local a = x1 + (x2 - x1) * i / pieces
+        local b = x1 + (x2 - x1) * (i + 1) / pieces
+        for _, dz in ipairs({ -3, 3 }) do
+            Part({ Name = "Rail", Material = Enum.Material.Metal, Color = Color3.fromRGB(110, 108, 112), Size = Vector3.new(b - a, 0.4, 0.5),
+                CFrame = CFrame.new((a + b) / 2, 0.55, 60 + dz), CanCollide = false }, mine)
+        end
+    end
+    for x = x1, x2, 10 do
+        Part({ Name = "Sleeper", Material = Enum.Material.Wood, Color = WOOD_DARK, Size = Vector3.new(1.4, 0.3, 9),
+            CFrame = CFrame.new(x, 0.35, 60), CanCollide = false }, mine)
+    end
+
+    -- timber support frames across the road, each with a hanging lantern
+    for x = x1 + 40, x2 - 40, 90 do
+        TimberFrame(mine, x, 60, 24, 17, false)
+        Lantern(mine, x, 14, 60, 60)
+        Part({ Name = "LanternChain", Material = Enum.Material.Metal, Color = IRON, Size = Vector3.new(0.3, 2, 0.3), CFrame = CFrame.new(x, 16.5, 60), CanCollide = false }, mine)
+    end
+
+    -- minecarts full of ore
+    local ore = { Color3.fromRGB(255, 200, 70), Color3.fromRGB(255, 130, 50), Color3.fromRGB(120, 210, 255) }
+    for k = 1, 12 do
+        local x = x1 + 60 + (k - 1) * ((x2 - x1 - 120) / 11) + rng:NextInteger(-12, 12)
+        Part({ Name = "CartBody", Material = Enum.Material.Metal, Color = Color3.fromRGB(80, 62, 52), Size = Vector3.new(8, 3.4, 6), CFrame = CFrame.new(x, 3, 60) }, mine)
+        Part({ Name = "CartRim", Material = Enum.Material.Metal, Color = IRON, Size = Vector3.new(8.6, 0.6, 6.6), CFrame = CFrame.new(x, 4.9, 60), CanCollide = false }, mine)
+        for _, wx in ipairs({ -2.6, 2.6 }) do
+            for _, wz in ipairs({ -3.2, 3.2 }) do
+                Part({ Name = "CartWheel", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, Color = IRON, Size = Vector3.new(0.6, 2, 2),
+                    CFrame = CFrame.new(x + wx, 1.3, 60 + wz) * CFrame.Angles(0, math.pi / 2, 0), CanCollide = false }, mine)
+            end
+        end
+        local c = ore[rng:NextInteger(1, #ore)]
+        for j = 1, 4 do
+            Part({ Name = "CartOre", Shape = Enum.PartType.Ball, Material = Enum.Material.Neon, Color = c, Size = Vector3.new(2.4, 2.4, 2.4),
+                CFrame = CFrame.new(x + rng:NextNumber(-2.4, 2.4), 5.4 + rng:NextNumber(0, 0.8), 60 + rng:NextNumber(-1.6, 1.6)), CanCollide = false }, mine)
+        end
+    end
+
+    -- glowing ore veins in the walls
+    local veins = { Color3.fromRGB(255, 200, 70), Color3.fromRGB(255, 120, 60), Color3.fromRGB(120, 210, 255), Color3.fromRGB(190, 130, 255), Color3.fromRGB(110, 240, 160) }
+    for n = 1, 90 do
+        local x = rng:NextInteger(HUB_X1 + 30, HUB_X2 - 30)
+        local y = rng:NextInteger(5, 60)
+        local north = n % 2 == 0
+        local clear = true
+        if north then
+            for i = 1, #ZONE_LAYOUT do if math.abs(x - ZoneX(i)) < ARCH_W / 2 + 10 and y < ARCH_H + 12 then clear = false end end
+        end
+        if clear then
+            local c = veins[rng:NextInteger(1, #veins)]
+            local wallZ = north and (HUB_Z2 - 12) or (HUB_Z1 + 10)
+            local dir = north and -1 or 1
+            local first
+            for k = 1, 4 do
+                local h = rng:NextInteger(5, 10)
+                local cr = Part({ Name = "OreVein", Material = Enum.Material.Neon, Color = c, Transparency = 0.1, Size = Vector3.new(1.6, h, 1.6), CanCollide = false,
+                    CFrame = CFrame.new(x + (k - 2.5) * 2, y + rng:NextInteger(-3, 3), wallZ + dir * rng:NextInteger(0, 3))
+                        * CFrame.Angles(rng:NextNumber(-0.5, 0.5), 0, rng:NextNumber(-0.7, 0.7)) }, mine)
+                first = first or cr
+            end
+            if n % 3 == 0 and first then
+                local l = Instance.new("PointLight"); l.Color = c; l.Range = 32; l.Brightness = 1.6; l.Parent = first
+            end
+        end
+    end
+
+    -- every tunnel mouth gets a timber frame, lanterns and a rail spur into the cave
+    for i = 1, #ZONE_LAYOUT do
+        local cx = ZoneX(i)
+        TimberFrame(mine, cx, HUB_Z2 - 13, ARCH_W + 4, ARCH_H + 2, true)
+        for _, side in ipairs({ -1, 1 }) do
+            Lantern(mine, cx + side * (ARCH_W / 2 + 4), 15, HUB_Z2 - 16, 60)
+        end
+        for _, dx in ipairs({ -3, 3 }) do
+            Part({ Name = "Rail", Material = Enum.Material.Metal, Color = Color3.fromRGB(110, 108, 112), Size = Vector3.new(0.5, 0.4, 146),
+                CFrame = CFrame.new(cx + dx, 0.55, 60 + 73 + 0), CanCollide = false }, mine)
+        end
+        for z = 66, HUB_Z2 + 10, 10 do
+            Part({ Name = "Sleeper", Material = Enum.Material.Wood, Color = WOOD_DARK, Size = Vector3.new(9, 0.3, 1.4),
+                CFrame = CFrame.new(cx, 0.35, z), CanCollide = false }, mine)
+        end
     end
 end
 
@@ -615,6 +807,8 @@ local function BuildDiscoveryBoard(world)
     end)
 end
 
+WorldBuilder.CarveTerrain = function(terrain) return CarveTerrain(terrain) end   -- exposed for tests
+
 function WorldBuilder.Build()
     if workspace:FindFirstChild("EmberWorld") then return end
 
@@ -650,6 +844,7 @@ function WorldBuilder.Build()
 
     BuildStarterStation(world)
     BuildPadPlaza(world)
+    BuildMine(world)
     BuildDiscoveryBoard(world)
 
     for i, layout in ipairs(ZONE_LAYOUT) do
