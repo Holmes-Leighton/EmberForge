@@ -145,15 +145,8 @@ local function WireZoneTouched(ownerPlayer, part)
             local char = visitor.Character
             if char then
                 local still = false
-                for _, desc in ipairs(char:GetDescendants()) do
-                    if desc:IsA("BasePart") then
-                        local overlap = workspace:GetPartsInPart and
-                            workspace:GetPartsInPart(part) or {}
-                        for _, p in ipairs(overlap) do
-                            if p:IsDescendantOf(char) then still = true; break end
-                        end
-                        if still then break end
-                    end
+                for _, p in ipairs(workspace:GetPartsInPart(part)) do
+                    if p:IsDescendantOf(char) then still = true; break end
                 end
                 if still then return end
             end
