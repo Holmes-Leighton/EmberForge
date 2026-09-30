@@ -13,6 +13,7 @@ local HUDController = {}
 local hudGui     -- main ScreenGui reference
 local notifQueue = {}
 local showingNotif = false
+local StartBoostCountdowns   -- forward declaration (defined below)
 
 -- ── Init ──────────────────────────────────────────────────────────────────────
 function HUDController.Init(playerData)
@@ -35,11 +36,8 @@ end
 function HUDController._SetupElements()
     if not hudGui then return end
 
-    local mainFrame = hudGui:FindFirstChild("MainFrame")
-    if not mainFrame then return end
-
-    -- Wire collect button
-    local collectBtn = mainFrame:FindFirstChild("CollectButton")
+    -- Wire collect button (lives in the bottom bar, not MainFrame)
+    local collectBtn = hudGui:FindFirstChild("CollectButton", true)
     if collectBtn and collectBtn:IsA("TextButton") then
         collectBtn.MouseButton1Click:Connect(function()
             local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
@@ -105,7 +103,7 @@ function HUDController.Refresh(data)
 end
 
 -- ── Active boost countdowns ───────────────────────────────────────────────────
-local function StartBoostCountdowns(data)
+function StartBoostCountdowns(data)
     task.spawn(function()
         while hudGui and hudGui.Parent do
             task.wait(5)
