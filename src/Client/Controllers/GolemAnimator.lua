@@ -160,11 +160,15 @@ local function Step()
                 if info.variant == "MegaNeon" then
                     local hue = (t * 0.25 + phase) % 1
                     for _, e in ipairs(info.tinted) do
-                        e.part.Color = Color3.fromHSV(hue, 0.75, 1)
+                        if e.part.Material == Enum.Material.Neon then    -- only the glowing bits; textured bodies keep their art
+                            e.part.Color = Color3.fromHSV(hue, 0.75, 1)
+                        end
                     end
                 elseif info.variant == "Neon" then
                     local pulse = 0.05 + 0.1 * (math.sin(t * 2 + phase) * 0.5 + 0.5)
-                    for _, e in ipairs(info.tinted) do e.part.Transparency = pulse end
+                    for _, e in ipairs(info.tinted) do
+                        if e.part.Material == Enum.Material.Neon then e.part.Transparency = pulse end
+                    end
                 end
             end
         end

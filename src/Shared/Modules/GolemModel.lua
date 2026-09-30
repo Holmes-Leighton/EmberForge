@@ -112,18 +112,15 @@ local function PrepareAsset(template, s, elementColor, skinColor, isNeon, elemen
             d:SetAttribute("Tint", true)
             -- A MeshPart ignores Color while it has a baked TextureID, so recolouring means dropping
             -- the texture (the pickaxe keeps its own look). Glowing eyes are added back in Build.
-            if (recolour or isNeon) and d:IsA("MeshPart") and d.Name ~= "PickHandle" and d.Name ~= "PickHead" then
+            -- (Neon / Mega Neon no longer repaint the body: they keep their own look and wear a glowing
+            -- crown, floor glow and sparkles instead, added in Build.)
+            if recolour and d:IsA("MeshPart") and d.Name ~= "PickHandle" and d.Name ~= "PickHead" then
                 d.TextureID = ""
                 model:SetAttribute("Flat", true)
-                if not isNeon then d.Color = bodyColor end
+                d.Color = bodyColor
             end
             local sa = d:FindFirstChildOfClass("SurfaceAppearance")
-            if isNeon then
-                if sa then sa:Destroy() end              -- flat glow so the rainbow / pulse can show
-                d.Material = Enum.Material.Neon
-                d.Transparency = 0.1
-                d.Color = elementColor
-            elseif recolour then
+            if recolour then
                 if sa then sa.Color = bodyColor else d.Color = bodyColor end
             end
         end
@@ -527,6 +524,41 @@ function GolemModel.Build(element, tier, options)
         end
     end
 
+    -- ── Neon / Mega Neon mark (uploaded models keep their own body) ──────────────
+    -- A glowing crown floating over the head, a glowing pad under the feet and rising sparkles.
+    -- Mega Neon is bigger and rainbow (its parts carry the "Tint" attribute the animator cycles).
+    if isNeon and A then
+        local mega = variant == "MegaNeon"
+        local glowColour = mega and Color3.fromRGB(255, 140, 220) or elementColor
+        local crownY = A.H.Y + A.hhy + (mega and 1.5 or 1.1) * s
+        local cw = A.hhx * (mega and 2.0 or 1.7)
+        local crown = {}
+        table.insert(crown, part("NeonCrownBand", Vector3.new(cw, 0.5, A.hhz * (mega and 2.0 or 1.7)) / s, glowColour, Enum.Material.Neon,
+            CFrame.new(A.H.X, crownY, A.H.Z), 0.1, true))
+        for i = 0, (mega and 6 or 4) do
+            local a = i / (mega and 7 or 5) * math.pi * 2
+            table.insert(crown, part("NeonCrownPoint", Vector3.new(0.6, mega and 1.8 or 1.3, 0.6) / s, glowColour, Enum.Material.Neon,
+                CFrame.new(A.H.X + math.cos(a) * cw * 0.42, crownY + (mega and 1.1 or 0.85) * s, A.H.Z + math.sin(a) * cw * 0.42), 0.1, true))
+        end
+        local padSize = math.max(A.hx, A.hz) * 2 * 1.9
+        local pad = part("NeonPad", Vector3.new(0.3, padSize, padSize) / s, glowColour, Enum.Material.Neon,
+            CFrame.new(A.T.X, 0.12, A.T.Z) * CFrame.Angles(0, 0, math.pi / 2), mega and 0.4 or 0.55, mega)
+        pad.Shape = Enum.PartType.Cylinder
+        local sparkles = Instance.new("ParticleEmitter")
+        sparkles.Color = mega and ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 120, 120)), ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 240, 120)),
+            ColorSequenceKeypoint.new(0.66, Color3.fromRGB(120, 255, 200)), ColorSequenceKeypoint.new(1, Color3.fromRGB(190, 140, 255)),
+        }) or ColorSequence.new(glowColour)
+        sparkles.Rate = mega and 22 or 10
+        sparkles.Lifetime = NumberRange.new(1.2, 2.2)
+        sparkles.Speed = NumberRange.new(2, 5)
+        sparkles.EmissionDirection = Enum.NormalId.Top
+        sparkles.SpreadAngle = Vector2.new(25, 25)
+        sparkles.LightEmission = 1
+        sparkles.Size = NumberSequence.new(0.6, 0)
+        sparkles.Parent = root
+    end
+
     -- ── Tier details ──────────────────────────────────────────────────────────
     if tier >= 2 and A then                            -- shoulder plates on the uploaded model
         for _, side in ipairs({ -1, 1 }) do
@@ -614,7 +646,7 @@ function GolemModel.Build(element, tier, options)
     -- ── Variant glow ──────────────────────────────────────────────────────────
     if isNeon then
         local light = Instance.new("PointLight")
-        light.Color = color
+        light.Color = A and elementColor or color
         light.Range = variant == "MegaNeon" and 26 or 16
         light.Brightness = variant == "MegaNeon" and 3 or 2
         light.Parent = torso
