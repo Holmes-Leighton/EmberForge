@@ -48,6 +48,9 @@ local function OnPlayerAdded(player)
         return
     end
 
+    -- Pick up any pad game passes they already own (bought on the game page or another server)
+    ShopService.OnPlayerAdded(player)
+
     -- Calculate and apply offline production
     local gains, elapsed = IdleEngine.CalculateOfflineProduction(data)
     if elapsed and elapsed > 60 then

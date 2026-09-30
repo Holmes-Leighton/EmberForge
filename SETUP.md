@@ -12,7 +12,8 @@ In Studio the game uses an in-memory save (a `[SafeDataStore]` warning appears) 
 |---|---|
 | Publish the place, then Game Settings → Security → **Enable Studio Access to API Services** | Studio |
 | Set **Max Players = 20** | Game Settings → Players |
-| Create the **Developer Products** and paste each numeric id into `src/Shared/Data/ProductData.lua` (id = 0 means "not for sale yet"). This includes `Pad_Copper` / `Pad_Iron` / `Pad_Gold`: permanent pad unlocks (149 / 299 / 599 R$). Stepping onto a locked pad pops up the purchase | Creator Dashboard → Monetization |
+| Create three **Game Passes** (Monetization → Passes) named Copper Pad (149 R$), Iron Pad (299 R$), Gold Pad (599 R$) and paste their ids into `ProductData.GamePasses`. Players who own one get the pad forever; stepping onto a locked pad offers the purchase, and they are also listed in the Shop | Creator Dashboard → Monetization → Passes |
+| Create the **Developer Products** and paste each numeric id into `src/Shared/Data/ProductData.lua` (id = 0 means "not for sale yet"). | Creator Dashboard → Monetization |
 | Add admin UserIds (the place owner and Studio are admins automatically) | `GameConfig.ADMIN_USER_IDS` |
 | Add audio (your own or properly licensed; ids are 0 = silent) | `src/Shared/Data/AudioData.lua` |
 | Season dates are UTC timestamps for 2026 | `src/Shared/Data/SeasonData.lua` |

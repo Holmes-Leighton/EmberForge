@@ -8,6 +8,7 @@ local PlayerGui          = LocalPlayer:WaitForChild("PlayerGui")
 local RemoteEvents   = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local SeasonData     = require(game.ReplicatedStorage.Shared.Data.SeasonData)
 local ProductData    = require(game.ReplicatedStorage.Shared.Data.ProductData)
+local Theme          = require(game.ReplicatedStorage.Shared.Modules.Theme)
 local Utils          = require(game.ReplicatedStorage.Shared.Modules.Utils)
 
 local ShopController = {}
@@ -47,11 +48,69 @@ function ShopController._SetupShopGui()
     wireBtn("StandardPassBtn",       "SeasonPass_Standard")
     wireBtn("PremiumPassBtn",        "SeasonPass_Premium")
 
+    -- Mining pads are Game Passes
+    for _, name in ipairs({ "PadCopperBtn", "PadIronBtn", "PadGoldBtn" }) do
+        local btn = shopGui:FindFirstChild(name, true)
+        if btn and btn:IsA("TextButton") then
+            btn.MouseButton1Click:Connect(function()
+                ShopController._PromptPass(btn:GetAttribute("PassKey"))
+            end)
+        end
+    end
+    shopGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+        if shopGui.Enabled then task.spawn(ShopController.RefreshPads) end
+    end)
+    if MarketplaceService.PromptGamePassPurchaseFinished then
+        MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(_, _, purchased)
+            if purchased then task.delay(1.5, ShopController.RefreshPads) end   -- the server grants on the same event
+        end)
+    end
+
     local closeBtn = shopGui:FindFirstChild("CloseButton", true)
     if closeBtn then
         closeBtn.MouseButton1Click:Connect(function()
             shopGui.Enabled = false
         end)
+    end
+end
+
+-- Buy a pad game pass (permanent). Roblox shows its own confirmation and receipt.
+function ShopController._PromptPass(key)
+    local pass = key and ProductData.GamePasses[key]
+    if not pass or not ProductData.PassIsAvailable(key) then
+        require(script.Parent.HUDController).ShowNotification("Not available yet",
+            (pass and pass.displayName or tostring(key)) .. " isn't on sale yet.")
+        return
+    end
+    local ok, err = pcall(function() MarketplaceService:PromptGamePassPurchase(LocalPlayer, pass.id) end)
+    if not ok then warn("[ShopController] Pass prompt failed: " .. tostring(err)) end
+end
+
+-- Show which pads are already yours (bought, or unlocked by level)
+function ShopController.RefreshPads()
+    if not shopGui then return end
+    local PadData = require(game.ReplicatedStorage.Shared.Data.PadData)
+    local fresh = RemoteEvents.GetPlayerData:InvokeServer()
+    if fresh then ShopController._data = fresh end
+    local data = ShopController._data
+    if not data then return end
+    for _, def in ipairs(PadData.Pads) do
+        local key = ProductData.PassForPad(def.id)
+        local btn = key and shopGui:FindFirstChild("Pad" .. def.id .. "Btn", true)
+        if btn then
+            if (data.UnlockedPads or {})[def.id] then
+                btn.Text = "Owned"
+                btn.Active = false
+                btn.BackgroundColor3 = Theme.Colors.Success
+            elseif (data.PlayerLevel or 1) >= (def.minLevel or 1) then
+                btn.Text = "Unlocked by level"
+                btn.Active = false
+                btn.BackgroundColor3 = Theme.Colors.PanelAlt
+            else
+                btn.Text = btn:GetAttribute("Price") .. " - Unlock"
+                btn.Active = true
+            end
+        end
     end
 end
 

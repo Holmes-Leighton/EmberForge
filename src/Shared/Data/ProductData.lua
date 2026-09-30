@@ -13,11 +13,6 @@ ProductData.Products = {
     MaterialMagnet    = { id = 0, displayName = "Material Magnet (24h)", robux = 199  },
     EventCatalyst     = { id = 0, displayName = "Event Catalyst",        robux = 400  },
 
-    -- Mining pads: permanent unlock, an alternative to reaching the pad's level (see PadData)
-    Pad_Copper = { id = 0, displayName = "Copper Pad (3x)", robux = 149, padId = "Copper" },
-    Pad_Iron   = { id = 0, displayName = "Iron Pad (5x)",   robux = 299, padId = "Iron"   },
-    Pad_Gold   = { id = 0, displayName = "Gold Pad (10x)",  robux = 599, padId = "Gold"   },
-
     -- Season Pass
     SeasonPass_Standard = { id = 0, displayName = "Season Pass (Standard)", robux = 699  },
     SeasonPass_Premium  = { id = 0, displayName = "Season Pass (Premium)",  robux = 1299 },
@@ -30,19 +25,33 @@ ProductData.Products = {
     ForgeSkin_Void  = { id = 0, displayName = "Forge Skin: Void",  robux = 400, cosmeticId = "ForgeSkin_Void"  },
 }
 
+-- Permanent unlocks are sold as *Game Passes* (Creator Dashboard > Monetization > Passes): they appear
+-- on the game page, are owned forever and can't be bought twice. Paste each pass id below;
+-- id = 0 means "not for sale yet". A pass unlocks its mining pad regardless of player level.
+ProductData.GamePasses = {
+    Pad_Copper = { id = 0, padId = "Copper", displayName = "Copper Pad (3x)", robux = 149 },
+    Pad_Iron   = { id = 0, padId = "Iron",   displayName = "Iron Pad (5x)",   robux = 299 },
+    Pad_Gold   = { id = 0, padId = "Gold",   displayName = "Gold Pad (10x)",  robux = 599 },
+}
+
+-- The game pass that unlocks a pad: returns key, pass (nil for pads that can't be bought)
+function ProductData.PassForPad(padId)
+    for key, pass in pairs(ProductData.GamePasses) do
+        if pass.padId == padId then return key, pass end
+    end
+    return nil
+end
+
+function ProductData.PassIsAvailable(key)
+    local p = ProductData.GamePasses[key]
+    return p ~= nil and p.id ~= 0
+end
+
 -- Returns the product key for a numeric Roblox product id (nil if unknown / unconfigured)
 function ProductData.KeyForId(productId)
     if type(productId) ~= "number" or productId == 0 then return nil end
     for key, product in pairs(ProductData.Products) do
         if product.id == productId then return key end
-    end
-    return nil
-end
-
--- The product that unlocks a pad (nil for pads that can't be bought, like Starter and Admin)
-function ProductData.KeyForPad(padId)
-    for key, product in pairs(ProductData.Products) do
-        if product.padId == padId then return key end
     end
     return nil
 end

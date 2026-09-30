@@ -248,6 +248,33 @@ local lb = gui("LeaderboardMenu")
 lb.Enabled = true
 expect(lb.Enabled == true, "leaderboard opens without errors")
 
+print("== Shop: mining pad game passes")
+do
+    local shop = gui("ShopMenu")
+    local copper = shop:FindFirstChild("PadCopperBtn", true)
+    expect(copper ~= nil and shop:FindFirstChild("PadIronBtn", true) ~= nil and shop:FindFirstChild("PadGoldBtn", true) ~= nil, "shop lists the three buyable pads")
+    Snapshot.PlayerLevel = 1; Snapshot.UnlockedPads = {}
+    ShopController.RefreshPads()
+    expect(copper.Text:find("149") ~= nil, "locked pad shows its price (" .. copper.Text .. ")")
+    Snapshot.UnlockedPads = { Copper = true }
+    ShopController.RefreshPads()
+    expect(copper.Text == "Owned", "bought pad shows Owned")
+    Snapshot.UnlockedPads = {}; Snapshot.PlayerLevel = 30
+    ShopController.RefreshPads()
+    expect(copper.Text == "Unlocked by level", "level-unlocked pad says so")
+    Snapshot.PlayerLevel = 1
+    ShopController.RefreshPads()
+    click(copper)
+    local stack = gui("Toasts"):FindFirstChild("Stack")
+    local told = false
+    for _, t in ipairs(stack:GetChildren()) do
+        local title = t:FindFirstChild("Title")
+        if title and title.Text:find("Not available yet") then told = true end
+    end
+    expect(told, "clicking a pass that isn't on sale yet tells the player")
+    for _, t in ipairs(stack:GetChildren()) do if t.Name == "Toast" then t:Destroy() end end
+end
+
 print("== Hotbar and guide")
 local hud = gui("HUD")
 local hotbar = hud:FindFirstChild("Hotbar")

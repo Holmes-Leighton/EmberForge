@@ -31,9 +31,9 @@ PadService.CanUse = CanUse
 local function RequirementText(def)
     if def.adminOnly then return "Admins only" end
     if (def.minLevel or 1) <= 1 then return "Open to everyone" end
-    local key = ProductData.KeyForPad(def.id)
-    if key then
-        return string.format("Level %d   or   R$%d forever", def.minLevel, ProductData.Products[key].robux)
+    local _, pass = ProductData.PassForPad(def.id)
+    if pass then
+        return string.format("Level %d   or   R$%d forever", def.minLevel, pass.robux)
     end
     return "Requires Level " .. def.minLevel
 end
@@ -210,13 +210,18 @@ local function Payout()
                 lastLockedNotice[player.UserId] = os.clock()
                 RemoteEvents.Notify:FireClient(player, def.displayName .. " locked", RequirementText(def))
             end
-            -- Stepping onto a locked pad offers the Robux unlock (at most every 30s per pad)
-            local key = ProductData.KeyForPad(def.id)
-            if key and ProductData.IsAvailable(key) then
+            -- Stepping onto a locked pad offers the Robux game pass (at most every 30s per pad).
+            -- Ownership is re-checked first, so a pass bought on the game page unlocks it at once.
+            local key, pass = ProductData.PassForPad(def.id)
+            if key and ProductData.PassIsAvailable(key) then
                 local offerKey = player.UserId .. ":" .. def.id
                 if os.clock() - (lastOffer[offerKey] or -1e9) > 30 then
                     lastOffer[offerKey] = os.clock()
-                    pcall(function() MarketplaceService:PromptProductPurchase(player, ProductData.Products[key].id) end)
+                    task.spawn(function()
+                        if not require(script.Parent.ShopService).RefreshPadPasses(player, def.id) then
+                            pcall(function() MarketplaceService:PromptGamePassPurchase(player, pass.id) end)
+                        end
+                    end)
                 end
             end
         elseif def then

@@ -31,7 +31,15 @@ local stubs = {
     HttpService = { GenerateGUID = function() guidN += 1; return "guid-" .. guidN end },
     DataStoreService = { GetDataStore = function() error("Studio: publish to access DataStore") end,
                          GetOrderedDataStore = function() error("Studio") end },
-    MarketplaceService = {},
+    MarketplaceService = (function()
+        local handlers = {}
+        local m = { _owned = {}, prompted = {} }
+        m.PromptGamePassPurchaseFinished = { Connect = function(_, f) table.insert(handlers, f) end }
+        m.FireGamePassFinished = function(player, id, purchased) for _, f in ipairs(handlers) do f(player, id, purchased) end end
+        m.UserOwnsGamePassAsync = function(_, uid, id) return m._owned[uid .. ":" .. id] == true end
+        m.PromptGamePassPurchase = function(_, player, id) table.insert(m.prompted, id) end
+        return m
+    end)(),
     ReplicatedStorage = {}, UserService = {},
 }
 local ColorMeta = {}

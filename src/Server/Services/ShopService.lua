@@ -83,16 +83,51 @@ for key, product in pairs(ProductData.Products) do
     end
 end
 
--- ── Mining pads: permanent unlock (an alternative to the pad's level requirement) ──
-for key, product in pairs(ProductData.Products) do
-    if product.padId then
-        PRODUCT_HANDLERS[key] = function(player)
-            return withData(player, function(d)
-                d.UnlockedPads = d.UnlockedPads or {}
-                d.UnlockedPads[product.padId] = true
-            end)
+-- ── Mining pads: permanent unlocks sold as Game Passes ───────────────────────
+local function GrantPad(player, padId, announce)
+    local data = PlayerDataService.Get(player)
+    if not data then return false end
+    data.UnlockedPads = data.UnlockedPads or {}
+    if data.UnlockedPads[padId] then return false end
+    data.UnlockedPads[padId] = true
+    PlayerDataService.MarkDirty(player)
+    if announce then
+        local _, pass = ProductData.PassForPad(padId)
+        RemoteEvents_Notify(player, "Pad unlocked!", (pass and pass.displayName or padId) .. " is yours forever.")
+        PlayerDataService.Save(player, true)
+    end
+    return true
+end
+ShopService.GrantPad = GrantPad
+
+-- Ask Roblox which pad passes the player owns (covers passes bought on the game page or on another
+-- server) and unlock them. `onlyPadId` limits the check to one pad. Returns true if anything unlocked.
+function ShopService.RefreshPadPasses(player, onlyPadId)
+    local any = false
+    for _, pass in pairs(ProductData.GamePasses) do
+        if pass.id ~= 0 and (not onlyPadId or pass.padId == onlyPadId) then
+            local data = PlayerDataService.Get(player)
+            if not data then return any end
+            if not (data.UnlockedPads or {})[pass.padId] then
+                local ok, owns = pcall(function() return MarketplaceService:UserOwnsGamePassAsync(player.UserId, pass.id) end)
+                if ok and owns and GrantPad(player, pass.padId, false) then any = true end
+            end
         end
     end
+    return any
+end
+
+function ShopService.OnPlayerAdded(player)
+    task.spawn(function() ShopService.RefreshPadPasses(player) end)
+end
+
+if MarketplaceService.PromptGamePassPurchaseFinished then
+    MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passId, wasPurchased)
+        if not wasPurchased then return end
+        for _, pass in pairs(ProductData.GamePasses) do
+            if pass.id ~= 0 and pass.id == passId then GrantPad(player, pass.padId, true) end
+        end
+    end)
 end
 
 -- ── MarketplaceService receipt processing ─────────────────────────────────────
