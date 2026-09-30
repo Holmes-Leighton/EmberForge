@@ -161,8 +161,9 @@ local function BuildPad(world, def)
     local anchor = Block(model, "PadSignAnchor", Vector3.new(1, 1, 1), CFrame.new(x, 20, z), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic,
         { Transparency = 1, CanCollide = false })
     local bb = Instance.new("BillboardGui")
-    bb.Size = UDim2.new(0, 300, 0, 86)
-    bb.MaxDistance = 320
+    -- sized in studs (pads are 60 apart) so neighbouring signs never overlap at range
+    bb.Size = UDim2.fromScale(44, 13)
+    bb.MaxDistance = 400
     bb.Parent = anchor
     local title = Instance.new("TextLabel")
     title.Size = UDim2.new(1, 0, 0.55, 0)
