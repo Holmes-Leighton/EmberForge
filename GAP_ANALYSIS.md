@@ -51,6 +51,8 @@ challenges) · forge-milestone blueprints · tier unlock rules (3x T1 → T2, 2x
 | Performance: Golem animation is client-side with distance LOD; UI scales for small screens | Done (untested on a real phone) |
 | Live ops: remote config, timed events, Double-XP weekends, admin commands | Done |
 | Analytics hooks, loading screen, audio framework | Done (audio silent until you add sounds) |
+| **Forge level advancements**: each Forge level adds permanent boosts (mining speed, carry capacity, luck, daily coins; +22% / +20% / +17% / +50% at level 10), shown in the Upgrades tab and the level-up banner. The forge plot was redesigned (courtyard, fence and gate, workshop that grows every level, vault building, Golem gallery, banners) and rebuilds itself when your Golems or gear change | Done (procedural, not yet seen in Studio) |
+| Only one main menu open at a time | Done |
 | **Forge Supplier** (standard goods always in stock, daily limits, coin sink) and **notification badges** on the sidebar | Done |
 
 ## 4. Still open

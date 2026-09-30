@@ -111,7 +111,11 @@ end)
 
 RemoteEvents.ForgeUpgraded.OnClientEvent:Connect(function(newForgeLevel)
     ForgeController.OnForgeUpgraded(newForgeLevel)
-    HUDController.ShowNotification("Forge Upgraded!", "Now Level " .. newForgeLevel)
+    local ForgeDataC = require(game.ReplicatedStorage.Shared.Data.ForgeData)
+    local fdC = ForgeDataC.Get(newForgeLevel)
+    local perkText = ForgeDataC.PerkText(ForgeDataC.PerkAt(newForgeLevel))
+    HUDController.ShowNotification("Forge Level " .. newForgeLevel .. ": " .. (fdC and fdC.displayName or ""),
+        perkText ~= "" and ("New boost: " .. perkText) or "Your forge grows.")
 end)
 
 RemoteEvents.TradeClosed.OnClientEvent:Connect(function(tradeId, reason)

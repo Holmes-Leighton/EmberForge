@@ -443,6 +443,24 @@ function ForgeController._RenderUpgrades()
         Text(card, "Maximum Forge level reached.", 80, nil, Theme.Colors.Gold)
     end
 
+    -- Level advancements: permanent boosts earned by raising the Forge
+    do
+        local totals = ForgeDataM.TotalPerks(level)
+        local pc = Card(64 + 9 * 24)
+        Text(pc, "Forge Boosts", 8, Theme.TextSize.Heading, Theme.Colors.AccentBright, Theme.Fonts.Heading, 22)
+        local summary = ForgeDataM.PerkText(totals)
+        Text(pc, summary ~= "" and ("Active now: " .. summary) or "No boosts yet. Reach Forge level 2 to start earning them.",
+            32, Theme.TextSize.Small, Theme.Colors.Success, nil, 28)
+        for l = 2, #ForgeDataM.Levels do
+            local lf = ForgeDataM.Get(l)
+            local reached = level >= l
+            local t = string.format("%s Lv %d  %s:  %s", reached and "[OK]" or "[  ]", l, lf.displayName,
+                ForgeDataM.PerkText(ForgeDataM.PerkAt(l)))
+            Text(pc, t, 62 + (l - 2) * 24, Theme.TextSize.Small,
+                reached and Theme.Colors.TextPrimary or Theme.Colors.TextDim, nil, 22)
+        end
+    end
+
     -- Elemental mastery (spec 6.2)
     do
         local thresholds = GameConfigM.MASTERY_XP_THRESHOLDS

@@ -147,6 +147,53 @@ ForgeData.StorageVault = {
     },
 }
 
+-- ── Level advancements ───────────────────────────────────────────────────────
+-- Each Forge level adds permanent boosts on top of its unlocks. They stack (cumulative).
+--   mining: Golem mining rate   carry: Golem carry capacity   luck: Golem luck (rare drops)
+--   coins:  daily Ember Coin reward
+local PERKS = {
+    [2]  = { mining = 0.03 },
+    [3]  = { carry = 0.05 },
+    [4]  = { luck = 0.03 },
+    [5]  = { mining = 0.05, coins = 0.10 },
+    [6]  = { carry = 0.05 },
+    [7]  = { luck = 0.04, mining = 0.03 },
+    [8]  = { mining = 0.05, carry = 0.05 },
+    [9]  = { luck = 0.05, coins = 0.15 },
+    [10] = { mining = 0.06, carry = 0.05, luck = 0.05, coins = 0.25 },
+}
+
+ForgeData.PerkLabels = { mining = "mining speed", carry = "carry capacity", luck = "luck", coins = "daily coins" }
+ForgeData.PerkOrder  = { "mining", "carry", "luck", "coins" }
+
+-- Perks gained at exactly this level
+function ForgeData.PerkAt(level)
+    local out = {}
+    for k, v in pairs(PERKS[level] or {}) do out[k] = v end
+    return out
+end
+
+-- Cumulative boosts at this level: { mining, carry, luck, coins } (0 = none)
+function ForgeData.TotalPerks(level)
+    local total = { mining = 0, carry = 0, luck = 0, coins = 0 }
+    for l = 2, math.min(level or 1, #ForgeData.Levels) do
+        for k, v in pairs(PERKS[l] or {}) do total[k] += v end
+    end
+    return total
+end
+
+-- "+3% mining speed, +5% carry capacity"
+function ForgeData.PerkText(perks)
+    local parts = {}
+    for _, k in ipairs(ForgeData.PerkOrder) do
+        local v = perks[k]
+        if v and v > 0 then
+            table.insert(parts, string.format("+%d%% %s", math.floor(v * 100 + 0.5), ForgeData.PerkLabels[k]))
+        end
+    end
+    return table.concat(parts, ", ")
+end
+
 -- Build lookup by level number
 ForgeData.ByLevel = {}
 for _, fd in ipairs(ForgeData.Levels) do

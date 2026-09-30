@@ -29,7 +29,27 @@ end
 local forge10 = ForgeBuilder.Build(folder, Vector3.new(0, 10, 0), 10, {})
 expect(forge10:FindFirstChild("KilnDome") ~= nil and forge10:FindFirstChild("AuraRing") ~= nil, "level 10 has the kiln dome and aura ring")
 local forge1 = ForgeBuilder.Build(folder, Vector3.new(0, 10, 0), 1, {})
-expect(forge1:FindFirstChild("StoneForge") ~= nil and forge1:FindFirstChild("Roof") == nil, "level 1 is a small forge with no roof")
+expect(forge1:FindFirstChild("Furnace") ~= nil and forge1:FindFirstChild("Roof") == nil and forge1:FindFirstChild("ShedRoof") ~= nil, "level 1 is an open lean-to with no workshop roof")
+local forge3 = ForgeBuilder.Build(folder, Vector3.new(0, 10, 0), 3, {})
+expect(forge3:FindFirstChild("Roof") ~= nil and forge3:FindFirstChild("ShedRoof") == nil, "level 3 is an enclosed workshop")
+local function count(m) return #m:GetDescendants() end
+local prev = 0
+local grows = true
+for level = 1, 10 do
+    local n = count(ForgeBuilder.Build(folder, Vector3.new(0, 10, 0), level, {}))
+    if n < prev then grows = false end
+    prev = n
+end
+expect(grows, "the forge never loses detail as it levels")
+expect(count(ForgeBuilder.Build(folder, Vector3.new(0, 10, 0), 10, {})) > count(ForgeBuilder.Build(folder, Vector3.new(0, 10, 0), 1, {})) * 1.5, "level 10 is much bigger than level 1")
+local withVault = ForgeBuilder.Build(folder, Vector3.new(0, 10, 0), 4, {}, { storageTier = 1 })
+expect(withVault:FindFirstChild("VaultBody") ~= nil and ForgeBuilder.Build(folder, Vector3.new(0, 10, 0), 4, {}):FindFirstChild("VaultBody") == nil, "vault building only after the Storage Vault is built")
+local gallery = ForgeBuilder.Build(folder, Vector3.new(0, 10, 0), 2, {}, { playerLevel = 30,
+    golems = { { element = "Ember", tier = 1 }, { element = "Frost", tier = 3, variant = "Neon" } } })
+local pedestals = 0
+for _, c in ipairs(gallery:GetChildren()) do if c.Name == "Pedestal" then pedestals += 1 end end
+expect(pedestals == 2 and gallery:FindFirstChild("Banner") ~= nil and gallery:FindFirstChild("Trophy") ~= nil, "gallery pedestals, banners and trophy follow Golems and player level")
+expect(pcall(ForgeBuilder.Celebrate, forge10), "celebrate burst runs")
 local forge8 = ForgeBuilder.Build(folder, Vector3.new(0, 10, 0), 8, {})
 expect(forge8:FindFirstChild("Gear") ~= nil, "level 8 has machinery")
 

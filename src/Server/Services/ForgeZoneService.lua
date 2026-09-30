@@ -12,6 +12,7 @@ local RemoteEvents      = require(game.ReplicatedStorage.Shared.Modules.RemoteEv
 local PlayerDataService = require(script.Parent.PlayerDataService)
 local ChallengeService  = require(script.Parent.ChallengeService)
 local ForgeBuilder      = require(script.Parent.ForgeBuilder)
+local ForgeData         = require(game.ReplicatedStorage.Shared.Data.ForgeData)
 
 local ForgeZoneService = {}
 
@@ -205,6 +206,27 @@ local function FreePlotIndex()
 end
 
 -- Rebuild a player's forge (level / skin / decoration) and refresh its sign
+local function IdleGolems(data)
+    local list = {}
+    for _, g in ipairs(data.Golems or {}) do
+        if not g.deployed then table.insert(list, { element = g.element, tier = g.tier, variant = g.variant }) end
+    end
+    table.sort(list, function(a, b) return (a.tier or 1) > (b.tier or 1) end)
+    return list
+end
+
+-- Everything that changes how the forge looks; the watcher rebuilds when this changes
+local function Signature(data)
+    local parts = { data.ForgeLevel or 1, data.StorageTier or 0, data.PlayerLevel or 1 }
+    for k, v in pairs(data.Equipped or {}) do table.insert(parts, k .. "=" .. tostring(v)) end
+    table.sort(parts, function(a, b) return tostring(a) < tostring(b) end)
+    for i, g in ipairs(IdleGolems(data)) do
+        if i > 5 then break end
+        table.insert(parts, tostring(g.element) .. tostring(g.tier) .. tostring(g.variant))
+    end
+    return table.concat(parts, "|")
+end
+
 function ForgeZoneService.Refresh(player)
     local entry = zones[player.UserId]
     local idx = plotAssignments[player.UserId]
@@ -213,13 +235,22 @@ function ForgeZoneService.Refresh(player)
 
     if entry.forge then entry.forge:Destroy() end
     EnsureFolder()
-    entry.forge = ForgeBuilder.Build(zonesFolder, PlotCentre(idx), data.ForgeLevel or 1, data.Equipped)
+    local levelUp = entry.builtLevel and (data.ForgeLevel or 1) > entry.builtLevel
+    entry.forge = ForgeBuilder.Build(zonesFolder, PlotCentre(idx), data.ForgeLevel or 1, data.Equipped, {
+        playerLevel = data.PlayerLevel or 1,
+        storageTier = data.StorageTier or 0,
+        golems      = IdleGolems(data),
+    })
+    entry.builtLevel = data.ForgeLevel or 1
+    entry.signature = Signature(data)
+    if levelUp then ForgeBuilder.Celebrate(entry.forge) end
 
     local sign = entry.part:FindFirstChild("PlotSign")
     local sub = sign and sign:FindFirstChild("Sub")
     if sub then
         local title = data.Equipped and data.Equipped.Title
-        sub.Text = "Forge Level " .. (data.ForgeLevel or 1) .. (title and ("  -  " .. title) or "")
+        local fd = ForgeData.Get(data.ForgeLevel or 1)
+        sub.Text = "Forge Level " .. (data.ForgeLevel or 1) .. (fd and ("  " .. fd.displayName) or "") .. (title and ("  -  " .. title) or "")
                    .. ((data.Settings and data.Settings.ForgeFriendsOnly) and "  (friends only)" or "")
     end
 end
@@ -232,6 +263,18 @@ function ForgeZoneService.OnPlayerAdded(player)
     zones[player.UserId] = { part = part, playersInside = {} }
     WireZoneTouched(player, part)
     ForgeZoneService.Refresh(player)
+
+    -- Keep the forge in step with the player's Golems, equipment and vault
+    task.spawn(function()
+        while player.Parent and zones[player.UserId] and plotAssignments[player.UserId] == plotIndex do
+            task.wait(3)
+            local data = PlayerDataService.Get(player)
+            local entry = zones[player.UserId]
+            if data and entry and entry.signature ~= Signature(data) then
+                ForgeZoneService.Refresh(player)
+            end
+        end
+    end)
 end
 
 -- Move a player's character to their own forge

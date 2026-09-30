@@ -73,7 +73,7 @@ local function OnPlayerAdded(player)
     -- Check challenge resets; award daily coin if applicable
     local resets = ChallengeService.CheckResets(player)
     if resets.daily then
-        RemoteEvents.DailyReward:FireClient(player, GameConfig.DAILY_COIN_REWARD)
+        RemoteEvents.DailyReward:FireClient(player, resets.coins or GameConfig.DAILY_COIN_REWARD)
     end
 
     -- Check slot milestones

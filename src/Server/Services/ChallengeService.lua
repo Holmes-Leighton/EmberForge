@@ -2,6 +2,7 @@
 
 local ChallengeData     = require(game.ReplicatedStorage.Shared.Data.ChallengeData)
 local GameConfig        = require(game.ReplicatedStorage.Shared.Data.GameConfig)
+local ForgeData         = require(game.ReplicatedStorage.Shared.Data.ForgeData)
 local Utils             = require(game.ReplicatedStorage.Shared.Modules.Utils)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 
@@ -70,7 +71,9 @@ function ChallengeService.CheckResets(player)
     if ShouldResetDaily(data) then
         data.DailyChallenges = PickDailyChallenges()
         data.LastDailyReset  = Utils.UnixTimestamp()
-        data.EmberCoins      = (data.EmberCoins or 0) + GameConfig.DAILY_COIN_REWARD
+        local reward = math.floor(GameConfig.DAILY_COIN_REWARD * (1 + ForgeData.TotalPerks(data.ForgeLevel or 1).coins))
+        data.EmberCoins      = (data.EmberCoins or 0) + reward
+        resets.coins         = reward
         PlayerDataService.MarkDirty(player)
         resets.daily = true
     end

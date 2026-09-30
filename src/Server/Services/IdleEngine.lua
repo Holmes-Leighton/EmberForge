@@ -4,6 +4,7 @@
 local GameConfig   = require(game.ReplicatedStorage.Shared.Data.GameConfig)
 local GolemData    = require(game.ReplicatedStorage.Shared.Data.GolemData)
 local Utils        = require(game.ReplicatedStorage.Shared.Modules.Utils)
+local ForgeData    = require(game.ReplicatedStorage.Shared.Data.ForgeData)
 
 local IdleEngine = {}
 
@@ -88,8 +89,9 @@ local function GolemProduction(golem, seconds, storageTier, playerData, stormBoo
 
     -- Apply mastery bonuses
     local mb = MasteryBonuses(playerData, golem.element)
-    local miningRate = stats.miningRate * (1 + mb.miningRateBonus + mb.allStatsBonus)
-    local luck       = stats.luck       * (1 + mb.luckBonus       + mb.allStatsBonus)
+    local fp = ForgeData.TotalPerks(playerData.ForgeLevel or 1)
+    local miningRate = stats.miningRate * (1 + mb.miningRateBonus + mb.allStatsBonus + fp.mining)
+    local luck       = stats.luck       * (1 + mb.luckBonus       + mb.allStatsBonus + fp.luck)
 
     -- Clamp time to storage cap
     local capSeconds = StorageCapSeconds(storageTier)
@@ -98,7 +100,7 @@ local function GolemProduction(golem, seconds, storageTier, playerData, stormBoo
     local efficiency = stats.efficiency * (golem.element ~= "Storm" and (1 + (stormBoost or 0)) or 1)
     local rawRate = miningRate * efficiency
     local produced = math.floor(rawRate * (effectiveSeconds / 3600))
-    local carryCapped = math.min(produced, stats.carryCapacity)
+    local carryCapped = math.min(produced, math.floor(stats.carryCapacity * (1 + fp.carry)))
 
     return {
         golemId   = golem.id,
@@ -186,6 +188,7 @@ function IdleEngine.TickOnlineProduction(playerData, deltaSeconds)
     eventMult = eventMult * require(script.Parent.LiveOpsService).GetMultiplier("drops")
 
     local stormBoost = StormBoost(playerData)
+    local fp = ForgeData.TotalPerks(playerData.ForgeLevel or 1)
     for _, golem in ipairs(playerData.Golems or {}) do
         if golem.deployed and golem.zoneId then
             -- Drain durability; skip production when broken
@@ -198,11 +201,12 @@ function IdleEngine.TickOnlineProduction(playerData, deltaSeconds)
 
             local stats = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus, golem.quality, golem.variant)
             local carried = golem._carriedResources or 0
+            local carryCap = stats and math.floor(stats.carryCapacity * (1 + fp.carry)) or 0
             -- A full Golem waits (still deployed) until the player collects
-            if stats and carried < stats.carryCapacity then
+            if stats and carried < carryCap then
                 local mb     = MasteryBonuses(playerData, golem.element)
-                local mRate  = stats.miningRate * (1 + mb.miningRateBonus + mb.allStatsBonus)
-                local luckM  = stats.luck       * (1 + mb.luckBonus       + mb.allStatsBonus)
+                local mRate  = stats.miningRate * (1 + mb.miningRateBonus + mb.allStatsBonus + fp.mining)
+                local luckM  = stats.luck       * (1 + mb.luckBonus       + mb.allStatsBonus + fp.luck)
                 local efficiency = stats.efficiency * (golem.element ~= "Storm" and (1 + stormBoost) or 1)
                 local rate   = mRate * efficiency
                 local speed  = GameConfig.ONLINE_PRODUCTION_SPEED or 1
@@ -211,7 +215,7 @@ function IdleEngine.TickOnlineProduction(playerData, deltaSeconds)
                 local toCommit = math.floor(golem._accumulatedResources)
                 if toCommit > 0 then
                     golem._accumulatedResources = golem._accumulatedResources - toCommit
-                    local actual = math.min(toCommit, stats.carryCapacity - carried)
+                    local actual = math.min(toCommit, carryCap - carried)
                     if actual > 0 then
                         local luckMult = 1 + (luckM * 3)
                         local materialId = MiningZoneData.SampleDrop(golem.zoneId, luckMult)

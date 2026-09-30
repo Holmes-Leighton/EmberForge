@@ -119,4 +119,32 @@ local owned = {}
 for _, id in ipairs(dl.OwnedCosmetics) do owned[id] = true end
 expect(owned.TitleBadge_Apprentice and owned.ForgeSkin_Bronze and owned.GolemAccessory_MinerHelm, "cosmetic rewards for every level passed")
 
+print("== Forge level advancements")
+local FD = load("game/ReplicatedStorage/Shared/Data/ForgeData")
+local t1, t5, t10 = FD.TotalPerks(1), FD.TotalPerks(5), FD.TotalPerks(10)
+expect(t1.mining == 0 and t1.coins == 0, "level 1 has no boosts")
+expect(math.abs(t5.mining - 0.08) < 1e-9 and math.abs(t5.coins - 0.10) < 1e-9, "level 5 totals stack")
+expect(t10.mining > t5.mining and math.abs(t10.coins - 0.5) < 1e-9 and t10.carry > 0.19 and t10.luck > 0.16, "level 10 is the strongest")
+expect(FD.PerkText(FD.PerkAt(5)):find("mining") ~= nil, "perk text names the boost")
+local function mined(forgeLevel)
+    local dd = { Golems = { { id = "x", element = "Stone", tier = 1, deployed = true, zoneId = "GraniteCaverns", quality = 0 } }, ForgeLevel = forgeLevel, MasteryLevels = {} }
+    local total = 0
+    for _ = 1, 200 do
+        local g = Idle.TickOnlineProduction(dd, 60)
+        for id, q in pairs(g) do if id:sub(1, 2) ~= "__" then total += q end end
+        dd.Golems[1]._carriedResources = 0
+    end
+    return total
+end
+expect(mined(10) > mined(1) * 1.15, "a level 10 forge mines noticeably more than level 1")
+local CS = load("SSS/EmberForge/Services/ChallengeService")
+local pc = newPlayer(9, "Coiner"); local dc = PDS.Load(pc)
+dc.ForgeLevel = 10; dc.LastDailyReset = 0; dc.EmberCoins = 0
+local rs = CS.CheckResets(pc)
+expect(rs.daily and dc.EmberCoins > 0 and rs.coins == dc.EmberCoins, "daily coins paid (" .. dc.EmberCoins .. ")")
+local pc2 = newPlayer(10, "Coiner2"); local dc2 = PDS.Load(pc2)
+dc2.ForgeLevel = 1; dc2.LastDailyReset = 0; dc2.EmberCoins = 0
+CS.CheckResets(pc2)
+expect(dc.EmberCoins > dc2.EmberCoins, "higher Forge level earns a bigger daily reward")
+
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")
