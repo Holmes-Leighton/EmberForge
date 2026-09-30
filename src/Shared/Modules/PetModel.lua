@@ -6,6 +6,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GolemModel = require(script.Parent.GolemModel)
+local CrownModel = require(script.Parent.CrownModel)
 local Theme      = require(script.Parent.Theme)
 local PetData    = require(script.Parent.Parent.Data.PetData)
 
@@ -21,7 +22,7 @@ end
 -- Bumps whenever a pet model finishes loading, so callers can rebuild stand-ins
 function PetModel.AssetVersion()
     local folder = ReplicatedStorage:FindFirstChild("PetAssets")
-    return folder and folder:GetAttribute("Version") or 0
+    return (folder and folder:GetAttribute("Version") or 0) + CrownModel.AssetVersion() * 1000   -- crowns loading also rebuild pets
 end
 
 function PetModel.Build(petType, variant)
@@ -72,17 +73,21 @@ function PetModel.Build(petType, variant)
         local front, back = cz - bs.Z / 2, cz + bs.Z / 2
         local w = math.max(bs.X, bs.Z) * 0.6
 
-        gear("CrownBand", Vector3.new(w, 0.14, w), CFrame.new(cx, top + 0.04, cz), gold, Enum.Material.Metal)
-        for i = 0, 4 do
-            local a = i / 5 * math.pi * 2
-            gear("CrownPoint", Vector3.new(0.14, 0.4, 0.14), CFrame.new(cx + math.cos(a) * w * 0.4, top + 0.25, cz + math.sin(a) * w * 0.4), gold, Enum.Material.Metal)
+        -- this type's own crown (a unique mesh per type); a plain gold crown if it has none yet
+        local crownH = CrownModel.Attach(model, petType, math.max(bs.X, bs.Z) * (supreme and 0.85 or 0.7), CFrame.new(cx, top - 0.05, cz))
+        if not crownH then
+            gear("CrownBand", Vector3.new(w, 0.14, w), CFrame.new(cx, top + 0.04, cz), gold, Enum.Material.Metal)
+            for i = 0, 4 do
+                local a = i / 5 * math.pi * 2
+                gear("CrownPoint", Vector3.new(0.14, 0.4, 0.14), CFrame.new(cx + math.cos(a) * w * 0.4, top + 0.25, cz + math.sin(a) * w * 0.4), gold, Enum.Material.Metal)
+            end
+            gear("CrownGem", Vector3.new(0.22, 0.22, 0.22), CFrame.new(cx, top + 0.18, front + w * 0.3), gem, Enum.Material.Neon, 0.1, true, Enum.PartType.Ball)
         end
-        gear("CrownGem", Vector3.new(0.22, 0.22, 0.22), CFrame.new(cx, top + 0.18, front + w * 0.3), gem, Enum.Material.Neon, 0.1, true, Enum.PartType.Ball)
         gear("Pendant", Vector3.new(0.4, 0.4, 0.08), CFrame.new(cx, centre.Position.Y, front - 0.03) * CFrame.Angles(0, 0, math.pi / 2), gold, Enum.Material.Metal, 0, nil, Enum.PartType.Cylinder)
         gear("PendantGem", Vector3.new(0.22, 0.22, 0.22), CFrame.new(cx, centre.Position.Y, front - 0.1), gem, Enum.Material.Neon, 0.1, true, Enum.PartType.Ball)
 
         if supreme then
-            gear("Halo", Vector3.new(0.08, w * 1.5, w * 1.5), CFrame.new(cx, top + 0.85, cz) * CFrame.Angles(0, 0, math.pi / 2), gold, Enum.Material.Neon, 0.15, nil, Enum.PartType.Cylinder)
+            gear("Halo", Vector3.new(0.08, w * 1.5, w * 1.5), CFrame.new(cx, top + (crownH or 0.4) + 0.45, cz) * CFrame.Angles(0, 0, math.pi / 2), gold, Enum.Material.Neon, 0.15, nil, Enum.PartType.Cylinder)
             gear("Cape", Vector3.new(bs.X * 0.75, bs.Y * 0.6, 0.08), CFrame.new(cx, centre.Position.Y, back + 0.1) * CFrame.Angles(0.12, 0, 0), Color3.fromRGB(170, 35, 55), Enum.Material.Fabric)
             gear("CapeTrim", Vector3.new(bs.X * 0.8, 0.1, 0.12), CFrame.new(cx, centre.Position.Y + bs.Y * 0.3, back + 0.1), gold, Enum.Material.Metal)
             for _, side in ipairs({ -1, 1 }) do

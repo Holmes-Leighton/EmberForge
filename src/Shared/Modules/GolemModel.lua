@@ -19,6 +19,7 @@ local Theme = require(script.Parent.Theme)
 local CosmeticData = require(script.Parent.Parent.Data.CosmeticData)
 local AssetData = require(script.Parent.Parent.Data.AssetData)
 local GolemSkinData = require(script.Parent.Parent.Data.GolemSkinData)
+local CrownModel = require(script.Parent.CrownModel)
 
 local GolemModel = {}
 
@@ -34,7 +35,7 @@ local function AssetFolder() return ReplicatedStorage:FindFirstChild("GolemAsset
 -- Bumps whenever an asset finishes loading, so callers can rebuild Golems that were made as blocks.
 function GolemModel.AssetVersion()
     local f = AssetFolder()
-    return f and f:GetAttribute("Version") or 0
+    return (f and f:GetAttribute("Version") or 0) + CrownModel.AssetVersion() * 1000      -- crowns loading also rebuild Golems
 end
 
 -- The loaded template for an element: its own model if it has one, otherwise the shared Default.
@@ -551,14 +552,19 @@ function GolemModel.Build(element, tier, options)
             CFrame.new(A.T.X, A.T.Y + A.hy * 0.05, front - 0.12))
         P("ChestGem", Vector3.new(A.hx * 0.3, A.hx * 0.3, 0.4), gem, Enum.Material.Neon,
             CFrame.new(A.T.X, A.T.Y + A.hy * 0.05, front - 0.4), 0.1, true, Enum.PartType.Ball)
-        P("Circlet", Vector3.new(A.hhx * 1.95, 0.4, A.hhz * 1.95), gold, Enum.Material.Metal,
-            CFrame.new(A.H.X, A.H.Y + A.hhy * 0.72, A.H.Z))
-        P("CircletGem", Vector3.new(0.7, 0.7, 0.4), gem, Enum.Material.Neon,
-            CFrame.new(A.H.X, A.H.Y + A.hhy * 0.72, A.H.Z - A.hhz * 0.98 - 0.15), 0.1, true, Enum.PartType.Ball)
+        -- this type's own crown (a unique mesh per type); a plain gold circlet if it has none yet
+        local crownH = CrownModel.Attach(model, element, A.hhx * 2 * (supreme and 1.35 or 1.2),
+            CFrame.new(A.H.X, A.H.Y + A.hhy - 0.1 * s, A.H.Z))
+        if not crownH then
+            P("Circlet", Vector3.new(A.hhx * 1.95, 0.4, A.hhz * 1.95), gold, Enum.Material.Metal,
+                CFrame.new(A.H.X, A.H.Y + A.hhy * 0.72, A.H.Z))
+            P("CircletGem", Vector3.new(0.7, 0.7, 0.4), gem, Enum.Material.Neon,
+                CFrame.new(A.H.X, A.H.Y + A.hhy * 0.72, A.H.Z - A.hhz * 0.98 - 0.15), 0.1, true, Enum.PartType.Ball)
+        end
 
         if supreme then
             P("Halo", Vector3.new(0.25, A.hhx * 3, A.hhx * 3), gold, Enum.Material.Neon,
-                CFrame.new(A.H.X, A.H.Y + A.hhy + 1.7 * s, A.H.Z) * CFrame.Angles(0, 0, math.pi / 2), 0.15, nil, Enum.PartType.Cylinder)
+                CFrame.new(A.H.X, A.H.Y + A.hhy + (crownH or 0) + 1.2 * s, A.H.Z) * CFrame.Angles(0, 0, math.pi / 2), 0.15, nil, Enum.PartType.Cylinder)
             local crimson = Color3.fromRGB(170, 35, 55)
             for i = -1, 1 do
                 P("CapePanel", Vector3.new(A.hx * 0.72, A.hy * 2.1, 0.22), crimson, Enum.Material.Fabric,

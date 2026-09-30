@@ -68,6 +68,12 @@ AssetData.Pack = { assetId = 102188644843321 }
 -- Each pet is shown at the size in PetData.Looks. Pets without a model show a mini Golem.
 AssetData.PetPack = { assetId = 94911546053505 }
 
+-- Crowns for Elite and Supreme Golems and pets: one unique crown design per type (Ember flames, Frost
+-- icicles, Clockwork gears ...), shared by that type's Golem and pet. One Model whose children are named
+-- CROWN_<Type>, each a single mesh with its pivot at the centre of its base. Without one, a plain gold
+-- circlet is built in code instead.
+AssetData.CrownPack = { assetId = 0 }
+
 local MODES = { Auto = true, Skinned = true, Parts = true, Static = true }
 
 -- The per-type settings a Golem Pack model is given: Default's settings with that type's own on top

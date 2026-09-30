@@ -191,7 +191,46 @@ local function LoadPetPack(packId, petFolder)
     pending -= 1
 end
 
+-- Crowns: one asset holding every crown (children named CROWN_<Type>) -> ReplicatedStorage.CrownAssets
+local function LoadCrownPack(packId, crownFolder)
+    pending += 1
+    local ok, result = pcall(function() return InsertService:LoadAsset(packId) end)
+    if not ok or not result then
+        warn(string.format("[GolemAssets] Crown Pack (asset %d) FAILED to load: %s. Elite/Supreme will use a plain circlet. "
+            .. "Check the id, and that the asset is owned by this game's creator or group.", packId, tostring(result)))
+        pending -= 1
+        return
+    end
+    local found = 0
+    for _, d in ipairs(result:GetDescendants()) do
+        local crownType = d:IsA("Model") and d.Name:match("^CROWN_(.+)$")
+        if crownType then
+            Sanitise(d)
+            if CountParts(d) > 0 then
+                d.Name = crownType
+                local old = crownFolder:FindFirstChild(crownType)
+                if old then old:Destroy() end
+                d.Parent = crownFolder
+                found += 1
+            end
+        end
+    end
+    crownFolder:SetAttribute("Version", found)
+    log(string.format("Crown Pack (asset %d): %d crown(s) loaded", packId, found))
+    pending -= 1
+end
+
 function GolemAssetLoader.Init()
+    local crownFolder = ReplicatedStorage:FindFirstChild("CrownAssets")
+    if not crownFolder then
+        crownFolder = Instance.new("Folder")
+        crownFolder.Name = "CrownAssets"
+        crownFolder.Parent = ReplicatedStorage
+    end
+    crownFolder:SetAttribute("Version", 0)
+    local crownPackId = AssetData.CrownPack and AssetData.CrownPack.assetId or 0
+    if crownPackId > 0 then task.spawn(LoadCrownPack, crownPackId, crownFolder) end
+
     folder = ReplicatedStorage:FindFirstChild(FOLDER_NAME)
     if not folder then
         folder = Instance.new("Folder")
@@ -212,7 +251,7 @@ function GolemAssetLoader.Init()
 
     local jobs = AssetData.All()
     local packId = AssetData.Pack and AssetData.Pack.assetId or 0
-    if #jobs == 0 and packId <= 0 and petPackId <= 0 then
+    if #jobs == 0 and packId <= 0 and petPackId <= 0 and crownPackId <= 0 then
         log("No Golem asset id is set in AssetData.lua: using the built-in block Golem.")
         return
     end
