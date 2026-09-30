@@ -174,7 +174,7 @@ function ChallengesController._Claim(challengeId, btn)
     RemoteEvents.ClaimChallengeReward:FireServer(challengeId)
 
     -- Update button
-    btn.Text = "✓ Claimed"
+    btn.Text = "Claimed"
     btn.BackgroundColor3 = Color3.fromRGB(60, 80, 60)
 end
 

@@ -172,7 +172,7 @@ for i, pass in ipairs(passItems) do
     subLbl.Position = UDim2.new(0, 10, 0, 34)
 
     for fi, feat in ipairs(pass.features) do
-        local fl = Theme.Label(card, "✓ " .. feat, Theme.TextSize.Small, Theme.Colors.Success)
+        local fl = Theme.Label(card, "+ " .. feat, Theme.TextSize.Small, Theme.Colors.Success)
         fl.Size = UDim2.new(1, -12, 0, 16)
         fl.Position = UDim2.new(0, 10, 0, 68 + (fi - 1) * 18)
     end

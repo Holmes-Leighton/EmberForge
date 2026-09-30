@@ -116,13 +116,13 @@ btnRow.Position = UDim2.new(0, 8, 1, -52)
 btnRow.BackgroundTransparency = 1
 btnRow.Parent = container
 
-local acceptBtn = Theme.Button(btnRow, "✓  Accept Trade", Theme.Colors.Success,
+local acceptBtn = Theme.Button(btnRow, "Accept Trade", Theme.Colors.Success,
     Color3.fromRGB(255,255,255), "AcceptButton")
 acceptBtn.Size = UDim2.new(0.48, 0, 1, 0)
 acceptBtn.Position = UDim2.new(0, 0, 0, 0)
 acceptBtn.TextSize = 15
 
-local declineBtn = Theme.Button(btnRow, "✗  Decline", Theme.Colors.Danger,
+local declineBtn = Theme.Button(btnRow, "Decline", Theme.Colors.Danger,
     Color3.fromRGB(255,255,255), "DeclineButton")
 declineBtn.Size = UDim2.new(0.48, 0, 1, 0)
 declineBtn.Position = UDim2.new(0.52, 0, 0, 0)

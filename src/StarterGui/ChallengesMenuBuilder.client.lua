@@ -209,7 +209,7 @@ local function BuildChallengeCard(scroll, challenge, progress, claimed, layoutOr
 
     -- Claim button
     local claimBtn = Theme.Button(card,
-        claimed and "✓ Claimed" or isComplete and "Claim!" or "In Progress",
+        claimed and "Claimed" or isComplete and "Claim!" or "In Progress",
         claimed and Theme.Colors.TextDim or isComplete and Theme.Colors.Success or Theme.Colors.PanelAlt,
         Color3.fromRGB(255,255,255), "ClaimButton")
     claimBtn.Name = "ClaimButton_" .. challenge.id

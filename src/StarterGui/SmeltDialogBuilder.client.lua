@@ -183,7 +183,7 @@ local function Populate(inventory)
             card.BackgroundColor3 = Color3.fromRGB(50, 40, 28)
             selBtn.BackgroundColor3 = Theme.Colors.Accent
             selBtn.TextColor3 = Color3.fromRGB(255,255,255)
-            selBtn.Text = "✓"
+            selBtn.Text = "OK"
             -- Update qty spinner to max
             qtyInput.Text = tostring(item.qty)
             maxQtyLbl.Text = "/ " .. item.qty

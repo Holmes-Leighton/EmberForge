@@ -208,7 +208,7 @@ function ForgeController.Resync()
     end)
 end
 
--- Materials arrive from pads/golems: keep the ✓/✗ counts honest while the menu is open
+-- Materials arrive from pads/golems: keep the [OK]/[NEED] counts honest while the menu is open
 function ForgeController.OnResourcesCollected(gains)
     local data = ForgeController._data
     if not data then return end

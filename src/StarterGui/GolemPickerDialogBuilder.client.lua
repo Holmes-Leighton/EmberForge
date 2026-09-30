@@ -205,7 +205,7 @@ local function RenderGolems(golems, mode)
             card.BackgroundColor3 = Color3.fromRGB(45, 38, 28)
             selBtn.BackgroundColor3 = Theme.Colors.Accent
             selBtn.TextColor3 = Color3.fromRGB(255,255,255)
-            selBtn.Text = "✓"
+            selBtn.Text = "OK"
         end)
     end
 

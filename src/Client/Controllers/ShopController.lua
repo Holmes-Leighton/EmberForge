@@ -100,7 +100,7 @@ function ShopController._SetupSeasonGui()
         local btn = seasonGui:FindFirstChild(btnName, true)
         if not btn then return end
         if passTier >= requiredTier then
-            btn.Text = "Owned ✓"
+            btn.Text = "Owned"
             btn.BackgroundColor3 = Color3.fromRGB(60, 130, 60)
             btn.Active = false
         else
@@ -226,7 +226,7 @@ function ShopController._CreateWeekCard(season, week, passTier, xOff)
 
             claimBtn.MouseButton1Click:Connect(function()
                 RemoteEvents.ClaimSeasonReward:FireServer(season.id, week, trackName)
-                claimBtn.Text = "✓"
+                claimBtn.Text = "Claimed"
                 claimBtn.Active = false
                 claimBtn.BackgroundColor3 = Color3.fromRGB(60, 90, 60)
             end)
