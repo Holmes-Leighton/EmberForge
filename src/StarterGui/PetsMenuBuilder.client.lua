@@ -7,7 +7,7 @@ local LocalPlayer = Players.LocalPlayer
 local Theme        = require(game.ReplicatedStorage.Shared.Modules.Theme)
 local ScaleUI      = require(game.ReplicatedStorage.Shared.Modules.ScaleUI)
 local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
-local GolemModel   = require(game.ReplicatedStorage.Shared.Modules.GolemModel)
+local PetModel     = require(game.ReplicatedStorage.Shared.Modules.PetModel)
 local PetData      = require(game.ReplicatedStorage.Shared.Data.PetData)
 local Utils        = require(game.ReplicatedStorage.Shared.Modules.Utils)
 
@@ -104,13 +104,20 @@ local function Note(text, height)
     return l
 end
 
-local function Row(name, sub, color, buttonText, buttonColor, onClick, enabled, height)
+local function Row(name, sub, color, buttonText, buttonColor, onClick, enabled, height, nameColor, glow)
     local row = Instance.new("Frame")
     row.Size = UDim2.new(1, -8, 0, height or 58)
     row.BackgroundColor3 = Theme.Colors.Panel
     row.BorderSizePixel = 0
     row.Parent = content
     Theme.AddCorner(row, Theme.Corner.Small)
+    if glow then                                   -- Rare and above get a glowing border in their rarity colour
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = color
+        stroke.Thickness = glow
+        stroke.Transparency = 0.25
+        stroke.Parent = row
+    end
 
     local swatch = Instance.new("Frame")
     swatch.Size = UDim2.new(0, 6, 1, -14)
@@ -120,7 +127,7 @@ local function Row(name, sub, color, buttonText, buttonColor, onClick, enabled, 
     swatch.Parent = row
     Theme.AddCorner(swatch, UDim.new(0, 3))
 
-    local n = Theme.Label(row, name, Theme.TextSize.Heading, Theme.Colors.TextPrimary, Theme.Fonts.Heading)
+    local n = Theme.Label(row, name, Theme.TextSize.Heading, nameColor or Theme.Colors.TextPrimary, Theme.Fonts.Heading)
     n.Position = UDim2.new(0, 22, 0, 6)
     n.Size = UDim2.new(1, -150, 0, 22)
     local s = Theme.Label(row, sub, Theme.TextSize.Small, Theme.Colors.TextSecondary, Theme.Fonts.Body)
@@ -181,6 +188,13 @@ local vpCam = Instance.new("Camera")
 viewport.CurrentCamera = vpCam
 vpCam.Parent = viewport
 
+local revealStroke = Instance.new("UIStroke")             -- the pop-up's border takes the pet's rarity colour
+revealStroke.Thickness = 4
+revealStroke.Parent = reveal
+local revealBanner = Theme.Label(reveal, "", Theme.TextSize.Heading, Theme.Colors.Gold, Theme.Fonts.Title)
+revealBanner.Position = UDim2.new(0, 20, 0, 16)
+revealBanner.Size = UDim2.new(1, -40, 0, 26)
+revealBanner.ZIndex = 22
 local revealName = Theme.Label(reveal, "", Theme.TextSize.Title, Theme.Colors.AccentBright, Theme.Fonts.Title)
 revealName.Position = UDim2.new(0, 10, 0, 236)
 revealName.Size = UDim2.new(1, -20, 0, 30)
@@ -207,12 +221,9 @@ local function ShowReveal(pet)
     CloseReveal()
     local def = PetData.Get(pet.type)
     if not def then return end
-    local ok, model = pcall(GolemModel.Build, pet.type, 1, {})
-    if ok and model then
+    local model = PetModel.Build(pet.type)
+    if model then
         spinModel = model
-        for _, d in ipairs(model:GetDescendants()) do
-            if d:IsA("BasePart") then d.Anchored = true end
-        end
         model.Parent = viewport
         local box, size = model:GetBoundingBox()
         local centre = box.Position
@@ -223,9 +234,14 @@ local function ShowReveal(pet)
             vpCam.CFrame = CFrame.lookAt(centre + Vector3.new(math.sin(angle) * dist, size.Y * 0.15, math.cos(angle) * dist), centre)
         end)
     end
+    local rc = Theme.Colors[def.rarity] or Theme.Colors.AccentBright
+    local BANNERS = { Common = "NEW PET!", Uncommon = "NICE FIND!", Rare = "RARE PET!", Epic = "EPIC PET!!", Legendary = "✨ LEGENDARY!!! ✨" }
+    revealBanner.Text = BANNERS[def.rarity] or "NEW PET!"
+    revealBanner.TextColor3 = rc
+    revealStroke.Color = rc
     revealName.Text = def.displayName
-    revealName.TextColor3 = Theme.Colors[def.rarity] or Theme.Colors.AccentBright
-    revealSub.Text = def.rarity .. "  -  " .. def.text
+    revealName.TextColor3 = rc
+    revealSub.Text = string.upper(def.rarity) .. "  -  " .. def.text
     reveal.Visible = true
 end
 
@@ -285,12 +301,13 @@ local function Reload()
     end)
     for _, e in ipairs(list) do
         local isWorn = worn[e.pet.id]
-        Row(e.def.displayName, e.def.rarity .. "  -  " .. e.def.text, Theme.Colors[e.def.rarity] or Theme.Colors.Common,
+        local rc = Theme.Colors[e.def.rarity] or Theme.Colors.Common
+        Row(e.def.displayName, string.upper(e.def.rarity) .. "  -  " .. e.def.text, rc,
             isWorn and "Put away" or "Wear", isWorn and Theme.Colors.PanelAlt or Theme.Colors.Accent,
             function()
                 RemoteEvents.EquipPet:FireServer(e.pet.id, not isWorn)
                 task.delay(0.4, Reload)
-            end, true)
+            end, true, nil, rc, (RARITY_ORDER[e.def.rarity] or 5) <= 3 and ((RARITY_ORDER[e.def.rarity] == 1) and 3 or 2) or nil)
     end
 end
 

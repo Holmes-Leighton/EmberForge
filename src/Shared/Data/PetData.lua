@@ -19,7 +19,7 @@ PetData.Pets = {
     Frost      = { displayName = "Frost Bud",        rarity = "Common",    stat = "luck",  value = 0.03, text = "+3% luck" },
     Storm      = { displayName = "Spark Sprite",     rarity = "Uncommon",  stat = "eff",   value = 0.03, text = "+3% efficiency" },
     Void       = { displayName = "Shade Wisp",       rarity = "Uncommon",  stat = "luck",  value = 0.04, text = "+4% luck" },
-    Patchwork  = { displayName = "Stitch",           rarity = "Uncommon",  stat = "wear",  value = 0.05, text = "Golems wear out 5% slower" },
+    Patchwork  = { displayName = "Patches",          rarity = "Uncommon",  stat = "wear",  value = 0.05, text = "Golems wear out 5% slower" },
     Woven      = { displayName = "Knot",             rarity = "Uncommon",  stat = "eff",   value = 0.04, text = "+4% efficiency" },
     Coral      = { displayName = "Reef Buddy",       rarity = "Rare",      stat = "luck",  value = 0.05, text = "+5% luck" },
     Clockwork  = { displayName = "Tick",             rarity = "Rare",      stat = "rate",  value = 0.05, text = "+5% mining speed" },
@@ -28,6 +28,25 @@ PetData.Pets = {
     StormJar   = { displayName = "Thunder Jar",      rarity = "Epic",      stat = "wear",  value = 0.08, text = "Golems wear out 8% slower" },
     Dragonbone = { displayName = "Bonewyrm",         rarity = "Epic",      stat = "bp",    value = 0.20, text = "+20% blueprint finds" },
     All        = { displayName = "Primordial Spark", rarity = "Legendary", stat = "all",   value = 0.03, text = "+3% mining, carry, luck and efficiency" },
+}
+
+-- How each pet is drawn: `size` = its height in studs, `hover` = how far it floats above the ground.
+-- Each pet has its own uploaded model (AssetData.PetPack); until then a mini Golem stands in.
+PetData.Looks = {
+    Ember      = { size = 2.6 },                    -- lava puppy
+    Stone      = { size = 2.2 },                    -- rock turtle
+    Frost      = { size = 3.0 },                    -- ice bunny
+    Storm      = { size = 2.2, hover = 1.6 },       -- floating spark
+    Void       = { size = 2.8, hover = 1.4 },       -- shadow ghost
+    Patchwork  = { size = 2.6 },                    -- plush bear
+    Woven      = { size = 2.6 },                    -- rope fox
+    Coral      = { size = 2.4 },                    -- hermit crab
+    Clockwork  = { size = 2.0 },                    -- brass beetle
+    Alchemist  = { size = 2.6 },                    -- potion slime
+    Gargoyle   = { size = 2.6 },                    -- baby gargoyle
+    StormJar   = { size = 2.8, hover = 0.3 },       -- jar with a storm
+    Dragonbone = { size = 3.4 },                    -- baby bone dragon
+    All        = { size = 2.6, hover = 1.6 },       -- marble star spirit
 }
 
 -- Eggs: pick one, pay, get a random pet from its pool (weights are shown to the player)

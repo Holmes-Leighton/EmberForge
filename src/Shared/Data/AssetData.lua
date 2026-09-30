@@ -64,6 +64,10 @@ AssetData.Golem = {
 -- upload it once and set its id here. A type that has its own `assetId` below uses that instead.
 AssetData.Pack = { assetId = 0 }
 
+-- The same idea for pets (PetData): one Model whose children are named PET_<Type> (PET_Ember, PET_Coral ...).
+-- Each pet is shown at the size in PetData.Looks. Pets without a model show a mini Golem.
+AssetData.PetPack = { assetId = 0 }
+
 local MODES = { Auto = true, Skinned = true, Parts = true, Static = true }
 
 -- The per-type settings a Golem Pack model is given: Default's settings with that type's own on top

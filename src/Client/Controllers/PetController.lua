@@ -6,11 +6,11 @@ local Players    = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local GolemModel = require(game.ReplicatedStorage.Shared.Modules.GolemModel)
+local PetModel   = require(game.ReplicatedStorage.Shared.Modules.PetModel)
 local PetData    = require(game.ReplicatedStorage.Shared.Data.PetData)
 
 local PetController = {}
 
-local PET_SCALE   = 0.2          -- a pet is about a fifth of a Golem (roughly knee height on a player)
 local FOLLOW_GAP  = 4.5          -- studs behind the owner
 local SPACING     = 3.4          -- studs between pets worn side by side
 local SNAP_DIST   = 45           -- farther than this (a teleport) and the pet jumps to its owner
@@ -24,23 +24,12 @@ local function Destroy(state)
     state.pets = {}
 end
 
--- Builds one pet model and works out how far its pivot sits above the floor
+-- Builds one pet (its own model, or a mini Golem until one is uploaded; see PetModel)
 local function MakePet(petType)
-    local ok, model = pcall(GolemModel.Build, petType, 1, {})
-    if not ok or not model then return nil end
-    model.Name = "Pet_" .. petType
-    model:ScaleTo(model:GetScale() * PET_SCALE)
-    local box, size = model:GetBoundingBox()
-    local feet = model:GetPivot().Position.Y - (box.Position.Y - size.Y / 2)
-    for _, d in ipairs(model:GetDescendants()) do
-        if d:IsA("BasePart") then
-            d.Anchored, d.CanCollide, d.CanQuery, d.CanTouch = true, false, false, false
-        elseif d:IsA("ParticleEmitter") or d:IsA("PointLight") or d:IsA("SpotLight") then
-            d.Enabled = false                       -- keep a crowd of pets cheap
-        end
-    end
+    local model, feet, hover = PetModel.Build(petType)
+    if not model then return nil end
     model.Parent = folder
-    return { model = model, feet = feet, pos = nil, yaw = nil, phase = math.random() * 6.28 }
+    return { model = model, feet = feet, hover = hover, pos = nil, yaw = nil, phase = math.random() * 6.28 }
 end
 
 local function Rebuild(player, state, types)
@@ -50,7 +39,7 @@ local function Rebuild(player, state, types)
         if pet then table.insert(state.pets, pet) end
     end
     state.key = table.concat(types, ",")
-    state.assetVersion = GolemModel.AssetVersion()
+    state.assetVersion = GolemModel.AssetVersion() + PetModel.AssetVersion() * 1000
 end
 
 local function Parse(value)
@@ -77,7 +66,7 @@ local function Step(dt)
     for player, state in pairs(states) do
         local types = Parse(player:GetAttribute("EFPets"))
         local key = table.concat(types, ",")
-        if key ~= state.key or (#types > 0 and state.assetVersion ~= GolemModel.AssetVersion()) then
+        if key ~= state.key or (#types > 0 and state.assetVersion ~= GolemModel.AssetVersion() + PetModel.AssetVersion() * 1000) then
             Rebuild(player, state, types)
         end
 
@@ -109,7 +98,8 @@ local function Step(dt)
             end
 
             local bob = (moving and not atHome) and math.abs(math.sin(t * 9 + pet.phase)) * 0.5 or math.sin(t * 2 + pet.phase) * 0.06
-            local p = Vector3.new(pet.pos.X, pet.pos.Y + pet.feet + bob, pet.pos.Z)
+            -- floating pets (sprites, ghosts) hover and drift a little higher than walkers bob
+            local p = Vector3.new(pet.pos.X, pet.pos.Y + pet.feet + pet.hover + bob + (pet.hover > 0 and math.sin(t * 2.5 + pet.phase) * 0.15 or 0), pet.pos.Z)
             pet.model:PivotTo(CFrame.new(p) * CFrame.Angles(0, pet.yaw or 0, 0))
         end
     end

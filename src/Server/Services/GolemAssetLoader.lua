@@ -162,6 +162,35 @@ local function LoadPack(packId, entries)
     pending -= 1
 end
 
+-- Pets: one asset holding every pet model (children named PET_<Type>) -> ReplicatedStorage.PetAssets
+local function LoadPetPack(packId, petFolder)
+    pending += 1
+    local ok, result = pcall(function() return InsertService:LoadAsset(packId) end)
+    if not ok or not result then
+        warn(string.format("[GolemAssets] Pet Pack (asset %d) FAILED to load: %s. Pets will use mini Golems instead. "
+            .. "Check the id, and that the asset is owned by this game's creator or group.", packId, tostring(result)))
+        pending -= 1
+        return
+    end
+    local found = 0
+    for _, d in ipairs(result:GetDescendants()) do
+        local petType = d:IsA("Model") and d.Name:match("^PET_(.+)$")
+        if petType then
+            Sanitise(d)
+            if CountParts(d) > 0 then
+                d.Name = petType
+                local old = petFolder:FindFirstChild(petType)
+                if old then old:Destroy() end
+                d.Parent = petFolder
+                found += 1
+            end
+        end
+    end
+    petFolder:SetAttribute("Version", found)
+    log(string.format("Pet Pack (asset %d): %d pet model(s) loaded", packId, found))
+    pending -= 1
+end
+
 function GolemAssetLoader.Init()
     folder = ReplicatedStorage:FindFirstChild(FOLDER_NAME)
     if not folder then
@@ -171,9 +200,19 @@ function GolemAssetLoader.Init()
     end
     folder:SetAttribute("Version", 0)
 
+    local petFolder = ReplicatedStorage:FindFirstChild("PetAssets")
+    if not petFolder then
+        petFolder = Instance.new("Folder")
+        petFolder.Name = "PetAssets"
+        petFolder.Parent = ReplicatedStorage
+    end
+    petFolder:SetAttribute("Version", 0)
+    local petPackId = AssetData.PetPack and AssetData.PetPack.assetId or 0
+    if petPackId > 0 then task.spawn(LoadPetPack, petPackId, petFolder) end
+
     local jobs = AssetData.All()
     local packId = AssetData.Pack and AssetData.Pack.assetId or 0
-    if #jobs == 0 and packId <= 0 then
+    if #jobs == 0 and packId <= 0 and petPackId <= 0 then
         log("No Golem asset id is set in AssetData.lua: using the built-in block Golem.")
         return
     end
