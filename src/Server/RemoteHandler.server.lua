@@ -106,11 +106,9 @@ RemoteEvents.StartSmelt.OnServerEvent:Connect(function(player, materialId, quant
 end)
 
 -- ── CraftGolem ────────────────────────────────────────────────────────────────
-RemoteEvents.CraftGolem.OnServerEvent:Connect(function(player, blueprintId, skinId)
-    SafeCall(player, function()
-        if type(blueprintId) ~= "string" then return end
-        skinId = type(skinId) == "string" and skinId or "default"
-
+-- Crafts one Golem. Returns true on success (so "Craft All" knows when to stop).
+local function CraftOnce(player, blueprintId, skinId)
+    do
         -- Capture unlocked zones before craft for new-zone detection
         local MiningZoneData_ = require(game.ReplicatedStorage.Shared.Data.MiningZoneData)
         local dataBefore = PlayerDataService.Get(player)
@@ -171,8 +169,21 @@ RemoteEvents.CraftGolem.OnServerEvent:Connect(function(player, blueprintId, skin
             if forgeUp then
                 RemoteEvents.ForgeUpgraded:FireClient(player, PlayerDataService.Get(player).ForgeLevel)
             end
+            return true
         else
             RemoteEvents.GolemCrafted:FireClient(player, nil, err)
+            return false
+        end
+    end
+end
+
+RemoteEvents.CraftGolem.OnServerEvent:Connect(function(player, blueprintId, skinId, count)
+    SafeCall(player, function()
+        if type(blueprintId) ~= "string" then return end
+        skinId = type(skinId) == "string" and skinId or "default"
+        count = math.clamp(math.floor(tonumber(count) or 1), 1, 50)
+        for _ = 1, count do
+            if not CraftOnce(player, blueprintId, skinId) then break end
         end
     end)
 end)

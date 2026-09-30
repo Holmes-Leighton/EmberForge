@@ -85,6 +85,14 @@ function ForgeController._CreateBlueprintCard(bp, data, yOffset)
     title.TextXAlignment = Enum.TextXAlignment.Left
     title.Parent = card
 
+    -- How many times can this be crafted with the current inventory?
+    local craftable = math.huge
+    for _, req in ipairs(bp.materialsRequired or {}) do
+        local have = (data.Inventory or {})[req.id] or 0
+        craftable = math.min(craftable, math.floor(have / req.qty))
+    end
+    if craftable == math.huge then craftable = 0 end
+
     -- Requirements list
     local reqText = ""
     for i, req in ipairs(bp.materialsRequired or {}) do
@@ -106,11 +114,27 @@ function ForgeController._CreateBlueprintCard(bp, data, yOffset)
     reqs.TextWrapped = true
     reqs.Parent = card
 
+    -- Craftable badge
+    local badge = Instance.new("TextLabel")
+    badge.Name = "CraftableBadge"
+    badge.Size = UDim2.new(0, 92, 0, 24)
+    badge.Position = UDim2.new(1, -98, 0, 8)
+    badge.BackgroundColor3 = craftable > 0 and Color3.fromRGB(60, 150, 80) or Color3.fromRGB(70, 60, 55)
+    badge.Text = craftable > 0 and ("Can craft: " .. craftable) or "Can't craft"
+    badge.TextColor3 = craftable > 0 and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(170, 150, 140)
+    badge.Font = Enum.Font.GothamBold
+    badge.TextSize = 12
+    badge.BorderSizePixel = 0
+    badge.Parent = card
+    local badgeCorner = Instance.new("UICorner")
+    badgeCorner.CornerRadius = UDim.new(1, 0)
+    badgeCorner.Parent = badge
+
     -- Craft button
     local craftBtn = Instance.new("TextButton")
     craftBtn.Size = UDim2.new(0, 90, 0, 28)
     craftBtn.Position = UDim2.new(1, -98, 0, 38)
-    craftBtn.BackgroundColor3 = Color3.fromRGB(200, 120, 40)
+    craftBtn.BackgroundColor3 = craftable > 0 and Color3.fromRGB(200, 120, 40) or Color3.fromRGB(70, 60, 55)
     craftBtn.Text = "Craft"
     craftBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     craftBtn.Font = Enum.Font.GothamBold
@@ -122,14 +146,35 @@ function ForgeController._CreateBlueprintCard(bp, data, yOffset)
     btnCorner.CornerRadius = UDim.new(0, 4)
     btnCorner.Parent = craftBtn
 
-    craftBtn.MouseButton1Click:Connect(function()
-        RemoteEvents.CraftGolem:FireServer(bp.id, "default")
-        craftBtn.Text = "..."
-        craftBtn.BackgroundColor3 = Color3.fromRGB(100, 80, 40)
-        task.wait(1)
-        craftBtn.Text = "Craft"
-        craftBtn.BackgroundColor3 = Color3.fromRGB(200, 120, 40)
-    end)
+    if craftable > 0 then
+        craftBtn.MouseButton1Click:Connect(function()
+            RemoteEvents.CraftGolem:FireServer(bp.id, "default", 1)
+        end)
+    else
+        craftBtn.AutoButtonColor = false
+        craftBtn.TextColor3 = Color3.fromRGB(150, 135, 125)
+    end
+
+    -- Craft All (only useful when more than one can be made)
+    if craftable > 1 then
+        local allBtn = Instance.new("TextButton")
+        allBtn.Name = "CraftAllButton"
+        allBtn.Size = UDim2.new(0, 90, 0, 28)
+        allBtn.Position = UDim2.new(1, -98, 0, 72)
+        allBtn.BackgroundColor3 = Color3.fromRGB(60, 150, 80)
+        allBtn.Text = "Craft All (" .. craftable .. ")"
+        allBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        allBtn.Font = Enum.Font.GothamBold
+        allBtn.TextSize = 12
+        allBtn.BorderSizePixel = 0
+        allBtn.Parent = card
+        local allCorner = Instance.new("UICorner")
+        allCorner.CornerRadius = UDim.new(0, 4)
+        allCorner.Parent = allBtn
+        allBtn.MouseButton1Click:Connect(function()
+            RemoteEvents.CraftGolem:FireServer(bp.id, "default", craftable)
+        end)
+    end
 
     return card
 end
@@ -198,8 +243,12 @@ function ForgeController.Refresh()
     ForgeController._BuildDeployPanel()
 end
 
+local resyncQueued = false
 function ForgeController.Resync()
-    task.spawn(function()
+    if resyncQueued then return end   -- several events in a row (e.g. Craft All) share one refresh
+    resyncQueued = true
+    task.delay(0.25, function()
+        resyncQueued = false
         local fresh = RemoteEvents.GetPlayerData:InvokeServer()
         if fresh then
             ForgeController._data = fresh
@@ -218,7 +267,13 @@ function ForgeController.OnResourcesCollected(gains)
             data.Inventory[matId] = (data.Inventory[matId] or 0) + qty
         end
     end
-    if forgeGui and forgeGui.Enabled then ForgeController._BuildBlueprintList() end
+    if forgeGui and forgeGui.Enabled and not ForgeController._bpRefreshQueued then
+        ForgeController._bpRefreshQueued = true
+        task.delay(0.5, function()
+            ForgeController._bpRefreshQueued = false
+            if forgeGui and forgeGui.Enabled then ForgeController._BuildBlueprintList() end
+        end)
+    end
 end
 
 -- ── Deployment Panel ──────────────────────────────────────────────────────────
