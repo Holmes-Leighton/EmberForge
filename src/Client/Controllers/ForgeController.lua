@@ -563,14 +563,19 @@ function ForgeController._BuildDeployPanel()
         end
         for _, zoneId in ipairs(unlocked) do
             local zone = MiningZoneData.Get(zoneId)
-            local selected = zoneId == ForgeController._selectedZone
+            local selected = ForgeController._zonePicked and zoneId == ForgeController._selectedZone
             local btn = Theme.Button(strip, (selected and "> " or "") .. (zone and zone.displayName or zoneId),
                 selected and Theme.Colors.Success or Theme.Colors.PanelAlt,
                 selected and Color3.fromRGB(255, 255, 255) or Theme.Colors.AccentBright, zoneId)
             btn.Size = UDim2.new(0, 170, 0, 56)
             btn.TextSize = 14
             btn.MouseButton1Click:Connect(function()
-                ForgeController._selectedZone = zoneId
+                if ForgeController._selectedZone == zoneId and ForgeController._zonePicked then
+                    ForgeController._zonePicked = false      -- click the chosen zone again to go back to "each to its own zone"
+                else
+                    ForgeController._selectedZone = zoneId
+                    ForgeController._zonePicked = true
+                end
                 ForgeController._BuildDeployPanel()
             end)
         end
@@ -647,7 +652,15 @@ function ForgeController._BuildDeployPanel()
         end
 
         if not g.deployed then
+            -- Golems go to their own element's zone unless you chose a zone yourself
             local zoneId = ForgeController._selectedZone
+            if not ForgeController._zonePicked then
+                for id, z in pairs(MiningZoneData.Zones) do
+                    if z.element == g.element and Utils.TableContains(MiningZoneData.GetUnlocked(data), id) then
+                        zoneId = id
+                    end
+                end
+            end
             local zoneData = zoneId and MiningZoneData.Get(zoneId)
             local deploy = Theme.Button(card,
                 zoneId and "Deploy ▶" or "No zone",
