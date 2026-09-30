@@ -47,6 +47,7 @@ end)
 
 RemoteEvents.PendingUpdate.OnClientEvent:Connect(function(pending)
     HUDController.SetPending(pending)
+    InventoryController.OnPendingUpdate(pending)
 end)
 
 RemoteEvents.Notify.OnClientEvent:Connect(function(title, message)

@@ -13,6 +13,7 @@ local InventoryController = {}
 
 local inventoryGui
 local materialCache = {}   -- materialId → current quantity (local mirror)
+local pendingCache  = {}   -- materialId → mined by Golems, not yet collected
 local golemCache    = {}   -- golem id → golem object
 
 -- ── Init ──────────────────────────────────────────────────────────────────────
@@ -23,6 +24,9 @@ function InventoryController.Init(playerData)
     for matId, qty in pairs(playerData.Inventory or {}) do
         materialCache[matId] = qty
     end
+    for matId, qty in pairs(playerData.Pending or {}) do
+        pendingCache[matId] = qty
+    end
     for _, g in ipairs(playerData.Golems or {}) do
         golemCache[g.id] = g
     end
@@ -32,7 +36,46 @@ function InventoryController.Init(playerData)
         if not inventoryGui then return end
         InventoryController._BuildMaterialList()
         InventoryController._BuildGolemList()
+
+        -- Always show fresh numbers when the menu is opened
+        inventoryGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+            if inventoryGui.Enabled then InventoryController.Resync() end
+        end)
     end)
+
+    -- Anything that changes Golems or materials triggers a refresh (only while open)
+    for _, evt in ipairs({ "GolemCrafted", "GolemDeployed", "GolemReturned", "GolemFused" }) do
+        RemoteEvents[evt].OnClientEvent:Connect(function() InventoryController.Resync() end)
+    end
+end
+
+-- Pull the truth from the server and redraw
+local resyncQueued = false
+function InventoryController.Resync()
+    if resyncQueued then return end
+    resyncQueued = true
+    task.delay(0.3, function()
+        resyncQueued = false
+        local fresh = RemoteEvents.GetPlayerData:InvokeServer()
+        if not fresh then return end
+        InventoryController._data = fresh
+        materialCache, pendingCache, golemCache = {}, {}, {}
+        for matId, qty in pairs(fresh.Inventory or {}) do materialCache[matId] = qty end
+        for matId, qty in pairs(fresh.Pending or {}) do pendingCache[matId] = qty end
+        for _, g in ipairs(fresh.Golems or {}) do golemCache[g.id] = g end
+        if inventoryGui and inventoryGui.Enabled then
+            InventoryController._BuildMaterialList()
+            InventoryController._BuildGolemList()
+        end
+    end)
+end
+
+function InventoryController.OnPendingUpdate(pending)
+    pendingCache = {}
+    for matId, qty in pairs(pending or {}) do pendingCache[matId] = qty end
+    if inventoryGui and inventoryGui.Enabled then
+        InventoryController._BuildMaterialList()
+    end
 end
 
 -- ── Material List ─────────────────────────────────────────────────────────────
@@ -47,10 +90,13 @@ function InventoryController._BuildMaterialList()
 
     local rarity_order = { "Legendary", "Epic", "Rare", "Uncommon", "Common" }
     local sorted = {}
-    for matId, qty in pairs(materialCache) do
-        if qty > 0 then
-            local mat = MaterialData.Get(matId)
-            table.insert(sorted, { id = matId, qty = qty, mat = mat })
+    local ids = {}
+    for matId in pairs(materialCache) do ids[matId] = true end
+    for matId in pairs(pendingCache) do ids[matId] = true end
+    for matId in pairs(ids) do
+        local qty, pend = materialCache[matId] or 0, pendingCache[matId] or 0
+        if qty > 0 or pend > 0 then
+            table.insert(sorted, { id = matId, qty = qty, pending = pend, mat = MaterialData.Get(matId) })
         end
     end
     -- Sort by rarity then name
@@ -66,7 +112,7 @@ function InventoryController._BuildMaterialList()
 
     local yOff = 0
     for _, entry in ipairs(sorted) do
-        local row = InventoryController._CreateMaterialRow(entry.id, entry.qty, entry.mat, yOff)
+        local row = InventoryController._CreateMaterialRow(entry.id, entry.qty, entry.mat, yOff, entry.pending)
         row.Parent = scroll
         yOff = yOff + 44
     end
@@ -81,7 +127,7 @@ local RARITY_COLORS = {
     Legendary = Color3.fromRGB(255, 180, 30),
 }
 
-function InventoryController._CreateMaterialRow(matId, qty, mat, yOff)
+function InventoryController._CreateMaterialRow(matId, qty, mat, yOff, pending)
     local row = Instance.new("Frame")
     row.Name = matId
     row.Size = UDim2.new(1, -10, 0, 40)
@@ -126,7 +172,9 @@ function InventoryController._CreateMaterialRow(matId, qty, mat, yOff)
     qtyLbl.Size = UDim2.new(0.3, -5, 0, 40)
     qtyLbl.Position = UDim2.new(0.7, 0, 0, 0)
     qtyLbl.BackgroundTransparency = 1
+    qtyLbl.RichText = true
     qtyLbl.Text = Utils.FormatNumber(qty)
+        .. ((pending or 0) > 0 and ('  <font color="#ffc83c">+' .. Utils.FormatNumber(pending) .. '</font>') or "")
     qtyLbl.TextColor3 = rarityColor
     qtyLbl.Font = Enum.Font.GothamBold
     qtyLbl.TextSize = 14
@@ -263,7 +311,9 @@ function InventoryController.OnResourcesCollected(gains)
                 if row then
                     local lbl = row:FindFirstChild("QtyLabel")
                     if lbl then
+                        local pend = pendingCache[matId] or 0
                         lbl.Text = Utils.FormatNumber(materialCache[matId])
+                            .. (pend > 0 and ('  <font color="#ffc83c">+' .. Utils.FormatNumber(pend) .. '</font>') or "")
                     end
                 else
                     InventoryController._BuildMaterialList()  -- new material, rebuild
