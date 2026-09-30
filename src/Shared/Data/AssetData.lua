@@ -38,16 +38,52 @@ AssetData.Golem = {
         animations  = { Idle = 0, Mine = 0, Walk = 0 },
     },
     Elements = {
-        Ember = { assetId = 0 },
-        Stone = { assetId = 0 },
-        Frost = { assetId = 0 },
-        Storm = { assetId = 0 },
-        Void  = { assetId = 0 },
+        -- the five elements, each with its own body and size (height = studs at tier 1)
+        Ember = { assetId = 0, height = 9.5  },   -- stocky molten brute
+        Stone = { assetId = 0, height = 10   },   -- massive boulder golem
+        Frost = { assetId = 0, height = 10.5 },   -- tall angular ice crystal
+        Storm = { assetId = 0, height = 10.5 },   -- armoured, crackling
+        Void  = { assetId = 0, height = 10   },   -- slim shard-and-galaxy
         All   = { assetId = 0 },
+
+        -- Special Golems (GolemData.Specials): each has its own body, size and look. Until an id is set the
+        -- type falls back to the shared model dressed in code (GolemSkinData.Specials). `height` = studs at tier 1.
+        Patchwork  = { assetId = 0, height = 7.5  },   -- squat and round
+        Woven      = { assetId = 0, height = 11   },   -- tall and lanky
+        Coral      = { assetId = 0, height = 10   },   -- broad reef golem
+        Clockwork  = { assetId = 0, height = 10   },   -- slim brass automaton
+        Alchemist  = { assetId = 0, height = 9.5  },   -- potbellied
+        Gargoyle   = { assetId = 0, height = 10.5 },   -- hunched, winged
+        StormJar   = { assetId = 0, height = 9    },   -- a jar on legs
+        Dragonbone = { assetId = 0, height = 13   },   -- towering skeleton
     },
 }
 
+-- One upload holding every Golem (the easiest way to ship all of them): put the Golems in one Model,
+-- each child Model named EF_<Type> (EF_Ember, EF_Stone, EF_Frost, EF_Storm, EF_Void, EF_Patchwork ...),
+-- upload it once and set its id here. A type that has its own `assetId` below uses that instead.
+AssetData.Pack = { assetId = 0 }
+
 local MODES = { Auto = true, Skinned = true, Parts = true, Static = true }
+
+-- The per-type settings a Golem Pack model is given: Default's settings with that type's own on top
+-- (and no element tint, since a type's own model already has its look).
+function AssetData.PackEntries()
+    local def = AssetData.Golem.Default
+    local out = {}
+    for name, own in pairs(AssetData.Golem.Elements) do
+        if (own.assetId or 0) <= 0 then
+            local cfg = {}
+            for k, v in pairs(def) do cfg[k] = v end
+            for k, v in pairs(own) do cfg[k] = v end
+            if own.elementTint == nil then cfg.elementTint = 0 end
+            cfg.animations = own.animations or def.animations
+            if not MODES[cfg.mode] then cfg.mode = "Auto" end
+            out[name] = cfg
+        end
+    end
+    return out
+end
 
 -- Returns the key ("Ember" or "Default") and the merged config for an element, or nil when no
 -- asset is configured for it.

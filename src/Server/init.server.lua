@@ -108,6 +108,9 @@ local function OnPlayerAdded(player)
     -- Assign a forge plot in the shared world
     ForgeZoneService.OnPlayerAdded(player)
 
+    -- Publish the pets they are wearing so every client can draw them following along
+    require(script.Services.PetService).Sync(player)
+
     print(string.format("[Main] %s joined. ForgeLevel=%d, Golems=%d",
         player.Name, data.ForgeLevel, #data.Golems))
 end

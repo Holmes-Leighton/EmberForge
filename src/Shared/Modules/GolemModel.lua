@@ -88,7 +88,9 @@ local function PrepareAsset(template, s, elementColor, skinColor, isNeon, elemen
 
     local height = model:GetExtentsSize().Y
     if height < 0.05 then error("model has no height") end
-    model:ScaleTo(model:GetScale() * (AssetData.TARGET_HEIGHT / height) * s)
+    -- each type can have its own size (AssetData `height`); the rest use the standard Golem height
+    local targetHeight = template:GetAttribute("Height") or AssetData.TARGET_HEIGHT
+    model:ScaleTo(model:GetScale() * (targetHeight / height) * s)
 
     local box, size = model:GetBoundingBox()
     model:PivotTo(CFrame.new(-box.Position.X, -(box.Position.Y - size.Y / 2), -box.Position.Z) * model:GetPivot())
@@ -149,8 +151,12 @@ function GolemModel.Build(element, tier, options)
     local color = Theme.Colors[element] or Color3.fromRGB(150, 150, 150)
     local elementColor = color
     local skinColor
-    -- an equipped skin wins; otherwise a special Golem wears its own look
-    local skinLook = (options.skin and GolemSkinData.Find(options.skin)) or GolemSkinData.Specials[element]
+    local template = GolemModel.FindAsset(element)
+    -- A type with its own uploaded model (AssetData.Golem.Elements.<Name>.assetId) carries its own look, so
+    -- the code-made surface and details are skipped for it (an equipped skin still applies, by choice).
+    local ownModel = template ~= nil and template:GetAttribute("OwnModel") == true
+    -- an equipped skin wins; otherwise a special Golem wears its own code-made look
+    local skinLook = (options.skin and GolemSkinData.Find(options.skin)) or (not ownModel and GolemSkinData.Specials[element]) or nil
     if skinLook then
         -- a material skin replaces the element's surface, colour and glow (GolemSkinData)
         look = { material = skinLook.material, accent = skinLook.accent, accentMaterial = Enum.Material.Neon,
@@ -166,7 +172,6 @@ function GolemModel.Build(element, tier, options)
     local isNeon = variant == "Neon" or variant == "MegaNeon"
 
     local model, root, mode, addOns
-    local template = GolemModel.FindAsset(element)
     if template then
         local ok, m, r, md, ao = pcall(PrepareAsset, template, s, elementColor, skinColor, isNeon, element, skinLook)
         if ok then
@@ -264,7 +269,7 @@ function GolemModel.Build(element, tier, options)
         local HS = head and head.Size or Vector3.new(2.4, 2.2, 2.4) * s
         A = { T = T, hx = TS.X / 2, hy = TS.Y / 2, hz = TS.Z / 2, H = H, hhx = HS.X / 2, hhy = HS.Y / 2, hhz = HS.Z / 2 }
 
-        if not isNeon then                              -- each element has its own surface (ART_BRIEF 4.3)
+        if not isNeon and not (ownModel and not skinLook) then   -- each element has its own surface (ART_BRIEF 4.3)
             for _, d in ipairs(BodyParts(model)) do
                 if d:GetAttribute("Tint") and d.Name ~= "PickHandle" and d.Name ~= "PickHead" then
                     d.Material = look.material
@@ -462,7 +467,9 @@ function GolemModel.Build(element, tier, options)
             end
         end
 
-        if skinLook then
+        if ownModel and not skinLook then
+            -- this type's own uploaded model already has its look: nothing is added
+        elseif skinLook then
             skinDetail(skinLook.detail)
         elseif element == "Ember" then                  -- glowing cracks on the chest, a few sparks
             for i = -1, 1 do

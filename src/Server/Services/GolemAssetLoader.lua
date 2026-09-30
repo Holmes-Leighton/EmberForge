@@ -84,23 +84,15 @@ local function Describe(model, mode, cfg)
         #names > 0 and table.concat(names, "/") or "none")
 end
 
-local function LoadOne(key, cfg)
-    pending += 1
-    local ok, result = pcall(function() return InsertService:LoadAsset(cfg.assetId) end)
-    if not ok or not result then
-        warn(string.format("[GolemAssets] '%s' (asset %d) FAILED to load: %s. Using the block Golem instead. "
-            .. "Check the id, and that the asset is owned by this game's creator or group.", key, cfg.assetId, tostring(result)))
-        pending -= 1
-        return
-    end
 
-    local model = Unwrap(result)
+-- Sanitises a loaded model, detects how it moves, and publishes it in ReplicatedStorage.GolemAssets under
+-- `key`. `assetId` is whatever was loaded (a single model's id, or the pack's id). Returns true on success.
+local function Register(key, model, cfg, assetId)
     local removed = Sanitise(model)
     local parts = CountParts(model)
     if parts == 0 then
-        warn(string.format("[GolemAssets] '%s' (asset %d) loaded but contains no parts. Using the block Golem instead.", key, cfg.assetId))
-        pending -= 1
-        return
+        warn(string.format("[GolemAssets] '%s' (asset %d) loaded but contains no parts. Using the block Golem instead.", key, assetId))
+        return false
     end
     if removed > 0 then
         warn(string.format("[GolemAssets] '%s': removed %d script(s) from the model (art must not contain code)", key, removed))
@@ -115,9 +107,11 @@ local function LoadOne(key, cfg)
     end
 
     model.Name = key
-    model:SetAttribute("AssetId", cfg.assetId)
+    model:SetAttribute("AssetId", assetId)
     model:SetAttribute("RigMode", mode)
     model:SetAttribute("ElementTint", cfg.elementTint or 0)
+    model:SetAttribute("OwnModel", key ~= "Default")          -- a model made for one type carries its own look
+    if cfg.height then model:SetAttribute("Height", cfg.height) end
     model:SetAttribute("TierAddOns", cfg.tierAddOns ~= false)
     model:SetAttribute("Facing", cfg.facing or 0)
     for _, n in ipairs({ "Idle", "Mine", "Walk" }) do
@@ -130,7 +124,41 @@ local function LoadOne(key, cfg)
     model.Parent = folder
     version += 1
     folder:SetAttribute("Version", version)
-    log(string.format("LOADED '%s' (asset %d): %s", key, cfg.assetId, Describe(model, mode, cfg)))
+    log(string.format("LOADED '%s' (asset %d): %s", key, assetId, Describe(model, mode, cfg)))
+    return true
+end
+
+-- One model per asset id
+local function LoadOne(key, cfg)
+    pending += 1
+    local ok, result = pcall(function() return InsertService:LoadAsset(cfg.assetId) end)
+    if not ok or not result then
+        warn(string.format("[GolemAssets] '%s' (asset %d) FAILED to load: %s. Using the block Golem instead. "
+            .. "Check the id, and that the asset is owned by this game's creator or group.", key, cfg.assetId, tostring(result)))
+    else
+        Register(key, Unwrap(result), cfg, cfg.assetId)
+    end
+    pending -= 1
+end
+
+-- One asset id holding every Golem (a "Golem Pack"): a model whose children are named EF_<Type>
+-- (EF_Ember, EF_Coral ...). Only types without their own asset id are taken from the pack.
+local function LoadPack(packId, entries)
+    pending += 1
+    local ok, result = pcall(function() return InsertService:LoadAsset(packId) end)
+    if not ok or not result then
+        warn(string.format("[GolemAssets] Golem Pack (asset %d) FAILED to load: %s. Using the block Golem instead. "
+            .. "Check the id, and that the asset is owned by this game's creator or group.", packId, tostring(result)))
+        pending -= 1
+        return
+    end
+    local found = 0
+    for _, d in ipairs(result:GetDescendants()) do
+        local key = d:IsA("Model") and d.Name:match("^EF_(.+)$")
+        local entry = key and entries[key]
+        if entry and Register(key, d, entry, packId) then found += 1 end
+    end
+    log(string.format("Golem Pack (asset %d): %d of %d Golem(s) loaded", packId, found, (function() local n = 0 for _ in pairs(entries) do n += 1 end return n end)()))
     pending -= 1
 end
 
@@ -144,14 +172,16 @@ function GolemAssetLoader.Init()
     folder:SetAttribute("Version", 0)
 
     local jobs = AssetData.All()
-    if #jobs == 0 then
+    local packId = AssetData.Pack and AssetData.Pack.assetId or 0
+    if #jobs == 0 and packId <= 0 then
         log("No Golem asset id is set in AssetData.lua: using the built-in block Golem.")
         return
     end
-    log(string.format("Loading %d Golem asset(s)...", #jobs))
+    log(string.format("Loading %d Golem asset(s)%s...", #jobs, packId > 0 and " and the Golem Pack" or ""))
     for _, job in ipairs(jobs) do
         task.spawn(LoadOne, job.key, job.config)
     end
+    if packId > 0 then task.spawn(LoadPack, packId, AssetData.PackEntries()) end
     -- Not blocking: GolemVisuals rebuilds Golems when the version changes, so a slow asset just
     -- appears when it arrives. This only reports if it is taking long.
     task.delay(AssetData.LOAD_TIMEOUT, function()

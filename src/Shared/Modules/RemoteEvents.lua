@@ -73,6 +73,12 @@ local DEFINITIONS = {
     GoToMyForge         = "event",   -- client → server
     ShopOffer           = "event",   -- server → client: (kind, key, reason) a contextual purchase offer
 
+    -- Pets
+    HatchPet            = "event",   -- client → server (eggId)
+    PetHatched          = "event",   -- server → client (ok, pet or reason)
+    EquipPet            = "event",   -- client → server (petId, on)
+    ReleasePet          = "event",   -- client → server (petId)
+
     -- Season Pass
     ClaimSeasonReward   = "event",
 

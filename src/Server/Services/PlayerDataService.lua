@@ -69,6 +69,8 @@ local function DefaultData()
         PurchasedSlots  = 0,           -- extra Golem slots bought with Robux (packs of 5, stackable)
         UnlockedPads    = {},          -- padId -> true (bought with Robux)
         OwnedCosmetics    = {},
+        OwnedPets         = {},          -- { id, type, hatchedAt } (see PetData)
+        EquippedPets      = {},          -- pet ids being worn (up to PetData.SLOTS)
         OwnedAccessories  = {},
         Titles            = {},
         ProcessedReceipts = {},

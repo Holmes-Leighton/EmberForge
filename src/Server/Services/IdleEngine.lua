@@ -5,6 +5,7 @@ local GameConfig   = require(game.ReplicatedStorage.Shared.Data.GameConfig)
 local GolemData    = require(game.ReplicatedStorage.Shared.Data.GolemData)
 local Utils        = require(game.ReplicatedStorage.Shared.Modules.Utils)
 local ForgeData    = require(game.ReplicatedStorage.Shared.Data.ForgeData)
+local PetData      = require(game.ReplicatedStorage.Shared.Data.PetData)
 
 local IdleEngine = {}
 
@@ -58,10 +59,15 @@ local function CrewAuras(playerData)
         end
     end
     local cp, jp, bp = SkillParams("Coral"), SkillParams("StormJar"), SkillParams("Dragonbone")
+    local pets = PetData.Boosts(playerData)            -- the pets being worn (small boosts)
     return {
-        luck      = math.min(cp.luckCap, cp.luckPer * coral),
+        luck      = math.min(cp.luckCap, cp.luckPer * coral) + pets.luck,
         shelter   = math.min(jp.shelterCap, jp.shelterPer * jar),
-        blueprint = 1 + math.min(bp.blueprintCap, bp.blueprintPer * bone),
+        blueprint = (1 + math.min(bp.blueprintCap, bp.blueprintPer * bone)) * (1 + pets.bp),
+        rate      = pets.rate,      -- mining speed
+        carry     = pets.carry,     -- carry capacity
+        eff       = pets.eff,       -- efficiency
+        wear      = pets.wear,      -- durability wear saved
     }
 end
 IdleEngine.CrewAuras = CrewAuras
@@ -72,7 +78,7 @@ local function DrainFactor(golem, auras)
     local p = SkillParams(golem.element)
     local f = (p and p.drain) or 1
     if golem.element ~= "StormJar" then f *= (1 - auras.shelter) end
-    return f
+    return f * (1 - auras.wear)
 end
 
 -- Rare blueprint discovery (spec 4.3: "Golem rare mining drops", Tier 2-4).
@@ -139,17 +145,18 @@ local function GolemProduction(golem, seconds, storageTier, playerData, stormBoo
     if skill then
         miningRate *= (skill.rate or 1) * (skill.offlineRate or 1)
     end
+    miningRate *= (1 + auras.rate)                                   -- pets
 
     -- Clamp time to storage cap
     local capSeconds = StorageCapSeconds(storageTier)
     local effectiveSeconds = math.min(seconds, capSeconds)
 
-    local efficiency = stats.efficiency * (golem.element ~= "Storm" and (1 + (stormBoost or 0)) or 1)
+    local efficiency = stats.efficiency * (golem.element ~= "Storm" and (1 + (stormBoost or 0)) or 1) * (1 + auras.eff)
     local rawRate = miningRate * efficiency
     local produced = math.floor(rawRate * (effectiveSeconds / 3600))
     -- Woven's Net Haul: its doubled hauls, as the average over a long absence
     if skill and skill.doubleChance then produced = math.floor(produced * (1 + skill.doubleChance)) end
-    local carryCapped = math.min(produced, math.floor(stats.carryCapacity * (1 + fp.carry)))
+    local carryCapped = math.min(produced, math.floor(stats.carryCapacity * (1 + fp.carry) * (1 + auras.carry)))
 
     return {
         golemId   = golem.id,
@@ -260,14 +267,14 @@ function IdleEngine.TickOnlineProduction(playerData, deltaSeconds)
 
             local stats = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus, golem.quality, golem.variant)
             local carried = golem._carriedResources or 0
-            local carryCap = stats and math.floor(stats.carryCapacity * (1 + fp.carry)) or 0
+            local carryCap = stats and math.floor(stats.carryCapacity * (1 + fp.carry) * (1 + auras.carry)) or 0
             -- A full Golem waits (still deployed) until the player collects
             if stats and carried < carryCap then
                 local mb     = MasteryBonuses(playerData, golem.element)
                 local mRate  = stats.miningRate * (1 + mb.miningRateBonus + mb.allStatsBonus + fp.mining)
                 local luckM  = stats.luck       * (1 + mb.luckBonus       + mb.allStatsBonus + fp.luck) + auras.luck
-                local efficiency = stats.efficiency * (golem.element ~= "Storm" and (1 + stormBoost) or 1)
-                local rate   = mRate * efficiency
+                local efficiency = stats.efficiency * (golem.element ~= "Storm" and (1 + stormBoost) or 1) * (1 + auras.eff)
+                local rate   = mRate * efficiency * (1 + auras.rate)            -- pets
                 -- self skills: Clockwork's Overclock, Gargoyle's Night Watch (slower while you play)
                 if skill then rate *= (skill.rate or 1) * (skill.onlineRate or 1) end
                 local speed  = GameConfig.ONLINE_PRODUCTION_SPEED or 1

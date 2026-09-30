@@ -416,6 +416,36 @@ RemoteEvents.GoToMyForge.OnServerEvent:Connect(function(player)
     SafeCall(player, function() ForgeZoneService.Teleport(player) end)
 end)
 
+-- ── Pets ──────────────────────────────────────────────────────────────────────
+RemoteEvents.HatchPet.OnServerEvent:Connect(function(player, eggId)
+    SafeCall(player, function()
+        if type(eggId) ~= "string" then return end
+        local PetService = require(script.Parent.Services.PetService)
+        local pet, err = PetService.Hatch(player, eggId)
+        RemoteEvents.PetHatched:FireClient(player, pet ~= nil, pet or err)
+        if pet then
+            ChallengeService.TrackEvent(player, "PetHatched", { count = 1 })
+            Analytics.Custom(player, "PetHatched", 1, { egg = eggId, pet = pet.type })
+        end
+    end)
+end)
+
+RemoteEvents.EquipPet.OnServerEvent:Connect(function(player, petId, on)
+    SafeCall(player, function()
+        if type(petId) ~= "string" then return end
+        local ok, err = require(script.Parent.Services.PetService).Equip(player, petId, on == true)
+        if not ok then Tell(player, "Can't do that", tostring(err)) end
+    end)
+end)
+
+RemoteEvents.ReleasePet.OnServerEvent:Connect(function(player, petId)
+    SafeCall(player, function()
+        if type(petId) ~= "string" then return end
+        local ok, err = require(script.Parent.Services.PetService).Release(player, petId)
+        if not ok then Tell(player, "Can't do that", tostring(err)) end
+    end)
+end)
+
 -- ── FuseGolems ────────────────────────────────────────────────────────────────
 RemoteEvents.FuseGolems.OnServerEvent:Connect(function(player, golem1Id, golem2Id)
     SafeCall(player, function()
