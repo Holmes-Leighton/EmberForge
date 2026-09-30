@@ -116,6 +116,15 @@ expect(world:FindFirstChild("PadPlaza") ~= nil, "pad plaza exists")
 for _, id in ipairs({ "EmberDepths", "GlacialPeaks", "TheDeepForge" }) do
     expect(countNamed(world:FindFirstChild("Zone_" .. id), "ArchTrim") == 3, id .. " has a glowing tunnel mouth")
 end
+expect(countNamed(cave, "Outcrop") > 700, "walls and ceiling are built from rock outcrops, not flat slabs (" .. countNamed(cave, "Outcrop") .. ")")
+for _, id in ipairs({ "EmberDepths", "GlacialPeaks", "StormriftCliffs", "TheHollow", "TheDeepForge", "GraniteCaverns" }) do
+    expect(countNamed(world:FindFirstChild("Zone_" .. id), "ZonePlaque") == 1, id .. " has a name plaque on the wall")
+end
+local floating = 0
+for _, d in ipairs(world:GetDescendants()) do
+    if d:IsA("BillboardGui") and d.Parent and d.Parent.Name == "SignAnchor" and tostring(d:FindFirstChildOfClass("TextLabel").Text):find("Mining Caves") then floating += 1 end
+end
+expect(floating == 0, "no floating billboard text clipping into the arch walls")
 local tooBig = 0
 for _, d in ipairs(world:GetDescendants()) do
     if d:IsA("BasePart") and (d.Size.X > 2048 or d.Size.Y > 2048 or d.Size.Z > 2048) then tooBig += 1 end

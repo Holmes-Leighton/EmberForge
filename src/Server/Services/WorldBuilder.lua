@@ -204,12 +204,12 @@ end
 
 ZoneProps.TheDeepForge = function(model, cx, cz, rng, color)
     local furnace = Part({ Name = "DeepFurnace", Shape = Enum.PartType.Ball, Material = Enum.Material.Metal, Color = Color3.fromRGB(70, 68, 74),
-        Size = Vector3.new(26, 26, 26), CFrame = CFrame.new(cx, 10, cz - 58) }, model)
+        Size = Vector3.new(26, 26, 26), CFrame = CFrame.new(cx, 10, cz + 58) }, model)
     Part({ Name = "FurnaceGlow", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 160, 50), Size = Vector3.new(9, 10, 1),
-        CFrame = CFrame.new(cx, 6, cz - 45.5), CanCollide = false }, model)
+        CFrame = CFrame.new(cx, 6, cz + 45.5), CanCollide = false }, model)
     for _, dx in ipairs({ -12, 12 }) do
         local chimney = Part({ Name = "Chimney", Material = Enum.Material.Metal, Color = Color3.fromRGB(60, 58, 62), Size = Vector3.new(4, 30, 4),
-            CFrame = CFrame.new(cx + dx, 18, cz - 58) }, model)
+            CFrame = CFrame.new(cx + dx, 18, cz + 58) }, model)
         Emitter(chimney, { Color = ColorSequence.new(Color3.fromRGB(80, 80, 80)), Rate = 12, Lifetime = NumberRange.new(4, 6),
             Speed = NumberRange.new(4, 7), EmissionDirection = Enum.NormalId.Top, Size = NumberSequence.new(4), Transparency = NumberSequence.new(0.4, 1) })
     end
@@ -259,7 +259,20 @@ local function BuildLandmark(world, index, layout)
     light.Parent = model:FindFirstChild("Crystal")
 
     local props = ZoneProps[layout.id]
-    if props then props(model, cx, ZONE_Z, Random.new(index * 31), layout.color) end
+    if props then
+        local before = {}
+        for _, c in ipairs(model:GetChildren()) do before[c] = true end
+        props(model, cx, ZONE_Z, Random.new(index * 31), layout.color)
+        -- nothing may stand in the corridor between the tunnel and the pad
+        for _, c in ipairs(model:GetChildren()) do
+            if not before[c] and c:IsA("BasePart") and c.Name ~= "FxAnchor" then
+                local ok, pos = pcall(function() return c.Position end)
+                if ok and pos and math.abs(pos.X - cx) < 26 + c.Size.X / 2 and pos.Z < ZONE_Z - 32 then
+                    c:Destroy()
+                end
+            end
+        end
+    end
 
     Sign(model, zone.displayName, UnlockText(zone), Vector3.new(cx, 36, ZONE_Z), layout.color)
 end
@@ -319,6 +332,54 @@ local function BuildCave(world)
     Slab(cave, "ChamberBack", ZoneX(1) - ZONE_SPACING / 2 - 2, ZoneX(#ZONE_LAYOUT) + ZONE_SPACING / 2 + 2, 0, CH_CEIL + 4, CH_Z2, CH_Z2 + 4)
     Slab(cave, "ChamberRoof", ZoneX(1) - ZONE_SPACING / 2 - 2, ZoneX(#ZONE_LAYOUT) + ZONE_SPACING / 2 + 2, CH_CEIL, CH_CEIL + 4, HUB_Z2 + 10, CH_Z2 + 4, Color3.fromRGB(46, 40, 40))
 
+    -- Rock outcrops break up the flat walls and ceiling so it reads as a cavern, not a box
+    local function Rock(x, y, z, sx, sy, sz, tint)
+        local c = ROCK:Lerp(Color3.fromRGB(110, 95, 85), rng:NextNumber(0, 0.5))
+        c = c:Lerp(tint or c, 0.15)
+        local isBall = rng:NextNumber() < 0.45
+        Part({ Name = "Outcrop", Shape = isBall and Enum.PartType.Ball or Enum.PartType.Block,
+            Material = rng:NextNumber() < 0.5 and Enum.Material.Rock or Enum.Material.Slate, Color = c,
+            Size = Vector3.new(sx, sy, sz),
+            CFrame = CFrame.new(x, y, z) * CFrame.Angles(rng:NextNumber(-0.5, 0.5), rng:NextNumber(0, 6.28), rng:NextNumber(-0.5, 0.5)) }, cave)
+    end
+    local STEP = 30
+    for x = HUB_X1, HUB_X2, STEP do
+        for layer = 0, 3 do
+            local y = layer * 27 + rng:NextInteger(0, 12)
+            local jx = x + rng:NextInteger(-8, 8)
+            -- south wall
+            Rock(jx, y, HUB_Z1 + rng:NextInteger(0, 5), rng:NextInteger(16, 34), rng:NextInteger(16, 34), rng:NextInteger(12, 24))
+            -- north wall (leave every tunnel mouth clear)
+            local blocked = false
+            for i = 1, #ZONE_LAYOUT do
+                if math.abs(jx - ZoneX(i)) < ARCH_W / 2 + 14 and y < ARCH_H + 16 then blocked = true end
+            end
+            if not blocked then
+                Rock(jx, y, HUB_Z2 - 10 - rng:NextInteger(0, 5), rng:NextInteger(16, 34), rng:NextInteger(16, 34), rng:NextInteger(12, 24))
+            end
+        end
+    end
+    for z = HUB_Z1, HUB_Z2, STEP do
+        for layer = 0, 3 do
+            local y = layer * 27 + rng:NextInteger(0, 12)
+            Rock(HUB_X1 + rng:NextInteger(0, 5), y, z + rng:NextInteger(-8, 8), rng:NextInteger(12, 24), rng:NextInteger(16, 34), rng:NextInteger(16, 34))
+            Rock(HUB_X2 - rng:NextInteger(0, 5), y, z + rng:NextInteger(-8, 8), rng:NextInteger(12, 24), rng:NextInteger(16, 34), rng:NextInteger(16, 34))
+        end
+    end
+    for _ = 1, 230 do                       -- lumpy ceiling
+        local sx, sz = rng:NextInteger(26, 60), rng:NextInteger(26, 60)
+        Rock(rng:NextInteger(HUB_X1, HUB_X2), HUB_CEIL - rng:NextInteger(0, 8), rng:NextInteger(HUB_Z1, HUB_Z2 - 12), sx, rng:NextInteger(14, 26), sz)
+    end
+    for i = 1, #ZONE_LAYOUT do              -- rough rock around the caves' inner walls and roofs
+        local cx = ZoneX(i)
+        for _ = 1, 14 do
+            Rock(cx + rng:NextInteger(-64, 64), rng:NextInteger(0, CH_CEIL - 6), CH_Z2 - rng:NextInteger(0, 4), rng:NextInteger(10, 22), rng:NextInteger(12, 26), rng:NextInteger(8, 16))
+        end
+        for _ = 1, 10 do
+            Rock(cx + rng:NextInteger(-60, 60), CH_CEIL - rng:NextInteger(0, 4), rng:NextInteger(HUB_Z2 + 16, CH_Z2 - 6), rng:NextInteger(16, 30), rng:NextInteger(8, 16), rng:NextInteger(16, 30))
+        end
+    end
+
     -- stalactites hanging from the great ceiling
     for _ = 1, 170 do
         local x = rng:NextInteger(HUB_X1 + 10, HUB_X2 - 10)
@@ -357,7 +418,32 @@ local function BuildChamber(world, index, layout)
     end
     Part({ Name = "ArchTrim", Material = Enum.Material.Neon, Color = layout.color, Size = Vector3.new(ARCH_W + 1.4, 1.4, 1.4),
         CFrame = CFrame.new(cx, ARCH_H, HUB_Z2 - 10), CanCollide = false }, model)
-    Sign(model, layout.id:gsub("(%l)(%u)", "%1 %2"), "Enter to mine here", Vector3.new(cx, ARCH_H + 9, HUB_Z2 - 12), layout.color)
+    -- name plaque hung on the wall above the archway (a real part, so it can never clip into the rock)
+    local plaque = Part({ Name = "ZonePlaque", Material = Enum.Material.WoodPlanks, Color = Color3.fromRGB(70, 48, 34),
+        Size = Vector3.new(ARCH_W - 2, 9, 1.2), CFrame = CFrame.new(cx, ARCH_H + 8, HUB_Z2 - 10.9), CanCollide = false }, model)
+    local sg = Instance.new("SurfaceGui")
+    sg.Face = Enum.NormalId.Front
+    sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+    sg.PixelsPerStud = 40
+    sg.Parent = plaque
+    local name = Instance.new("TextLabel")
+    name.Size = UDim2.new(1, 0, 0.66, 0)
+    name.BackgroundTransparency = 1
+    name.Text = string.upper((layout.id:gsub("(%l)(%u)", "%1 %2")))
+    name.TextColor3 = layout.color
+    name.Font = Enum.Font.GothamBlack
+    name.TextScaled = true
+    name.TextStrokeTransparency = 0.2
+    name.Parent = sg
+    local hint = Instance.new("TextLabel")
+    hint.Position = UDim2.new(0, 0, 0.66, 0)
+    hint.Size = UDim2.new(1, 0, 0.3, 0)
+    hint.BackgroundTransparency = 1
+    hint.Text = "mining cave"
+    hint.TextColor3 = Color3.fromRGB(240, 235, 225)
+    hint.Font = Enum.Font.GothamBold
+    hint.TextScaled = true
+    hint.Parent = sg
     -- road from the hub road to the mouth of the tunnel
     Part({ Name = "TunnelRoad", Material = Enum.Material.Cobblestone, Color = Color3.fromRGB(105, 92, 82),
         Size = Vector3.new(12, 0.2, HUB_Z2 - 60), CFrame = CFrame.new(cx, 0.1, 60 + (HUB_Z2 - 60) / 2), CanCollide = false }, model)
@@ -570,8 +656,6 @@ function WorldBuilder.Build()
         BuildLandmark(world, i, layout)
         BuildChamber(world, i, layout)
     end
-    Sign(world, "Mining Caves", "Six tunnels lead to the mining zones  ->",
-        Vector3.new(0, 30, ZONE_Z - 110), Color3.fromRGB(255, 200, 80))
 
     BuildScenery(world)
 
