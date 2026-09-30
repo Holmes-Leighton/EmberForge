@@ -18,6 +18,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Theme = require(script.Parent.Theme)
 local CosmeticData = require(script.Parent.Parent.Data.CosmeticData)
 local AssetData = require(script.Parent.Parent.Data.AssetData)
+local GolemSkinData = require(script.Parent.Parent.Data.GolemSkinData)
 
 local GolemModel = {}
 
@@ -76,7 +77,7 @@ local ELEMENT_BODY = {
     All   = Color3.fromRGB(250, 245, 232),
 }
 
-local function PrepareAsset(template, s, elementColor, skinColor, isNeon, element)
+local function PrepareAsset(template, s, elementColor, skinColor, isNeon, element, skinLook)
     local model = template:Clone()
     model.Name = "GolemPreview"
     local mode = template:GetAttribute("RigMode") or "Static"
@@ -97,8 +98,9 @@ local function PrepareAsset(template, s, elementColor, skinColor, isNeon, elemen
 
     local bodyColor = Color3.new(1, 1, 1):Lerp(elementColor, tint)
     if tint > 0 and ELEMENT_BODY[element] then bodyColor = ELEMENT_BODY[element] end
+    if skinLook then bodyColor = skinLook.color end
     if skinColor then bodyColor = bodyColor:Lerp(skinColor, 0.5) end
-    local recolour = tint > 0 or skinColor ~= nil
+    local recolour = tint > 0 or skinColor ~= nil or skinLook ~= nil
 
     for _, d in ipairs(BodyParts(model)) do
         d.CanCollide = false
@@ -147,7 +149,13 @@ function GolemModel.Build(element, tier, options)
     local color = Theme.Colors[element] or Color3.fromRGB(150, 150, 150)
     local elementColor = color
     local skinColor
-    if options.skin then
+    local skinLook = options.skin and GolemSkinData.Find(options.skin)
+    if skinLook then
+        -- a material skin replaces the element's surface, colour and glow (GolemSkinData)
+        look = { material = skinLook.material, accent = skinLook.accent, accentMaterial = Enum.Material.Neon,
+            transparency = skinLook.transparency or 0 }
+        color = skinLook.color
+    elseif options.skin then
         skinColor = CosmeticData.Describe(options.skin).color
         color = color:Lerp(skinColor, 0.65)
     end
@@ -159,7 +167,7 @@ function GolemModel.Build(element, tier, options)
     local model, root, mode, addOns
     local template = GolemModel.FindAsset(element)
     if template then
-        local ok, m, r, md, ao = pcall(PrepareAsset, template, s, elementColor, skinColor, isNeon, element)
+        local ok, m, r, md, ao = pcall(PrepareAsset, template, s, elementColor, skinColor, isNeon, element, skinLook)
         if ok then
             model, root, mode, addOns = m, r, md, ao
         else
@@ -277,7 +285,70 @@ function GolemModel.Build(element, tier, options)
             end
         end
 
-        if element == "Ember" then                      -- glowing cracks on the chest, a few sparks
+        local function skinDetail(kind)
+            if kind == "cracks" then                    -- glowing fractures across chest and head
+                for i = -1, 1 do
+                    ap("Crack", Vector3.new(0.3, A.hy * 1.4, 0.15), acc, accMat,
+                        Vector3.new(T.X + i * A.hx * 0.5, T.Y, front - 0.05), CFrame.Angles(0, 0, i * 0.35))
+                end
+                ap("Crack", Vector3.new(0.25, A.hhy * 1.2, 0.15), acc, accMat, Vector3.new(H.X + A.hhx * 0.5, H.Y + A.hhy * 0.2, H.Z - A.hhz - 0.05), CFrame.Angles(0, 0, 0.3))
+            elseif kind == "rivets" then                -- a belly plate with rivets, plus shoulder bolts
+                ap("BellyPlate", Vector3.new(A.hx * 1.6, A.hy * 0.7, 0.3), look.accentMaterial == Enum.Material.Neon and Color3.fromRGB(70, 74, 82) or acc,
+                    Enum.Material.Metal, Vector3.new(T.X, T.Y - A.hy * 0.1, front - 0.1))
+                for _, dx in ipairs({ -0.7, 0.7 }) do
+                    for _, dy in ipairs({ -0.4, 0.2 }) do
+                        local r = ap("Rivet", Vector3.new(0.7, 0.7, 0.4), Color3.fromRGB(150, 155, 165), Enum.Material.Metal,
+                            Vector3.new(T.X + dx * A.hx * 0.8, T.Y + dy * A.hy, front - 0.35))
+                        r.Shape = Enum.PartType.Ball
+                    end
+                end
+                ap("FurnaceGlow", Vector3.new(A.hx * 0.8, A.hy * 0.25, 0.2), acc, Enum.Material.Neon, Vector3.new(T.X, T.Y - A.hy * 0.1, front - 0.3))
+            elseif kind == "ribs" then                  -- a ribcage
+                for i = -1, 2 do
+                    ap("Rib", Vector3.new(A.hx * 1.5, 0.55, 0.4), Color3.fromRGB(250, 246, 226), Enum.Material.Limestone,
+                        Vector3.new(T.X, T.Y + A.hy * (0.35 - i * 0.3), front - 0.15))
+                end
+                ap("Spine", Vector3.new(0.5, A.hy * 1.6, 0.4), Color3.fromRGB(250, 246, 226), Enum.Material.Limestone, Vector3.new(T.X, T.Y, front - 0.15))
+            elseif kind == "leaves" then                -- leaves and a vine
+                local green = Color3.fromRGB(90, 160, 70)
+                for i = 1, 6 do
+                    local a = i * 1.7
+                    ap("Leaf", Vector3.new(1.6, 0.25, 0.9), green, Enum.Material.Grass,
+                        Vector3.new(T.X + math.cos(a) * A.hx * 0.9, T.Y + A.hy * (0.9 - i * 0.28), front - 0.2),
+                        CFrame.Angles(0, a, 0.5))
+                end
+                ap("CrownLeaf", Vector3.new(2.6, 0.4, 1.6), green, Enum.Material.Grass, Vector3.new(H.X, H.Y + A.hhy + 0.1, H.Z), CFrame.Angles(0, 0.6, 0.15))
+            elseif kind == "facets" then                -- crystal spikes on the shoulders and back
+                for i = -2, 2 do
+                    ap("Facet", Vector3.new(0.9, 2.8 - math.abs(i) * 0.5, 0.9), acc, Enum.Material.Glass,
+                        Vector3.new(T.X + i * A.hx * 0.4, T.Y + A.hy + 0.6 - math.abs(i) * 0.2, T.Z + A.hz * 0.3),
+                        CFrame.Angles(0.15, i * 0.3, -i * 0.25), 0.2)
+                end
+                ap("ChestFacet", Vector3.new(1.4, 1.8, 0.8), acc, Enum.Material.Neon, Vector3.new(T.X, T.Y + A.hy * 0.25, front - 0.25), CFrame.Angles(0, 0, 0.785), 0.25)
+            elseif kind == "runes" then                 -- glowing rune marks down the chest
+                for i = -1, 1 do
+                    ap("Rune", Vector3.new(0.8, 0.8, 0.15), acc, Enum.Material.Neon,
+                        Vector3.new(T.X + (i % 2) * 0.4, T.Y - i * A.hy * 0.45, front - 0.05), CFrame.Angles(0, 0, 0.785 * (i + 2)))
+                end
+                ap("RuneBrow", Vector3.new(A.hhx * 1.2, 0.3, 0.15), acc, Enum.Material.Neon, Vector3.new(H.X, H.Y + A.hhy * 0.55, H.Z - A.hhz - 0.05))
+            elseif kind == "shards" then                -- shards orbiting the body
+                for i = 1, 5 do
+                    local a = i / 5 * math.pi * 2
+                    ap("Shard", Vector3.new(0.7, 1.4, 0.7), acc, Enum.Material.Neon,
+                        Vector3.new(T.X + math.cos(a) * (A.hx + 2.2), T.Y + (i % 3 - 1) * A.hy * 0.8, T.Z + math.sin(a) * (A.hz + 2.2)), CFrame.Angles(i, i * 0.6, 0), 0.2)
+                end
+            elseif kind == "trim" then                  -- shining trim: belt, head band, chest lines
+                ap("Belt", Vector3.new(A.hx * 2.1, 0.45, A.hz * 2.1), acc, Enum.Material.Neon, Vector3.new(T.X, T.Y - A.hy * 0.6, T.Z), nil, 0.1)
+                ap("Band", Vector3.new(A.hhx * 2.1, 0.4, A.hhz * 2.1), acc, Enum.Material.Neon, Vector3.new(H.X, H.Y + A.hhy * 0.75, H.Z), nil, 0.1)
+                for i = -1, 1, 2 do
+                    ap("Line", Vector3.new(0.25, A.hy * 1.6, 0.25), acc, Enum.Material.Neon, Vector3.new(T.X + i * A.hx * 0.95, T.Y, front - 0.05), nil, 0.1)
+                end
+            end
+        end
+
+        if skinLook then
+            skinDetail(skinLook.detail)
+        elseif element == "Ember" then                  -- glowing cracks on the chest, a few sparks
             for i = -1, 1 do
                 ap("Crack", Vector3.new(0.3, A.hy * 1.3, 0.15), acc, accMat,
                     Vector3.new(T.X + i * A.hx * 0.5, T.Y + A.hy * 0.1, front - 0.05), CFrame.Angles(0, 0, i * 0.3))
