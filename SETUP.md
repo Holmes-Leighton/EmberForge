@@ -33,7 +33,7 @@ python3 tests/run_tests.py        # all suites (needs the `luau` runtime on PATH
 python3 tests/check_calls.py      # cross-file check: every Module.func() call and RemoteEvent exists
 ```
 Suites: `test_trading` (exploit attempts), `test_core` (saves, locking, claims, receipts), `test_progression`
-(tier rules, smelting, blueprints), `test_neon` (rarity + Neon), `test_liveops`, `test_ui_load` and `test_ui_flows`
+(tier rules, smelting, blueprints), `test_neon` (rarity + Neon), `test_liveops`, `test_ui_load`, `test_ui_flows` and `test_ui_world` (world, forge and Golem model builders)
 (every menu is built and its buttons clicked against a fake UI).
 They can't replace a Studio playtest (real rendering, physics, DataStore, MarketplaceService), so please play it.
 
