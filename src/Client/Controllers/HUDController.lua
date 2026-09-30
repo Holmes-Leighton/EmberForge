@@ -5,6 +5,7 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
+local MaterialData = require(game.ReplicatedStorage.Shared.Data.MaterialData)
 local Utils      = require(game.ReplicatedStorage.Shared.Modules.Utils)
 local GameConfig = require(game.ReplicatedStorage.Shared.Data.GameConfig)
 
@@ -29,6 +30,7 @@ function HUDController.Init(playerData)
         end
         HUDController._SetupElements()
         HUDController.Refresh(playerData)
+        HUDController.SetPending(HUDController._pending or playerData.Pending)
         StartBoostCountdowns(playerData)
     end)
 end
@@ -43,6 +45,39 @@ function HUDController._SetupElements()
             local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
             RemoteEvents.CollectResources:FireServer()
         end)
+    end
+end
+
+-- ── Pending mined resources (per type) ────────────────────────────────────────
+function HUDController.SetPending(pending)
+    pending = pending or {}
+    HUDController._pending = pending
+    if not hudGui then return end
+
+    local ids, total = {}, 0
+    for matId, qty in pairs(pending) do
+        if type(qty) == "number" and qty > 0 then
+            table.insert(ids, matId)
+            total = total + qty
+        end
+    end
+    table.sort(ids)
+
+    local lines = {}
+    for _, matId in ipairs(ids) do
+        local def = (MaterialData.Raw and MaterialData.Raw[matId]) or (MaterialData.Refined and MaterialData.Refined[matId])
+        table.insert(lines, string.format("%s  x%s", def and def.displayName or matId, Utils.FormatNumber(pending[matId])))
+    end
+
+    local frame = hudGui:FindFirstChild("PendingFrame", true)
+    local label = hudGui:FindFirstChild("PendingLabel", true)
+    if frame and label then
+        label.Text = table.concat(lines, "\n")
+        frame.Visible = total > 0
+    end
+    local btn = hudGui:FindFirstChild("CollectButton", true)
+    if btn then
+        btn.Text = total > 0 and ("⛏  Collect (" .. Utils.FormatNumber(total) .. ")") or "⛏  Collect Resources"
     end
 end
 

@@ -6,6 +6,11 @@ GameConfig.OFFLINE_STORAGE_BASE_HOURS = 4        -- base storage cap
 GameConfig.OFFLINE_STORAGE_UPGRADED_HOURS = 8    -- upgraded Storage Vault
 GameConfig.OFFLINE_STORAGE_PREMIUM_HOURS = 24    -- premium (Robux / Season Pass)
 
+-- Online mining speed-up: 1 real second of a deployed Golem = this many seconds of its
+-- hourly rate. 60 => a Tier 1 Golem (50/hr) mines ~0.8 resources per second while you play.
+-- Offline production still uses real time. Set to 1 for true hourly rates.
+GameConfig.ONLINE_PRODUCTION_SPEED = 60
+
 -- Forge
 GameConfig.BASE_SMELT_SLOTS = 5
 GameConfig.MAX_SMELT_SLOTS = 10

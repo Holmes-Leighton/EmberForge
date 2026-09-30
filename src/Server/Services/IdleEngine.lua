@@ -174,38 +174,27 @@ function IdleEngine.TickOnlineProduction(playerData, deltaSeconds)
             end
 
             local stats = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus)
-            if stats then
+            local carried = golem._carriedResources or 0
+            -- A full Golem waits (still deployed) until the player collects
+            if stats and carried < stats.carryCapacity then
                 local mb     = MasteryBonuses(playerData, golem.element)
                 local mRate  = stats.miningRate * (1 + mb.miningRateBonus + mb.allStatsBonus)
                 local luckM  = stats.luck       * (1 + mb.luckBonus       + mb.allStatsBonus)
-                local rate = mRate * stats.efficiency
-                local amount = rate * (deltaSeconds / 3600)
-                golem._accumulatedResources = (golem._accumulatedResources or 0) + amount
+                local rate   = mRate * stats.efficiency
+                local speed  = GameConfig.ONLINE_PRODUCTION_SPEED or 1
+                golem._accumulatedResources = (golem._accumulatedResources or 0) + rate * (deltaSeconds * speed / 3600)
 
-                -- Commit whole-number resources
                 local toCommit = math.floor(golem._accumulatedResources)
                 if toCommit > 0 then
                     golem._accumulatedResources = golem._accumulatedResources - toCommit
-
-                    -- Check carry capacity
-                    local carried = golem._carriedResources or 0
-                    local space   = math.max(0, stats.carryCapacity - carried)
-                    local actual  = math.min(toCommit, space)
-
+                    local actual = math.min(toCommit, stats.carryCapacity - carried)
                     if actual > 0 then
                         local luckMult = 1 + (luckM * 3)
-                        actual = math.floor(actual * eventMult)
                         local materialId = MiningZoneData.SampleDrop(golem.zoneId, luckMult)
                         if materialId then
-                            gains[materialId] = (gains[materialId] or 0) + actual
+                            gains[materialId] = (gains[materialId] or 0) + math.floor(actual * eventMult)
                             golem._carriedResources = carried + actual
                         end
-                    end
-
-                    -- Auto-return when full
-                    if (golem._carriedResources or 0) >= stats.carryCapacity then
-                        golem.deployed = false
-                        golem._carriedResources = 0
                     end
                 end
             end

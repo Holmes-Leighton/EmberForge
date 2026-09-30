@@ -15,7 +15,7 @@ local STEPS = {
     { title = "Stand on the Starter Pad", hint = "Walk south to the glowing Starter Pad and stand on it. It mines for you: you need 10 Basic Ore and 5 Coal." },
     { title = "Forge your first Golem", hint = "Take them to the Golem Anvil and hold E. You'll get a random Tier 1 Golem!" },
     { title = "Deploy your Golem",    hint = "Open the 🔥 Forge menu (right sidebar) and send your Golem to its mining zone." },
-    { title = "Collect resources",    hint = "Golems mine on their own. Wait a few seconds, then press ⛏ Collect Resources." },
+    { title = "Collect resources",    hint = "Golems mine on their own. Watch the totals build up above the button, then press ⛏ Collect." },
 }
 
 local HOW_TO_PLAY = table.concat({
@@ -161,13 +161,13 @@ function TutorialController.Init(playerData)
 
     -- Steps follow the server's events
     local ore, coal = 0, 0
-    RemoteEvents.ResourcesCollected.OnClientEvent:Connect(function(gains)
+    RemoteEvents.ResourcesCollected.OnClientEvent:Connect(function(gains, elapsed)
         if not gains then return end
         if stepIndex == 1 then
             ore  += gains.BasicOre or 0
             coal += gains.Coal or 0
             if ore >= 10 and coal >= 5 then Advance(1) end
-        elseif stepIndex == 4 and next(gains) ~= nil then
+        elseif stepIndex == 4 and elapsed == -1 and next(gains) ~= nil then   -- -1 = manual Collect
             Advance(4)
         end
     end)

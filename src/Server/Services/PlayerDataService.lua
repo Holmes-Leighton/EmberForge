@@ -28,6 +28,7 @@ local function DefaultData()
         ForgeXP         = 0,
         Golems          = {},          -- array of GolemObjects
         Inventory       = {},          -- materialId → quantity
+        Pending         = {},          -- materialId → quantity mined by Golems, waiting to be collected
         Blueprints      = Utils.DeepCopy(RecipeData.StartingBlueprintIds),
         LastOnline      = Utils.UnixTimestamp(),
         MasteryLevels   = {            -- elementId → xp
@@ -147,6 +148,14 @@ function PlayerDataService.AddMaterial(player, materialId, qty)
     local data = PlayerDataService.Get(player)
     if not data then return end
     data.Inventory[materialId] = (data.Inventory[materialId] or 0) + qty
+    PlayerDataService.MarkDirty(player)
+end
+
+function PlayerDataService.AddPending(player, materialId, qty)
+    local data = PlayerDataService.Get(player)
+    if not data then return end
+    data.Pending = data.Pending or {}
+    data.Pending[materialId] = (data.Pending[materialId] or 0) + qty
     PlayerDataService.MarkDirty(player)
 end
 

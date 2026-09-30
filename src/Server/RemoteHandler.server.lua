@@ -54,30 +54,30 @@ RemoteEvents.CollectResources.OnServerEvent:Connect(function(player)
         local data  = PlayerDataService.Get(player)
         if not data then return end
 
-        local gains, elapsed = IdleEngine.CalculateOfflineProduction(data)
-        local totalGained = 0
-        local blueprintDrops = {}
-        for matId, qty in pairs(gains) do
-            if matId:sub(1, 12) == "__blueprint:" then
-                table.insert(blueprintDrops, matId:sub(13))
-            else
+        -- Move everything the Golems have mined into the inventory
+        local gains, total = {}, 0
+        for matId, qty in pairs(data.Pending or {}) do
+            if qty > 0 then
                 PlayerDataService.AddMaterial(player, matId, qty)
-                totalGained = totalGained + qty
+                gains[matId] = qty
+                total = total + qty
             end
         end
-        -- Strip blueprint signals from gains before sending to client
-        for _, bpId in ipairs(blueprintDrops) do
-            gains["__blueprint:" .. bpId] = nil
+        data.Pending = {}
+        for _, g in ipairs(data.Golems or {}) do
+            if g.deployed then g._carriedResources = 0 end   -- empty their bags
+        end
+        PlayerDataService.MarkDirty(player)
+        RemoteEvents.PendingUpdate:FireClient(player, data.Pending)
+
+        if total == 0 then
+            RemoteEvents.Notify:FireClient(player, "Nothing to collect",
+                "Your Golems haven't mined anything yet. Deploy one from the Forge menu.")
+            return
         end
 
-        IdleEngine.ApplyOfflineGains(data, {})  -- update timestamp
-        data.LastOnline = Utils.UnixTimestamp()
-        PlayerDataService.MarkDirty(player)
-
-        -- Track challenge
         ChallengeService.TrackEvent(player, "GolemCollect", { count = 1 })
-
-        RemoteEvents.ResourcesCollected:FireClient(player, gains, elapsed)
+        RemoteEvents.ResourcesCollected:FireClient(player, gains, -1)   -- -1 marks a manual collect
     end)
 end)
 

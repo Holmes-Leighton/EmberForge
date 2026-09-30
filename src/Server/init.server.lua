@@ -20,12 +20,14 @@ local LeaderboardService = require(script.Services.LeaderboardService)
 local ForgeZoneService   = require(script.Services.ForgeZoneService)
 local WorldBuilder       = require(script.Services.WorldBuilder)
 local PadService         = require(script.Services.PadService)
+local GolemVisuals       = require(script.Services.GolemVisuals)
 local Utils              = require(game.ReplicatedStorage.Shared.Modules.Utils)
 local GameConfig         = require(game.ReplicatedStorage.Shared.Data.GameConfig)
 
 -- Build the world (ground, spawn, mining-zone landmarks) before anyone joins
 WorldBuilder.Build()
 PadService.Init()
+GolemVisuals.Init()
 
 -- Start periodic auto-save and leaderboard flush
 PlayerDataService.StartAutoSave()
@@ -43,7 +45,13 @@ local function OnPlayerAdded(player)
     -- Calculate and apply offline production
     local gains, elapsed = IdleEngine.CalculateOfflineProduction(data)
     if elapsed and elapsed > 60 then
-        IdleEngine.ApplyOfflineGains(data, gains)
+        -- Offline haul goes into the pending pool so the player collects it with the button
+        for matId, qty in pairs(gains) do
+            if matId:sub(1, 12) ~= "__blueprint:" then
+                PlayerDataService.AddPending(player, matId, qty)
+            end
+        end
+        data.LastOnline = Utils.UnixTimestamp()
         PlayerDataService.MarkDirty(player)
     end
 
@@ -90,7 +98,7 @@ task.spawn(function()
                 local totalGained = 0
                 for matId, qty in pairs(rawGains) do
                     if matId:sub(1, 12) ~= "__blueprint:" then
-                        PlayerDataService.AddMaterial(player, matId, qty)
+                        PlayerDataService.AddPending(player, matId, qty)
                         totalGained = totalGained + qty
                         gains[matId] = qty
 
@@ -119,9 +127,9 @@ task.spawn(function()
                     ChallengeService.TrackEvent(player, "SmeltComplete", { count = job.quantity })
                 end
 
-                -- Notify client of production update
+                -- Tell the client the new pending totals (shown on the Collect button)
                 if next(gains) then
-                    RemoteEvents.ResourcesCollected:FireClient(player, gains, TICK_INTERVAL)
+                    RemoteEvents.PendingUpdate:FireClient(player, data.Pending)
                 end
             end
         end

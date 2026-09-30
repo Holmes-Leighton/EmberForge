@@ -131,6 +131,34 @@ for i, nav in ipairs(navData) do
     end)
 end
 
+-- ── Pending resources (per type) shown above the Collect button ──────────────
+local pendingFrame = Instance.new("Frame")
+pendingFrame.Name = "PendingFrame"
+pendingFrame.AnchorPoint = Vector2.new(0.5, 1)
+pendingFrame.Size = UDim2.new(0, 260, 0, 0)
+pendingFrame.AutomaticSize = Enum.AutomaticSize.Y
+pendingFrame.Position = UDim2.new(0.5, 0, 1, -70)
+pendingFrame.BackgroundColor3 = Theme.Colors.Panel
+pendingFrame.BackgroundTransparency = 0.15
+pendingFrame.BorderSizePixel = 0
+pendingFrame.Visible = false
+pendingFrame.Parent = gui
+Theme.AddCorner(pendingFrame, Theme.Corner.Large)
+Theme.AddPadding(pendingFrame, 6, 10, 6, 10)
+
+local pendingLabel = Instance.new("TextLabel")
+pendingLabel.Name = "PendingLabel"
+pendingLabel.Size = UDim2.new(1, 0, 0, 0)
+pendingLabel.AutomaticSize = Enum.AutomaticSize.Y
+pendingLabel.BackgroundTransparency = 1
+pendingLabel.Text = ""
+pendingLabel.TextColor3 = Theme.Colors.TextPrimary
+pendingLabel.Font = Theme.Fonts.Body
+pendingLabel.TextSize = 14
+pendingLabel.TextXAlignment = Enum.TextXAlignment.Left
+pendingLabel.TextYAlignment = Enum.TextYAlignment.Top
+pendingLabel.Parent = pendingFrame
+
 -- ── Bottom action bar ─────────────────────────────────────────────────────────
 local bottomBar = Instance.new("Frame")
 bottomBar.Name = "BottomBar"

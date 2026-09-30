@@ -192,6 +192,16 @@ local function BuildScenery(world)
     end
 end
 
+-- Centre of a mining zone's pad (ground level), used to place deployed Golems
+function WorldBuilder.GetZoneCenter(zoneId)
+    for i, layout in ipairs(ZONE_LAYOUT) do
+        if layout.id == zoneId then
+            return Vector3.new((i - 3.5) * ZONE_SPACING, 0, ZONE_Z)
+        end
+    end
+    return nil
+end
+
 function WorldBuilder.Build()
     if workspace:FindFirstChild("EmberWorld") then return end
 
