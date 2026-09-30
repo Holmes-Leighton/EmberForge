@@ -30,7 +30,7 @@ local SKIN_MATERIALS = {
     { words = { "Bronze", "Copper" },                material = Enum.Material.CorrodedMetal },
 }
 
-local DEFAULT_SKIN = { color = Color3.fromRGB(95, 90, 88), material = Enum.Material.Cobblestone, fire = Color3.fromRGB(255, 140, 40) }
+local DEFAULT_SKIN = { trim = false, color = Color3.fromRGB(95, 90, 88), material = Enum.Material.Cobblestone, fire = Color3.fromRGB(255, 140, 40) }
 
 local function SkinFor(skinId)
     if not skinId then return DEFAULT_SKIN end
@@ -43,7 +43,8 @@ local function SkinFor(skinId)
     end
     local color = d.color
     if skinId:find("Basic") or skinId:find("Bronze") then color = Color3.fromRGB(150, 120, 90) end
-    return { color = color:Lerp(Color3.fromRGB(70, 70, 70), 0.25), material = material, fire = color }
+    local trim = not (skinId:find("Basic") or skinId:find("Bronze"))   -- Standard and premium skins glow
+    return { color = color:Lerp(Color3.fromRGB(70, 70, 70), 0.25), material = material, fire = color, trim = trim, custom = true }
 end
 
 local GROUND = 1.2      -- top of the courtyard tiles
@@ -338,13 +339,85 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
         end
     end
 
-    -- ── Equipped decoration: a monument in the plot corner ────────────────────
+    -- ── Skin trim: Standard / premium skins outline the forge in glowing colour ──
+    if skin.trim then
+        part("TrimFront", Vector3.new(54, 0.3, 0.5), at(0, GROUND + 0.15, -FENCE + 0.6), skin.fire, Enum.Material.Neon)
+        part("TrimLeft", Vector3.new(0.5, 0.3, 54), at(-FENCE + 0.6, GROUND + 0.15, 0), skin.fire, Enum.Material.Neon)
+        part("TrimRight", Vector3.new(0.5, 0.3, 54), at(FENCE - 0.6, GROUND + 0.15, 0), skin.fire, Enum.Material.Neon)
+        part("TrimBeam", Vector3.new(12.2, 0.3, 2.4), at(0, GROUND + 8.7, FENCE), skin.fire, Enum.Material.Neon)
+    end
+
+    -- ── Equipped forge effect: animated glow around the forge ─────────────────
+    if equipped.ForgeEffect then
+        local d = CosmeticData.Describe(equipped.ForgeEffect)
+        local c = d.color
+        for i = 1, 6 do
+            local a = i / 6 * math.pi * 2
+            local orb = ball("EffectOrb", 1.6, at(math.cos(a) * 20, GROUND + 3, math.sin(a) * 20), c, Enum.Material.Neon, { Transparency = 0.15 })
+            light(orb, c, 14, 1.2)
+            local em = Instance.new("ParticleEmitter")
+            em.Color = ColorSequence.new(c)
+            em.Rate = 12
+            em.Lifetime = NumberRange.new(1.5, 2.5)
+            em.Speed = NumberRange.new(3, 6)
+            em.SpreadAngle = Vector2.new(25, 25)
+            em.LightEmission = 1
+            em.Size = NumberSequence.new(0.8, 0)
+            em.Parent = orb
+        end
+        local ringFx = part("EffectRing", Vector3.new(0.3, 40, 40), at(0, GROUND + 0.5, 0) * CFrame.Angles(0, 0, math.pi / 2), c,
+            Enum.Material.Neon, { Shape = Enum.PartType.Cylinder, Transparency = 0.5, CanCollide = false })
+        spin(ringFx, 0.5)
+    end
+
+    -- ── Equipped decoration: each kind has its own shape ──────────────────────
     if equipped.ForgeDecoration then
-        local d = CosmeticData.Describe(equipped.ForgeDecoration)
-        part("DecorBase", Vector3.new(4, 1, 4), at(21, GROUND + 0.5, 21), Color3.fromRGB(70, 65, 65), Enum.Material.Slate)
-        part("DecorColumn", Vector3.new(2, 6, 2), at(21, GROUND + 4, 21), d.color:Lerp(Color3.new(0, 0, 0), 0.4), Enum.Material.Marble)
-        local orb = ball("DecorOrb", 2.6, at(21, GROUND + 8.4, 21), d.color, Enum.Material.Neon)
-        light(orb, d.color, 20, 1.5)
+        local id = equipped.ForgeDecoration
+        local d = CosmeticData.Describe(id)
+        local c = d.color
+        local dark = c:Lerp(Color3.new(0, 0, 0), 0.45)
+        local X, Z = 21, 21
+        part("DecorBase", Vector3.new(5, 1, 5), at(X, GROUND + 0.5, Z), Color3.fromRGB(70, 65, 65), Enum.Material.Slate)
+        local top
+        if id:find("Statue") then                                   -- a figure: legs, torso, head, raised arm
+            part("DecorLegs", Vector3.new(2.2, 2.5, 1.2), at(X, GROUND + 2.75, Z), dark, Enum.Material.Marble)
+            part("DecorTorso", Vector3.new(2.8, 3, 1.6), at(X, GROUND + 5.5, Z), dark, Enum.Material.Marble)
+            part("DecorArm", Vector3.new(0.8, 3, 0.8), at(X + 1.9, GROUND + 7, Z) * CFrame.Angles(0, 0, -0.4), dark, Enum.Material.Marble)
+            top = ball("DecorHead", 2, at(X, GROUND + 8, Z), c, Enum.Material.Neon)
+        elseif id:find("Portal") then                               -- glowing ring standing upright
+            top = part("DecorPortal", Vector3.new(0.6, 7, 7), at(X, GROUND + 5, Z) * CFrame.Angles(0, math.pi / 4, 0), c,
+                Enum.Material.Neon, { Shape = Enum.PartType.Cylinder, Transparency = 0.2 })
+            part("DecorPortalCore", Vector3.new(0.3, 5, 5), at(X, GROUND + 5, Z) * CFrame.Angles(0, math.pi / 4, 0), dark,
+                Enum.Material.Glass, { Shape = Enum.PartType.Cylinder, Transparency = 0.5 })
+        elseif id:find("Obelisk") then
+            part("DecorObelisk", Vector3.new(2, 9, 2), at(X, GROUND + 5.5, Z), dark, Enum.Material.Basalt)
+            top = part("DecorTip", Vector3.new(1.6, 1.6, 1.6), at(X, GROUND + 10.8, Z) * CFrame.Angles(0.8, 0.8, 0), c, Enum.Material.Neon)
+        elseif id:find("Rod") then                                  -- tall thin rod with arcs
+            part("DecorRod", Vector3.new(0.6, 11, 0.6), at(X, GROUND + 6.5, Z), Color3.fromRGB(170, 170, 185), Enum.Material.Metal)
+            top = ball("DecorSpark", 1.8, at(X, GROUND + 12.4, Z), c, Enum.Material.Neon)
+            for i = 1, 3 do
+                part("DecorArc", Vector3.new(0.25, 3, 0.25), at(X + (i - 2) * 1.3, GROUND + 11, Z) * CFrame.Angles(0, 0, (i - 2) * 0.6), c, Enum.Material.Neon)
+            end
+        elseif id:find("Altar") then
+            part("DecorAltar", Vector3.new(5, 2, 3), at(X, GROUND + 2, Z), dark, Enum.Material.Marble)
+            top = part("DecorFlame", Vector3.new(1.4, 1.4, 1.4), at(X, GROUND + 3.6, Z), c, Enum.Material.Neon)
+            fireOn(top, 6, 9, c)
+        elseif id:find("River") then                                -- glowing channel with a fiery pool
+            part("DecorChannel", Vector3.new(2.2, 0.35, 8), at(X, GROUND + 1.1, Z), c, Enum.Material.Neon)
+            top = part("DecorPool", Vector3.new(4.5, 0.4, 4.5), at(X, GROUND + 1.15, Z + 5), c, Enum.Material.Neon, { Shape = Enum.PartType.Cylinder })
+            fireOn(top, 4, 6, c)
+        elseif id:find("Pillar") then
+            part("DecorColumn", Vector3.new(2.4, 8, 2.4), at(X, GROUND + 5, Z), dark, Enum.Material.Marble)
+            part("DecorCap", Vector3.new(3.4, 0.8, 3.4), at(X, GROUND + 9.4, Z), c:Lerp(Color3.new(1, 1, 1), 0.2), Enum.Material.Marble)
+            top = ball("DecorOrb", 2.2, at(X, GROUND + 10.9, Z), c, Enum.Material.Neon)
+        elseif id:find("Anvil") then
+            part("DecorAnvilBase", Vector3.new(2.6, 2, 2), at(X, GROUND + 2, Z), dark, Enum.Material.Metal)
+            top = part("DecorAnvilTop", Vector3.new(5, 1.2, 2.4), at(X, GROUND + 3.6, Z), c:Lerp(Color3.fromRGB(150, 150, 160), 0.5), Enum.Material.Metal)
+        else
+            part("DecorColumn", Vector3.new(2, 6, 2), at(X, GROUND + 4, Z), dark, Enum.Material.Marble)
+            top = ball("DecorOrb", 2.6, at(X, GROUND + 8.4, Z), c, Enum.Material.Neon)
+        end
+        light(top, c, 20, 1.5)
     end
 
     model.Parent = parent

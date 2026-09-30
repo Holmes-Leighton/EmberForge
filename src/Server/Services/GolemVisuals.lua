@@ -31,7 +31,7 @@ local function FreeSlot(zoneId)
 end
 
 local function StyleKey(golem, equipped)
-    return table.concat({ golem.variant or "", golem.zoneId or "", equipped.GolemAccessory or "", equipped.ParticleEffect or "" }, "|")
+    return table.concat({ golem.variant or "", golem.zoneId or "", equipped.GolemAccessory or "", equipped.ParticleEffect or "", equipped.GolemSkin or "" }, "|")
 end
 
 local function Build(golem, ownerName, equipped)
@@ -46,7 +46,7 @@ local function Build(golem, ownerName, equipped)
     local scale  = 1 + ((golem.tier or 1) - 1) * 0.18
 
     local model = GolemModel.Build(golem.element, golem.tier, {
-        variant = golem.variant, accessory = equipped.GolemAccessory, particle = equipped.ParticleEffect,
+        variant = golem.variant, accessory = equipped.GolemAccessory, particle = equipped.ParticleEffect, skin = equipped.GolemSkin,
     })
     model.Name = "Golem_" .. golem.id
     model:PivotTo(base * CFrame.new(0, 5 * scale, 0))          -- torso sits 5 studs up

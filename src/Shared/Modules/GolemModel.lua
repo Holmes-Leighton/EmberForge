@@ -27,6 +27,11 @@ function GolemModel.Build(element, tier, options)
     tier = tier or 1
     local look = ELEMENT_LOOK[element] or ELEMENT_LOOK.Stone
     local color = Theme.Colors[element] or Color3.fromRGB(150, 150, 150)
+    local skinColor
+    if options.skin then
+        skinColor = CosmeticData.Describe(options.skin).color
+        color = color:Lerp(skinColor, 0.65)
+    end
     local dark  = color:Lerp(Color3.new(0, 0, 0), 0.35)
     local s     = 1 + (tier - 1) * 0.18
     local variant = options.variant
@@ -121,6 +126,12 @@ function GolemModel.Build(element, tier, options)
     end
 
     -- ── Equipped cosmetics (never affect stats) ───────────────────────────────
+    if skinColor then                                  -- Golem skin: glowing trim that follows the skin colour
+        for _, side in ipairs({ -1, 1 }) do
+            part("SkinTrim", Vector3.new(0.18, 3.6, 2.1), skinColor, Enum.Material.Neon, at(side * 1.65, 5, 0), 0.15)
+        end
+        part("SkinBelt", Vector3.new(3.3, 0.35, 2.1), skinColor, Enum.Material.Neon, at(0, 3.3, 0), 0.15)
+    end
     if options.accessory then
         local d = CosmeticData.Describe(options.accessory)
         local id = options.accessory

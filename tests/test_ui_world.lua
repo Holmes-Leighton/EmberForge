@@ -53,6 +53,35 @@ expect(pcall(ForgeBuilder.Celebrate, forge10), "celebrate burst runs")
 local forge8 = ForgeBuilder.Build(folder, Vector3.new(0, 10, 0), 8, {})
 expect(forge8:FindFirstChild("Gear") ~= nil, "level 8 has machinery")
 
+print("== cosmetics visibly change things")
+local CD = load("game/ReplicatedStorage/Shared/Data/CosmeticData")
+local decos = { "ForgeDecoration_Statue", "ForgeDecoration_IceStatue", "ForgeDecoration_VoidPortal", "ForgeDecoration_VoidObelisk",
+    "ForgeDecoration_LightningRod", "ForgeDecoration_AncientAltar", "ForgeDecoration_LavaRiver", "ForgeDecoration_StormPillar", "ForgeDecoration_Anvil" }
+local shapes = {}
+for _, id in ipairs(decos) do
+    local f = ForgeBuilder.Build(folder, Vector3.new(0, 10, 0), 1, { ForgeDecoration = id })
+    local sig = {}
+    for _, c in ipairs(f:GetChildren()) do if c.Name:find("^Decor") then table.insert(sig, c.Name) end end
+    table.sort(sig)
+    shapes[table.concat(sig, ",")] = true
+end
+local n = 0 for _ in pairs(shapes) do n += 1 end
+expect(n >= 8, "decorations have distinct shapes (" .. n .. " of " .. #decos .. ")")
+local plain = ForgeBuilder.Build(folder, Vector3.new(0, 10, 0), 1, {})
+local fx = ForgeBuilder.Build(folder, Vector3.new(0, 10, 0), 1, { ForgeEffect = "AnimatedForgeEffect_MagmaFlow" })
+expect(#fx:GetChildren() > #plain:GetChildren() and fx:FindFirstChild("EffectRing") ~= nil, "forge effects add visible glow")
+local basic = ForgeBuilder.Build(folder, Vector3.new(0, 10, 0), 1, { ForgeSkin = "ForgeSkin_Ember_Basic" })
+local std = ForgeBuilder.Build(folder, Vector3.new(0, 10, 0), 1, { ForgeSkin = "ForgeSkin_Ember_Standard" })
+expect(std:FindFirstChild("TrimFront") ~= nil and basic:FindFirstChild("TrimFront") == nil, "Standard skins add glowing trim over Basic")
+local GM = load("game/ReplicatedStorage/Shared/Modules/GolemModel")
+expect(GM.Build("Stone", 2, { skin = "GolemSkin_MagmaTitan_Premium" }):FindFirstChild("SkinTrim") ~= nil, "Golem skins add trim")
+expect(GM.Build("Stone", 2, {}):FindFirstChild("SkinTrim") == nil, "no skin, no trim")
+local seenBlurb = {}
+for _, id in ipairs({ "TitleBadge_Master", "TitleBadge_Legend", "ForgeSkin_Bronze", "GolemAccessory_LavaCrown" }) do
+    local b = CD.Blurb(id)
+    expect(b ~= "Title" and b ~= "Forge Skin" and #b > 12, "subtitle explains what " .. id .. " does: " .. b)
+end
+
 print("== the world builds")
 local PDS = load("SSS/EmberForge/Services/PlayerDataService")
 local WorldBuilder = load("SSS/EmberForge/Services/WorldBuilder")

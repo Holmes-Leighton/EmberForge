@@ -43,6 +43,21 @@ function CosmeticData.Describe(id)
     return { id = id, type = typeName, label = typeDef.label, slot = typeDef.slot, name = Spaced(rest), color = color }
 end
 
+-- One line saying what this item actually changes (shown under its name in the Style menu)
+local BLURBS = {
+    ForgeSkin       = "Restyles your forge's stone, trim and fire colour",
+    ForgeDecoration = "A monument standing in the corner of your forge plot",
+    GolemAccessory  = "Worn by all your Golems while they mine",
+    GolemSkin       = "Recolours your Golems with a shimmering finish",
+    ParticleEffect  = "Sparkles that trail from your Golems' pickaxes",
+    ForgeEffect     = "Animated glowing effect around your forge",
+    Title           = "Shown under your name on your forge sign",
+}
+function CosmeticData.Blurb(id)
+    local d = CosmeticData.Describe(id)
+    return BLURBS[d.slot] or d.label
+end
+
 -- Human sentence for a season / level reward table entry
 function CosmeticData.RewardText(reward)
     if not reward then return "-" end

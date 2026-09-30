@@ -5,7 +5,7 @@ local PlayerDataService = require(script.Parent.PlayerDataService)
 
 local CosmeticService = {}
 
-local SLOTS = { ForgeSkin = true, ForgeDecoration = true, GolemAccessory = true, ParticleEffect = true, ForgeEffect = true, Title = true }
+local SLOTS = { ForgeSkin = true, ForgeDecoration = true, GolemAccessory = true, ParticleEffect = true, ForgeEffect = true, GolemSkin = true, Title = true }
 
 -- Every title the player can wear: plain-text titles earned from achievements/mastery,
 -- plus TitleBadge cosmetics. Returns array of { key, text }.

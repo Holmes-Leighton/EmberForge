@@ -18,7 +18,9 @@ local TABS = {
     { id = "ForgeSkin",       label = "Forge Skin" },
     { id = "ForgeDecoration", label = "Decoration" },
     { id = "GolemAccessory",  label = "Golem Gear" },
+    { id = "GolemSkin",       label = "Golem Skins" },
     { id = "ParticleEffect",  label = "Effects" },
+    { id = "ForgeEffect",     label = "Forge Effects" },
     { id = "Title",           label = "Titles" },
     { id = "Access",          label = "Forge Access" },
     { id = "Store",           label = "Store" },
@@ -185,7 +187,7 @@ local function Reload()
             local d = CosmeticData.Describe(p.cosmeticId)
             local owned = false
             for _, id in ipairs(data.OwnedCosmetics or {}) do if id == p.cosmeticId then owned = true end end
-            Row(p.displayName, d.label .. "   -   " .. p.robux .. " Robux", d.color,
+            Row(p.displayName, d.label .. ": " .. CosmeticData.Blurb(p.cosmeticId) .. "  -  " .. p.robux .. " Robux", d.color,
                 owned and "Owned" or (ProductData.IsAvailable(key) and "Buy" or "Coming soon"),
                 owned and Theme.Colors.PanelAlt or Theme.Colors.Accent,
                 function() pcall(function() MarketplaceService:PromptProductPurchase(LocalPlayer, p.id) end) end,
@@ -199,25 +201,25 @@ local function Reload()
     if tab == "Title" then
         local seen = {}
         for _, t in ipairs(data.Titles or {}) do
-            if not seen[t] then seen[t] = true table.insert(items, { key = "T:" .. t, name = t, sub = "Title", color = Theme.Colors.Gold, text = t }) end
+            if not seen[t] then seen[t] = true table.insert(items, { key = "T:" .. t, name = t, sub = "Earned title. " .. CosmeticData.Blurb("TitleBadge_x"), color = Theme.Colors.Gold, text = t }) end
         end
         for _, id in ipairs(data.OwnedCosmetics or {}) do
             local d = CosmeticData.Describe(id)
             if d.slot == "Title" and not seen[d.name] then
                 seen[d.name] = true
-                table.insert(items, { key = id, name = d.name, sub = "Title", color = d.color, text = d.name })
+                table.insert(items, { key = id, name = d.name, sub = CosmeticData.Blurb(id), color = d.color, text = d.name })
             end
         end
     else
         for _, id in ipairs(data.OwnedCosmetics or {}) do
             local d = CosmeticData.Describe(id)
-            if d.slot == tab then table.insert(items, { key = id, name = d.name, sub = d.label, color = d.color, text = id }) end
+            if d.slot == tab then table.insert(items, { key = id, name = d.name, sub = CosmeticData.Blurb(id), color = d.color, text = id }) end
         end
     end
     table.sort(items, function(a, b) return a.name < b.name end)
 
     local current = equipped[tab]
-    Row("None", "Use the default look", Theme.Colors.TextDim, current and "Equip" or "Equipped",
+    Row("None", "Use the default look (nothing equipped)", Theme.Colors.TextDim, current and "Equip" or "Equipped",
         current and Theme.Colors.Accent or Theme.Colors.PanelAlt, function()
             RemoteEvents.EquipCosmetic:FireServer(tab, nil)
             task.delay(0.4, Reload)
