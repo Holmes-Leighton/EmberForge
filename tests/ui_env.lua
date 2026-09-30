@@ -182,6 +182,7 @@ local services = {
     SoundService = Instance.new("Folder"), ContentProvider = {}, ReplicatedFirst = { RemoveDefaultLoadingScreen = function() end },
     Lighting = Instance.new("Lighting"),
     ProximityPromptService = { PromptTriggered = newSignal() },
+    UserInputService = { InputBegan = newSignal(), GetFocusedTextBox = function() return nil end },
     Players = setmetatable({ LocalPlayer = LocalPlayerMock, PlayerAdded = newSignal(), PlayerRemoving = newSignal(),
         _list = {}, GetPlayers = function(self) return self._list end,
         GetPlayerByUserId = function() return nil end }, {}),

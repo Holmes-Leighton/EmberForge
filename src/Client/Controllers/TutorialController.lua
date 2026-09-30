@@ -14,7 +14,7 @@ local TutorialController = {}
 local STEPS = {
     { title = "Stand on the Starter Pad", hint = "Walk south to the glowing Starter Pad and stand on it. It mines for you: you need 10 Basic Ore and 5 Coal." },
     { title = "Forge your first Golem", hint = "Walk to the Golem Anvil near spawn and press E. Pick a Golem from the list and press Forge." },
-    { title = "Deploy your Golem",    hint = "Open the 🔥 Forge menu (right sidebar) and send your Golem to its mining zone." },
+    { title = "Deploy your Golem",    hint = "Open the 🔥 Forge menu (bottom bar, or press F) and send your Golem to its mining zone." },
     { title = "Collect resources",    hint = "Golems mine on their own. Watch the totals build up above the button, then press ⛏ Collect." },
 }
 

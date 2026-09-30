@@ -47,6 +47,18 @@ local function SkinFor(skinId)
     return { color = color:Lerp(Color3.fromRGB(70, 70, 70), 0.25), material = material, fire = color, trim = trim, custom = true }
 end
 
+-- Walk up and press E: the forge's objects open the matching menu (WorldPromptsBuilder handles it client-side)
+local function Prompt(p, name, action, object)
+    local pr = Instance.new("ProximityPrompt")
+    pr.Name = name
+    pr.ActionText = action
+    pr.ObjectText = object
+    pr.HoldDuration = 0
+    pr.MaxActivationDistance = 14
+    pr.RequiresLineOfSight = false
+    pr.Parent = p
+end
+
 local GROUND = 1.2      -- top of the courtyard tiles
 
 -- extra = { playerLevel = n, storageTier = n, golems = { idle Golems } }
@@ -175,6 +187,8 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
 
     -- Furnace with mouth and chimney (always)
     part("Furnace", Vector3.new(9, 7, 6), at(0, GROUND + 3.5, bz - 3.5))
+    Prompt(part("ForgeDesk", Vector3.new(1, 1, 1), at(0, GROUND + 0.5, bz + 2), nil, nil, { Transparency = 1, CanCollide = false }),
+        "OpenMenu_ForgeMenu", "Open Forge", "Your Forge")
     local mouth = part("ForgeMouth", Vector3.new(3.6, 2.8, 0.3), at(0, GROUND + 2.6, bz - 0.4), Color3.fromRGB(255, 120, 30), Enum.Material.Neon)
     light(mouth, skin.fire, 20 + level * 2, 1.5 + level * 0.12)
     fireOn(mouth, 4 + level * 0.3, 8)
@@ -191,6 +205,8 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
     part("SmelterPipe", Vector3.new(1, 5, 1), at(-11.5, GROUND + 7.5, bz - 3), iron, Enum.Material.Metal)
     part("AnvilBase", Vector3.new(2.4, 1.8, 1.6), at(11, GROUND + 0.9, bz + 1), wood, Enum.Material.Wood)
     part("AnvilTop", Vector3.new(4.2, 1, 1.9), at(11, GROUND + 2.3, bz + 1), Color3.fromRGB(105, 105, 115), Enum.Material.Metal)
+    Prompt(part("AnvilPromptPoint", Vector3.new(1, 1, 1), at(11, GROUND + 2.6, bz + 1), nil, nil, { Transparency = 1, CanCollide = false }),
+        "AnvilPrompt", "Craft a Golem", "Anvil")
     part("AnvilHorn", Vector3.new(1.8, 0.7, 1), at(13.2, GROUND + 2.3, bz + 1), Color3.fromRGB(105, 105, 115), Enum.Material.Metal)
 
     -- Workbench with tools, barrels, coal pile, crates, fire pit
@@ -198,6 +214,8 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
     for _, dx in ipairs({ -2.9, 2.9 }) do
         part("BenchLeg", Vector3.new(0.6, 3, 2), at(-5 + dx, GROUND + 1.5, -5), wood, Enum.Material.Wood)
     end
+    Prompt(part("BenchPromptPoint", Vector3.new(1, 1, 1), at(-5, GROUND + 3.6, -5), nil, nil, { Transparency = 1, CanCollide = false }),
+        "OpenMenu_StyleMenu", "Customise", "Workbench")
     part("Hammer", Vector3.new(0.4, 0.4, 2), at(-6.5, GROUND + 3.5, -5), wood, Enum.Material.Wood)
     part("HammerHead", Vector3.new(1.2, 0.8, 0.8), at(-6.5, GROUND + 3.6, -6), iron, Enum.Material.Metal)
     for i, pos in ipairs({ { 15, -8 }, { 17, -6.5 }, { 16, -4 } }) do
@@ -302,6 +320,7 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
         part("VaultRoof", Vector3.new(10, 1, 8), at(21, GROUND + 7.5, -20), roofC, Enum.Material.Slate)
         local vd = part("VaultDoor", Vector3.new(0.5, 4.4, 4.4), at(16.4, GROUND + 3.4, -20), Color3.fromRGB(200, 165, 60), Enum.Material.Metal, { Shape = Enum.PartType.Cylinder })
         light(vd, Color3.fromRGB(255, 220, 120), 10, 0.8)
+        Prompt(vd, "OpenMenu_InventoryMenu", "Open Storage", "Storage Vault")
     end
 
     -- ── Player-level banners and trophies (cosmetic only) ─────────────────────

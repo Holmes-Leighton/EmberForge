@@ -111,7 +111,11 @@ local function Apply()
     local pg = Players.LocalPlayer and Players.LocalPlayer:FindFirstChild("PlayerGui")
     local hud = pg and pg:FindFirstChild("HUD")
     if not hud then return end
-    for name, info in pairs(BadgeController.Compute(lastData, lastPending)) do
+    local counts = BadgeController.Compute(lastData, lastPending)
+    pcall(function()
+        require(script.Parent.GuideController).Show(counts, lastData ~= nil and #(lastData.Golems or {}) > 0)
+    end)
+    for name, info in pairs(counts) do
         local button = hud:FindFirstChild(name, true)
         local badge = button and button:FindFirstChild("Badge")
         if badge then

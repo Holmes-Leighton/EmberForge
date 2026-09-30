@@ -82,6 +82,14 @@ for _, id in ipairs({ "TitleBadge_Master", "TitleBadge_Legend", "ForgeSkin_Bronz
     expect(b ~= "Title" and b ~= "Forge Skin" and #b > 12, "subtitle explains what " .. id .. " does: " .. b)
 end
 
+local function prompts(m)
+    local names = {}
+    for _, d in ipairs(m:GetDescendants()) do if d:IsA("ProximityPrompt") then names[d.Name] = true end end
+    return names
+end
+local pr = prompts(ForgeBuilder.Build(folder, Vector3.new(0, 10, 0), 4, {}, { storageTier = 1 }))
+expect(pr.OpenMenu_ForgeMenu and pr.AnvilPrompt and pr.OpenMenu_StyleMenu and pr.OpenMenu_InventoryMenu, "forge objects open menus with E")
+
 print("== the world builds")
 local PDS = load("SSS/EmberForge/Services/PlayerDataService")
 local WorldBuilder = load("SSS/EmberForge/Services/WorldBuilder")

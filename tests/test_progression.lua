@@ -127,7 +127,7 @@ expect(math.abs(t5.mining - 0.08) < 1e-9 and math.abs(t5.coins - 0.10) < 1e-9, "
 expect(t10.mining > t5.mining and math.abs(t10.coins - 0.5) < 1e-9 and t10.carry > 0.19 and t10.luck > 0.16, "level 10 is the strongest")
 expect(FD.PerkText(FD.PerkAt(5)):find("mining") ~= nil, "perk text names the boost")
 local function mined(forgeLevel)
-    local dd = { Golems = { { id = "x", element = "Stone", tier = 1, deployed = true, zoneId = "GraniteCaverns", quality = 0 } }, ForgeLevel = forgeLevel, MasteryLevels = {} }
+    local dd = { Golems = { { id = "x", element = "Stone", tier = 1, deployed = true, zoneId = "GraniteCaverns", quality = 0 } }, ForgeLevel = forgeLevel, MasteryLevels = {}, Blueprints = {} }
     local total = 0
     for _ = 1, 200 do
         local g = Idle.TickOnlineProduction(dd, 60)

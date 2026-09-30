@@ -248,6 +248,27 @@ local lb = gui("LeaderboardMenu")
 lb.Enabled = true
 expect(lb.Enabled == true, "leaderboard opens without errors")
 
+print("== Hotbar and guide")
+local hud = gui("HUD")
+local hotbar = hud:FindFirstChild("Hotbar")
+local tiles = 0
+for _, c in ipairs(hotbar:GetChildren()) do if c:IsA("TextButton") then tiles += 1 end end
+expect(tiles == 5, "bottom hotbar has five big tiles (" .. tiles .. ")")
+expect(hud:FindFirstChild("Sidebar"):FindFirstChild("StyleButton") ~= nil, "secondary icons live in the side column")
+expect(hud:FindFirstChild("ForgeButton", true):FindFirstChild("KeyHint").Text == "F", "hotbar shows its keyboard shortcut")
+local Guide = load("SPS/EmberForge/Controllers/GuideController")
+local none = Guide.Pick({ ForgeButton = { count = 2 } }, false)
+expect(none == nil, "no arrows during the first-run tutorial (no Golem yet)")
+local pick = Guide.Pick({ ForgeButton = { count = 2 }, ChallengesButton = { count = 1 } }, true)
+expect(pick and pick.button == "ForgeButton", "idle Golems come first")
+expect(Guide.Pick({ ForgeButton = { count = 0 }, ChallengesButton = { count = 1 } }, true).button == "ChallengesButton", "then quests")
+expect(Guide.Pick({}, true) == nil, "nothing to do, no arrow")
+Guide.Show({ ForgeButton = { count = 1 } }, true)
+local fb = hud:FindFirstChild("ForgeButton", true)
+expect(fb:FindFirstChild("GuideMarker") ~= nil, "the arrow appears above the Forge tile")
+Guide.Show({}, true)
+expect(fb:FindFirstChild("GuideMarker") == nil, "the arrow goes away when nothing is waiting")
+
 print("== Toast notifications")
 local function Theme_Danger() return load("game/ReplicatedStorage/Shared/Modules/Theme").Colors.Danger end
 local function toasts()
