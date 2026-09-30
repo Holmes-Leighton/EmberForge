@@ -9,12 +9,14 @@ local GolemData     = require(game.ReplicatedStorage.Shared.Data.GolemData)
 local RecipeData    = require(game.ReplicatedStorage.Shared.Data.RecipeData)
 local ForgeData     = require(game.ReplicatedStorage.Shared.Data.ForgeData)
 local Utils         = require(game.ReplicatedStorage.Shared.Modules.Utils)
+local MaterialData  = require(game.ReplicatedStorage.Shared.Data.MaterialData)
+local CraftRules    = require(game.ReplicatedStorage.Shared.Modules.CraftRules)
+local GolemNames    = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
 
 local ForgeController = {}
 
 local forgeGui
 local smeltQueueDisplay = {}  -- jobId → frame reference
-local activeSmeltJobs   = {}  -- local mirror of smelt jobs for countdown
 
 -- ── Init ──────────────────────────────────────────────────────────────────────
 function ForgeController.Init(playerData)
@@ -27,6 +29,7 @@ function ForgeController.Init(playerData)
         ForgeController._BuildBlueprintList()
         ForgeController._BuildSmeltPanel()
         ForgeController._BuildDeployPanel()
+        ForgeController._RenderSmeltQueue()
         ForgeController._StartSmeltCountdowns()
         forgeGui:GetPropertyChangedSignal("Enabled"):Connect(function()
             if forgeGui.Enabled then ForgeController.Resync() end
@@ -49,11 +52,18 @@ function ForgeController._BuildBlueprintList()
     local data = ForgeController._data
     local yOffset = 0
 
-    for _, bpId in ipairs(data.Blueprints or {}) do
-        local bp = RecipeData.Get(bpId)
-        if not bp then continue end
-
-        local card = ForgeController._CreateBlueprintCard(bp, data, yOffset)
+    local events = {}
+    for _, id in ipairs(data.AvailableEventBlueprints or {}) do events[id] = true end
+    local list = CraftRules.ListBlueprints(data, events)
+    table.sort(list, function(a, b)
+        local la = CraftRules.GetLockReason(data, a, events) ~= nil
+        local lb = CraftRules.GetLockReason(data, b, events) ~= nil
+        if la ~= lb then return not la end                    -- craftable-now first
+        if a.tier ~= b.tier then return a.tier < b.tier end
+        return a.id < b.id
+    end)
+    for _, bp in ipairs(list) do
+        local card = ForgeController._CreateBlueprintCard(bp, data, yOffset, events)
         card.Parent = scrollFrame
         yOffset = yOffset + 120
     end
@@ -61,7 +71,7 @@ function ForgeController._BuildBlueprintList()
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, yOffset + 10)
 end
 
-function ForgeController._CreateBlueprintCard(bp, data, yOffset)
+function ForgeController._CreateBlueprintCard(bp, data, yOffset, events)
     local card = Instance.new("Frame")
     card.Name = bp.id
     card.Size = UDim2.new(1, -10, 0, 110)
@@ -78,31 +88,29 @@ function ForgeController._CreateBlueprintCard(bp, data, yOffset)
     title.Size = UDim2.new(0.7, 0, 0, 28)
     title.Position = UDim2.new(0, 8, 0, 5)
     title.BackgroundTransparency = 1
-    title.Text = (bp.element or "?") .. " — Tier " .. bp.tier
+    title.Text = (bp.element or "?") .. " - Tier " .. bp.tier .. (bp.isEventGolem and "  (EVENT)" or "")
     title.TextColor3 = Color3.fromRGB(255, 200, 80)
     title.Font = Enum.Font.GothamBold
     title.TextSize = 15
     title.TextXAlignment = Enum.TextXAlignment.Left
     title.Parent = card
 
-    -- How many times can this be crafted with the current inventory?
-    local craftable = math.huge
-    for _, req in ipairs(bp.materialsRequired or {}) do
-        local have = (data.Inventory or {})[req.id] or 0
-        craftable = math.min(craftable, math.floor(have / req.qty))
-    end
-    if craftable == math.huge then craftable = 0 end
+    -- How many times can this be crafted with the current inventory (0 if a rule blocks it)?
+    local lock = CraftRules.GetLockReason(data, bp, events)
+    local craftable = lock and 0 or CraftRules.CraftableCount(data, bp)
 
     -- Requirements list
     local reqText = ""
     for i, req in ipairs(bp.materialsRequired or {}) do
         local have = (data.Inventory or {})[req.id] or 0
         local colour = have >= req.qty and "[OK]" or "[NEED]"
-        reqText = reqText .. colour .. " " .. req.id .. " x" .. req.qty
+        local matDef = MaterialData.Get(req.id)
+        reqText = reqText .. colour .. " " .. (matDef and matDef.displayName or req.id) .. "  " .. have .. "/" .. req.qty
         if i < #bp.materialsRequired then reqText = reqText .. "\n" end
     end
+    if lock then reqText = "LOCKED: " .. lock .. "\n" .. reqText end
     local reqs = Instance.new("TextLabel")
-    reqs.Size = UDim2.new(1, -8, 0, 60)
+    reqs.Size = UDim2.new(1, -110, 0, 68)
     reqs.Position = UDim2.new(0, 8, 0, 32)
     reqs.BackgroundTransparency = 1
     reqs.Text = reqText
@@ -120,7 +128,7 @@ function ForgeController._CreateBlueprintCard(bp, data, yOffset)
     badge.Size = UDim2.new(0, 92, 0, 24)
     badge.Position = UDim2.new(1, -98, 0, 8)
     badge.BackgroundColor3 = craftable > 0 and Color3.fromRGB(60, 150, 80) or Color3.fromRGB(70, 60, 55)
-    badge.Text = craftable > 0 and ("Can craft: " .. craftable) or "Can't craft"
+    badge.Text = lock and "Locked" or (craftable > 0 and ("Can craft: " .. craftable) or "Need more")
     badge.TextColor3 = craftable > 0 and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(170, 150, 140)
     badge.Font = Enum.Font.GothamBold
     badge.TextSize = 12
@@ -221,11 +229,10 @@ function ForgeController._StartSmeltCountdowns()
         while true do
             task.wait(1)
             local now = Utils.UnixTimestamp()
-            for jobId, jobFrame in pairs(smeltQueueDisplay) do
-                local job = activeSmeltJobs[jobId]
-                if job then
-                    local remaining = math.max(0, job.endTime - now)
-                    local timeLbl = jobFrame:FindFirstChild("TimeLabel")
+            for _, entry in pairs(smeltQueueDisplay) do
+                if entry.frame.Parent then
+                    local remaining = math.max(0, entry.endTime - now)
+                    local timeLbl = entry.frame:FindFirstChild("TimeLabel")
                     if timeLbl then
                         timeLbl.Text = remaining > 0 and Utils.FormatTime(remaining) or "Done!"
                     end
@@ -241,6 +248,9 @@ function ForgeController.Refresh()
     if not forgeGui or not ForgeController._data then return end
     ForgeController._BuildBlueprintList()
     ForgeController._BuildDeployPanel()
+    ForgeController._RenderSmeltQueue()
+    ForgeController._RenderUpgrades()
+    ForgeController._RenderNeon()
 end
 
 local resyncQueued = false
@@ -272,6 +282,195 @@ function ForgeController.OnResourcesCollected(gains)
         task.delay(0.5, function()
             ForgeController._bpRefreshQueued = false
             if forgeGui and forgeGui.Enabled then ForgeController._BuildBlueprintList() end
+        end)
+    end
+end
+
+-- ── Neon Cave: four identical Golems -> Neon, four Neons -> Mega Neon ──────────
+function ForgeController._RenderNeon()
+    if not forgeGui then return end
+    local scroll = forgeGui:FindFirstChild("NeonScroll", true)
+    local data = ForgeController._data
+    if not scroll or not data then return end
+    local Theme = require(game.ReplicatedStorage.Shared.Modules.Theme)
+    local need = GolemData.NEON_FUSION_COUNT
+
+    if not scroll:FindFirstChildOfClass("UIListLayout") then
+        Theme.AddListLayout(scroll, Enum.FillDirection.Vertical, 8)
+    end
+    for _, c in ipairs(scroll:GetChildren()) do
+        if c:IsA("GuiObject") then c:Destroy() end
+    end
+
+    local intro = Instance.new("Frame")
+    intro.Size = UDim2.new(1, -8, 0, 84)
+    intro.BackgroundColor3 = Theme.Colors.Panel
+    intro.BorderSizePixel = 0
+    intro.Parent = scroll
+    Theme.AddCorner(intro, Theme.Corner.Medium)
+    local h = Theme.Label(intro, "Neon Cave", Theme.TextSize.Heading, Theme.Colors.AccentBright, Theme.Fonts.Heading)
+    h.Position = UDim2.new(0, 14, 0, 6)
+    h.Size = UDim2.new(1, -28, 0, 22)
+    local t = Theme.Label(intro, string.format(
+        "Fuse %d identical idle Golems (same element and tier) into 1 Neon Golem: glowing, and %d%% stronger.\nFuse %d Neons into a Mega Neon: rainbow, and %d%% stronger. Deployed Golems can't be fused.",
+        need, math.floor((GolemData.Variants.Neon.statMultiplier - 1) * 100 + 0.5), need,
+        math.floor((GolemData.Variants.MegaNeon.statMultiplier - 1) * 100 + 0.5)),
+        Theme.TextSize.Small, Theme.Colors.TextSecondary, Theme.Fonts.Body)
+    t.Position = UDim2.new(0, 14, 0, 30)
+    t.Size = UDim2.new(1, -28, 0, 50)
+    t.TextYAlignment = Enum.TextYAlignment.Top
+
+    -- group idle Golems by (element, tier, variant)
+    local groups, order = {}, {}
+    for _, g in ipairs(data.Golems or {}) do
+        if not g.deployed and g.variant ~= "MegaNeon" then
+            local key = g.element .. "|" .. g.tier .. "|" .. (g.variant or "")
+            if not groups[key] then
+                groups[key] = { element = g.element, tier = g.tier, variant = g.variant, count = 0, sample = g }
+                table.insert(order, key)
+            end
+            groups[key].count += 1
+        end
+    end
+    table.sort(order, function(a, b)
+        local ga, gb = groups[a], groups[b]
+        local ra, rb = (ga.count >= need) and 0 or 1, (gb.count >= need) and 0 or 1
+        if ra ~= rb then return ra < rb end
+        if ga.tier ~= gb.tier then return ga.tier > gb.tier end
+        return ga.element < gb.element
+    end)
+
+    if #order == 0 then
+        local none = Theme.Label(scroll, "You have no idle Golems to fuse. Craft more, or recall deployed ones.",
+            Theme.TextSize.Body, Theme.Colors.TextDim)
+        none.Size = UDim2.new(1, -8, 0, 40)
+        return
+    end
+
+    for _, key in ipairs(order) do
+        local grp = groups[key]
+        local d = GolemNames.Describe(grp.sample)
+        local ready = grp.count >= need
+        local card = Instance.new("Frame")
+        card.Size = UDim2.new(1, -8, 0, 64)
+        card.BackgroundColor3 = Theme.Colors.Panel
+        card.BorderSizePixel = 0
+        card.Parent = scroll
+        Theme.AddCorner(card, Theme.Corner.Small)
+
+        local nameL = Theme.Label(card, string.format("%s   [%s]", d.name, d.rarity), Theme.TextSize.Body, d.rarityColor, Theme.Fonts.Heading)
+        nameL.Position = UDim2.new(0, 12, 0, 8)
+        nameL.Size = UDim2.new(1, -230, 0, 22)
+        local countL = Theme.Label(card, string.format("%d of %d idle Golems", grp.count, need), Theme.TextSize.Small,
+            ready and Theme.Colors.Success or Theme.Colors.TextSecondary, Theme.Fonts.Heading)
+        countL.Position = UDim2.new(0, 12, 0, 34)
+        countL.Size = UDim2.new(1, -230, 0, 18)
+
+        local result = grp.variant == "Neon" and "Mega Neon" or "Neon"
+        local btn = Theme.Button(card, "Fuse " .. need .. "  >  " .. result, ready and Theme.Colors.Accent or Theme.Colors.PanelAlt,
+            ready and Color3.fromRGB(255, 255, 255) or Theme.Colors.TextDim)
+        btn.AnchorPoint = Vector2.new(1, 0.5)
+        btn.Position = UDim2.new(1, -10, 0.5, 0)
+        btn.Size = UDim2.new(0, 200, 0, 36)
+        btn.TextSize = 13
+        btn.AutoButtonColor = ready
+        btn.MouseButton1Click:Connect(function()
+            if ready then RemoteEvents.NeonFuse:FireServer(grp.element, grp.tier, grp.variant) end
+        end)
+    end
+end
+
+-- ── Upgrades: forge level progress + Storage Vault ────────────────────────────
+function ForgeController._RenderUpgrades()
+    if not forgeGui then return end
+    local scroll = forgeGui:FindFirstChild("UpgradesScroll", true)
+    local data = ForgeController._data
+    if not scroll or not data then return end
+    local Theme = require(game.ReplicatedStorage.Shared.Modules.Theme)
+    local ForgeDataM = require(game.ReplicatedStorage.Shared.Data.ForgeData)
+    local GameConfigM = require(game.ReplicatedStorage.Shared.Data.GameConfig)
+
+    if not scroll:FindFirstChildOfClass("UIListLayout") then
+        Theme.AddListLayout(scroll, Enum.FillDirection.Vertical, 8)
+    end
+    for _, c in ipairs(scroll:GetChildren()) do
+        if c:IsA("GuiObject") then c:Destroy() end
+    end
+
+    local function Card(height)
+        local f = Instance.new("Frame")
+        f.Size = UDim2.new(1, -8, 0, height)
+        f.BackgroundColor3 = Theme.Colors.Panel
+        f.BorderSizePixel = 0
+        f.Parent = scroll
+        Theme.AddCorner(f, Theme.Corner.Medium)
+        return f
+    end
+    local function Text(parent, text, y, size, color, font, h)
+        local l = Theme.Label(parent, text, size or Theme.TextSize.Body, color or Theme.Colors.TextPrimary, font or Theme.Fonts.Body)
+        l.Position = UDim2.new(0, 14, 0, y)
+        l.Size = UDim2.new(1, -28, 0, h or 20)
+        l.TextYAlignment = Enum.TextYAlignment.Top
+        return l
+    end
+
+    -- Forge level
+    local level = data.ForgeLevel or 1
+    local fd = ForgeDataM.Get(level)
+    local nextFd = ForgeDataM.ByLevel[level + 1]
+    local card = Card(150)
+    Text(card, string.format("Forge Level %d  -  %s", level, fd.displayName), 8, Theme.TextSize.Heading, Theme.Colors.AccentBright, Theme.Fonts.Heading, 24)
+    Text(card, fd.unlocks.description, 34, nil, Theme.Colors.TextSecondary, nil, 36)
+    if nextFd then
+        local xp, need, base = data.ForgeXP or 0, nextFd.xpRequired, fd.xpRequired
+        local frac = math.clamp((xp - base) / math.max(1, need - base), 0, 1)
+        local bg = Instance.new("Frame")
+        bg.Size = UDim2.new(1, -28, 0, 14)
+        bg.Position = UDim2.new(0, 14, 0, 74)
+        bg.BackgroundColor3 = Theme.Colors.Background
+        bg.BorderSizePixel = 0
+        bg.Parent = card
+        Theme.AddCorner(bg, UDim.new(0, 7))
+        local fill = Instance.new("Frame")
+        fill.Size = UDim2.new(frac, 0, 1, 0)
+        fill.BackgroundColor3 = Theme.Colors.Ember
+        fill.BorderSizePixel = 0
+        fill.Parent = bg
+        Theme.AddCorner(fill, UDim.new(0, 7))
+        Text(card, string.format("%d / %d Forge XP to level %d", xp - base, need - base, level + 1), 92, Theme.TextSize.Small, Theme.Colors.TextSecondary)
+        Text(card, "Next: " .. nextFd.unlocks.description, 112, Theme.TextSize.Small, Theme.Colors.Gold, nil, 32)
+    else
+        Text(card, "Maximum Forge level reached.", 80, nil, Theme.Colors.Gold)
+    end
+
+    -- Storage
+    local tier = data.StorageTier or 0
+    local hours = tier >= 2 and GameConfigM.OFFLINE_STORAGE_PREMIUM_HOURS or (tier >= 1 and GameConfigM.OFFLINE_STORAGE_UPGRADED_HOURS or GameConfigM.OFFLINE_STORAGE_BASE_HOURS)
+    local vault = ForgeDataM.StorageVault
+    local sc = Card(tier >= 1 and 90 or 230)
+    Text(sc, string.format("Offline storage: %d hours", hours), 8, Theme.TextSize.Heading, Theme.Colors.AccentBright, Theme.Fonts.Heading, 24)
+    Text(sc, "Your Golems keep mining while you are away, up to this many hours of production.", 34, Theme.TextSize.Small, Theme.Colors.TextSecondary, nil, 32)
+    if tier >= 1 then
+        Text(sc, tier >= 2 and "Premium storage active (24h)." or "Storage Vault built. Premium 24h storage is available in the Shop.", 62, nil, Theme.Colors.Success)
+    else
+        local locked = level < vault.forgeLevelRequired
+        Text(sc, "Storage Vault  (8 hours)" .. (locked and ("   -   needs Forge Level " .. vault.forgeLevelRequired) or ""), 66, Theme.TextSize.Body, Theme.Colors.TextPrimary, Theme.Fonts.Heading)
+        local y, canBuild = 90, not locked
+        for _, req in ipairs(vault.materialsRequired) do
+            local have = (data.Inventory or {})[req.id] or 0
+            local def = MaterialData.Get(req.id)
+            if have < req.qty then canBuild = false end
+            Text(sc, string.format("%s   %d / %d", def and def.displayName or req.id, have, req.qty), y, nil,
+                have >= req.qty and Theme.Colors.Success or Theme.Colors.Danger, Theme.Fonts.Heading)
+            y += 22
+        end
+        local build = Theme.Button(sc, "Build Storage Vault", canBuild and Theme.Colors.Accent or Theme.Colors.PanelAlt,
+            canBuild and Color3.fromRGB(255, 255, 255) or Theme.Colors.TextDim, "BuildVaultButton")
+        build.Size = UDim2.new(0, 200, 0, 38)
+        build.Position = UDim2.new(0, 14, 1, -48)
+        build.AutoButtonColor = canBuild
+        build.MouseButton1Click:Connect(function()
+            if canBuild then RemoteEvents.CraftStorageVault:FireServer() end
         end)
     end
 end
@@ -341,9 +540,10 @@ function ForgeController._BuildDeployPanel()
         card.Parent = scroll
         Theme.AddCorner(card, Theme.Corner.Small)
 
-        local color = Theme.Colors[g.element] or Theme.Colors.TextPrimary
-        local title = Theme.Label(card, string.format("%s Golem  •  Tier %d", tostring(g.element), g.tier or 1),
-            Theme.TextSize.Body, color, Theme.Fonts.Heading)
+        local desc = GolemNames.Describe(g)
+        local color = desc.elementColor
+        local title = Theme.Label(card, string.format("%s   [%s]", desc.name, desc.rarity),
+            Theme.TextSize.Body, desc.rarityColor, Theme.Fonts.Heading)
         title.Size = UDim2.new(0.6, 0, 0, 22)
         title.Position = UDim2.new(0, 10, 0, 6)
 
@@ -353,6 +553,35 @@ function ForgeController._BuildDeployPanel()
             Theme.TextSize.Small, g.deployed and Theme.Colors.Success or Theme.Colors.TextSecondary)
         status.Size = UDim2.new(0.6, 0, 0, 18)
         status.Position = UDim2.new(0, 10, 0, 30)
+
+        -- Durability bar (Golems wear out while mining; repairing costs 20% of the craft materials)
+        local maxDur = g._maxDurabilitySeconds or (GolemData.Tiers[g.tier] and GolemData.Tiers[g.tier].durabilityHours * 3600) or 1
+        local dur = math.max(0, g._durabilitySeconds or maxDur)
+        local frac = math.clamp(dur / maxDur, 0, 1)
+        local broken = dur <= 0
+        local barBg = Instance.new("Frame")
+        barBg.Size = UDim2.new(0.5, 0, 0, 5)
+        barBg.Position = UDim2.new(0, 10, 1, -9)
+        barBg.BackgroundColor3 = Theme.Colors.Background
+        barBg.BorderSizePixel = 0
+        barBg.Parent = card
+        local barFill = Instance.new("Frame")
+        barFill.Size = UDim2.new(frac, 0, 1, 0)
+        barFill.BackgroundColor3 = broken and Color3.fromRGB(220, 60, 50) or (frac < 0.25 and Color3.fromRGB(230, 170, 40) or Theme.Colors.Success)
+        barFill.BorderSizePixel = 0
+        barFill.Parent = barBg
+        if broken then
+            status.Text = "BROKEN - repair it to mine again"
+            status.TextColor3 = Color3.fromRGB(230, 90, 70)
+        end
+        if not g.deployed and frac < 1 then
+            local repair = Theme.Button(card, broken and "Repair!" or "Repair", broken and Theme.Colors.Danger or Theme.Colors.PanelAlt,
+                broken and Color3.fromRGB(255, 255, 255) or Theme.Colors.AccentBright)
+            repair.Size = UDim2.new(0, 70, 0, 30)
+            repair.Position = UDim2.new(1, -184, 0.5, -15)
+            repair.TextSize = 12
+            repair.MouseButton1Click:Connect(function() RemoteEvents.RepairGolem:FireServer(g.id) end)
+        end
 
         if not g.deployed then
             local zoneId = ForgeController._selectedZone
@@ -439,58 +668,104 @@ function ForgeController.OnGolemReturned(result, golemId, err)
     ForgeController.Resync()
 end
 
-local function _AddSmeltJobCard(job)
+-- Draws the queue from the server's copy (so jobs that were running before you joined show up too)
+function ForgeController._RenderSmeltQueue()
     if not forgeGui then return end
     local scroll = forgeGui:FindFirstChild("SmeltQueueScroll", true)
-    if not scroll then return end
+    local panel  = forgeGui:FindFirstChild("SmeltPanel", true)
+    local data   = ForgeController._data
+    if not scroll or not data then return end
 
     local Theme = require(game.ReplicatedStorage.Shared.Modules.Theme)
+    local MaterialData = require(game.ReplicatedStorage.Shared.Data.MaterialData)
+    local ForgeDataM = require(game.ReplicatedStorage.Shared.Data.ForgeData)
 
-    local card = Instance.new("Frame")
-    card.Name             = job.id
-    card.Size             = UDim2.new(1, -8, 0, 60)
-    card.BackgroundColor3 = Theme.Colors.Panel
-    card.BorderSizePixel  = 0
-    card.Parent           = scroll
-    Theme.AddCorner(card, Theme.Corner.Small)
+    if not scroll:FindFirstChildOfClass("UIListLayout") then
+        Theme.AddListLayout(scroll, Enum.FillDirection.Vertical, 6)
+    end
+    for _, child in ipairs(scroll:GetChildren()) do
+        if child:IsA("Frame") or child:IsA("TextLabel") then child:Destroy() end
+    end
+    smeltQueueDisplay = {}
 
-    -- Material name
-    local nameLbl = Theme.Label(card,
-        (job.materialId or "?") .. "  →  " .. (job.outputId or "?"),
-        Theme.TextSize.Body, Theme.Colors.TextPrimary, Theme.Fonts.Heading)
-    nameLbl.Size     = UDim2.new(0.65, 0, 0, 22)
-    nameLbl.Position = UDim2.new(0, 10, 0, 6)
-    nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+    local jobs = data.SmeltQueue or {}
+    local maxSlots = ForgeDataM.Get(data.ForgeLevel or 1).unlocks.smeltSlots
 
-    -- Quantity badge
-    local qtyLbl = Theme.Label(card, "×" .. (job.quantity or 1),
-        Theme.TextSize.Small, Theme.Colors.Gold)
-    qtyLbl.Size     = UDim2.new(0.2, 0, 0, 18)
-    qtyLbl.Position = UDim2.new(0, 10, 0, 30)
-    qtyLbl.TextXAlignment = Enum.TextXAlignment.Left
+    -- header info: queue usage + speed-ups
+    if panel then
+        local info = panel:FindFirstChild("QueueInfo")
+        if not info then
+            info = Theme.Label(panel, "", Theme.TextSize.Body, Theme.Colors.TextSecondary, Theme.Fonts.Heading, "QueueInfo")
+            info.Position = UDim2.new(0.4, 0, 0, 66)
+            info.Size = UDim2.new(0.6, -16, 0, 24)
+            info.TextXAlignment = Enum.TextXAlignment.Right
+        end
+        info.Text = string.format("Queue %d/%d     Speed-Ups: %d", #jobs, maxSlots, data.SpeedUps or 0)
+    end
 
-    -- Countdown
-    local timeLabel = Theme.Label(card, "...", Theme.TextSize.Small,
-        Theme.Colors.Accent, Theme.Fonts.Mono, "TimeLabel")
-    timeLabel.Size     = UDim2.new(0.3, 0, 0, 22)
-    timeLabel.Position = UDim2.new(1, -10, 0.5, -11)
-    timeLabel.TextXAlignment = Enum.TextXAlignment.Right
+    if #jobs == 0 then
+        local none = Theme.Label(scroll, "Nothing smelting. Use the Smelt button above to turn raw ore into refined materials.",
+            Theme.TextSize.Body, Theme.Colors.TextDim)
+        none.Size = UDim2.new(1, -8, 0, 44)
+        return
+    end
 
-    smeltQueueDisplay[job.id] = card
-end
+    for _, job in ipairs(jobs) do
+        local card = Instance.new("Frame")
+        card.Name = job.id
+        card.Size = UDim2.new(1, -8, 0, 62)
+        card.BackgroundColor3 = Theme.Colors.Panel
+        card.BorderSizePixel = 0
+        card.Parent = scroll
+        Theme.AddCorner(card, Theme.Corner.Small)
 
-function ForgeController.OnSmeltQueued(job, err)
-    if job then
-        activeSmeltJobs[job.id] = job
-        _AddSmeltJobCard(job)
+        local inMat  = MaterialData.Get(job.materialId)
+        local outMat = MaterialData.Get(job.outputId)
+        local nameLbl = Theme.Label(card,
+            string.format("%s  >  %s", inMat and inMat.displayName or job.materialId, outMat and outMat.displayName or job.outputId),
+            Theme.TextSize.Body, Theme.Colors.TextPrimary, Theme.Fonts.Heading)
+        nameLbl.Position = UDim2.new(0, 10, 0, 6)
+        nameLbl.Size = UDim2.new(0.55, 0, 0, 22)
+
+        local qtyLbl = Theme.Label(card, string.format("%d in  ->  %d out", job.quantity or 1, job.outputQty or 0),
+            Theme.TextSize.Small, Theme.Colors.Gold)
+        qtyLbl.Position = UDim2.new(0, 10, 0, 32)
+        qtyLbl.Size = UDim2.new(0.55, 0, 0, 18)
+
+        local timeLabel = Theme.Label(card, "...", Theme.TextSize.Body, Theme.Colors.Accent, Theme.Fonts.Mono, "TimeLabel")
+        timeLabel.AnchorPoint = Vector2.new(1, 0.5)
+        timeLabel.Position = UDim2.new(1, -110, 0.5, 0)
+        timeLabel.Size = UDim2.new(0, 110, 0, 22)
+        timeLabel.TextXAlignment = Enum.TextXAlignment.Right
+
+        local speed = Theme.Button(card, "Speed Up", (data.SpeedUps or 0) > 0 and Theme.Colors.Accent or Theme.Colors.PanelAlt,
+            (data.SpeedUps or 0) > 0 and Color3.fromRGB(255, 255, 255) or Theme.Colors.TextDim, "SpeedUpButton")
+        speed.AnchorPoint = Vector2.new(1, 0.5)
+        speed.Position = UDim2.new(1, -8, 0.5, 0)
+        speed.Size = UDim2.new(0, 92, 0, 30)
+        speed.TextSize = 12
+        speed.MouseButton1Click:Connect(function()
+            if (data.SpeedUps or 0) > 0 then
+                RemoteEvents.UseSpeedUp:FireServer(job.id)
+            else
+                require(script.Parent.HUDController).ShowNotification("No Speed-Ups", "Buy some in the Shop or earn them from the Season Pass.")
+            end
+        end)
+
+        smeltQueueDisplay[job.id] = { frame = card, endTime = job.endTime }
     end
 end
 
+function ForgeController.OnSmeltQueued(job, err)
+    if err then
+        require(script.Parent.HUDController).ShowNotification("Can't smelt", tostring(err))
+        return
+    end
+    ForgeController.Resync()
+end
+
 function ForgeController.OnSmeltCompleted(job)
-    local card = smeltQueueDisplay[job.id]
-    if card then card:Destroy() end
-    activeSmeltJobs[job.id] = nil
-    smeltQueueDisplay[job.id] = nil
+    ForgeController.Resync()
 end
 
 function ForgeController.OnGolemFused(ok, golem1Id, err)

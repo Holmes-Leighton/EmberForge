@@ -38,6 +38,10 @@ local ColorMeta = {}
 ColorMeta.__index = { Lerp = function(a, b, t) return setmetatable({ R = a.R + (b.R - a.R) * t, G = a.G + (b.G - a.G) * t, B = a.B + (b.B - a.B) * t }, ColorMeta) end }
 Color3 = { fromRGB = function(r, g, b) return setmetatable({ R = r / 255, G = g / 255, B = b / 255 }, ColorMeta) end,
            new = function(r, g, b) return setmetatable({ R = r, G = g, B = b }, ColorMeta) end }
+UDim = { new = function(s, o) return { Scale = s, Offset = o } end }
+UDim2 = { new = function(xs, xo, ys, yo) return { X = UDim.new(xs, xo), Y = UDim.new(ys, yo) } end }
+Vector2 = { new = function(x, y) return { X = x, Y = y } end }
+Vector3 = { new = function(x, y, z) return { X = x, Y = y, Z = z } end }
 Enum = setmetatable({}, { __index = function(_, k) return setmetatable({}, { __index = function(_, v) return k .. "." .. v end }) end })
 
 local function newObj(path, parent)

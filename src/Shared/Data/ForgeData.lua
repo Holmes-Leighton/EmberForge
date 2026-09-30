@@ -137,6 +137,16 @@ ForgeData.Levels = {
     },
 }
 
+-- Storage Vault: one-time upgrade taking the offline cap from 4h to 8h (spec 2.3). 24h is Robux/Season Pass.
+ForgeData.StorageVault = {
+    forgeLevelRequired = 4,
+    materialsRequired = {
+        { id = "RefinedOre",     qty = 200 },
+        { id = "ElementalIngot", qty = 50  },
+        { id = "Coal",           qty = 100 },
+    },
+}
+
 -- Build lookup by level number
 ForgeData.ByLevel = {}
 for _, fd in ipairs(ForgeData.Levels) do

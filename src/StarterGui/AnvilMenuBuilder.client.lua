@@ -10,6 +10,8 @@ local LocalPlayer = Players.LocalPlayer
 local Theme          = require(game.ReplicatedStorage.Shared.Modules.Theme)
 local RemoteEvents   = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local GolemModel     = require(game.ReplicatedStorage.Shared.Modules.GolemModel)
+local ScaleUI        = require(game.ReplicatedStorage.Shared.Modules.ScaleUI)
+local CraftRules     = require(game.ReplicatedStorage.Shared.Modules.CraftRules)
 local GolemData      = require(game.ReplicatedStorage.Shared.Data.GolemData)
 local RecipeData     = require(game.ReplicatedStorage.Shared.Data.RecipeData)
 local MaterialData   = require(game.ReplicatedStorage.Shared.Data.MaterialData)
@@ -25,6 +27,7 @@ local data
 local selectedId
 local rows = {}          -- blueprintId → row button
 local previewModel
+local previewPivot = Vector3.new(0, 5, 0)
 local refreshQueued = false
 
 -- ── Helpers ───────────────────────────────────────────────────────────────────
@@ -33,32 +36,23 @@ local function MaterialName(id)
     return def and def.displayName or id
 end
 
-local function CraftableCount(bp)
-    local n = math.huge
-    for _, req in ipairs(bp.materialsRequired or {}) do
-        n = math.min(n, math.floor(((data.Inventory or {})[req.id] or 0) / req.qty))
-    end
-    return n == math.huge and 0 or n
+local function EventSet()
+    local set = {}
+    for _, id in ipairs(data and data.AvailableEventBlueprints or {}) do set[id] = true end
+    return set
 end
 
+local function CraftableCount(bp)
+    return CraftRules.CraftableCount(data, bp)
+end
+
+-- nil when forging is allowed right now, otherwise the reason (server enforces the same rules)
 local function LockReason(bp)
-    if bp.forgeLevelRequired and (data.ForgeLevel or 1) < bp.forgeLevelRequired then
-        return "Requires Forge Level " .. bp.forgeLevelRequired
-    end
-    if bp.unlockGate == "craft_first_tier2" then
-        local has = false
-        for _, g in ipairs(data.Golems or {}) do if g.tier >= 2 then has = true end end
-        if not has then return "Requires crafting a Tier 2 Golem first" end
-    end
-    return nil
+    return CraftRules.GetLockReason(data, bp, EventSet())
 end
 
 local function SortedBlueprints()
-    local list = {}
-    for _, id in ipairs(data.Blueprints or {}) do
-        local bp = RecipeData.Get(id)
-        if bp and bp.element then table.insert(list, bp) end
-    end
+    local list = CraftRules.ListBlueprints(data, EventSet())
     table.sort(list, function(a, b)
         if a.tier ~= b.tier then return a.tier < b.tier end
         if a.element ~= b.element then return (ELEMENT_ORDER[a.element] or 9) < (ELEMENT_ORDER[b.element] or 9) end
@@ -100,15 +94,12 @@ scrim.MouseButton1Click:Connect(function() gui.Enabled = false end)
 
 local box = Instance.new("Frame")
 box.Name = "Container"
-box.AnchorPoint = Vector2.new(0.5, 0.5)
 box.Size = UDim2.new(0, BOX_W, 0, BOX_H)
-box.Position = UDim2.new(0.5, 0, 0.5, 0)
 box.BackgroundColor3 = Theme.Colors.Background
 box.BorderSizePixel = 0
 box.Parent = gui
 Theme.AddCorner(box, Theme.Corner.Large)
-local uiScale = Instance.new("UIScale")
-uiScale.Parent = box
+ScaleUI.Apply(box, BOX_W, BOX_H)
 
 -- swallow clicks on the box so they don't hit the scrim
 local shield = Instance.new("TextButton")
@@ -232,6 +223,7 @@ local function ShowPreview(bp)
     if previewModel then previewModel:Destroy() end
     previewModel = GolemModel.Build(bp.element, bp.tier)
     previewModel.Parent = viewport
+    previewPivot = previewModel:GetPivot().Position       -- spin on the spot, don't drift to the origin
 end
 
 local function RenderDetail()
@@ -244,9 +236,11 @@ local function RenderDetail()
     local craftable = CraftableCount(bp)
     local lock      = LockReason(bp)
 
-    nameLbl.Text = string.format("%s Golem", bp.element)
+    nameLbl.Text = bp.isEventGolem and string.format("%s Golem (Event)", bp.element) or string.format("%s Golem", bp.element)
     nameLbl.TextColor3 = Theme.Colors[bp.element] or Theme.Colors.AccentBright
-    subLbl.Text = string.format("Tier %d  -  %s", bp.tier, tierDef and tierDef.name or "")
+    local rarityName = GolemData.RarityForTier(bp.tier)
+    subLbl.Text = string.format("Tier %d  -  %s  -  %s", bp.tier, tierDef and tierDef.name or "", rarityName)
+    subLbl.TextColor3 = Theme.Colors[rarityName] or Theme.Colors.TextSecondary
     descLbl.Text = elemDef and elemDef.description or ""
     local zones = ZonesFor(bp.element)
     zoneLbl.Text = #zones > 0 and ("Unlocks mining zone: " .. table.concat(zones, ", ")) or ""
@@ -327,7 +321,9 @@ local function RenderList()
             selected and Theme.Colors.AccentBright or Theme.Colors.TextPrimary, Theme.Fonts.Heading)
         nameL.Position = UDim2.new(0, 20, 0, 6)
         nameL.Size = UDim2.new(1, -110, 0, 22)
-        local tierL = Theme.Label(row, "Tier " .. bp.tier, Theme.TextSize.Small, Theme.Colors.TextSecondary)
+        local rarityName = GolemData.RarityForTier(bp.tier)
+        local tierL = Theme.Label(row, "Tier " .. bp.tier .. "  -  " .. rarityName, Theme.TextSize.Small,
+            Theme.Colors[rarityName] or Theme.Colors.TextSecondary)
         tierL.Position = UDim2.new(0, 20, 0, 30)
         tierL.Size = UDim2.new(1, -110, 0, 18)
 
@@ -399,8 +395,6 @@ RemoteEvents.ResourcesCollected.OnClientEvent:Connect(QueueRefresh)
 
 -- ── Opening ───────────────────────────────────────────────────────────────────
 local function Open()
-    local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
-    uiScale.Scale = math.min(1, (vp.X - 40) / BOX_W, (vp.Y - 40) / BOX_H)
     gui.Enabled = true
     Refresh(true)
 end
@@ -414,7 +408,7 @@ end)
 -- Slowly spin the preview
 RunService.RenderStepped:Connect(function()
     if gui.Enabled and previewModel and previewModel.PrimaryPart then
-        previewModel:PivotTo(CFrame.Angles(0, os.clock() * 0.8, 0))
+        previewModel:PivotTo(CFrame.new(previewPivot) * CFrame.Angles(0, os.clock() * 0.8, 0))
     end
 end)
 

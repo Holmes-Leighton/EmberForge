@@ -5,6 +5,7 @@ local Players     = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local TweenService = game:GetService("TweenService")
 local Theme = require(game.ReplicatedStorage.Shared.Modules.Theme)
+local ScaleUI = require(game.ReplicatedStorage.Shared.Modules.ScaleUI)
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "SmeltDialog"
@@ -26,7 +27,7 @@ scrim.Parent = gui
 local container = Instance.new("Frame")
 container.Name = "Container"
 container.Size = UDim2.new(0, 520, 0, 540)
-container.Position = UDim2.new(0.5, -260, 0.5, -270)
+ScaleUI.Apply(container, 520, 540)
 container.BackgroundColor3 = Theme.Colors.Background
 container.BorderSizePixel = 0
 container.Parent = gui

@@ -48,6 +48,10 @@ local function SafeCall(player, fn)
     end
 end
 
+local function Tell(player, title, message)
+    if player and player.Parent then RemoteEvents.Notify:FireClient(player, title, message) end
+end
+
 -- ── CollectResources ──────────────────────────────────────────────────────────
 RemoteEvents.CollectResources.OnServerEvent:Connect(function(player)
     SafeCall(player, function()
@@ -78,6 +82,21 @@ RemoteEvents.CollectResources.OnServerEvent:Connect(function(player)
 
         ChallengeService.TrackEvent(player, "GolemCollect", { count = 1 })
         RemoteEvents.ResourcesCollected:FireClient(player, gains, -1)   -- -1 marks a manual collect
+    end)
+end)
+
+-- ── UseSpeedUp ────────────────────────────────────────────────────────────────
+RemoteEvents.UseSpeedUp.OnServerEvent:Connect(function(player, jobId)
+    SafeCall(player, function()
+        if type(jobId) ~= "string" then return end
+        local ok, result = ForgeService.SpeedUpSmelt(player, jobId)
+        if ok then
+            RemoteEvents.SmeltCompleted:FireClient(player, result)
+            ChallengeService.TrackEvent(player, "SmeltComplete", { count = result.quantity })
+            Tell(player, "Speed-Up used", (PlayerDataService.Get(player).SpeedUps or 0) .. " left")
+        else
+            Tell(player, "Speed-Up", tostring(result))
+        end
     end)
 end)
 
@@ -208,10 +227,6 @@ RemoteEvents.ReturnGolem.OnServerEvent:Connect(function(player, golemId)
 end)
 
 -- ── Direct trading ────────────────────────────────────────────────────────────
-local function Tell(player, title, message)
-    if player and player.Parent then RemoteEvents.Notify:FireClient(player, title, message) end
-end
-
 -- Send each participant their own view of the trade
 local function PushTradeView(tradeId)
     local a, b = TradingService.GetPartners(tradeId)
@@ -355,6 +370,21 @@ RemoteEvents.FuseGolems.OnServerEvent:Connect(function(player, golem1Id, golem2I
     end)
 end)
 
+-- ── NeonFuse ──────────────────────────────────────────────────────────────────
+RemoteEvents.NeonFuse.OnServerEvent:Connect(function(player, element, tier, variant)
+    SafeCall(player, function()
+        local golem, err = GolemService.NeonFuse(player, element, tier, variant)
+        if golem then
+            ChallengeService.TrackEvent(player, golem.variant == "MegaNeon" and "MegaMade" or "NeonMade", { count = 1 })
+            local GolemNames = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
+            Tell(player, golem.variant == "MegaNeon" and "MEGA NEON!" or "NEON!", GolemNames.Describe(golem).name .. " created")
+        else
+            Tell(player, "Can't fuse", tostring(err))
+        end
+        RemoteEvents.GolemNeoned:FireClient(player, golem ~= nil, golem or err)
+    end)
+end)
+
 -- ── ClaimChallengeReward ──────────────────────────────────────────────────────
 RemoteEvents.ClaimChallengeReward.OnServerEvent:Connect(function(player, challengeId)
     SafeCall(player, function()
@@ -393,7 +423,13 @@ RemoteEvents.ClaimSeasonReward.OnServerEvent:Connect(function(player, seasonId, 
         if type(seasonId) ~= "string" or type(weekNumber) ~= "number" then return end
         track = type(track) == "string" and track or "free"
         local ok, reward = SeasonPassService.ClaimWeekReward(player, seasonId, weekNumber, track)
-        RemoteEvents.PurchaseResult:FireClient(player, ok, reward)
+        if ok then
+            local CosmeticData = require(game.ReplicatedStorage.Shared.Data.CosmeticData)
+            Tell(player, "Reward claimed", CosmeticData.RewardText(reward))
+        else
+            Tell(player, "Can't claim", tostring(reward))
+        end
+        RemoteEvents.PurchaseResult:FireClient(player, ok, ok and reward or nil, ok and nil or reward)
     end)
 end)
 
@@ -404,6 +440,21 @@ RemoteEvents.GetPlayerData.OnServerInvoke = function(player)
     -- Return a safe read-only snapshot (strip transient fields)
     local snapshot = Utils.DeepCopy(data)
     snapshot.ProcessedReceipts = nil  -- don't expose to client
+    snapshot._lock = nil
+
+    -- Derived, read-only facts the UI needs (all computed here so the client never guesses)
+    local events = {}
+    for id in pairs(SeasonPassService.GetAvailableEventBlueprints()) do table.insert(events, id) end
+    snapshot.AvailableEventBlueprints = events
+    snapshot.EffectiveGolemSlots = ShopService.GetEffectiveGolemSlots(player)
+    local status = SeasonPassService.GetPlayerSeasonStatus(player)
+    if status then
+        local current, target = SeasonPassService.GetCommunityProgress(status.seasonId)
+        snapshot.SeasonStatus = {
+            seasonId = status.seasonId, currentWeek = status.currentWeek, totalWeeks = status.totalWeeks,
+            claimedWeeks = status.claimedWeeks, communityCurrent = current, communityTarget = target,
+        }
+    end
     return snapshot
 end
 

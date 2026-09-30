@@ -136,6 +136,36 @@ GolemData.ElementMultipliers = {
     All   = { MiningRate = 1.10, CarryCapacity = 1.10, Efficiency = 1.10, Luck = 1.10 },   -- multi-element event Golems
 }
 
+-- ── Rarity & variants (Adopt Me style) ─────────────────────────────────────────
+-- Rarity is fixed by the blueprint's tier - never a dice roll (the spec's core promise) - and gives
+-- every Golem an instantly readable "how special is this?" label.
+GolemData.Rarities = {
+    { id = "Common",    order = 1 },
+    { id = "Uncommon",  order = 2 },
+    { id = "Rare",      order = 3 },
+    { id = "Epic",      order = 4 },
+    { id = "Legendary", order = 5 },
+}
+GolemData.RarityByTier = { "Common", "Uncommon", "Rare", "Epic", "Legendary" }
+
+function GolemData.RarityForTier(tier)
+    return GolemData.RarityByTier[math.clamp(tier or 1, 1, #GolemData.RarityByTier)]
+end
+
+function GolemData.RarityOrder(rarity)
+    for _, r in ipairs(GolemData.Rarities) do
+        if r.id == rarity then return r.order end
+    end
+    return 1
+end
+
+-- Variants: fuse 4 identical Golems -> Neon; fuse 4 identical Neons -> Mega Neon.
+GolemData.Variants = {
+    Neon     = { id = "Neon",     label = "Neon",      statMultiplier = 1.25, next = "MegaNeon" },
+    MegaNeon = { id = "MegaNeon", label = "Mega Neon", statMultiplier = 1.60 },
+}
+GolemData.NEON_FUSION_COUNT = 4
+
 -- Golem slot unlock milestones
 GolemData.SlotMilestones = {
     { slots = 3,  condition = "start"              },
@@ -147,13 +177,14 @@ GolemData.SlotMilestones = {
 
 -- Compute final stats for a golem given element + tier + optional fusion bonus
 -- `quality` (0..0.15) is the bonus a Golem earned from the grade of materials it was crafted with
-function GolemData.ComputeStats(elementId, tierIndex, fusionBonus, quality)
+function GolemData.ComputeStats(elementId, tierIndex, fusionBonus, quality, variant)
     local tier = GolemData.Tiers[tierIndex]
     local mult = GolemData.ElementMultipliers[elementId]
     if not tier or not mult then return nil end
 
     fusionBonus = fusionBonus or {}
-    local q = 1 + (quality or 0)
+    local variantDef = variant and GolemData.Variants[variant]
+    local q = (1 + (quality or 0)) * (variantDef and variantDef.statMultiplier or 1)
     return {
         miningRate    = math.floor(tier.resourcesPerHour * mult.MiningRate  * (1 + (fusionBonus.miningRate or 0)) * q),
         carryCapacity = math.floor(tier.carryCapacity    * mult.CarryCapacity * (1 + (fusionBonus.carryCapacity or 0)) * q),

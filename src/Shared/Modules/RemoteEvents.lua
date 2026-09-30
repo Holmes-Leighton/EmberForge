@@ -15,6 +15,7 @@ local DEFINITIONS = {
 
     -- Smelting
     StartSmelt          = "event",
+    UseSpeedUp          = "event",   -- client → server (jobId)
     SmeltQueued         = "event",   -- server → client
     SmeltCompleted      = "event",   -- server → client
 
@@ -59,6 +60,9 @@ local DEFINITIONS = {
     -- Golem fusion
     FuseGolems          = "event",
     GolemFused          = "event",   -- server → client
+
+    NeonFuse            = "event",   -- client → server (element, tier, variant)
+    GolemNeoned         = "event",   -- server → client (ok, golem or reason)
 
     -- Season Pass
     ClaimSeasonReward   = "event",

@@ -6,6 +6,7 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
 local MaterialData = require(game.ReplicatedStorage.Shared.Data.MaterialData)
+local Theme = require(game.ReplicatedStorage.Shared.Modules.Theme)
 local Utils      = require(game.ReplicatedStorage.Shared.Modules.Utils)
 local GameConfig = require(game.ReplicatedStorage.Shared.Data.GameConfig)
 
@@ -31,6 +32,7 @@ function HUDController.Init(playerData)
         HUDController._SetupElements()
         HUDController.Refresh(playerData)
         HUDController.SetPending(HUDController._pending or playerData.Pending)
+        HUDController.StartResync()
         StartBoostCountdowns(playerData)
     end)
 end
@@ -46,6 +48,38 @@ function HUDController._SetupElements()
             RemoteEvents.CollectResources:FireServer()
         end)
     end
+end
+
+-- Re-read the server's copy now and then (and after events) so slot counts, durability and the
+-- smelter countdown never drift from the truth.
+function HUDController.Resync()
+    local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
+    local ok, fresh = pcall(function() return RemoteEvents.GetPlayerData:InvokeServer() end)
+    if ok and fresh then
+        HUDController._data = fresh
+        HUDController.Refresh(fresh)
+    end
+end
+
+local resyncQueued = false
+function HUDController.QueueResync()
+    if resyncQueued then return end
+    resyncQueued = true
+    task.delay(0.6, function()
+        resyncQueued = false
+        HUDController.Resync()
+    end)
+end
+
+function HUDController.StartResync()
+    if HUDController._resyncRunning then return end
+    HUDController._resyncRunning = true
+    task.spawn(function()
+        while hudGui and hudGui.Parent do
+            task.wait(15)
+            HUDController.Resync()
+        end
+    end)
 end
 
 -- ── Pending mined resources (per type) ────────────────────────────────────────
@@ -101,7 +135,34 @@ function HUDController.Refresh(data)
     setLabel("PlayerLevelLabel", "Level " .. (data.PlayerLevel or 1))
     setLabel("ForgeLevelLabel",  "Forge " .. (data.ForgeLevel or 1))
     setLabel("CoinsLabel",       Utils.FormatNumber(data.EmberCoins or 0) .. " ⚡")
-    setLabel("GolemSlotsLabel",  (data.GolemSlots or 3) .. " Slots")
+    -- Golems: deployed / usable slots, flagging any that have worn out
+    local deployed, broken = 0, 0
+    for _, g in ipairs(data.Golems or {}) do
+        if g.deployed then
+            deployed += 1
+            if g._durabilitySeconds ~= nil and g._durabilitySeconds <= 0 then broken += 1 end
+        end
+    end
+    local slots = data.EffectiveGolemSlots or data.GolemSlots or 3
+    setLabel("GolemSlotsLabel", string.format("Golems %d/%d", deployed, slots))
+    local slotLbl = mainFrame:FindFirstChild("GolemSlotsLabel", true)
+    if slotLbl then
+        slotLbl.TextColor3 = broken > 0 and Color3.fromRGB(230, 90, 70) or Theme.Colors.TextSecondary
+        if broken > 0 then slotLbl.Text = string.format("Golems %d/%d (%d broken!)", deployed, slots, broken) end
+    end
+
+    -- Smelter: how many jobs and when the next one finishes
+    local jobs = data.SmeltQueue or {}
+    local nextEnd
+    for _, j in ipairs(jobs) do
+        if not nextEnd or j.endTime < nextEnd then nextEnd = j.endTime end
+    end
+    if #jobs == 0 then
+        setLabel("SmeltStatusLabel", "Smelter idle")
+    else
+        local remaining = math.max(0, nextEnd - Utils.UnixTimestamp())
+        setLabel("SmeltStatusLabel", string.format("Smelting %d  (%s)", #jobs, remaining > 0 and Utils.FormatTime(remaining) or "done"))
+    end
 
     -- Mastery: find highest mastery level across all elements
     local thresholds = GameConfig.MASTERY_XP_THRESHOLDS

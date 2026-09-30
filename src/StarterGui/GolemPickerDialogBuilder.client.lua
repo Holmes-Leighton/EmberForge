@@ -4,6 +4,7 @@
 local Players     = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Theme = require(game.ReplicatedStorage.Shared.Modules.Theme)
+local ScaleUI = require(game.ReplicatedStorage.Shared.Modules.ScaleUI)
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "GolemPickerDialog"
@@ -25,7 +26,7 @@ scrim.Parent = gui
 local container = Instance.new("Frame")
 container.Name = "Container"
 container.Size = UDim2.new(0, 560, 0, 520)
-container.Position = UDim2.new(0.5, -280, 0.5, -260)
+ScaleUI.Apply(container, 560, 520)
 container.BackgroundColor3 = Theme.Colors.Background
 container.BorderSizePixel = 0
 container.Parent = gui
@@ -135,7 +136,7 @@ local function RenderGolems(golems, mode)
         shown = shown + 1
         local elemColor = ELEMENT_COLORS[golem.element] or Theme.Colors.TextSecondary
         local tierDef   = GolemData.Tiers[golem.tier]
-        local stats     = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus)
+        local stats     = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus, golem.quality, golem.variant)
 
         local card = Instance.new("Frame")
         card.Name = golem.id

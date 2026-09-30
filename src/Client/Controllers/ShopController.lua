@@ -72,160 +72,175 @@ function ShopController._Prompt(productKey)
 end
 
 -- ── Season Pass GUI ───────────────────────────────────────────────────────────
+local CosmeticData = require(game.ReplicatedStorage.Shared.Data.CosmeticData)
+local refreshQueued = false
+
 function ShopController._SetupSeasonGui()
-    local season = SeasonData.GetCurrentSeason()
-    if not season then return end
-
-    -- Set season name header
-    local header = seasonGui:FindFirstChild("SeasonHeader", true)
-    if header then header.Text = season.displayName end
-
-    local data = ShopController._data
-    local passTier = data.SeasonPassTier or 0
-
-    -- Render week reward tracks
-    ShopController._RenderSeasonTrack(season, passTier)
-
-    -- Buy pass buttons
-    local function wirePassBtn(btnName, productKey, requiredTier)
+    local closeBtn = seasonGui:FindFirstChild("CloseButton", true)
+    if closeBtn then
+        closeBtn.MouseButton1Click:Connect(function() seasonGui.Enabled = false end)
+    end
+    local function wirePassBtn(btnName, productKey)
         local btn = seasonGui:FindFirstChild(btnName, true)
-        if not btn then return end
-        if passTier >= requiredTier then
-            btn.Text = "Owned"
-            btn.BackgroundColor3 = Color3.fromRGB(60, 130, 60)
-            btn.Active = false
-        else
+        if btn then
             btn.MouseButton1Click:Connect(function()
-                ShopController._Prompt(productKey)
+                if btn.Active then ShopController._Prompt(productKey) end
             end)
         end
     end
+    wirePassBtn("BuyStandardBtn", "SeasonPass_Standard")
+    wirePassBtn("BuyPremiumBtn",  "SeasonPass_Premium")
 
-    wirePassBtn("BuyStandardBtn", "SeasonPass_Standard", SeasonData.PassTier.Standard)
-    wirePassBtn("BuyPremiumBtn",  "SeasonPass_Premium",  SeasonData.PassTier.Premium)
+    seasonGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+        if seasonGui.Enabled then ShopController.RefreshSeason() end
+    end)
+    ShopController.RefreshSeason()
+end
 
-    -- Community milestone
-    local communityLabel = seasonGui:FindFirstChild("CommunityLabel", true)
-    if communityLabel then
-        local current, target = 0, 0  -- fetched from server in full build
-        communityLabel.Text = "Community Progress: " ..
-            Utils.FormatNumber(current) .. " / " .. Utils.FormatNumber(target)
-    end
-
-    local closeBtn = seasonGui:FindFirstChild("CloseButton", true)
-    if closeBtn then
-        closeBtn.MouseButton1Click:Connect(function()
-            seasonGui.Enabled = false
+-- Server answered a claim / purchase: redraw from the truth
+function ShopController.OnResult(ok, payload, err)
+    if seasonGui and seasonGui.Enabled and not refreshQueued then
+        refreshQueued = true
+        task.delay(0.3, function()
+            refreshQueued = false
+            ShopController.RefreshSeason()
         end)
     end
 end
 
-function ShopController._RenderSeasonTrack(season, passTier)
+function ShopController.RefreshSeason()
     if not seasonGui then return end
+    local fresh = RemoteEvents.GetPlayerData:InvokeServer()
+    if fresh then ShopController._data = fresh end
+    local data = ShopController._data
+    local season = SeasonData.GetCurrentSeason()
+    if not data or not season then return end
+    local status = data.SeasonStatus or { currentWeek = 1, totalWeeks = season.durationWeeks, claimedWeeks = {}, communityCurrent = 0, communityTarget = 0 }
+    local passTier = data.SeasonPassTier or 0
+
+    local header = seasonGui:FindFirstChild("SeasonHeader", true)
+    if header then header.Text = season.displayName end
+    local weekLabel = seasonGui:FindFirstChild("WeekLabel", true)
+    if weekLabel then weekLabel.Text = string.format("Week %d of %d", status.currentWeek or 1, status.totalWeeks or season.durationWeeks) end
+
+    -- Community milestone
+    local communityLabel = seasonGui:FindFirstChild("CommunityLabel", true)
+    local target, current = status.communityTarget or 0, status.communityCurrent or 0
+    local reward = season.communityMilestone and season.communityMilestone.reward
+    if communityLabel then
+        communityLabel.Text = string.format("Community Progress: %s / %s crafts  -  Unlock: %s",
+            Utils.FormatNumber(current), Utils.FormatNumber(target),
+            reward and string.format("%gx drop rate for everyone for %d hrs", reward.multiplier or 1, reward.durationHours or 0) or "a community reward")
+    end
+    local fill = seasonGui:FindFirstChild("MilestoneBarFill", true)
+    if fill then fill.Size = UDim2.new(target > 0 and math.clamp(current / target, 0, 1) or 0, 0, 1, 0) end
+
+    -- Pass buttons
+    for btnName, req in pairs({ BuyStandardBtn = SeasonData.PassTier.Standard, BuyPremiumBtn = SeasonData.PassTier.Premium }) do
+        local btn = seasonGui:FindFirstChild(btnName, true)
+        if btn and passTier >= req then
+            btn.Text = "Owned"
+            btn.BackgroundColor3 = Color3.fromRGB(60, 130, 60)
+            btn.Active = false
+            btn.AutoButtonColor = false
+        end
+    end
+
+    ShopController._RenderSeasonTrack(season, passTier, status)
+end
+
+function ShopController._RenderSeasonTrack(season, passTier, status)
     local trackScroll = seasonGui:FindFirstChild("TrackScroll", true)
     if not trackScroll then return end
-
     for _, child in ipairs(trackScroll:GetChildren()) do
         if child:IsA("Frame") then child:Destroy() end
     end
-
-    local maxWeeks = season.durationWeeks
-    local xOff = 0
-
-    for week = 1, maxWeeks do
-        local weekCard = ShopController._CreateWeekCard(season, week, passTier, xOff)
-        weekCard.Parent = trackScroll
-        xOff = xOff + 130
+    for week = 1, season.durationWeeks do
+        ShopController._CreateWeekCard(trackScroll, season, week, passTier, status)
     end
-    trackScroll.CanvasSize = UDim2.new(0, xOff + 5, 0, 0)
 end
 
-function ShopController._CreateWeekCard(season, week, passTier, xOff)
+local TRACKS = {
+    { key = "freeTrackRewards",     name = "free",     label = "Free",     tier = 0, color = Color3.fromRGB(170, 170, 170) },
+    { key = "standardTrackRewards", name = "standard", label = "Standard", tier = 1, color = Color3.fromRGB(70, 160, 230) },
+    { key = "premiumTrackRewards",  name = "premium",  label = "Premium",  tier = 2, color = Color3.fromRGB(240, 180, 40) },
+}
+
+function ShopController._CreateWeekCard(parent, season, week, passTier, status)
+    local Theme = require(game.ReplicatedStorage.Shared.Modules.Theme)
+    local weekReached = week <= (status.currentWeek or 1)
+
     local card = Instance.new("Frame")
     card.Name = "Week" .. week
-    card.Size = UDim2.new(0, 125, 1, -10)
-    card.Position = UDim2.new(0, xOff + 2, 0, 5)
-    card.BackgroundColor3 = Color3.fromRGB(35, 30, 25)
+    card.LayoutOrder = week
+    card.Size = UDim2.new(0, 132, 1, 0)
+    card.BackgroundColor3 = weekReached and Theme.Colors.Panel or Color3.fromRGB(24, 20, 17)
     card.BorderSizePixel = 0
+    card.Parent = parent
+    Theme.AddCorner(card, Theme.Corner.Small)
 
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
-    corner.Parent = card
+    local weekLbl = Theme.Label(card, "Week " .. week .. (week == status.currentWeek and "  (now)" or ""),
+        Theme.TextSize.Body, weekReached and Theme.Colors.Gold or Theme.Colors.TextDim, Theme.Fonts.Heading)
+    weekLbl.Position = UDim2.new(0, 6, 0, 4)
+    weekLbl.Size = UDim2.new(1, -12, 0, 22)
+    weekLbl.TextXAlignment = Enum.TextXAlignment.Center
 
-    local weekLbl = Instance.new("TextLabel")
-    weekLbl.Size = UDim2.new(1, 0, 0, 24)
-    weekLbl.Position = UDim2.new(0, 0, 0, 0)
-    weekLbl.BackgroundTransparency = 1
-    weekLbl.Text = "Week " .. week
-    weekLbl.TextColor3 = Color3.fromRGB(255, 200, 60)
-    weekLbl.Font = Enum.Font.GothamBold
-    weekLbl.TextSize = 13
-    weekLbl.Parent = card
-
-    -- Show free track reward
-    local tracks = {
-        { key = "freeTrackRewards", label = "Free",     tier = 0,                         color = Color3.fromRGB(140, 140, 140) },
-        { key = "standardTrackRewards", label = "Std",  tier = SeasonData.PassTier.Standard, color = Color3.fromRGB(60, 180, 230) },
-        { key = "premiumTrackRewards",  label = "Prem", tier = SeasonData.PassTier.Premium,  color = Color3.fromRGB(230, 180, 40) },
-    }
-
-    local yOff = 26
-    for _, track in ipairs(tracks) do
-        local rewardList = season[track.key] or {}
-        local rewardEntry
-        for _, entry in ipairs(rewardList) do
-            if entry.week == week then rewardEntry = entry.reward; break end
+    local slotH = math.floor((card.AbsoluteSize.Y > 0 and card.AbsoluteSize.Y or 420) / 3) - 12
+    slotH = math.max(slotH, 100)
+    for i, track in ipairs(TRACKS) do
+        local entry
+        for _, e in ipairs(season[track.key] or {}) do
+            if e.week == week then entry = e.reward break end
         end
 
-        local rewardLbl = Instance.new("TextLabel")
-        rewardLbl.Size = UDim2.new(1, -4, 0, 28)
-        rewardLbl.Position = UDim2.new(0, 2, 0, yOff)
-        rewardLbl.BackgroundColor3 = Color3.fromRGB(25, 22, 18)
-        rewardLbl.BackgroundTransparency = passTier >= track.tier and 0.5 or 0.2
-        rewardLbl.BorderSizePixel = 0
-        rewardLbl.Text = track.label .. ": " ..
-            (rewardEntry and rewardEntry.type or "—")
-        rewardLbl.TextColor3 = passTier >= track.tier and track.color or Color3.fromRGB(80, 80, 80)
-        rewardLbl.Font = Enum.Font.Gotham
-        rewardLbl.TextSize = 10
-        rewardLbl.TextWrapped = true
-        rewardLbl.Parent = card
+        local slot = Instance.new("Frame")
+        slot.Size = UDim2.new(1, -8, 0, 118)
+        slot.Position = UDim2.new(0, 4, 0, 30 + (i - 1) * 124)
+        slot.BackgroundColor3 = Theme.Colors.PanelAlt
+        slot.BorderSizePixel = 0
+        slot.Parent = card
+        Theme.AddCorner(slot, Theme.Corner.Small)
+        Theme.Stripe(slot, track.color)
 
-        local rc = Instance.new("UICorner")
-        rc.CornerRadius = UDim.new(0, 3)
-        rc.Parent = rewardLbl
+        local owned = passTier >= track.tier
+        local claimed = status.claimedWeeks and status.claimedWeeks[track.name .. "_" .. week] == true
 
-        -- Claim button (if unlocked and unclaimed)
-        if passTier >= track.tier and rewardEntry then
-            local claimBtn = Instance.new("TextButton")
-            claimBtn.Size = UDim2.new(0, 50, 0, 20)
-            claimBtn.Position = UDim2.new(0.5, -25, 1, -22)
-            claimBtn.BackgroundColor3 = Color3.fromRGB(50, 160, 80)
-            claimBtn.Text = "Claim"
-            claimBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            claimBtn.Font = Enum.Font.GothamBold
-            claimBtn.TextSize = 10
-            claimBtn.BorderSizePixel = 0
-            claimBtn.Parent = card
+        local trackLbl = Theme.Label(slot, track.label, Theme.TextSize.Small, track.color, Theme.Fonts.Heading)
+        trackLbl.Position = UDim2.new(0, 10, 0, 2)
+        trackLbl.Size = UDim2.new(1, -14, 0, 16)
 
-            local bc = Instance.new("UICorner")
-            bc.CornerRadius = UDim.new(0, 4)
-            bc.Parent = claimBtn
+        local rewardLbl = Theme.Label(slot, entry and CosmeticData.RewardText(entry) or "-", Theme.TextSize.Small,
+            owned and Theme.Colors.TextPrimary or Theme.Colors.TextDim, Theme.Fonts.Body)
+        rewardLbl.Position = UDim2.new(0, 10, 0, 20)
+        rewardLbl.Size = UDim2.new(1, -14, 0, 56)
+        rewardLbl.TextXAlignment = Enum.TextXAlignment.Left
+        rewardLbl.TextYAlignment = Enum.TextYAlignment.Top
 
-            local trackName = track.key == "freeTrackRewards" and "free"
-                or track.key == "standardTrackRewards" and "standard" or "premium"
-
-            claimBtn.MouseButton1Click:Connect(function()
-                RemoteEvents.ClaimSeasonReward:FireServer(season.id, week, trackName)
-                claimBtn.Text = "Claimed"
-                claimBtn.Active = false
-                claimBtn.BackgroundColor3 = Color3.fromRGB(60, 90, 60)
-            end)
+        if entry then
+            local state, text, color
+            if claimed then
+                state, text, color = "claimed", "Claimed", Color3.fromRGB(60, 90, 60)
+            elseif not owned then
+                state, text, color = "locked", track.tier == 1 and "Needs Pass" or "Needs Premium", Color3.fromRGB(60, 50, 45)
+            elseif not weekReached then
+                state, text, color = "locked", "Not yet", Color3.fromRGB(60, 50, 45)
+            else
+                state, text, color = "claim", "Claim", Color3.fromRGB(50, 160, 80)
+            end
+            local btn = Theme.Button(slot, text, color, Color3.fromRGB(255, 255, 255))
+            btn.Size = UDim2.new(1, -16, 0, 26)
+            btn.Position = UDim2.new(0, 8, 1, -32)
+            btn.TextSize = 11
+            btn.AutoButtonColor = state == "claim"
+            if state == "claim" then
+                btn.MouseButton1Click:Connect(function()
+                    btn.Text = "..."
+                    btn.Active = false
+                    RemoteEvents.ClaimSeasonReward:FireServer(season.id, week, track.name)
+                end)
+            end
         end
-
-        yOff = yOff + 32
     end
-
     return card
 end
 

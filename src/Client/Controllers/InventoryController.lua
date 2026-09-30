@@ -8,6 +8,7 @@ local RemoteEvents   = require(game.ReplicatedStorage.Shared.Modules.RemoteEvent
 local MaterialData   = require(game.ReplicatedStorage.Shared.Data.MaterialData)
 local GolemData      = require(game.ReplicatedStorage.Shared.Data.GolemData)
 local Utils          = require(game.ReplicatedStorage.Shared.Modules.Utils)
+local GolemNames     = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
 
 local InventoryController = {}
 
@@ -213,7 +214,7 @@ local ELEMENT_COLORS = {
 }
 
 function InventoryController._CreateGolemCard(golem, yOff)
-    local stats = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus)
+    local stats = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus, golem.quality, golem.variant)
     local elemColor = ELEMENT_COLORS[golem.element] or Color3.fromRGB(150, 150, 150)
 
     local card = Instance.new("Frame")
@@ -239,13 +240,13 @@ function InventoryController._CreateGolemCard(golem, yOff)
     bannerCorner.CornerRadius = UDim.new(0, 6)
     bannerCorner.Parent = banner
 
+    local desc = GolemNames.Describe(golem)
     local nameLbl = Instance.new("TextLabel")
     nameLbl.Size = UDim2.new(1, -8, 1, 0)
     nameLbl.Position = UDim2.new(0, 8, 0, 0)
     nameLbl.BackgroundTransparency = 1
-    nameLbl.Text = (GolemData.Tiers[golem.tier] and GolemData.Tiers[golem.tier].name or "Golem")
-        .. " [" .. golem.element .. "]"
-        .. (golem.deployed and " ⚡ DEPLOYED" or "")
+    nameLbl.Text = desc.name .. "  -  " .. desc.rarity
+        .. (golem.deployed and "  (DEPLOYED)" or "")
     nameLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
     nameLbl.Font = Enum.Font.GothamBold
     nameLbl.TextSize = 13

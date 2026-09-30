@@ -4,6 +4,7 @@
 local Players     = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Theme = require(game.ReplicatedStorage.Shared.Modules.Theme)
+local ScaleUI = require(game.ReplicatedStorage.Shared.Modules.ScaleUI)
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "ForgeMenu"
@@ -30,7 +31,7 @@ end)
 local container = Instance.new("Frame")
 container.Name = "Container"
 container.Size = UDim2.new(0, 860, 0, 600)
-container.Position = UDim2.new(0.5, -430, 0.5, -300)
+ScaleUI.Apply(container, 860, 600)
 container.BackgroundColor3 = Theme.Colors.Background
 container.BorderSizePixel = 0
 container.Parent = gui
@@ -77,7 +78,7 @@ tabLayout.Padding = UDim.new(0, 2)
 tabLayout.Parent = tabBar
 Theme.AddPadding(tabBar, 4, 4, 4, 8)
 
-local tabs = { "Blueprints", "Smelt Queue", "Deploy" }
+local tabs = { "Blueprints", "Smelt Queue", "Deploy", "Neon Cave", "Upgrades" }
 local tabBtns = {}
 local panels = {}
 
@@ -186,6 +187,26 @@ local golemDeployScroll = Theme.ScrollFrame(deployPanelFrame, "GolemDeployScroll
 golemDeployScroll.Size = UDim2.new(1, -16, 1, -166)
 golemDeployScroll.Position = UDim2.new(0, 8, 0, 158)
 panels["Deploy"] = deployPanelFrame
+
+-- ── Neon Cave Panel (fuse 4 identical Golems into a Neon, 4 Neons into a Mega Neon) ─
+local neonPanel = Theme.Panel(contentArea, "NeonPanel", Theme.Colors.Background)
+neonPanel.Size = UDim2.new(1, 0, 1, 0)
+neonPanel.BackgroundTransparency = 1
+neonPanel.Visible = false
+local neonScroll = Theme.ScrollFrame(neonPanel, "NeonScroll")
+neonScroll.Size = UDim2.new(1, -16, 1, -8)
+neonScroll.Position = UDim2.new(0, 8, 0, 4)
+panels["Neon Cave"] = neonPanel
+
+-- ── Upgrades Panel (forge level progress + Storage Vault) ─────────────────────
+local upgradesPanel = Theme.Panel(contentArea, "UpgradesPanel", Theme.Colors.Background)
+upgradesPanel.Size = UDim2.new(1, 0, 1, 0)
+upgradesPanel.BackgroundTransparency = 1
+upgradesPanel.Visible = false
+local upgradesScroll = Theme.ScrollFrame(upgradesPanel, "UpgradesScroll")
+upgradesScroll.Size = UDim2.new(1, -16, 1, -8)
+upgradesScroll.Position = UDim2.new(0, 8, 0, 4)
+panels["Upgrades"] = upgradesPanel
 
 -- ── Tab switching logic ────────────────────────────────────────────────────────
 local function switchTab(selected)

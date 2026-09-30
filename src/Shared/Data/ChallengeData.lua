@@ -165,6 +165,22 @@ ChallengeData.Lifetime = {
         rewards = { title = "Forgemaster", xp = 5000, golemSlotUnlock = true },
     },
     {
+        id = "ach_first_neon", displayName = "Glow Up",
+        description = "Fuse four identical Golems into a Neon Golem.",
+        type = ChallengeData.Type.Lifetime,
+        trackEvent = "NeonMade",
+        target = 1,
+        rewards = { title = "Neon Smith", xp = 2000 },
+    },
+    {
+        id = "ach_first_mega", displayName = "Mega Maker",
+        description = "Fuse four Neon Golems into a Mega Neon Golem.",
+        type = ChallengeData.Type.Lifetime,
+        trackEvent = "MegaMade",
+        target = 1,
+        rewards = { title = "Mega Smith", xp = 6000 },
+    },
+    {
         id = "ach_all_elements", displayName = "Elemental Master",
         description = "Craft at least one Golem of every element.",
         type = ChallengeData.Type.Lifetime,

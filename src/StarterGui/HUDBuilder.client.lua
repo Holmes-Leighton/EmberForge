@@ -4,6 +4,7 @@
 local Players    = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Theme = require(game.ReplicatedStorage.Shared.Modules.Theme)
+local ScaleUI = require(game.ReplicatedStorage.Shared.Modules.ScaleUI)
 
 -- ── Root ScreenGui ────────────────────────────────────────────────────────────
 local gui = Instance.new("ScreenGui")
@@ -17,13 +18,14 @@ gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
 mainFrame.AnchorPoint = Vector2.new(0, 0.5)
-mainFrame.Size = UDim2.new(0, 132, 0, 5 * 36 + 12)
+mainFrame.Size = UDim2.new(0, 150, 0, 6 * 36 + 12)
 mainFrame.Position = UDim2.new(0, 8, 0.5, 0)
 mainFrame.BackgroundColor3 = Theme.Colors.Panel
 mainFrame.BackgroundTransparency = 0.15
 mainFrame.BorderSizePixel = 0
 mainFrame.Parent = gui
 Theme.AddCorner(mainFrame, Theme.Corner.Large)
+ScaleUI.ApplyHud(mainFrame)
 
 -- Player Level
 local playerLevelLabel = Instance.new("TextLabel")
@@ -90,11 +92,25 @@ masteryLabel.TextSize = 13
 masteryLabel.TextXAlignment = Enum.TextXAlignment.Left
 masteryLabel.Parent = mainFrame
 
+-- Smelter status
+local smeltStatusLabel = Instance.new("TextLabel")
+smeltStatusLabel.Name = "SmeltStatusLabel"
+smeltStatusLabel.Size = UDim2.new(1, -20, 0, 32)
+smeltStatusLabel.Position = UDim2.new(0, 12, 0, 6 + 5 * 36)
+smeltStatusLabel.BackgroundTransparency = 1
+smeltStatusLabel.Text = "Smelter idle"
+smeltStatusLabel.TextColor3 = Theme.Colors.TextSecondary
+smeltStatusLabel.Font = Theme.Fonts.Body
+smeltStatusLabel.TextSize = 13
+smeltStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+smeltStatusLabel.Parent = mainFrame
+
 -- ── Right-hand nav sidebar ────────────────────────────────────────────────────
 local navData = {
     { name = "InventoryButton",   label = "🎒 Inventory",  targetGui = "InventoryMenu"   },
     { name = "ForgeButton",       label = "🔥 Forge",      targetGui = "ForgeMenu"       },
     { name = "MarketButton",      label = "🏪 Market",     targetGui = "MarketMenu"      },
+    { name = "TradeButton",       label = "🤝 Trades",     targetGui = "TradeMenu"       },
     { name = "ShopButton",        label = "💎 Shop",       targetGui = "ShopMenu"        },
     { name = "SeasonButton",      label = "🌟 Season",     targetGui = "SeasonMenu"      },
     { name = "ChallengesButton",  label = "📋 Challenges", targetGui = "ChallengesMenu"  },
@@ -113,6 +129,7 @@ sidebar.BackgroundTransparency = 0.15
 sidebar.BorderSizePixel = 0
 sidebar.Parent = gui
 Theme.AddCorner(sidebar, Theme.Corner.Large)
+ScaleUI.ApplyHud(sidebar)
 
 for i, nav in ipairs(navData) do
     local btn = Theme.Button(sidebar, nav.label, Theme.Colors.PanelAlt, Theme.Colors.AccentBright, nav.name)

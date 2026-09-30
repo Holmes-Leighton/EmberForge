@@ -8,6 +8,7 @@ local MaterialData      = require(game.ReplicatedStorage.Shared.Data.MaterialDat
 local Utils             = require(game.ReplicatedStorage.Shared.Modules.Utils)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 local SafeDataStore     = require(script.Parent.SafeDataStore)
+local GolemNames        = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
 
 local TradingService = {}
 
@@ -102,8 +103,10 @@ local function ValidateItem(data, raw, alreadyOffered)
         for _, g in ipairs(data.Golems) do
             if g.id == id then
                 if g.deployed then return nil, "Recall that Golem before trading it" end
+                local d = GolemNames.Describe(g)
                 return { type = "golem", id = id, qty = 1, element = g.element, tier = g.tier,
-                         name = string.format("%s Golem (Tier %d)", tostring(g.element), g.tier or 1) }
+                         rarity = d.rarity, variant = g.variant,
+                         name = string.format("%s (%s)", d.name, d.rarity) }
             end
         end
         return nil, "Golem not found"

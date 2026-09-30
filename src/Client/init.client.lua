@@ -11,12 +11,12 @@ RemoteEvents.Load()
 local HUDController          = require(script.Controllers.HUDController)
 local ForgeController        = require(script.Controllers.ForgeController)
 local InventoryController    = require(script.Controllers.InventoryController)
-local TradingController      = require(script.Controllers.TradingController)
 local ShopController         = require(script.Controllers.ShopController)
 local ChallengesController   = require(script.Controllers.ChallengesController)
 local LeaderboardController  = require(script.Controllers.LeaderboardController)
 local ForgeZoneController    = require(script.Controllers.ForgeZoneController)
 local TutorialController     = require(script.Controllers.TutorialController)
+local GolemAnimator          = require(script.Controllers.GolemAnimator)
 
 -- Fetch initial data from server
 -- The server may still be loading our save when we arrive: keep asking for a while
@@ -38,12 +38,12 @@ end
 HUDController.Init(playerData)
 ForgeController.Init(playerData)
 InventoryController.Init(playerData)
-TradingController.Init(playerData)
 ShopController.Init(playerData)
 ChallengesController.Init(playerData)
 LeaderboardController.Init(playerData)
 ForgeZoneController.Init(playerData)
 TutorialController.Init(playerData)
+GolemAnimator.Init()
 
 -- ── Global event listeners ────────────────────────────────────────────────────
 
@@ -110,13 +110,42 @@ RemoteEvents.ForgeUpgraded.OnClientEvent:Connect(function(newForgeLevel)
     HUDController.ShowNotification("Forge Upgraded!", "Now Level " .. newForgeLevel)
 end)
 
-RemoteEvents.TradeOffer.OnClientEvent:Connect(function(tradeId, err)
-    TradingController.OnTradeOffer(tradeId, err)
+RemoteEvents.TradeClosed.OnClientEvent:Connect(function(tradeId, reason)
+    if reason and reason ~= "" then
+        HUDController.ShowNotification("Trade closed", tostring(reason))
+    end
 end)
 
 RemoteEvents.TradeCompleted.OnClientEvent:Connect(function(result)
-    TradingController.OnTradeCompleted(result)
     HUDController.ShowNotification("Trade Complete!", "Items exchanged successfully.")
+    InventoryController.Resync()
+    ForgeController.Resync()
+end)
+
+RemoteEvents.MasteryLevelUp.OnClientEvent:Connect(function(element, level)
+    HUDController.ShowNotification("Mastery up!", tostring(element) .. " Mastery is now level " .. tostring(level))
+end)
+
+RemoteEvents.StorageVaultCrafted.OnClientEvent:Connect(function(ok, err)
+    HUDController.ShowNotification(ok and "Storage Vault built" or "Can't build Storage Vault",
+        ok and "Offline storage is now 8 hours." or tostring(err))
+    ForgeController.Resync()
+end)
+
+RemoteEvents.GolemRepaired.OnClientEvent:Connect(function(ok, golemId, err)
+    HUDController.ShowNotification(ok and "Golem repaired" or "Can't repair", ok and "Good as new." or tostring(err))
+    ForgeController.Resync()
+    InventoryController.Resync()
+end)
+
+RemoteEvents.GolemNeoned.OnClientEvent:Connect(function(ok)
+    ForgeController.Resync()
+    InventoryController.Resync()
+    HUDController.QueueResync()
+end)
+
+RemoteEvents.PurchaseResult.OnClientEvent:Connect(function(ok, payload, err)
+    ShopController.OnResult(ok, payload, err)
 end)
 
 RemoteEvents.ChallengeCompleted.OnClientEvent:Connect(function(challengeId)
@@ -153,5 +182,12 @@ end)
 RemoteEvents.ForgeZoneLeft.OnClientEvent:Connect(function()
     ForgeZoneController.OnZoneLeft()
 end)
+
+-- Anything that changes slots, durability, smelting or levels refreshes the HUD from the server
+for _, name in ipairs({ "GolemCrafted", "GolemDeployed", "GolemReturned", "GolemFused", "GolemRepaired", "SmeltQueued",
+    "SmeltCompleted", "ForgeUpgraded", "LevelUp", "TradeCompleted", "PurchaseResult", "StorageVaultCrafted",
+    "DailyReward", "ChallengeRewardClaimed" }) do
+    RemoteEvents[name].OnClientEvent:Connect(function() HUDController.QueueResync() end)
+end
 
 print("[EmberForge Client] Initialised for " .. LocalPlayer.Name)

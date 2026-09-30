@@ -8,15 +8,7 @@ local PlayerDataService = require(script.Parent.PlayerDataService)
 
 local ForgeService = {}
 
--- Storage Vault upgrade recipe (craftable once, upgrades StorageTier 0→1)
-local STORAGE_VAULT_RECIPE = {
-    forgeLevelRequired = 4,
-    materialsRequired = {
-        { id = "RefinedOre",     qty = 200 },
-        { id = "ElementalIngot", qty = 50  },
-        { id = "Coal",           qty = 100 },
-    },
-}
+local STORAGE_VAULT_RECIPE = ForgeData.StorageVault
 
 -- Active smelt timers: userId → array of smelt job records
 local smeltJobs = {}
@@ -153,31 +145,42 @@ function ForgeService.StartSmelt(player, materialId, quantity)
     return job, nil
 end
 
--- Instantly complete a smelt job (speed-up item)
+-- Deliver a finished job: output, XP, and removal from the persisted queue
+local function FinishJob(player, data, job)
+    job.completed = true
+    PlayerDataService.AddMaterial(player, job.outputId, job.outputQty)
+
+    -- Smelting earns Forge XP and Player XP (spec 6.1)
+    ForgeService.AddForgeXP(player, GameConfig.XP_PER_SMELT * job.quantity)
+    local ProgressionService = require(script.Parent.ProgressionService)
+    local leveled, newLevel = ProgressionService.AddPlayerXP(player, GameConfig.XP_PER_SMELT * job.quantity)
+    if leveled then
+        local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
+        RemoteEvents.LevelUp:FireClient(player, newLevel)
+    end
+
+    data.SmeltQueue = data.SmeltQueue or {}
+    for j, sq in ipairs(data.SmeltQueue) do
+        if sq.id == job.id then
+            table.remove(data.SmeltQueue, j)
+            break
+        end
+    end
+    PlayerDataService.MarkDirty(player)
+end
+
+-- Spend one Speed-Up to finish a smelt job instantly (spec 4.2)
 function ForgeService.SpeedUpSmelt(player, jobId)
     local data   = PlayerDataService.Get(player)
     local userId = tostring(player.UserId)
     if not data or not smeltJobs[userId] then return false, "No active jobs" end
+    if (data.SpeedUps or 0) < 1 then return false, "You have no Speed-Ups" end
 
     for i, job in ipairs(smeltJobs[userId]) do
         if job.id == jobId and not job.completed then
-            job.endTime   = Utils.UnixTimestamp()
-            job.completed = true
             table.remove(smeltJobs[userId], i)
-
-            -- Award output
-            PlayerDataService.AddMaterial(player, job.outputId, job.outputQty)
-
-            -- Remove from data.SmeltQueue
-            data.SmeltQueue = data.SmeltQueue or {}
-            for j, sq in ipairs(data.SmeltQueue) do
-                if sq.id == jobId then
-                    table.remove(data.SmeltQueue, j)
-                    break
-                end
-            end
-
-            PlayerDataService.MarkDirty(player)
+            data.SpeedUps = data.SpeedUps - 1
+            FinishJob(player, data, job)
             return true, job
         end
     end
@@ -192,40 +195,13 @@ function ForgeService.TickSmeltJobs(player)
 
     local now = Utils.UnixTimestamp()
     local completed = {}
-
     for i = #smeltJobs[userId], 1, -1 do
         local job = smeltJobs[userId][i]
         if not job.completed and now >= job.endTime then
-            job.completed = true
             table.remove(smeltJobs[userId], i)
-
-            -- Award refined materials
-            PlayerDataService.AddMaterial(player, job.outputId, job.outputQty)
-
-            -- Smelting earns Forge XP and Player XP (spec 6.1)
-            ForgeService.AddForgeXP(player, GameConfig.XP_PER_SMELT * job.quantity)
-            local ProgressionService = require(script.Parent.ProgressionService)
-            local leveled, newLevel = ProgressionService.AddPlayerXP(player, GameConfig.XP_PER_SMELT * job.quantity)
-            if leveled then
-                local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
-                RemoteEvents.LevelUp:FireClient(player, newLevel)
-            end
-
-            -- Clean from persisted queue
-            data.SmeltQueue = data.SmeltQueue or {}
-            for j, sq in ipairs(data.SmeltQueue) do
-                if sq.id == job.id then
-                    table.remove(data.SmeltQueue, j)
-                    break
-                end
-            end
-
+            FinishJob(player, data, job)
             table.insert(completed, job)
         end
-    end
-
-    if #completed > 0 then
-        PlayerDataService.MarkDirty(player)
     end
     return completed
 end

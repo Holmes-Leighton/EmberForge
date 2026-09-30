@@ -41,6 +41,7 @@ function GolemService.CraftGolem(player, blueprintId, skinId)
         zoneId    = nil,
         fusionBonus = nil,
         quality   = CraftRules.QualityFor(bp),       -- stat bonus from the grade of materials used
+        rarity    = GolemData.RarityForTier(bp.tier),
         _carriedResources = 0,
         _accumulatedResources = 0,
         _durabilitySeconds = durabilitySeconds,
@@ -142,6 +143,50 @@ function GolemService.FuseGolems(player, golem1Id, golem2Id)
     PlayerDataService.MarkDirty(player)
 
     return true, nil
+end
+
+-- ── Neon fusion (Adopt Me style) ─────────────────────────────────────────────
+-- Four identical Golems (same element, tier and variant, none deployed) become one Neon;
+-- four identical Neons become one Mega Neon. The best Golem of the four is kept and upgraded.
+-- Returns the upgraded golem or nil + reason.
+function GolemService.NeonFuse(player, element, tier, variant)
+    local data = PlayerDataService.Get(player)
+    if not data then return nil, "No player data" end
+    if type(element) ~= "string" or type(tier) ~= "number" then return nil, "Bad request" end
+    if variant ~= nil and variant ~= "Neon" then return nil, "Bad request" end
+
+    local nextVariant = variant == nil and "Neon" or "MegaNeon"
+    local need = GolemData.NEON_FUSION_COUNT
+
+    local pool = {}
+    for _, g in ipairs(data.Golems) do
+        if g.element == element and g.tier == tier and g.variant == variant and not g.deployed then
+            table.insert(pool, g)
+        end
+    end
+    if #pool < need then
+        return nil, string.format("You need %d idle %s%s Golems of Tier %d (you have %d)",
+            need, variant and "Neon " or "", element, tier, #pool)
+    end
+
+    -- keep the strongest: highest fusion bonus, then quality
+    local function power(g)
+        local fb = g.fusionBonus or {}
+        return (fb.miningRate or 0) + (fb.luck or 0) + (g.quality or 0)
+    end
+    table.sort(pool, function(a, b) return power(a) > power(b) end)
+    local keep = pool[1]
+
+    for i = 2, need do
+        for idx, g in ipairs(data.Golems) do
+            if g == pool[i] then table.remove(data.Golems, idx) break end
+        end
+    end
+
+    keep.variant = nextVariant
+    keep._durabilitySeconds = keep._maxDurabilitySeconds or keep._durabilitySeconds
+    PlayerDataService.MarkDirty(player)
+    return keep, nil
 end
 
 -- ── Repair ───────────────────────────────────────────────────────────────────

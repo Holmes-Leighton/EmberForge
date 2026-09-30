@@ -83,7 +83,7 @@ local function GolemProduction(golem, seconds, storageTier, playerData, stormBoo
         seconds = active
     end
 
-    local stats  = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus, golem.quality)
+    local stats  = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus, golem.quality, golem.variant)
     if not stats then return {} end
 
     -- Apply mastery bonuses
@@ -194,7 +194,7 @@ function IdleEngine.TickOnlineProduction(playerData, deltaSeconds)
                 end
             end
 
-            local stats = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus, golem.quality)
+            local stats = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus, golem.quality, golem.variant)
             local carried = golem._carriedResources or 0
             -- A full Golem waits (still deployed) until the player collects
             if stats and carried < stats.carryCapacity then

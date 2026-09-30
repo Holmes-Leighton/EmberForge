@@ -4,6 +4,7 @@
 local Players     = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Theme = require(game.ReplicatedStorage.Shared.Modules.Theme)
+local ScaleUI = require(game.ReplicatedStorage.Shared.Modules.ScaleUI)
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "ShopMenu"
@@ -26,7 +27,7 @@ end)
 local container = Instance.new("Frame")
 container.Name = "Container"
 container.Size = UDim2.new(0, 740, 0, 560)
-container.Position = UDim2.new(0.5, -370, 0.5, -280)
+ScaleUI.Apply(container, 740, 560)
 container.BackgroundColor3 = Theme.Colors.Background
 container.BorderSizePixel = 0
 container.Parent = gui
