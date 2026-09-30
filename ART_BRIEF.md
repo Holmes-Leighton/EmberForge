@@ -81,6 +81,8 @@ What Roblox's docs say and don't say (checked against create.roblox.com): the Im
 
 Same body, different surface and details. The element must be readable from the colour alone.
 
+> Status: with one neutral base model the game now builds this table itself in `GolemModel.lua` (element material and body colour, cracks, icicles, shards, spark strips, gold trim, glowing eyes, plus shoulder plates, core, horns and halo placed from the model's measured torso and head). Because a MeshPart ignores its Color while it has a baked texture, the game drops the base texture when it recolours, so the base model's own colouring is not used for elements. Per-element artist models (`AssetData.Golem.Elements.<Name>.assetId`) still override all of this.
+
 | Element | Surface | Details to add |
 |---|---|---|
 | Ember | Dark basalt | Glowing orange cracks on the chest, a few ember sparks |

@@ -65,7 +65,18 @@ end
 -- Clones and prepares an uploaded model: faces -Z, scaled to the tier, standing on the ground at the
 -- origin, tinted, glowing if Neon, pivot 5 studs up (where the block Golem's torso is) so every
 -- caller can PivotTo it exactly like a block Golem.
-local function PrepareAsset(template, s, elementColor, skinColor, isNeon)
+-- Body colour per element for an uploaded (neutral light-grey) model; the model's own texture still
+-- shows through, so this is a strong tint rather than a flat fill. ART_BRIEF 4.3.
+local ELEMENT_BODY = {
+    Ember = Color3.fromRGB(110, 92, 92),
+    Stone = Color3.fromRGB(165, 170, 175),
+    Frost = Color3.fromRGB(175, 225, 255),
+    Storm = Color3.fromRGB(95, 100, 125),
+    Void  = Color3.fromRGB(135, 85, 195),
+    All   = Color3.fromRGB(250, 245, 232),
+}
+
+local function PrepareAsset(template, s, elementColor, skinColor, isNeon, element)
     local model = template:Clone()
     model.Name = "GolemPreview"
     local mode = template:GetAttribute("RigMode") or "Static"
@@ -85,6 +96,7 @@ local function PrepareAsset(template, s, elementColor, skinColor, isNeon)
     if not root then error("model has no parts") end
 
     local bodyColor = Color3.new(1, 1, 1):Lerp(elementColor, tint)
+    if tint > 0 and ELEMENT_BODY[element] then bodyColor = ELEMENT_BODY[element] end
     if skinColor then bodyColor = bodyColor:Lerp(skinColor, 0.5) end
     local recolour = tint > 0 or skinColor ~= nil
 
@@ -94,6 +106,13 @@ local function PrepareAsset(template, s, elementColor, skinColor, isNeon)
         d.Anchored = mode ~= "Skinned" or d == root      -- skinned rigs: only the root is fixed, joints move the rest
         if d.Material ~= Enum.Material.Neon then         -- eyes and other glowing bits keep their own look
             d:SetAttribute("Tint", true)
+            -- A MeshPart ignores Color while it has a baked TextureID, so recolouring means dropping
+            -- the texture (the pickaxe keeps its own look). Glowing eyes are added back in Build.
+            if (recolour or isNeon) and d:IsA("MeshPart") and d.Name ~= "PickHandle" and d.Name ~= "PickHead" then
+                d.TextureID = ""
+                model:SetAttribute("Flat", true)
+                if not isNeon then d.Color = bodyColor end
+            end
             local sa = d:FindFirstChildOfClass("SurfaceAppearance")
             if isNeon then
                 if sa then sa:Destroy() end              -- flat glow so the rainbow / pulse can show
@@ -140,7 +159,7 @@ function GolemModel.Build(element, tier, options)
     local model, root, mode, addOns
     local template = GolemModel.FindAsset(element)
     if template then
-        local ok, m, r, md, ao = pcall(PrepareAsset, template, s, elementColor, skinColor, isNeon)
+        local ok, m, r, md, ao = pcall(PrepareAsset, template, s, elementColor, skinColor, isNeon, element)
         if ok then
             model, root, mode, addOns = m, r, md, ao
         else
@@ -227,7 +246,98 @@ function GolemModel.Build(element, tier, options)
         end
     end
 
+    -- ── Uploaded model: surface, element details and tier pieces, placed from its real bounds ──
+    local A                                             -- anchors (studs, world space, model at the origin facing -Z)
+    if isAsset then
+        local head = model:FindFirstChild("Head", true)
+        local T, TS = root.Position, root.Size
+        local H  = head and head.Position or (T + Vector3.new(0, TS.Y, 0))
+        local HS = head and head.Size or Vector3.new(2.4, 2.2, 2.4) * s
+        A = { T = T, hx = TS.X / 2, hy = TS.Y / 2, hz = TS.Z / 2, H = H, hhx = HS.X / 2, hhy = HS.Y / 2, hhz = HS.Z / 2 }
+
+        if not isNeon then                              -- each element has its own surface (ART_BRIEF 4.3)
+            for _, d in ipairs(BodyParts(model)) do
+                if d:GetAttribute("Tint") and d.Name ~= "PickHandle" and d.Name ~= "PickHead" then
+                    d.Material = look.material
+                    if look.transparency > 0 then d.Transparency = look.transparency end
+                end
+            end
+        end
+
+        local function ap(name, size, c, material, pos, rot, transparency)
+            return part(name, size / s, c, material, CFrame.new(pos) * (rot or CFrame.new()), transparency)
+        end
+        local front = T.Z - A.hz
+        local acc, accMat = look.accent, look.accentMaterial
+
+        if model:GetAttribute("Flat") then              -- the baked eyes went with the texture: glowing eyes (ART_BRIEF 4.1)
+            for i = -1, 1, 2 do
+                ap("Eye", Vector3.new(0.75, 0.6, 0.3), acc:Lerp(Color3.new(1, 1, 1), 0.4), Enum.Material.Neon,
+                    Vector3.new(A.H.X + i * A.hhx * 0.42, A.H.Y + A.hhy * 0.05, A.H.Z - A.hhz - 0.05))
+            end
+        end
+
+        if element == "Ember" then                      -- glowing cracks on the chest, a few sparks
+            for i = -1, 1 do
+                ap("Crack", Vector3.new(0.3, A.hy * 1.3, 0.15), acc, accMat,
+                    Vector3.new(T.X + i * A.hx * 0.5, T.Y + A.hy * 0.1, front - 0.05), CFrame.Angles(0, 0, i * 0.3))
+            end
+            ap("Crack", Vector3.new(A.hx * 0.9, 0.3, 0.15), acc, accMat, Vector3.new(T.X, T.Y - A.hy * 0.45, front - 0.05))
+            local e = Instance.new("ParticleEmitter")
+            e.Color = ColorSequence.new(acc); e.Rate = 6; e.Lifetime = NumberRange.new(0.8, 1.6)
+            e.Speed = NumberRange.new(2, 4); e.EmissionDirection = Enum.NormalId.Top; e.LightEmission = 1
+            e.Size = NumberSequence.new(0.35, 0); e.Parent = root
+        elseif element == "Stone" then                  -- moss patches and small crystals
+            ap("Moss", Vector3.new(A.hx * 1.1, 0.45, A.hz * 0.9), acc, accMat, Vector3.new(T.X - A.hx * 0.4, T.Y + A.hy, T.Z - 0.2))
+            ap("Moss", Vector3.new(A.hx * 0.7, 0.4, A.hz * 0.6), acc, accMat, Vector3.new(A.H.X + A.hhx * 0.3, A.H.Y + A.hhy, A.H.Z))
+            for i = -1, 1, 2 do
+                ap("Crystal", Vector3.new(0.6, 1.8, 0.6), Color3.fromRGB(120, 230, 200), Enum.Material.Glass,
+                    Vector3.new(T.X + i * A.hx * 0.55, T.Y + A.hy + 0.6, T.Z + A.hz * 0.6), CFrame.Angles(0.3, 0, -i * 0.35), 0.15)
+            end
+        elseif element == "Frost" then                  -- icicle spikes on the back, frosty cap and edges
+            for i = -2, 2 do
+                ap("Icicle", Vector3.new(0.7, 2.6 - math.abs(i) * 0.4, 0.7), acc, Enum.Material.Ice,
+                    Vector3.new(T.X + i * A.hx * 0.42, T.Y + A.hy * 0.6, T.Z + A.hz + 0.5),
+                    CFrame.Angles(0.7, 0, i * 0.15), 0.2)
+            end
+            ap("FrostCap", Vector3.new(A.hhx * 2.1, 0.5, A.hhz * 2.1), Color3.new(1, 1, 1), Enum.Material.Ice,
+                Vector3.new(A.H.X, A.H.Y + A.hhy, A.H.Z), nil, 0.15)
+            ap("FrostEdge", Vector3.new(A.hx * 2.1, 0.45, A.hz * 2.1), Color3.new(1, 1, 1), Enum.Material.Ice,
+                Vector3.new(T.X, T.Y - A.hy, T.Z), nil, 0.2)
+        elseif element == "Storm" then                  -- violet spark strips
+            for i = -1, 1, 2 do
+                ap("Spark", Vector3.new(0.22, A.hy * 1.7, 0.15), acc, accMat,
+                    Vector3.new(T.X + i * A.hx * 0.6, T.Y, front - 0.05), CFrame.Angles(0, 0, i * 0.12))
+            end
+            ap("Spark", Vector3.new(A.hx * 1.3, 0.22, 0.15), acc, accMat, Vector3.new(T.X, T.Y + A.hy * 0.35, front - 0.05))
+            local e = Instance.new("ParticleEmitter")
+            e.Color = ColorSequence.new(acc); e.Rate = 5; e.Lifetime = NumberRange.new(0.2, 0.4)
+            e.Speed = NumberRange.new(4, 8); e.SpreadAngle = Vector2.new(180, 180); e.LightEmission = 1
+            e.Size = NumberSequence.new(0.5, 0); e.Parent = root
+        elseif element == "Void" then                   -- shards floating around the body
+            for i = 1, 5 do
+                local a = i / 5 * math.pi * 2
+                ap("Shard", Vector3.new(0.7, 1.4, 0.7), acc, accMat,
+                    Vector3.new(T.X + math.cos(a) * (A.hx + 2.2), T.Y + (i % 3 - 1) * A.hy * 0.8, T.Z + math.sin(a) * (A.hz + 2.2)),
+                    CFrame.Angles(i, i * 0.6, 0), 0.2)
+            end
+        elseif element == "All" then                    -- gold glowing trim
+            ap("GoldBelt", Vector3.new(A.hx * 2.1, 0.45, A.hz * 2.1), acc, Enum.Material.Neon, Vector3.new(T.X, T.Y - A.hy * 0.6, T.Z), nil, 0.1)
+            ap("GoldBand", Vector3.new(A.hhx * 2.1, 0.4, A.hhz * 2.1), acc, Enum.Material.Neon, Vector3.new(A.H.X, A.H.Y + A.hhy * 0.75, A.H.Z), nil, 0.1)
+            for i = -1, 1, 2 do
+                ap("GoldTrim", Vector3.new(0.25, A.hy * 1.6, 0.25), acc, Enum.Material.Neon,
+                    Vector3.new(T.X + i * A.hx * 0.95, T.Y, front - 0.05), nil, 0.1)
+            end
+        end
+    end
+
     -- ── Tier details ──────────────────────────────────────────────────────────
+    if tier >= 2 and A then                            -- shoulder plates on the uploaded model
+        for _, side in ipairs({ -1, 1 }) do
+            local p = part("Shoulder", Vector3.new(1.7, 0.8, 1.9), dark:Lerp(Color3.new(1, 1, 1), 0.1), look.material,
+                CFrame.new(A.T.X + side * (A.hx + 0.9 * s), A.T.Y + A.hy - 0.3 * s, A.T.Z), bodyTransparency, true)
+        end
+    end
     if tier >= 2 and not isAsset then                  -- shoulder plates (sized for the block body)
         for _, side in ipairs({ -1, 1 }) do
             part("Shoulder", Vector3.new(1.6, 0.7, 1.7), dark:Lerp(Color3.new(1, 1, 1), 0.1), bodyMaterial, at(side * 2.1, 7.2, 0), bodyTransparency, true)
@@ -235,18 +345,21 @@ function GolemModel.Build(element, tier, options)
     end
     local extras = not isAsset or addOns               -- an uploaded model may bring its own tier pieces
     if tier >= 3 and extras then                       -- glowing chest core
-        local core = part("Core", Vector3.new(1.1, 1.1, 0.5), look.accent, Enum.Material.Neon, at(0, 5.4, -1.15))
+        local corePos = A and CFrame.new(A.T.X, A.T.Y + A.hy * 0.25, A.T.Z - A.hz - 0.15 * s) or at(0, 5.4, -1.15)
+        local core = part("Core", Vector3.new(1.1, 1.1, 0.5), look.accent, Enum.Material.Neon, corePos)
         core.Shape = Enum.PartType.Ball
     end
     if tier >= 4 and extras then                       -- horns
         for _, side in ipairs({ -1, 1 }) do
+            local hornPos = A and CFrame.new(A.H.X + side * A.hhx * 0.6, A.H.Y + A.hhy + 0.7 * s, A.H.Z) or at(side * 0.9, 10.1, 0)
             part("Horn", Vector3.new(0.5, 1.8, 0.5), Color3.fromRGB(230, 225, 210), Enum.Material.Marble,
-                at(side * 0.9, 10.1, 0) * CFrame.Angles(0, 0, -side * 0.35))
+                hornPos * CFrame.Angles(0, 0, -side * 0.35))
         end
     end
     if tier >= 5 and extras then                       -- halo
+        local haloPos = A and CFrame.new(A.H.X, A.H.Y + A.hhy + 1.6 * s, A.H.Z) or at(0, 11.2, 0)
         local halo = part("Halo", Vector3.new(0.3, 3.4, 3.4), look.accent, Enum.Material.Neon,
-            at(0, 11.2, 0) * CFrame.Angles(0, 0, math.pi / 2), 0.1)
+            haloPos * CFrame.Angles(0, 0, math.pi / 2), 0.1)
         halo.Shape = Enum.PartType.Cylinder
     end
 
@@ -261,21 +374,28 @@ function GolemModel.Build(element, tier, options)
         local d = CosmeticData.Describe(options.accessory)
         local id = options.accessory
         local c = d.color
+        -- block coordinates (head top at 9.4); on an uploaded model, re-centre on its real head and widen to fit
+        local aw = A and (A.hhx * 2 / (2.4 * s)) or 1
+        local function hat(x, y, z)
+            if not A then return at(x, y, z) end
+            return CFrame.new(A.H.X + x * s * aw, A.H.Y + A.hhy + (y - 9.4) * s, A.H.Z + z * s * aw)
+        end
+        local function wide(v) return Vector3.new(v.X * aw, v.Y, v.Z * aw) end
         if id:find("Crown") then
-            part("CrownBand", Vector3.new(2.6, 0.4, 2.6), c, Enum.Material.Neon, at(0, 9.5, 0), 0.1)
+            part("CrownBand", wide(Vector3.new(2.6, 0.4, 2.6)), c, Enum.Material.Neon, hat(0, 9.5, 0), 0.1)
             for i = 0, 4 do
                 local a = i / 5 * math.pi * 2
-                part("CrownSpike", Vector3.new(0.4, 1.1, 0.4), c, Enum.Material.Neon, at(math.cos(a) * 1.1, 10.1, math.sin(a) * 1.1))
+                part("CrownSpike", Vector3.new(0.4 * aw, 1.1, 0.4 * aw), c, Enum.Material.Neon, hat(math.cos(a) * 1.1, 10.1, math.sin(a) * 1.1))
             end
         elseif id:find("Helm") then
-            local cap = part("Helm", Vector3.new(2.8, 2.2, 2.8), c, Enum.Material.Metal, at(0, 9.0, 0), 0.05)
+            local cap = part("Helm", wide(Vector3.new(2.8, 2.2, 2.8)), c, Enum.Material.Metal, hat(0, 9.0, 0), 0.05)
             cap.Shape = Enum.PartType.Ball
-            part("HelmVisor", Vector3.new(2.5, 0.35, 0.3), c:Lerp(Color3.new(0, 0, 0), 0.5), Enum.Material.Metal, at(0, 8.7, -1.3))
+            part("HelmVisor", wide(Vector3.new(2.5, 0.35, 0.3)), c:Lerp(Color3.new(0, 0, 0), 0.5), Enum.Material.Metal, hat(0, 8.7, -1.3))
         elseif id:find("Hat") then
-            part("HatBrim", Vector3.new(3.4, 0.25, 3.4), c, Enum.Material.Fabric, at(0, 9.5, 0))
-            part("HatTop", Vector3.new(2, 1.4, 2), c, Enum.Material.Fabric, at(0, 10.2, 0))
+            part("HatBrim", wide(Vector3.new(3.4, 0.25, 3.4)), c, Enum.Material.Fabric, hat(0, 9.5, 0))
+            part("HatTop", wide(Vector3.new(2, 1.4, 2)), c, Enum.Material.Fabric, hat(0, 10.2, 0))
         else
-            local orb = part("Orb", Vector3.new(1.1, 1.1, 1.1), c, Enum.Material.Neon, at(0, 11, 0), 0.1)
+            local orb = part("Orb", Vector3.new(1.1, 1.1, 1.1), c, Enum.Material.Neon, hat(0, 11, 0), 0.1)
             orb.Shape = Enum.PartType.Ball
         end
     end
