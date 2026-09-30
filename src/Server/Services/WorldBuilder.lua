@@ -636,6 +636,18 @@ local function BuildChamber(world, index, layout)
     hint.Font = Enum.Font.GothamBold
     hint.TextScaled = true
     hint.Parent = sg
+    -- "Press E" at the mouth of the cave: opens the Forge menu to send Golems to this zone
+    local zoneDef = MiningZoneData.Zones[layout.id]
+    local point = Part({ Name = "ZonePromptPoint", Size = Vector3.new(2, 1, 2), Transparency = 1, CanCollide = false,
+        CFrame = CFrame.new(cx, 3, HUB_Z2 - 18) }, model)
+    local zonePrompt = Instance.new("ProximityPrompt")
+    zonePrompt.Name = "OpenMenu_ForgeMenu"
+    zonePrompt.ActionText = "Deploy Golems"
+    zonePrompt.ObjectText = zoneDef and zoneDef.displayName or layout.id
+    zonePrompt.HoldDuration = 0
+    zonePrompt.MaxActivationDistance = 14
+    zonePrompt.RequiresLineOfSight = false
+    zonePrompt.Parent = point
     -- road from the hub road to the mouth of the tunnel
     Part({ Name = "TunnelRoad", Material = Enum.Material.Cobblestone, Color = Color3.fromRGB(105, 92, 82),
         Size = Vector3.new(12, 0.2, HUB_Z2 - 60), CFrame = CFrame.new(cx, 0.1, 60 + (HUB_Z2 - 60) / 2), CanCollide = false }, model)

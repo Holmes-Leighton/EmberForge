@@ -185,8 +185,53 @@ local function BuildPad(world, def)
     sub.TextStrokeTransparency = 0.3
     sub.Parent = bb
 
+    -- "Press E" info point just in front of the pad (outside the plinth, so it only shows when you walk up
+    -- to it, not while you stand on the pad mining)
+    local info = Block(model, "PadInfoPoint", Vector3.new(2, 1, 2), CFrame.new(x, 2.5, z + 19), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic,
+        { Transparency = 1, CanCollide = false })
+    local prompt = Instance.new("ProximityPrompt")
+    prompt.Name = "PadInfoPrompt"
+    prompt.ActionText = "Pad info"
+    prompt.ObjectText = string.format("%s  x%d", def.displayName, def.multiplier)
+    prompt.HoldDuration = 0
+    prompt.MaxActivationDistance = 9
+    prompt.RequiresLineOfSight = false
+    prompt:SetAttribute("PadId", def.id)
+    prompt.Parent = info
+
     return part
 end
+
+-- Offers the Robux game pass for a locked pad. Stepping on it is rate-limited (30s per pad); pressing E
+-- at the pad asks for it, so `force` skips the limit. Ownership is re-checked first, so a pass bought
+-- on the game page unlocks the pad at once.
+function PadService.OfferPass(player, def, force)
+    local key, pass = ProductData.PassForPad(def.id)
+    if not (key and ProductData.PassIsAvailable(key)) then return end
+    local offerKey = player.UserId .. ":" .. def.id
+    if not force and os.clock() - (lastOffer[offerKey] or -1e9) <= 30 then return end
+    lastOffer[offerKey] = os.clock()
+    task.spawn(function()
+        if not require(script.Parent.ShopService).RefreshPasses(player, key) then
+            pcall(function() MarketplaceService:PromptGamePassPurchase(player, pass.id) end)
+        end
+    end)
+end
+
+-- Pressing E at a pad: what it gives, or what it needs
+local function PadInfo(player, def)
+    local data = PlayerDataService.Get(player)
+    if not data then return end
+    if CanUse(player, def, data) then
+        RemoteEvents.Notify:FireClient(player, string.format("%s  x%d", def.displayName, def.multiplier),
+            string.format("Unlocked. Stand on the pad to mine %dx materials.", def.multiplier))
+    else
+        RemoteEvents.Notify:FireClient(player, def.displayName .. " locked", RequirementText(def))
+        PadService.OfferPass(player, def, true)
+    end
+end
+
+PadService.Info = PadInfo
 
 local function PadUnderPlayer(player)
     local char = player.Character
@@ -214,18 +259,7 @@ local function Payout()
             end
             -- Stepping onto a locked pad offers the Robux game pass (at most every 30s per pad).
             -- Ownership is re-checked first, so a pass bought on the game page unlocks it at once.
-            local key, pass = ProductData.PassForPad(def.id)
-            if key and ProductData.PassIsAvailable(key) then
-                local offerKey = player.UserId .. ":" .. def.id
-                if os.clock() - (lastOffer[offerKey] or -1e9) > 30 then
-                    lastOffer[offerKey] = os.clock()
-                    task.spawn(function()
-                        if not require(script.Parent.ShopService).RefreshPasses(player, key) then
-                            pcall(function() MarketplaceService:PromptGamePassPurchase(player, pass.id) end)
-                        end
-                    end)
-                end
-            end
+            PadService.OfferPass(player, def, false)
         elseif def then
             local n = (tickCount[player.UserId] or 0) + 1
             tickCount[player.UserId] = n
@@ -270,7 +304,12 @@ function PadService.Init()
         return
     end
     for _, def in ipairs(PadData.Pads) do
-        table.insert(pads, { def = def, part = BuildPad(world, def) })
+        local part = BuildPad(world, def)
+        table.insert(pads, { def = def, part = part })
+        local prompt = part.Parent:FindFirstChild("PadInfoPrompt", true)
+        if prompt then
+            prompt.Triggered:Connect(function(player) PadInfo(player, def) end)
+        end
     end
 
     Players.PlayerRemoving:Connect(function(p)
