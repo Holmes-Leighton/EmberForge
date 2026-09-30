@@ -72,7 +72,7 @@ AssetData.PetPack = { assetId = 94911546053505 }
 -- icicles, Clockwork gears ...), shared by that type's Golem and pet. One Model whose children are named
 -- CROWN_<Type>, each a single mesh with its pivot at the centre of its base. Without one, a plain gold
 -- circlet is built in code instead.
-AssetData.CrownPack = { assetId = 0 }
+AssetData.CrownPack = { assetId = 133428041942823 }
 
 local MODES = { Auto = true, Skinned = true, Parts = true, Static = true }
 
