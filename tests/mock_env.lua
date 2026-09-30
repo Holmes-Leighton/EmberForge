@@ -40,7 +40,7 @@ local stubs = {
         m.PromptGamePassPurchase = function(_, player, id) table.insert(m.prompted, id) end
         return m
     end)(),
-    ReplicatedStorage = {}, UserService = {},
+    ReplicatedStorage = { FindFirstChild = function() return nil end }, UserService = {},
 }
 local ColorMeta = {}
 ColorMeta.__index = { Lerp = function(a, b, t) return setmetatable({ R = a.R + (b.R - a.R) * t, G = a.G + (b.G - a.G) * t, B = a.B + (b.B - a.B) * t }, ColorMeta) end }

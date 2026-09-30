@@ -31,7 +31,7 @@ local function FreeSlot(zoneId)
 end
 
 local function StyleKey(golem, equipped)
-    return table.concat({ golem.variant or "", golem.zoneId or "", equipped.GolemAccessory or "", equipped.ParticleEffect or "", equipped.GolemSkin or "" }, "|")
+    return table.concat({ golem.variant or "", golem.zoneId or "", equipped.GolemAccessory or "", equipped.ParticleEffect or "", equipped.GolemSkin or "", GolemModel.AssetVersion() }, "|")
 end
 
 local function Build(golem, ownerName, equipped)
@@ -55,7 +55,19 @@ local function Build(golem, ownerName, equipped)
     model:SetAttribute("Phase", math.random() * math.pi * 2)
 
     local desc = GolemNames.Describe(golem)
-    local head = model:FindFirstChild("Head")
+    local head = model:FindFirstChild("Head", true)
+    if not head and model:GetAttribute("RigMode") then
+        -- uploaded model without a Head part: an invisible marker where the head would be, so the name tag has something to sit on
+        head = Instance.new("Part")
+        head.Name = "Head"
+        head.Size = Vector3.new(0.2, 0.2, 0.2)
+        head.Transparency = 1
+        head.Anchored = true
+        head.CanCollide = false
+        head.CanQuery = false
+        head.CFrame = base * CFrame.new(0, 8.3 * scale, 0)
+        head.Parent = model
+    end
     if head then
         local tag = Instance.new("BillboardGui")
         tag.Size = UDim2.new(0, 220, 0, 46)

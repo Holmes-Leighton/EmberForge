@@ -16,6 +16,7 @@ In Studio the game uses an in-memory save (a `[SafeDataStore]` warning appears) 
 | Create the **Developer Products** (Speed-Ups, +5 Golem Slots pack (stackable, up to 15 extra), Slot Boost, Material Magnet, Event Catalyst, Season Passes) and paste each numeric id into `ProductData.Products` (id = 0 means "not for sale yet"). Season passes stay Developer Products because each season ends; the client refuses a second purchase of a tier already held | Creator Dashboard → Monetization |
 | Add admin UserIds (the place owner and Studio are admins automatically) | `GameConfig.ADMIN_USER_IDS` |
 | Add audio (your own or properly licensed; ids are 0 = silent) | `src/Shared/Data/AudioData.lua` |
+| Golem 3D model: upload the art (ART_BRIEF.md 4.2), paste its asset id (and Idle/Mine/Walk animation ids if rigged) into `AssetData.lua`. Output shows `[GolemAssets] LOADED ...` or a warning and the block Golem stays. The asset must be owned by the game's group or creator | `src/Shared/Data/AssetData.lua` |
 | Season dates are UTC timestamps for 2026 | `src/Shared/Data/SeasonData.lua` |
 
 ## 3. Live operations (no update needed)
@@ -33,7 +34,7 @@ The repo has automated tests that run the real code against a mock Roblox enviro
 python3 tests/run_tests.py        # all suites (needs the `luau` runtime on PATH, or LUAU=/path/to/luau)
 python3 tests/check_calls.py      # cross-file check: every Module.func() call and RemoteEvent exists
 ```
-Suites: `test_supplier` (standard-goods limits), `test_trading` (exploit attempts), `test_core` (saves, locking, claims, receipts), `test_progression`
+Suites: `test_ui_assets` (uploaded Golem loader, fallback, animation modes), `test_supplier` (standard-goods limits), `test_trading` (exploit attempts), `test_core` (saves, locking, claims, receipts), `test_progression`
 (tier rules, smelting, blueprints), `test_neon` (rarity + Neon), `test_liveops`, `test_ui_load`, `test_ui_flows` and `test_ui_world` (world, forge and Golem model builders)
 (every menu is built and its buttons clicked against a fake UI).
 They can't replace a Studio playtest (real rendering, physics, DataStore, MarketplaceService), so please play it.

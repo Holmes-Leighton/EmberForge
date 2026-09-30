@@ -21,6 +21,7 @@ local ForgeZoneService   = require(script.Services.ForgeZoneService)
 local WorldBuilder       = require(script.Services.WorldBuilder)
 local PadService         = require(script.Services.PadService)
 local GolemVisuals       = require(script.Services.GolemVisuals)
+local GolemAssetLoader   = require(script.Services.GolemAssetLoader)
 local LiveOpsService     = require(script.Services.LiveOpsService)
 local AdminService       = require(script.Services.AdminService)
 local Utils              = require(game.ReplicatedStorage.Shared.Modules.Utils)
@@ -31,6 +32,7 @@ LiveOpsService.Init()
 AdminService.Init(LiveOpsService, function(p, title, msg) RemoteEvents.Notify:FireClient(p, title, msg) end)
 WorldBuilder.Build()
 PadService.Init()
+GolemAssetLoader.Init()           -- starts loading uploaded Golem art (if any ids are set) before Golems are shown
 GolemVisuals.Init()
 
 -- Start periodic auto-save and leaderboard flush

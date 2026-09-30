@@ -56,6 +56,7 @@ challenges) · forge-milestone blueprints · tier unlock rules (3x T1 → T2, 2x
 | **Robux model like Adopt Me / Grow a Garden**: permanent unlocks (pads, Storage, forge skins) are Game Passes, consumables/timed boosts are Developer Products, contextual offers (storage too small, no free slot, smelter full, locked pad), Premium bonus | Done in code; needs your pass/product ids |
 | **World: one enormous cavern hub with six tunnels to break-out zone caves; tiered, recognisable mining pads (plinth, giant multiplier, beam of light, gems)** | Done (procedural; never viewed in Studio) |
 | UX pass: chunky theme, bottom icon hotbar with hotkeys (F/B/M/Q/P), side icon column, pop-in windows, stacking toasts, "what next" arrow, press-E prompts on forge objects | Done (needs a Studio look; real icon art still needed) |
+| **Golem model loader**: `AssetData` ids are loaded by `GolemAssetLoader` and used by `GolemModel.Build` (tier scale, element tint, Neon/Mega Neon, accessories, particles), animated by `GolemAnimator` as Skinned / Parts / Static; falls back to blocks and logs `[GolemAssets]` | Done in code, tested against mocks only; no real asset has been loaded yet |
 | **Forge Supplier** (standard goods always in stock, daily limits, coin sink) and **notification badges** on the sidebar | Done |
 
 ## 4. Still open

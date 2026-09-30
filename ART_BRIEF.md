@@ -27,9 +27,9 @@ EmberForge is an idle-crafting Roblox game. You mine ore on glowing **pads**, fo
 
 | Item | Requirement |
 |---|---|
-| Format | `.fbx` (or `.obj`) with textures; or delivered already uploaded to Roblox |
+| Format | `.fbx` (preferred) or `.gltf`, with textures. `.obj` has no rig or animation, so only for static props. Or delivered already uploaded to Roblox |
 | Scale | Roblox studs: 1 stud is about 0.28 m. A tier 1 Golem is about **11 studs tall** (see section 4) |
-| Triangles | Golem: under **8,000**. Small props: under 1,500. Large scenery pieces: under 6,000. Fewer is better (phones) |
+| Triangles | Roblox's hard limit is **20,000 per mesh**; our budget is much lower. Golem: under **8,000**. Small props: under 1,500. Large scenery pieces: under 6,000. Fewer is better (phones) |
 | Origin | On the ground, centred under the object. Facing **-Z** (Roblox "front") |
 | Textures | 1024x1024 max per asset, 512 for props. No baked-in text |
 | Materials | One or two per asset. Solid colours plus a simple texture is fine |
@@ -46,19 +46,36 @@ Golems are the heart of the game. They are shown on a mining floor swinging a pi
 - Current block size for reference (tier 1): torso 3.2 x 4 x 2 studs, head 2.4 x 2.2 x 2.4, legs 1.3 x 3 x 1.4 each, arms 1.1 x 3 x 1.1 each. Overall about 9.5 studs to the top of the head, 11 with a hat.
 - Glowing **eyes** (emissive) and a **chest socket** where a glowing core can sit (see tiers).
 
-### 4.2 Separate parts (needed so the game can animate it)
+### 4.2 How to deliver the Golem: pick option A or B
 
-Deliver as one model with these **exact part names** (the game code already looks for them):
+The game loads your finished model from a Roblox asset id (`src/Shared/Data/AssetData.lua`) and, if that ever fails, falls back to the built-in block Golem. It scales the model by tier, tints it by element, makes it Neon / Mega Neon, and adds hats, crowns and effects itself, so **the artist does not need to make tiers, Neon or accessories**. Build one neutral Golem (light grey stone works best for tinting); a separate model per element is optional.
+
+Rules for both options: stand on the ground with the origin at the feet, face **-Z**, roughly 9.5 studs tall to the top of the head at tier 1 (the game rescales to exactly that), symmetrical, meshes and textures only (no scripts; the game deletes any it finds), and keep eyes/glow parts on a **Neon** material so they stay bright.
+
+**Option A: separate named parts (recommended for launch)**
+One model, unrigged, made of separate meshes with these **exact names** (the game already looks for them):
 
 | Part name | What it is |
 |---|---|
-| `Torso` | Main body. Root part. |
+| `Torso` | Main body |
 | `Head` | Head with eyes |
-| `ArmL`, `ArmR` | Arms, pivot at the shoulder. The game swings `ArmR` to mine |
+| `ArmL`, `ArmR` | Arms. **The mesh pivot must sit at the shoulder**: the game swings `ArmR` to mine and `ArmL` a little |
 | `Leg` (x2) | Legs |
-| `PickHandle`, `PickHead` | A pickaxe held in the right hand. Handle is wood, head is metal |
+| `PickHandle`, `PickHead` | Pickaxe held in the right hand (handle is wood, head is metal) |
 
-If a single unsplit mesh is all that can be made, say so; the game will then use a bob-and-sway animation instead of arm swings.
+Import with **Import Only As Model** off and **Merge Meshes** off (Merge would fuse the arms into the body). Set each arm's pivot at the shoulder in the importer's pivot option (or in the DCC tool before export).
+If only one unsplit mesh is possible, that also works: the game gives it a bob-and-sway instead of an arm swing.
+
+**Option B: rigged FBX with animations**
+- **Rig type in the importer: Custom.** Roblox offers R15, Custom and No Rig. R15 (15 joints, plus up to 37 optional ones in Advanced R15) is the human player avatar rig with fixed joint names and hierarchy, which a blocky stone Golem does not need. Custom keeps your own skeleton.
+- Skeleton with **one root bone/joint at (0,0,0)**, all bones with **frozen transforms** (scale 1,1,1, rotation 0,0,0), **no more than 4 bone influences per vertex**, none on the root bone.
+- Animations, all looping except where noted: `Idle` (standing, breathing, 2 to 4 s), `Mine` (pickaxe swing, about 1.5 s, this is the one seen most), `Walk` (about 1 s, reserved for later). Roblox's mesh specification says an FBX carries a **single animation track per file**, so export each animation as its own FBX, import each in the Animation Editor / Importer, and send us the three animation asset ids. The Golem is not a Humanoid, so the game plays them through an `AnimationController` + `Animator` on the client.
+- Animations must be uploaded by the **same group that owns the game**, or they will not play.
+- Keep the rig small (about 25 bones or fewer). Up to 20 players may each have 12 Golems on screen, and every skinned Golem costs more than a plain one; the game already pauses animation for Golems far from the camera.
+
+**Which to choose.** Option A for launch: it works with the code as it stands, needs no animation work, costs the least on phones, and looks fine at the size Golems appear in the cave. Option B is a good upgrade for the hero look (fluid mining, breathing idle) once the game is live; the loader is ready for it. Both are wired up; switch by dropping the asset id (and animation ids for B) into `AssetData.lua`.
+
+What Roblox's docs say and don't say (checked against create.roblox.com): the Importer accepts `.fbx`, `.gltf`, `.obj`; FBX/glTF carry rigs and animation data; mesh limit is 20,000 triangles, geometry must be watertight, textures colour or PBR. The importer page itself gives no bone-count or file-size limit, so the bone budget above is our own safe target, not a Roblox rule.
 
 ### 4.3 Elements (5 looks + 1 event look)
 
@@ -161,7 +178,7 @@ Each has a huge multiplier number on top, corner lantern posts, an arch with a n
 
 | Priority | Item |
 |---|---|
-| 1 | Base Golem (all parts, one element) |
+| 1 | Base Golem (option A or B, one neutral model; see 4.2) |
 | 2 | Element variations (5) |
 | 3 | Tier add-ons (shoulders, core, horns, halo) |
 | 4 | UI icons (10 hotbar icons first) |
