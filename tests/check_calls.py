@@ -10,7 +10,7 @@ files = {}
 for dp, _, fs in os.walk(SRC):
     for f in fs:
         if f.endswith(".lua"):
-            files[os.path.join(dp, f)] = open(os.path.join(dp, f), encoding="utf8").read()
+            files[os.path.join(dp, f).replace("\\", "/")] = open(os.path.join(dp, f), encoding="utf8").read()   # forward slashes so the suffix checks work on Windows
 
 def module_name(path):
     n = os.path.basename(path)

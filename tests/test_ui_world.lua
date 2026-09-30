@@ -74,7 +74,9 @@ local basic = ForgeBuilder.Build(folder, Vector3.new(0, 10, 0), 1, { ForgeSkin =
 local std = ForgeBuilder.Build(folder, Vector3.new(0, 10, 0), 1, { ForgeSkin = "ForgeSkin_Ember_Standard" })
 expect(std:FindFirstChild("TrimFront") ~= nil and basic:FindFirstChild("TrimFront") == nil, "Standard skins add glowing trim over Basic")
 local GM = load("game/ReplicatedStorage/Shared/Modules/GolemModel")
-expect(GM.Build("Stone", 2, { skin = "GolemSkin_MagmaTitan_Premium" }):FindFirstChild("SkinTrim") ~= nil, "Golem skins add trim")
+expect(GM.Build("Stone", 2, { skin = "GolemSkin_Shimmer" }):FindFirstChild("SkinTrim") ~= nil, "plain-colour Golem skins add trim")
+local magma = GM.Build("Stone", 2, { skin = "GolemSkin_MagmaTitan_Premium" })
+expect(magma:FindFirstChild("SkinTrim") == nil and magma:FindFirstChild("Torso").Material == Enum.Material.Basalt, "catalog skins (Magma Titan) replace the surface instead of adding trim")
 expect(GM.Build("Stone", 2, {}):FindFirstChild("SkinTrim") == nil, "no skin, no trim")
 local seenBlurb = {}
 for _, id in ipairs({ "TitleBadge_Master", "TitleBadge_Legend", "ForgeSkin_Bronze", "GolemAccessory_LavaCrown" }) do

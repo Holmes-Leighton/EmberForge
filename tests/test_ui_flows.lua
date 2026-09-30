@@ -92,7 +92,7 @@ expect(lastFired("CraftGolem") ~= nil and lastFired("CraftGolem")[3] == 1, "Craf
 expect(byTextLike(bpScroll, "LOCKED") ~= nil or true, "locked blueprints explain why")
 
 local deploy = forge:FindFirstChild("GolemDeployScroll", true)
-expect(byTextLike(deploy, "Neon Frost") ~= nil, "Neon variant is named in the deploy list")
+expect(byTextLike(deploy, "Elite Frost") ~= nil, "Elite (Neon id) variant is named in the deploy list")
 expect(byTextLike(deploy, "BROKEN") ~= nil, "broken golem is flagged")
 expect(byText(deploy, "Recall") ~= nil, "deployed golem has Recall")
 local dep = byText(deploy, "Deploy ▶")

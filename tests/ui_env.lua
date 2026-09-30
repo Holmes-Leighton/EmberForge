@@ -74,6 +74,7 @@ local methods = {
     FireClient = function(self, ...) end,
     PivotTo = function(self, cf) rawset(self, "_pivot", cf) end,
     GetPivot = function(self) return rawget(self, "_pivot") or { Position = Vector3.new(0, 5, 0) } end,
+    GetBoundingBox = function(self) return { Position = Vector3.new(0, 5, 0) }, Vector3.new(6, 10, 4) end,
     ScrollTo = function() end, CaptureFocus = function() end, ReleaseFocus = function() end,
 }
 
@@ -134,11 +135,18 @@ Random = { new = function(seed)
     return { NextInteger = function(_, a, b) state = (state * 1103515245 + 12345) % 2147483648; return a + state % (b - a + 1) end,
              NextNumber = function(_, a, b) state = (state * 1103515245 + 12345) % 2147483648; return (a or 0) + (state / 2147483648) * ((b or 1) - (a or 0)) end } end }
 local V3 = {}
-V3.__index = V3
+V3.__index = function(t, k)
+    if k == "Magnitude" then return math.sqrt(t.X * t.X + t.Y * t.Y + t.Z * t.Z) end
+    return V3[k]
+end
 V3.__mul = function(a, b)
     if type(a) == "number" then a, b = b, a end
     if type(b) == "number" then return setmetatable({ X = a.X * b, Y = a.Y * b, Z = a.Z * b }, V3) end
     return setmetatable({ X = a.X * b.X, Y = a.Y * b.Y, Z = a.Z * b.Z }, V3)
+end
+V3.__div = function(a, b)
+    if type(b) == "number" then return setmetatable({ X = a.X / b, Y = a.Y / b, Z = a.Z / b }, V3) end
+    return setmetatable({ X = a.X / b.X, Y = a.Y / b.Y, Z = a.Z / b.Z }, V3)
 end
 V3.__add = function(a, b) return setmetatable({ X = a.X + b.X, Y = a.Y + b.Y, Z = a.Z + b.Z }, V3) end
 V3.__sub = function(a, b) return setmetatable({ X = a.X - b.X, Y = a.Y - b.Y, Z = a.Z - b.Z }, V3) end

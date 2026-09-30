@@ -62,6 +62,6 @@ local mega_g
 for _, x in ipairs(d.Golems) do if x.variant == "MegaNeon" then mega_g = x end end
 local ok = Trading.AddToOffer(p, tid, { type = "golem", id = mega_g.id })
 local view = Trading.GetTradeView(p, tid)
-expect(ok and view.yourItems[1].name:find("Mega Neon") and view.yourItems[1].name:find("Common"), "offer shows: " .. tostring(view.yourItems[1] and view.yourItems[1].name))
+expect(ok and view.yourItems[1].name:find("Supreme") and view.yourItems[1].name:find("Common"), "offer shows: " .. tostring(view.yourItems[1] and view.yourItems[1].name))
 
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")

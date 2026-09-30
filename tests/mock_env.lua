@@ -47,7 +47,9 @@ ColorMeta.__index = { Lerp = function(a, b, t) return setmetatable({ R = a.R + (
 Color3 = { fromRGB = function(r, g, b) return setmetatable({ R = r / 255, G = g / 255, B = b / 255 }, ColorMeta) end,
            new = function(r, g, b) return setmetatable({ R = r, G = g, B = b }, ColorMeta) end }
 UDim = { new = function(s, o) return { Scale = s, Offset = o } end }
-UDim2 = { new = function(xs, xo, ys, yo) return { X = UDim.new(xs, xo), Y = UDim.new(ys, yo) } end }
+UDim2 = { new = function(xs, xo, ys, yo) return { X = UDim.new(xs, xo), Y = UDim.new(ys, yo) } end,
+    fromScale = function(xs, ys) return { X = UDim.new(xs, 0), Y = UDim.new(ys, 0) } end,
+    fromOffset = function(xo, yo) return { X = UDim.new(0, xo), Y = UDim.new(0, yo) } end }
 Vector2 = { new = function(x, y) return { X = x, Y = y } end }
 Vector3 = { new = function(x, y, z) return { X = x, Y = y, Z = z } end }
 Enum = setmetatable({}, { __index = function(_, k) return setmetatable({}, { __index = function(_, v) return k .. "." .. v end }) end })
@@ -102,7 +104,9 @@ end
 -- module lookup by repo-style path, for tests
 function load(p) return require(newObj(p, nil)) end
 function newPlayer(id, name)
-    local p = { UserId = id, Name = name, DisplayName = name, Parent = true, Character = nil }
+    local attrs = {}
+    local p = { UserId = id, Name = name, DisplayName = name, Parent = true, Character = nil,
+        SetAttribute = function(_, k, v) attrs[k] = v end, GetAttribute = function(_, k) return attrs[k] end }
     table.insert(Players._list, p)
     return p
 end

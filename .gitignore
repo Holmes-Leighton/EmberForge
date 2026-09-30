@@ -10,3 +10,6 @@
 Thumbs.db
 rojo.exe
 aftman.toml
+
+# local Studio MCP launcher config (contains a machine-specific path)
+.mcp.json

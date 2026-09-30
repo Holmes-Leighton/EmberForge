@@ -40,7 +40,7 @@ def run(test_file):
         f.write(bundle(test_file))
         path = f.name
     try:
-        r = subprocess.run([LUAU, path], capture_output=True, text=True)
+        r = subprocess.run([LUAU, path], capture_output=True, text=True, encoding="utf8", errors="replace")
     finally:
         os.unlink(path)
     text = r.stdout + r.stderr
@@ -50,6 +50,8 @@ def run(test_file):
 
 
 if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):          # the game's UI text has emoji; Windows consoles default to cp1252
+        sys.stdout.reconfigure(encoding="utf8", errors="replace")
     targets = sys.argv[1:] or sorted(
         os.path.join(HERE, n) for n in os.listdir(HERE) if n.startswith("test_") and n.endswith(".lua"))
     results = [run(t) for t in targets]

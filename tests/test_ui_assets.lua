@@ -50,6 +50,7 @@ local function newPart(parent, name, cls)
     p.Anchored = false
     p.CFrame = CFrame.new(0, 3, 0)
     p.PivotOffset = CFrame.new(0, 0, 0)
+    p.Position = Vector3.new(0, 3, 0)
     p.Parent = parent
     return p
 end
@@ -76,6 +77,10 @@ local Loader = load("SSS/EmberForge/Services/GolemAssetLoader")
 local GolemModel = load("game/ReplicatedStorage/Shared/Modules/GolemModel")
 local D = AssetData.Golem.Default
 
+-- the real AssetData now has live ids; this test starts from "nothing uploaded"
+AssetData.Golem.Default.assetId = 0
+AssetData.Golem.Default.mode = "Auto"          -- the live file pins "Parts"; these tests check the auto-detection
+AssetData.Pack.assetId, AssetData.PetPack.assetId, AssetData.CrownPack.assetId = 0, 0, 0
 print("== no asset ids: block Golem, clear log")
 Loader.Init()
 local m = GolemModel.Build("Frost", 2, {})
@@ -101,10 +106,12 @@ expect(GolemModel.AssetVersion() == 1, "version bumped")
 scaleCalls = {}
 local g = GolemModel.Build("Frost", 3, { variant = "Neon", accessory = "GolemAccessory_LavaCrown", particle = "ParticleEffect_Sparks" })
 expect(g:GetAttribute("RigMode") == "Parts" and g.Name == "GolemPreview", "Build returns the uploaded model")
-expect(g:FindFirstChild("Torso") ~= nil and g:FindFirstChild("Torso").Material == Enum.Material.Neon, "Neon variant makes body parts Neon")
+expect(g:FindFirstChild("Torso") ~= nil and g:FindFirstChild("Torso").Material ~= Enum.Material.Neon, "Elite (Neon id) keeps the body's own look instead of repainting it")
+expect(g:FindFirstChild("Pauldron") ~= nil and g:FindFirstChild("ChestPlate") ~= nil and g:FindFirstChild("Circlet") ~= nil, "Elite gets gold armour (plain circlet until a crown is uploaded)")
+expect(g:FindFirstChild("Halo") == nil and g:FindFirstChild("CapePanel") == nil, "Elite has no halo or cape (those are Supreme)")
 expect(g:FindFirstChild("Eye").Material == Enum.Material.Neon and g:FindFirstChild("Eye"):GetAttribute("Tint") == nil, "glowing eyes keep their own look and are not tinted")
 expect(g:FindFirstChild("Torso"):GetAttribute("Tint") == true, "body parts are tagged for the Neon / Mega Neon colour animation")
-expect(math.abs(scaleCalls[1] - 9.5 / 10 * 1.36) < 1e-6, "tier 3 scale = target height x 1.36")
+expect(math.abs(scaleCalls[1] - 9.5 / 10 * 1.36 * 1.06) < 1e-6, "tier 3 scale = target height x 1.36, and an Elite is 6% bigger")
 expect(g.PrimaryPart ~= nil, "PrimaryPart set so callers can PivotTo")
 expect(g:FindFirstChild("CrownBand") ~= nil, "accessory is added")
 expect(g:FindFirstChild("Core") ~= nil, "tier 3 core is added on top")
