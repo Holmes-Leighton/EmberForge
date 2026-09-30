@@ -235,6 +235,10 @@ function ForgeController._BuildDeployPanel()
             if child:IsA("GuiButton") or child:IsA("TextLabel") then child:Destroy() end
         end
         local unlocked = MiningZoneData.GetUnlocked(data)
+        table.sort(unlocked)
+        if not (ForgeController._selectedZone and Utils.TableContains(unlocked, ForgeController._selectedZone)) then
+            ForgeController._selectedZone = unlocked[1]
+        end
         if #unlocked == 0 then
             local lbl = Theme.Label(strip, "Forge a Golem to unlock a mining zone.", Theme.TextSize.Body,
                 Theme.Colors.TextSecondary, Theme.Fonts.Body)
@@ -242,12 +246,15 @@ function ForgeController._BuildDeployPanel()
         end
         for _, zoneId in ipairs(unlocked) do
             local zone = MiningZoneData.Get(zoneId)
-            local btn = Theme.Button(strip, "⛏ " .. (zone and zone.displayName or zoneId),
-                Theme.Colors.Success, Color3.fromRGB(255, 255, 255), zoneId)
+            local selected = zoneId == ForgeController._selectedZone
+            local btn = Theme.Button(strip, (selected and "✔ " or "⛏ ") .. (zone and zone.displayName or zoneId),
+                selected and Theme.Colors.Success or Theme.Colors.PanelAlt,
+                selected and Color3.fromRGB(255, 255, 255) or Theme.Colors.AccentBright, zoneId)
             btn.Size = UDim2.new(0, 170, 0, 56)
             btn.TextSize = 14
             btn.MouseButton1Click:Connect(function()
-                ForgeController._OpenGolemSelectForDeploy(zoneId)
+                ForgeController._selectedZone = zoneId
+                ForgeController._BuildDeployPanel()
             end)
         end
     end
@@ -292,7 +299,21 @@ function ForgeController._BuildDeployPanel()
         status.Size = UDim2.new(0.6, 0, 0, 18)
         status.Position = UDim2.new(0, 10, 0, 30)
 
-        if g.deployed then
+        if not g.deployed then
+            local zoneId = ForgeController._selectedZone
+            local zoneData = zoneId and MiningZoneData.Get(zoneId)
+            local deploy = Theme.Button(card,
+                zoneId and "Deploy ▶" or "No zone",
+                zoneId and Theme.Colors.Accent or Theme.Colors.PanelAlt, Color3.fromRGB(255, 255, 255))
+            deploy.Size = UDim2.new(0, 96, 0, 30)
+            deploy.Position = UDim2.new(1, -106, 0.5, -15)
+            if zoneId then
+                status.Text = "💤 Idle  →  " .. (zoneData and zoneData.displayName or zoneId)
+                deploy.MouseButton1Click:Connect(function()
+                    RemoteEvents.DeployGolem:FireServer(g.id, zoneId)
+                end)
+            end
+        else
             local recall = Theme.Button(card, "Recall", Theme.Colors.PanelAlt, Theme.Colors.AccentBright)
             recall.Size = UDim2.new(0, 84, 0, 30)
             recall.Position = UDim2.new(1, -94, 0.5, -15)

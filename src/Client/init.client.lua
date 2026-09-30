@@ -68,6 +68,8 @@ RemoteEvents.GolemDeployed.OnClientEvent:Connect(function(ok, golemId, zoneId, e
     ForgeController.OnGolemDeployed(ok, golemId, zoneId, err)
     if ok then
         HUDController.ShowNotification("Golem Deployed", "Mining in " .. zoneId)
+    else
+        HUDController.ShowNotification("Can't deploy", tostring(err))
     end
 end)
 
