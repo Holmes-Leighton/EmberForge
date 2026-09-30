@@ -2,10 +2,8 @@
 -- standing on one they're allowed to use.
 
 local Players    = game:GetService("Players")
-local RunService = game:GetService("RunService")
 
 local PadData           = require(game.ReplicatedStorage.Shared.Data.PadData)
-local GameConfig        = require(game.ReplicatedStorage.Shared.Data.GameConfig)
 local RemoteEvents      = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 
@@ -29,62 +27,149 @@ local function RequirementText(def)
     return "Requires Level " .. def.minLevel
 end
 
-local function BuildPad(world, def)
-    local part = Instance.new("Part")
-    part.Name = "Pad_" .. def.id
-    part.Anchored = true
-    part.Size = PadData.SIZE
-    part.CFrame = CFrame.new(def.x, PadData.SIZE.Y / 2, def.z)
-    part.Material = Enum.Material.Neon
-    part.Color = def.color
-    part.Transparency = 0.25
-    part.TopSurface = Enum.SurfaceType.Smooth
-    part.Parent = world
+-- Each pad tier looks clearly different from the one before, like the tiered pads in Adopt Me /
+-- Grow a Garden: a bigger plinth, richer material, a taller beam of light, more sparkle,
+-- and a huge "x3" painted on the top so the multiplier reads from across the cavern.
+local STYLE = {
+    Starter = { plinth = Enum.Material.WoodPlanks,     beam = 26, sparkle = 6,  posts = 4, gem = false },
+    Copper  = { plinth = Enum.Material.CorrodedMetal,  beam = 36, sparkle = 10, posts = 4, gem = false },
+    Iron    = { plinth = Enum.Material.DiamondPlate,   beam = 46, sparkle = 16, posts = 4, gem = true  },
+    Gold    = { plinth = Enum.Material.Metal,          beam = 60, sparkle = 26, posts = 4, gem = true  },
+    Admin   = { plinth = Enum.Material.Neon,           beam = 90, sparkle = 40, posts = 4, gem = true  },
+}
 
-    local rim = Instance.new("SelectionBox")   -- bright outline so pads read from a distance
-    rim.Adornee = part
-    rim.Color3 = def.color
-    rim.LineThickness = 0.12
-    rim.Parent = part
+local function Block(parent, name, size, cf, color, material, extra)
+    local p = Instance.new("Part")
+    p.Name = name
+    p.Anchored = true
+    p.Size = size
+    p.CFrame = cf
+    p.Color = color
+    p.Material = material
+    p.TopSurface = Enum.SurfaceType.Smooth
+    p.BottomSurface = Enum.SurfaceType.Smooth
+    for k, v in pairs(extra or {}) do p[k] = v end
+    p.Parent = parent
+    return p
+end
+
+local PAD_Y = 1.4 + PadData.SIZE.Y / 2      -- sits on the plinth (top at 1.4)
+
+local function BuildPad(world, def)
+    local style = STYLE[def.id] or STYLE.Starter
+    local model = Instance.new("Model")
+    model.Name = "PadModel_" .. def.id
+    model.Parent = world
+    local x, z = def.x, def.z
+    local dark = def.color:Lerp(Color3.new(0, 0, 0), 0.55)
+
+    -- plinth: a wide low step with a bright rim, then the stepping surface itself
+    Block(model, "PadBase", Vector3.new(28, 1.4, 28), CFrame.new(x, 0.7, z), dark, style.plinth)
+    Block(model, "PadRim", Vector3.new(26, 0.3, 26), CFrame.new(x, 1.45, z), def.color, Enum.Material.Neon, { CanCollide = false, Transparency = 0.1 })
+    -- the walkable, detected surface (name must stay Pad_<id>)
+    local part = Block(model, "Pad_" .. def.id, PadData.SIZE, CFrame.new(x, PAD_Y, z),
+        def.color:Lerp(Color3.new(0, 0, 0), 0.25), Enum.Material.SmoothPlastic, { Transparency = 0 })
+    -- inner glow tile
+    Block(model, "PadGlow", Vector3.new(18, 0.1, 18), CFrame.new(x, PAD_Y + PadData.SIZE.Y / 2 + 0.06, z), def.color, Enum.Material.Neon,
+        { CanCollide = false, Transparency = 0.35 })
+
+    -- the multiplier, painted big on the top face
+    local gui = Instance.new("SurfaceGui")
+    gui.Face = Enum.NormalId.Top
+    gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+    gui.PixelsPerStud = 24
+    gui.Parent = part
+    local big = Instance.new("TextLabel")
+    big.Size = UDim2.new(1, 0, 0.72, 0)
+    big.BackgroundTransparency = 1
+    big.Text = "x" .. def.multiplier
+    big.TextColor3 = Color3.fromRGB(255, 255, 255)
+    big.Font = Enum.Font.GothamBlack
+    big.TextScaled = true
+    big.TextStrokeColor3 = dark
+    big.TextStrokeTransparency = 0
+    big.Parent = gui
+    local small = Instance.new("TextLabel")
+    small.Position = UDim2.new(0, 0, 0.72, 0)
+    small.Size = UDim2.new(1, 0, 0.2, 0)
+    small.BackgroundTransparency = 1
+    small.Text = string.upper(def.displayName)
+    small.TextColor3 = Color3.fromRGB(255, 255, 255)
+    small.Font = Enum.Font.GothamBold
+    small.TextScaled = true
+    small.TextStrokeTransparency = 0.3
+    small.Parent = gui
+
+    -- corner posts with glowing lanterns
+    local corners = { { -13, -13 }, { 13, -13 }, { -13, 13 }, { 13, 13 } }
+    for i = 1, style.posts do
+        local c = corners[i]
+        Block(model, "PadPost", Vector3.new(1.6, 9, 1.6), CFrame.new(x + c[1], 5.2, z + c[2]), dark:Lerp(Color3.new(1, 1, 1), 0.15), style.plinth)
+        local orb = Block(model, "PadLantern", Vector3.new(2.4, 2.4, 2.4), CFrame.new(x + c[1], 10.6, z + c[2]), def.color, Enum.Material.Neon,
+            { Shape = Enum.PartType.Ball, CanCollide = false })
+        local l = Instance.new("PointLight")
+        l.Color = def.color
+        l.Range = 30
+        l.Brightness = 1.6
+        l.Parent = orb
+    end
+
+    -- arch over the back edge carrying the name
+    Block(model, "PadArch", Vector3.new(28, 2.4, 1.6), CFrame.new(x, 13.4, z + 13), dark, style.plinth)
+
+    -- beam of light: the tier is visible from the far side of the cavern
+    local beam = Block(model, "PadBeam", Vector3.new(style.beam, 5, 5), CFrame.new(x, 2 + style.beam / 2, z) * CFrame.Angles(0, 0, math.pi / 2),
+        def.color, Enum.Material.Neon, { Shape = Enum.PartType.Cylinder, Transparency = 0.82, CanCollide = false })
+    local sparkle = Instance.new("ParticleEmitter")
+    sparkle.Color = ColorSequence.new(def.color)
+    sparkle.Rate = style.sparkle
+    sparkle.Lifetime = NumberRange.new(2, 3.5)
+    sparkle.Speed = NumberRange.new(6, 12)
+    sparkle.EmissionDirection = Enum.NormalId.Top
+    sparkle.SpreadAngle = Vector2.new(20, 20)
+    sparkle.LightEmission = 1
+    sparkle.Size = NumberSequence.new(0.7, 0)
+    sparkle.Parent = beam
+
+    -- higher tiers: a spinning gem above the pad
+    if style.gem then
+        local gem = Block(model, "PadGem", Vector3.new(3.2, 4.4, 3.2), CFrame.new(x, 17, z) * CFrame.Angles(0.6, 0.6, 0), def.color,
+            Enum.Material.Neon, { CanCollide = false, Transparency = 0.1 })
+        gem:SetAttribute("SpinSpeed", 1.4)
+        game:GetService("CollectionService"):AddTag(gem, "EFSpin")
+    end
 
     local light = Instance.new("PointLight")
     light.Color = def.color
-    light.Range = 26
-    light.Brightness = 1.5
+    light.Range = 40
+    light.Brightness = 2
     light.Parent = part
 
-    local anchor = Instance.new("Part")
-    anchor.Anchored = true
-    anchor.CanCollide = false
-    anchor.Transparency = 1
-    anchor.Size = Vector3.new(1, 1, 1)
-    anchor.Position = Vector3.new(def.x, 11, def.z)
-    anchor.Parent = world
-
+    -- name plate above the arch
+    local anchor = Block(model, "PadSignAnchor", Vector3.new(1, 1, 1), CFrame.new(x, 20, z), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic,
+        { Transparency = 1, CanCollide = false })
     local bb = Instance.new("BillboardGui")
-    bb.Size = UDim2.new(0, 260, 0, 80)
-    bb.MaxDistance = 220
+    bb.Size = UDim2.new(0, 300, 0, 86)
+    bb.MaxDistance = 320
     bb.Parent = anchor
-
     local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0.5, 0)
+    title.Size = UDim2.new(1, 0, 0.55, 0)
     title.BackgroundTransparency = 1
-    title.Text = string.format("%dx  %s", def.multiplier, def.displayName)
+    title.Text = string.format("%s   x%d", def.displayName, def.multiplier)
     title.TextColor3 = def.color
     title.Font = Enum.Font.GothamBlack
     title.TextScaled = true
-    title.TextStrokeTransparency = 0.3
+    title.TextStrokeTransparency = 0
     title.Parent = bb
-
     local sub = Instance.new("TextLabel")
-    sub.Position = UDim2.new(0, 0, 0.5, 0)
-    sub.Size = UDim2.new(1, 0, 0.35, 0)
+    sub.Position = UDim2.new(0, 0, 0.55, 0)
+    sub.Size = UDim2.new(1, 0, 0.4, 0)
     sub.BackgroundTransparency = 1
-    sub.Text = RequirementText(def) .. "  •  stand here to mine"
-    sub.TextColor3 = Color3.fromRGB(235, 235, 235)
-    sub.Font = Enum.Font.Gotham
+    sub.Text = RequirementText(def)
+    sub.TextColor3 = Color3.fromRGB(245, 245, 245)
+    sub.Font = Enum.Font.GothamBold
     sub.TextScaled = true
-    sub.TextStrokeTransparency = 0.5
+    sub.TextStrokeTransparency = 0.3
     sub.Parent = bb
 
     return part

@@ -104,12 +104,42 @@ expect(world:FindFirstChild("GolemAnvil") ~= nil, "golem anvil")
 expect(world:FindFirstChild("DiscoveryBoard") ~= nil, "top forges board")
 expect(WorldBuilder.GetZoneCenter("GlacialPeaks") ~= nil and WorldBuilder.GetZoneCenter("Nope") == nil, "zone centres resolve")
 
+print("== the cavern")
+local cave = world:FindFirstChild("Cave")
+local function countNamed(root, name) local n = 0 for _, d in ipairs(root:GetDescendants()) do if d.Name == name then n += 1 end end return n end
+expect(cave ~= nil, "a Cave folder exists")
+expect(countNamed(cave, "ArchLintel") == 6, "six tunnel arches, one per zone (" .. countNamed(cave, "ArchLintel") .. ")")
+expect(countNamed(cave, "Ceiling") >= 1 and countNamed(cave, "WallWest") >= 1 and countNamed(cave, "WallEast") >= 1, "the hub has walls and a ceiling")
+expect(countNamed(cave, "ChamberWall") == 7, "zone caves are separated by walls (" .. countNamed(cave, "ChamberWall") .. ")")
+expect(countNamed(cave, "StalactiteBase") > 50, "stalactites hang from the ceiling")
+expect(world:FindFirstChild("PadPlaza") ~= nil, "pad plaza exists")
+for _, id in ipairs({ "EmberDepths", "GlacialPeaks", "TheDeepForge" }) do
+    expect(countNamed(world:FindFirstChild("Zone_" .. id), "ArchTrim") == 3, id .. " has a glowing tunnel mouth")
+end
+local tooBig = 0
+for _, d in ipairs(world:GetDescendants()) do
+    if d:IsA("BasePart") and (d.Size.X > 2048 or d.Size.Y > 2048 or d.Size.Z > 2048) then tooBig += 1 end
+end
+expect(tooBig == 0, "no part exceeds Roblox's 2048-stud size limit")
+
 print("== pads and deployed golems")
 local PadService = load("SSS/EmberForge/Services/PadService")
 PadService.Init()
 local pads = 0
-for _, c in ipairs(world:GetChildren()) do if c.Name:find("^Pad_") then pads += 1 end end
+for _, c in ipairs(world:GetDescendants()) do if c.Name:find("^Pad_") then pads += 1 end end
 expect(pads == 5, "five mining pads (" .. pads .. ")")
+
+local beams = {}
+for _, d in ipairs(world:GetDescendants()) do
+    if d.Name == "PadBeam" then table.insert(beams, d.Size.X) end
+end
+table.sort(beams)
+local distinct = true
+for i = 2, #beams do if beams[i] <= beams[i - 1] then distinct = false end end
+expect(#beams == 5 and distinct, "each pad tier has a taller beam of light than the last")
+local gems = 0
+for _, d in ipairs(world:GetDescendants()) do if d.Name == "PadGem" then gems += 1 end end
+expect(gems == 3, "Iron, Gold and Admin pads have spinning gems (" .. gems .. ")")
 
 local GolemVisuals = load("SSS/EmberForge/Services/GolemVisuals")
 GolemVisuals.Init()

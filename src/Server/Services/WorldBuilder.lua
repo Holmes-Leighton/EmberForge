@@ -1,6 +1,9 @@
--- Builds the shared world at runtime (no manual Studio work needed):
--- ground, spawn, mining-zone landmarks, scenery and lighting.
--- Forge plots are built separately by ForgeZoneService along the X axis at Z = 0.
+-- Builds the shared world at runtime (no manual Studio work needed).
+--
+-- The whole game happens inside one enormous cavern (the hub): spawn, the Golem Anvil, the Pad Plaza
+-- and every player's forge plot (built separately by ForgeZoneService along the X axis at Z = 0).
+-- Along its north wall six tunnels lead to break-out caves, one per mining zone, each with its own
+-- biome, lighting and scenery.
 
 local Lighting = game:GetService("Lighting")
 local MiningZoneData = require(game.ReplicatedStorage.Shared.Data.MiningZoneData)
@@ -261,35 +264,205 @@ local function BuildLandmark(world, index, layout)
     Sign(model, zone.displayName, UnlockText(zone), Vector3.new(cx, 36, ZONE_Z), layout.color)
 end
 
+-- ── The cavern ────────────────────────────────────────────────────────────────
+local HUB_X1, HUB_X2 = -450, 2100        -- west / east walls
+local HUB_Z1, HUB_Z2 = -260, 190         -- south wall / the wall the tunnels pierce
+local HUB_CEIL       = 110
+local CH_Z2          = 334               -- back wall of the zone caves
+local CH_CEIL        = 60
+local ARCH_W, ARCH_H = 36, 28
+local ROCK           = Color3.fromRGB(62, 54, 52)
+
+-- A box from corner to corner, split so no single part exceeds Roblox's 2048-stud limit
+local function Slab(parent, name, x1, x2, y1, y2, z1, z2, color, material)
+    local pieces = math.max(1, math.ceil((x2 - x1) / 900))
+    for i = 0, pieces - 1 do
+        local a = x1 + (x2 - x1) * i / pieces
+        local b = x1 + (x2 - x1) * (i + 1) / pieces
+        Part({ Name = name, Material = material or Enum.Material.Slate, Color = color or ROCK,
+            Size = Vector3.new(b - a, y2 - y1, z2 - z1), CFrame = CFrame.new((a + b) / 2, (y1 + y2) / 2, (z1 + z2) / 2) }, parent)
+    end
+end
+
+local function ZoneX(index) return (index - 3.5) * ZONE_SPACING end
+
+local function BuildCave(world)
+    local cave = Instance.new("Folder")
+    cave.Name = "Cave"
+    cave.Parent = world
+    local rng = Random.new(77)
+
+    -- floor (named Ground)
+    Slab(world, "Ground", HUB_X1, HUB_X2, -2, 0, HUB_Z1, CH_Z2 + 4, Color3.fromRGB(58, 50, 47), Enum.Material.Slate)
+
+    -- outer walls and ceiling
+    Slab(cave, "WallSouth", HUB_X1 - 6, HUB_X2 + 6, 0, HUB_CEIL + 6, HUB_Z1 - 6, HUB_Z1)
+    Slab(cave, "WallWest", HUB_X1 - 6, HUB_X1, 0, HUB_CEIL + 6, HUB_Z1, CH_Z2 + 4)
+    Slab(cave, "WallEast", HUB_X2, HUB_X2 + 6, 0, HUB_CEIL + 6, HUB_Z1, CH_Z2 + 4)
+    Slab(cave, "Ceiling", HUB_X1 - 6, HUB_X2 + 6, HUB_CEIL, HUB_CEIL + 6, HUB_Z1 - 6, HUB_Z2 + 10, Color3.fromRGB(46, 40, 40))
+
+    -- the north wall, pierced by an archway for each zone
+    local cursor = HUB_X1 - 6
+    for i = 1, #ZONE_LAYOUT do
+        local cx = ZoneX(i)
+        Slab(cave, "WallNorth", cursor, cx - ARCH_W / 2, 0, HUB_CEIL + 6, HUB_Z2 - 10, HUB_Z2 + 10)
+        Slab(cave, "ArchLintel", cx - ARCH_W / 2, cx + ARCH_W / 2, ARCH_H, HUB_CEIL + 6, HUB_Z2 - 10, HUB_Z2 + 10)
+        cursor = cx + ARCH_W / 2
+    end
+    Slab(cave, "WallNorth", cursor, HUB_X2 + 6, 0, HUB_CEIL + 6, HUB_Z2 - 10, HUB_Z2 + 10)
+
+    -- zone caves: shared side walls, back wall and a lower roof
+    for k = 0, #ZONE_LAYOUT do
+        local x = ZoneX(1) - ZONE_SPACING / 2 + k * ZONE_SPACING
+        Slab(cave, "ChamberWall", x - 2, x + 2, 0, CH_CEIL + 4, HUB_Z2 + 10, CH_Z2 + 4)
+    end
+    Slab(cave, "ChamberBack", ZoneX(1) - ZONE_SPACING / 2 - 2, ZoneX(#ZONE_LAYOUT) + ZONE_SPACING / 2 + 2, 0, CH_CEIL + 4, CH_Z2, CH_Z2 + 4)
+    Slab(cave, "ChamberRoof", ZoneX(1) - ZONE_SPACING / 2 - 2, ZoneX(#ZONE_LAYOUT) + ZONE_SPACING / 2 + 2, CH_CEIL, CH_CEIL + 4, HUB_Z2 + 10, CH_Z2 + 4, Color3.fromRGB(46, 40, 40))
+
+    -- stalactites hanging from the great ceiling
+    for _ = 1, 170 do
+        local x = rng:NextInteger(HUB_X1 + 10, HUB_X2 - 10)
+        local z = rng:NextInteger(HUB_Z1 + 10, HUB_Z2 - 16)
+        local h = rng:NextInteger(14, 42)
+        local w = rng:NextInteger(6, 12)
+        Part({ Name = "StalactiteBase", Material = Enum.Material.Slate, Color = Color3.fromRGB(70, 62, 58), Size = Vector3.new(w, h * 0.55, w),
+            CFrame = CFrame.new(x, HUB_CEIL - h * 0.275, z), CanCollide = false }, cave)
+        Part({ Name = "StalactiteTip", Material = Enum.Material.Slate, Color = Color3.fromRGB(78, 68, 62), Size = Vector3.new(w * 0.5, h * 0.5, w * 0.5),
+            CFrame = CFrame.new(x, HUB_CEIL - h * 0.8, z), CanCollide = false }, cave)
+    end
+
+    -- glowing ceiling veins and hanging lanterns give the cavern its light
+    for i = 0, 55 do
+        local x = HUB_X1 + 30 + i * ((HUB_X2 - HUB_X1 - 60) / 55)
+        local z = rng:NextInteger(-200, 150)
+        local glow = Part({ Name = "CeilingLamp", Shape = Enum.PartType.Ball, Material = Enum.Material.Neon,
+            Color = i % 3 == 0 and Color3.fromRGB(255, 150, 70) or Color3.fromRGB(255, 200, 130),
+            Size = Vector3.new(6, 6, 6), CFrame = CFrame.new(x, HUB_CEIL - 8, z), CanCollide = false }, cave)
+        local l = Instance.new("PointLight")
+        l.Color = glow.Color
+        l.Range = 90
+        l.Brightness = 1.6
+        l.Parent = glow
+    end
+end
+
+-- Arch trim, sign and roof lights for one zone cave
+local function BuildChamber(world, index, layout)
+    local cx = ZoneX(index)
+    local model = world:FindFirstChild("Zone_" .. layout.id)
+    if not model then return end
+    for _, dx in ipairs({ -ARCH_W / 2, ARCH_W / 2 }) do
+        Part({ Name = "ArchTrim", Material = Enum.Material.Neon, Color = layout.color, Size = Vector3.new(1.4, ARCH_H, 1.4),
+            CFrame = CFrame.new(cx + dx, ARCH_H / 2, HUB_Z2 - 10), CanCollide = false }, model)
+    end
+    Part({ Name = "ArchTrim", Material = Enum.Material.Neon, Color = layout.color, Size = Vector3.new(ARCH_W + 1.4, 1.4, 1.4),
+        CFrame = CFrame.new(cx, ARCH_H, HUB_Z2 - 10), CanCollide = false }, model)
+    Sign(model, layout.id:gsub("(%l)(%u)", "%1 %2"), "Enter to mine here", Vector3.new(cx, ARCH_H + 9, HUB_Z2 - 12), layout.color)
+    -- road from the hub road to the mouth of the tunnel
+    Part({ Name = "TunnelRoad", Material = Enum.Material.Cobblestone, Color = Color3.fromRGB(105, 92, 82),
+        Size = Vector3.new(12, 0.2, HUB_Z2 - 60), CFrame = CFrame.new(cx, 0.1, 60 + (HUB_Z2 - 60) / 2), CanCollide = false }, model)
+    -- cave roof lights in the zone's colour
+    for _, dx in ipairs({ -40, 0, 40 }) do
+        local lamp = Part({ Name = "CaveLamp", Shape = Enum.PartType.Ball, Material = Enum.Material.Neon, Color = layout.color,
+            Size = Vector3.new(4, 4, 4), CFrame = CFrame.new(cx + dx, CH_CEIL - 5, 270), CanCollide = false }, model)
+        local l = Instance.new("PointLight")
+        l.Color = layout.color
+        l.Range = 70
+        l.Brightness = 1.8
+        l.Parent = lamp
+    end
+end
+
+-- The plaza the mining pads stand on, with a gateway so newcomers can't miss it
+local function BuildPadPlaza(world)
+    local plaza = Instance.new("Model")
+    plaza.Name = "PadPlaza"
+    plaza.Parent = world
+    Part({ Name = "PlazaFloor", Material = Enum.Material.Basalt, Color = Color3.fromRGB(38, 32, 34), Size = Vector3.new(250, 0.5, 108),
+        CFrame = CFrame.new(0, 0.25, -162) }, plaza)
+    for _, dz in ipairs({ -54, 54 }) do
+        Part({ Name = "PlazaEdge", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 170, 60), Size = Vector3.new(250, 0.3, 1.2),
+            CFrame = CFrame.new(0, 0.6, -162 + dz), CanCollide = false }, plaza)
+    end
+    -- gateway over the plaza entrance
+    for _, dx in ipairs({ -30, 30 }) do
+        Part({ Name = "GatePost", Material = Enum.Material.Wood, Color = Color3.fromRGB(88, 60, 40), Size = Vector3.new(4, 28, 4),
+            CFrame = CFrame.new(dx, 14, -108) }, plaza)
+        local orb = Part({ Name = "GateOrb", Shape = Enum.PartType.Ball, Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 190, 90),
+            Size = Vector3.new(4, 4, 4), CFrame = CFrame.new(dx, 30, -108), CanCollide = false }, plaza)
+        local l = Instance.new("PointLight"); l.Color = orb.Color; l.Range = 45; l.Brightness = 2; l.Parent = orb
+    end
+    local beam = Part({ Name = "GateBeam", Material = Enum.Material.WoodPlanks, Color = Color3.fromRGB(110, 76, 50), Size = Vector3.new(68, 7, 3),
+        CFrame = CFrame.new(0, 26, -108) }, plaza)
+    local sg = Instance.new("SurfaceGui")
+    sg.Face = Enum.NormalId.Front
+    sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+    sg.PixelsPerStud = 30
+    sg.Parent = beam
+    local t = Instance.new("TextLabel")
+    t.Size = UDim2.new(1, 0, 1, 0)
+    t.BackgroundTransparency = 1
+    t.Text = "MINING PADS  -  stand on one to mine"
+    t.TextColor3 = Color3.fromRGB(255, 226, 140)
+    t.Font = Enum.Font.GothamBlack
+    t.TextScaled = true
+    t.TextStrokeTransparency = 0.2
+    t.Parent = sg
+end
+
+-- Cobbled roads: one along the cavern, spurs to the spawn (the tunnel roads are added per zone)
+local function BuildRoads(world)
+    local x1, x2, pieces = HUB_X1 + 10, HUB_X2 - 10, 3
+    for i = 0, pieces - 1 do
+        local a = x1 + (x2 - x1) * i / pieces
+        local b = x1 + (x2 - x1) * (i + 1) / pieces
+        Part({ Name = "Path", Material = Enum.Material.Cobblestone, Color = Color3.fromRGB(105, 92, 82),
+            Size = Vector3.new(b - a, 0.2, 12), CFrame = CFrame.new((a + b) / 2, 0.1, 60), CanCollide = false }, world)
+    end
+    Part({ Name = "SpawnRoad", Material = Enum.Material.Cobblestone, Color = Color3.fromRGB(105, 92, 82),
+        Size = Vector3.new(10, 0.2, 140), CFrame = CFrame.new(-45, 0.1, -10), CanCollide = false }, world)
+end
+
+-- Cave dressing: stalagmites, glowing crystals and mushrooms, kept clear of plots, pads, spawn and roads
 local function BuildScenery(world)
     local rng = Random.new(2024)
     local folder = Instance.new("Folder")
     folder.Name = "Scenery"
     folder.Parent = world
 
-    for _ = 1, 160 do
-        local x = rng:NextInteger(-600, 1700)
-        local z = rng:NextInteger(-380, 420)
-        local inPlots   = math.abs(z) < 60
-        local inZones   = z > ZONE_Z - 70 and z < ZONE_Z + 70 and x > -520 and x < 520
-        local nearSpawn = math.abs(x) < 170 and z < -20 and z > -230
-        if not (inPlots or inZones or nearSpawn) then
-            if rng:NextNumber() < 0.6 then
-                -- tree
-                local trunkH = rng:NextInteger(8, 14)
-                Part({ Name = "Trunk", Material = Enum.Material.Wood,
-                    Color = Color3.fromRGB(90, 60, 40), Size = Vector3.new(2, trunkH, 2),
-                    CFrame = CFrame.new(x, trunkH / 2, z) }, folder)
-                Part({ Name = "Leaves", Shape = Enum.PartType.Ball, Material = Enum.Material.Grass,
-                    Color = Color3.fromRGB(60, 110 + rng:NextInteger(0, 40), 60),
-                    Size = Vector3.new(10, 10, 10) * rng:NextNumber(0.9, 1.4),
-                    CFrame = CFrame.new(x, trunkH + 3, z) }, folder)
+    local palette = { Color3.fromRGB(255, 140, 70), Color3.fromRGB(120, 200, 255), Color3.fromRGB(190, 140, 255), Color3.fromRGB(120, 255, 170) }
+    for n = 1, 260 do
+        local x = rng:NextInteger(HUB_X1 + 12, HUB_X2 - 12)
+        local z = rng:NextInteger(HUB_Z1 + 12, HUB_Z2 - 14)
+        local inPlots   = math.abs(z) < 62 and x > -45
+        local onRoad    = math.abs(z - 60) < 10 or math.abs(x + 45) < 9
+        local inPads    = math.abs(x) < 140 and z < -105 and z > -220
+        local nearSpawn = math.abs(x) < 60 and z < -20 and z > -105
+        local inTunnels = z > 100
+        if not (inPlots or onRoad or inPads or nearSpawn or inTunnels) then
+            local roll = rng:NextNumber()
+            if roll < 0.45 then
+                local h = rng:NextInteger(6, 22)
+                Part({ Name = "Stalagmite", Material = Enum.Material.Slate, Color = Color3.fromRGB(88, 78, 72), Size = Vector3.new(rng:NextInteger(3, 6), h, rng:NextInteger(3, 6)),
+                    CFrame = CFrame.new(x, h / 2, z) * CFrame.Angles(rng:NextNumber(-0.12, 0.12), rng:NextNumber(0, 6), rng:NextNumber(-0.12, 0.12)) }, folder)
+            elseif roll < 0.8 then
+                local c = palette[rng:NextInteger(1, #palette)]
+                local h = rng:NextInteger(4, 11)
+                local first
+                for i = 1, 3 do
+                    local cr = Part({ Name = "CaveCrystal", Material = Enum.Material.Neon, Color = c, Transparency = 0.15, Size = Vector3.new(1.6, h - i, 1.6), CanCollide = false,
+                        CFrame = CFrame.new(x + (i - 2) * 1.6, (h - i) / 2, z + (i % 2) * 1.2) * CFrame.Angles(rng:NextNumber(-0.3, 0.3), 0, rng:NextNumber(-0.3, 0.3)) }, folder)
+                    first = first or cr
+                end
+                if n % 3 == 0 and first then
+                    local l = Instance.new("PointLight"); l.Color = c; l.Range = 38; l.Brightness = 1.4; l.Parent = first
+                end
             else
-                -- boulder
-                local s = rng:NextInteger(4, 12)
-                Part({ Name = "Rock", Material = Enum.Material.Slate,
-                    Color = Color3.fromRGB(100, 100, 105), Size = Vector3.new(s, s * 0.7, s),
-                    CFrame = CFrame.new(x, s * 0.3, z) * CFrame.Angles(0, rng:NextNumber(0, 6), 0) }, folder)
+                local d = rng:NextInteger(3, 6)
+                Part({ Name = "MushroomStem", Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(230, 220, 200), Size = Vector3.new(1, d, 1),
+                    CFrame = CFrame.new(x, d / 2, z), CanCollide = false }, folder)
+                Part({ Name = "MushroomCap", Shape = Enum.PartType.Ball, Material = Enum.Material.Neon, Color = Color3.fromRGB(90, 190, 255),
+                    Size = Vector3.new(d * 1.8, d, d * 1.8), CFrame = CFrame.new(x, d, z), CanCollide = false }, folder)
             end
         end
     end
@@ -370,17 +543,8 @@ function WorldBuilder.Build()
     world.Name = "EmberWorld"
     world.Parent = workspace
 
-    -- Ground (top surface at Y = 0)
-    Part({
-        Name = "Ground", Material = Enum.Material.Grass, Color = Color3.fromRGB(70, 105, 60),
-        Size = Vector3.new(2400, 2, 1100), CFrame = CFrame.new(550, -1, 40),
-    }, world)
-
-    -- Path from spawn to the first forge plot
-    Part({
-        Name = "Path", Material = Enum.Material.Cobblestone, Color = Color3.fromRGB(120, 105, 90),
-        Size = Vector3.new(12, 0.2, 2400), CFrame = CFrame.new(0, 0.1, 40),
-    }, world).CanCollide = false
+    BuildCave(world)
+    BuildRoads(world)
 
     -- Spawn
     local spawn = Instance.new("SpawnLocation")
@@ -399,25 +563,28 @@ function WorldBuilder.Build()
         Vector3.new(0, 22, -60), Color3.fromRGB(255, 170, 60))
 
     BuildStarterStation(world)
+    BuildPadPlaza(world)
     BuildDiscoveryBoard(world)
 
     for i, layout in ipairs(ZONE_LAYOUT) do
         BuildLandmark(world, i, layout)
+        BuildChamber(world, i, layout)
     end
-    Sign(world, "Mining Zones", "Walk north to see where your Golems can work",
-        Vector3.new(0, 24, ZONE_Z - 110), Color3.fromRGB(255, 200, 80))
+    Sign(world, "Mining Caves", "Six tunnels lead to the mining zones  ->",
+        Vector3.new(0, 30, ZONE_Z - 110), Color3.fromRGB(255, 200, 80))
 
     BuildScenery(world)
 
-    -- Lighting: warm evening
-    Lighting.ClockTime = 17.5
-    Lighting.Brightness = 2.5
-    Lighting.Ambient = Color3.fromRGB(90, 70, 60)
-    Lighting.OutdoorAmbient = Color3.fromRGB(120, 100, 90)
+    -- Lighting: a lit cavern (no sun reaches in, so the ambient light does the work)
+    Lighting.ClockTime = 14
+    Lighting.Brightness = 1
+    Lighting.Ambient = Color3.fromRGB(125, 108, 100)
+    Lighting.OutdoorAmbient = Color3.fromRGB(125, 108, 100)
+    Lighting.GlobalShadows = false
     if not Lighting:FindFirstChildOfClass("Atmosphere") then
         local atm = Instance.new("Atmosphere")
-        atm.Density = 0.3
-        atm.Color = Color3.fromRGB(255, 190, 140)
+        atm.Density = 0.22
+        atm.Color = Color3.fromRGB(190, 150, 120)
         atm.Decay = Color3.fromRGB(120, 60, 40)
         atm.Haze = 1.2
         atm.Parent = Lighting
