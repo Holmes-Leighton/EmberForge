@@ -66,6 +66,7 @@ local function DefaultData()
         TempSlotBoostExpiry  = 0,
         MaterialMagnetExpiry = 0,
         -- Cosmetics & receipts
+        UnlockedPads    = {},          -- padId -> true (bought with Robux)
         OwnedCosmetics    = {},
         OwnedAccessories  = {},
         Titles            = {},

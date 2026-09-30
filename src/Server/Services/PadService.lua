@@ -3,7 +3,10 @@
 
 local Players    = game:GetService("Players")
 
+local MarketplaceService = game:GetService("MarketplaceService")
+
 local PadData           = require(game.ReplicatedStorage.Shared.Data.PadData)
+local ProductData       = require(game.ReplicatedStorage.Shared.Data.ProductData)
 local RemoteEvents      = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 
@@ -13,17 +16,25 @@ local pads = {}      -- { def, part }
 local tickCount = {} -- userId → ticks spent on pads (for the coal cadence)
 local lastFullNotice   = {}   -- userId → os.clock() of the last "stock full" message
 local lastLockedNotice = {}   -- userId → os.clock() of the last "locked" message
+local lastOffer       = {}   -- "userId:padId" → os.clock() of the last Robux purchase offer
 
 local IsAdmin = require(script.Parent.AdminService).IsAdmin
 
+-- A pad is usable at its level, or forever once bought with Robux (admins get the Admin pad)
 local function CanUse(player, def, data)
     if def.adminOnly then return IsAdmin(player) end
+    if (data.UnlockedPads or {})[def.id] then return true end
     return (data.PlayerLevel or 1) >= (def.minLevel or 1)
 end
+PadService.CanUse = CanUse
 
 local function RequirementText(def)
     if def.adminOnly then return "Admins only" end
     if (def.minLevel or 1) <= 1 then return "Open to everyone" end
+    local key = ProductData.KeyForPad(def.id)
+    if key then
+        return string.format("Level %d   or   R$%d forever", def.minLevel, ProductData.Products[key].robux)
+    end
     return "Requires Level " .. def.minLevel
 end
 
@@ -199,6 +210,15 @@ local function Payout()
                 lastLockedNotice[player.UserId] = os.clock()
                 RemoteEvents.Notify:FireClient(player, def.displayName .. " locked", RequirementText(def))
             end
+            -- Stepping onto a locked pad offers the Robux unlock (at most every 30s per pad)
+            local key = ProductData.KeyForPad(def.id)
+            if key and ProductData.IsAvailable(key) then
+                local offerKey = player.UserId .. ":" .. def.id
+                if os.clock() - (lastOffer[offerKey] or -1e9) > 30 then
+                    lastOffer[offerKey] = os.clock()
+                    pcall(function() MarketplaceService:PromptProductPurchase(player, ProductData.Products[key].id) end)
+                end
+            end
         elseif def then
             local n = (tickCount[player.UserId] or 0) + 1
             tickCount[player.UserId] = n
@@ -250,6 +270,9 @@ function PadService.Init()
         tickCount[p.UserId] = nil
         lastLockedNotice[p.UserId] = nil
         lastFullNotice[p.UserId] = nil
+        for k in pairs(lastOffer) do
+            if k:sub(1, #tostring(p.UserId) + 1) == p.UserId .. ":" then lastOffer[k] = nil end
+        end
     end)
 
     local function WelcomeAdmin(player)

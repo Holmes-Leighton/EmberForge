@@ -13,6 +13,11 @@ ProductData.Products = {
     MaterialMagnet    = { id = 0, displayName = "Material Magnet (24h)", robux = 199  },
     EventCatalyst     = { id = 0, displayName = "Event Catalyst",        robux = 400  },
 
+    -- Mining pads: permanent unlock, an alternative to reaching the pad's level (see PadData)
+    Pad_Copper = { id = 0, displayName = "Copper Pad (3x)", robux = 149, padId = "Copper" },
+    Pad_Iron   = { id = 0, displayName = "Iron Pad (5x)",   robux = 299, padId = "Iron"   },
+    Pad_Gold   = { id = 0, displayName = "Gold Pad (10x)",  robux = 599, padId = "Gold"   },
+
     -- Season Pass
     SeasonPass_Standard = { id = 0, displayName = "Season Pass (Standard)", robux = 699  },
     SeasonPass_Premium  = { id = 0, displayName = "Season Pass (Premium)",  robux = 1299 },
@@ -30,6 +35,14 @@ function ProductData.KeyForId(productId)
     if type(productId) ~= "number" or productId == 0 then return nil end
     for key, product in pairs(ProductData.Products) do
         if product.id == productId then return key end
+    end
+    return nil
+end
+
+-- The product that unlocks a pad (nil for pads that can't be bought, like Starter and Admin)
+function ProductData.KeyForPad(padId)
+    for key, product in pairs(ProductData.Products) do
+        if product.padId == padId then return key end
     end
     return nil
 end

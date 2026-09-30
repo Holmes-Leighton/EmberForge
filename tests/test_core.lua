@@ -108,6 +108,28 @@ expect(d3.SpeedUps == 10, "same receipt is not granted twice")
 local dec3 = game:GetService("MarketplaceService").ProcessReceipt({ PlayerId = 12, ProductId = 999, PurchaseId = "zzz" })
 expect(tostring(dec3):find("NotProcessedYet"), "unknown product is not confirmed")
 
+print("== Robux pad unlocks")
+do
+    local PadData = load("game/ReplicatedStorage/Shared/Data/PadData")
+    local PadService = load("SSS/EmberForge/Services/PadService")
+    local copper
+    for _, def in ipairs(PadData.Pads) do if def.id == "Copper" then copper = def end end
+    d3.PlayerLevel = 1; d3.UnlockedPads = {}
+    expect(PadService.CanUse(p3, copper, d3) == false, "a level 1 player can't use the Copper pad")
+    expect(Product.KeyForPad("Copper") == "Pad_Copper" and Product.KeyForPad("Starter") == nil and Product.KeyForPad("Admin") == nil, "only Copper / Iron / Gold are for sale")
+    Product.Products.Pad_Copper.id = 777
+    local dec = game:GetService("MarketplaceService").ProcessReceipt({ PlayerId = 12, ProductId = 777, PurchaseId = "pad1" })
+    expect(tostring(dec):find("PurchaseGranted") ~= nil and d3.UnlockedPads.Copper == true, "buying the Copper pad unlocks it")
+    expect(PadService.CanUse(p3, copper, d3) == true, "the bought pad works below its level")
+    game:GetService("MarketplaceService").ProcessReceipt({ PlayerId = 12, ProductId = 777, PurchaseId = "pad1" })
+    local iron
+    for _, def in ipairs(PadData.Pads) do if def.id == "Iron" then iron = def end end
+    expect(PadService.CanUse(p3, iron, d3) == false, "buying Copper doesn't unlock Iron")
+    d3.PlayerLevel = 10
+    expect(PadService.CanUse(p3, iron, d3) == true, "levelling up still unlocks pads for free")
+    d3.PlayerLevel = 1
+end
+
 print("== slots")
 d3.SeasonPassTier = 1; d3.GolemSlots = 3
 expect(Shop.GetEffectiveGolemSlots(p3) == 6, "pass gives +3 on top of earned slots")

@@ -83,6 +83,18 @@ for key, product in pairs(ProductData.Products) do
     end
 end
 
+-- ── Mining pads: permanent unlock (an alternative to the pad's level requirement) ──
+for key, product in pairs(ProductData.Products) do
+    if product.padId then
+        PRODUCT_HANDLERS[key] = function(player)
+            return withData(player, function(d)
+                d.UnlockedPads = d.UnlockedPads or {}
+                d.UnlockedPads[product.padId] = true
+            end)
+        end
+    end
+end
+
 -- ── MarketplaceService receipt processing ─────────────────────────────────────
 -- Authoritative purchase handler: matches the receipt's numeric ProductId to a key,
 -- grants exactly once (receipts are remembered), and only then confirms.
