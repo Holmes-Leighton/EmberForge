@@ -190,7 +190,9 @@ function IdleEngine.CalculateOfflineProduction(playerData)
     -- Material Magnet: 2× resource output for 24h after purchase
     local magnetActive = (playerData.MaterialMagnetExpiry or 0) > Utils.UnixTimestamp()
     if magnetActive then eventMult = eventMult * 2 end
-    eventMult = eventMult * require(script.Parent.LiveOpsService).GetMultiplier("drops")
+    local LiveOps = require(script.Parent.LiveOpsService)
+    eventMult = eventMult * LiveOps.GetMultiplier("drops")
+    local eventLuck = LiveOps.GetMultiplier("luck")
 
     local stormBoost = StormBoost(playerData)
     local auras = CrewAuras(playerData)
@@ -200,10 +202,10 @@ function IdleEngine.CalculateOfflineProduction(playerData)
             if production.produced and production.produced > 0 then
                 -- Sample drop types based on zone drop table and luck
                 local MiningZoneData = require(game.ReplicatedStorage.Shared.Data.MiningZoneData)
-                local luckMult = 1 + (production.luck * 3)  -- luck → up to 3x multiplier on rare weight
+                local luckMult = (1 + (production.luck * 3)) * eventLuck  -- luck → up to 3x multiplier on rare weight
 
                 -- Distribute production across drops (apply event multiplier)
-                local remaining = math.floor(production.produced * eventMult)
+                local remaining = math.floor(production.produced * eventMult * LiveOps.GetElementMultiplier(golem.element))
                 while remaining > 0 do
                     local batch = math.min(remaining, 10)
                     -- Alchemist's Transmutation: some batches are brewed into something rarer
@@ -249,11 +251,13 @@ function IdleEngine.TickOnlineProduction(playerData, deltaSeconds)
     local eventMult = SeasonPassService.GetEventDropMultiplier(currentSeason__ and currentSeason__.id) or 1.0
     local magnetActive = (playerData.MaterialMagnetExpiry or 0) > Utils.UnixTimestamp()
     if magnetActive then eventMult = eventMult * 2 end
-    eventMult = eventMult * require(script.Parent.LiveOpsService).GetMultiplier("drops")
+    local LiveOps = require(script.Parent.LiveOpsService)
+    eventMult = eventMult * LiveOps.GetMultiplier("drops")
+    local eventLuck = LiveOps.GetMultiplier("luck")
 
     local stormBoost = StormBoost(playerData)
     local auras = CrewAuras(playerData)
-    local fp = ForgeData.TotalPerks(playerData.ForgeLevel or 1)
+    local fp =ForgeData.TotalPerks(playerData.ForgeLevel or 1)
     for _, golem in ipairs(playerData.Golems or {}) do
         if golem.deployed and golem.zoneId then
             local skill = SkillParams(golem.element)
@@ -285,12 +289,12 @@ function IdleEngine.TickOnlineProduction(playerData, deltaSeconds)
                     golem._accumulatedResources = golem._accumulatedResources - toCommit
                     local actual = math.min(toCommit, carryCap - carried)
                     if actual > 0 then
-                        local luckMult = 1 + (luckM * 3)
+                        local luckMult = (1 + (luckM * 3)) * eventLuck
                         -- Alchemist's Transmutation: sometimes a haul is brewed into something rarer
                         if skill and skill.chance and math.random() < skill.chance then luckMult *= skill.luckMult end
                         local materialId = MiningZoneData.SampleDrop(golem.zoneId, luckMult)
                         if materialId then
-                            local amount = math.floor(actual * eventMult)
+                            local amount = math.floor(actual * eventMult * LiveOps.GetElementMultiplier(golem.element))
                             -- Woven's Net Haul: sometimes a haul comes back doubled
                             if skill and skill.doubleChance and math.random() < skill.doubleChance then amount *= 2 end
                             gains[materialId] = (gains[materialId] or 0) + amount

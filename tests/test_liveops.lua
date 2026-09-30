@@ -18,6 +18,7 @@ local function at(y, m, d, h)
 end
 
 local p = newPlayer(1, "Ops"); local d = PDS.Load(p)
+LiveOps.HourlyEnabled = false        -- the automatic hourly event has its own tests (test_events.lua)
 
 print("== weekends")
 advance(at(2026, 9, 2, 12) - os.time())      -- Wednesday

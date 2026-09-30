@@ -12,7 +12,10 @@ local SafeDataStore = require(script.Parent.SafeDataStore)
 local GameConfig    = require(game.ReplicatedStorage.Shared.Data.GameConfig)
 local Utils         = require(game.ReplicatedStorage.Shared.Modules.Utils)
 
+local EventScheduleData = require(game.ReplicatedStorage.Shared.Data.EventScheduleData)
+
 local LiveOpsService = {}
+LiveOpsService.HourlyEnabled = true      -- the automatic hourly event (EventScheduleData)
 
 local store = SafeDataStore.GetDataStore("EmberForge_LiveOps_v1")
 local KEY = "config"
@@ -80,16 +83,23 @@ function LiveOpsService.ActiveEvents()
     if config.weekendXP and IsWeekend(now) then
         table.insert(list, { id = "weekend", name = "Double XP Weekend", kind = "xp", multiplier = 2 })
     end
+    if LiveOpsService.HourlyEnabled then table.insert(list, EventScheduleData.Current(now)) end
     return list
 end
 
--- Product of all active events of this kind ("xp" or "drops"); never below 1
-function LiveOpsService.GetMultiplier(kind)
+-- Product of all active events of this kind ("xp", "drops", "luck" or "element"); never below 1.
+-- Element events only count for the element asked about.
+function LiveOpsService.GetMultiplier(kind, element)
     local m = 1
     for _, e in ipairs(LiveOpsService.ActiveEvents()) do
-        if e.kind == kind then m = m * math.max(1, e.multiplier or 1) end
+        if e.kind == kind and (e.element == nil or e.element == element) then m = m * math.max(1, e.multiplier or 1) end
     end
     return m
+end
+
+-- Extra multiplier for one element's Golems (Ember Hour etc.)
+function LiveOpsService.GetElementMultiplier(element)
+    return LiveOpsService.GetMultiplier("element", element)
 end
 
 local function Save(edit)

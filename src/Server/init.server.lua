@@ -115,7 +115,7 @@ local function OnPlayerAdded(player)
     task.delay(8, function()
         if not player.Parent then return end
         for _, e in ipairs(LiveOpsService.ActiveEvents()) do
-            RemoteEvents.Notify:FireClient(player, e.name or "Event", string.format("%s x%g is active!", e.kind == "xp" and "XP" or "Resource drops", e.multiplier))
+            RemoteEvents.Notify:FireClient(player, e.name or "Event", e.blurb or string.format("%s x%g is active!", e.kind == "xp" and "XP" or "Resource drops", e.multiplier))
         end
     end)
 
