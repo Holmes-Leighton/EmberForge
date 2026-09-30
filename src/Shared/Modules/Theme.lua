@@ -2,24 +2,24 @@
 local Theme = {}
 
 Theme.Colors = {
-    Background      = Color3.fromRGB(18, 14, 12),    -- very dark charcoal
-    Panel           = Color3.fromRGB(30, 24, 20),    -- dark panel
-    PanelAlt        = Color3.fromRGB(40, 32, 26),    -- slightly lighter panel
-    Row             = Color3.fromRGB(35, 28, 23),    -- list row
-    RowHover        = Color3.fromRGB(50, 40, 32),
+    Background      = Color3.fromRGB(34, 26, 24),    -- warm dark brown
+    Panel           = Color3.fromRGB(52, 41, 36),    -- warm panel
+    PanelAlt        = Color3.fromRGB(70, 56, 48),    -- lighter panel
+    Row             = Color3.fromRGB(58, 46, 40),    -- list row
+    RowHover        = Color3.fromRGB(78, 62, 52),
 
-    Accent          = Color3.fromRGB(220, 120, 30),  -- forge orange
-    AccentBright    = Color3.fromRGB(255, 160, 50),  -- bright orange
+    Accent          = Color3.fromRGB(245, 135, 25),  -- forge orange
+    AccentBright    = Color3.fromRGB(255, 185, 70),  -- bright orange
     AccentDim       = Color3.fromRGB(140, 80, 20),   -- muted orange
 
     Gold            = Color3.fromRGB(255, 200, 60),  -- coins / XP
-    TextPrimary     = Color3.fromRGB(230, 215, 200), -- main text
-    TextSecondary   = Color3.fromRGB(160, 148, 136), -- secondary text
-    TextDim         = Color3.fromRGB(100, 92, 84),   -- dimmed/disabled
+    TextPrimary     = Color3.fromRGB(250, 240, 228), -- main text
+    TextSecondary   = Color3.fromRGB(205, 192, 178), -- secondary text
+    TextDim         = Color3.fromRGB(140, 128, 116),   -- dimmed/disabled
 
-    Success         = Color3.fromRGB(60, 180, 90),
-    Danger          = Color3.fromRGB(200, 60, 50),
-    Info            = Color3.fromRGB(70, 150, 220),
+    Success         = Color3.fromRGB(70, 200, 100),
+    Danger          = Color3.fromRGB(225, 70, 60),
+    Info            = Color3.fromRGB(80, 165, 240),
 
     -- Element colours
     Ember   = Color3.fromRGB(220, 80, 30),
@@ -41,22 +41,22 @@ Theme.Colors = {
 
 Theme.Fonts = {
     Title    = Enum.Font.GothamBlack,
-    Heading  = Enum.Font.GothamBold,
-    Body     = Enum.Font.Gotham,
+    Heading  = Enum.Font.GothamBlack,
+    Body     = Enum.Font.GothamMedium,
     Mono     = Enum.Font.Code,
 }
 
 Theme.TextSize = {
-    Title   = 22,
-    Heading = 16,
-    Body    = 13,
-    Small   = 11,
+    Title   = 24,
+    Heading = 17,
+    Body    = 14,
+    Small   = 12,
 }
 
 Theme.Corner = {
-    Large  = UDim.new(0, 10),
-    Medium = UDim.new(0, 6),
-    Small  = UDim.new(0, 4),
+    Large  = UDim.new(0, 16),
+    Medium = UDim.new(0, 10),
+    Small  = UDim.new(0, 8),
 }
 
 -- ── Factory helpers ────────────────────────────────────────────────────────────
@@ -66,6 +66,16 @@ function Theme.AddCorner(parent, size)
     c.CornerRadius = size or Theme.Corner.Medium
     c.Parent = parent
     return c
+end
+
+function Theme.AddStroke(parent, color, thickness, transparency)
+    local st = Instance.new("UIStroke")
+    st.Color = color or Color3.fromRGB(20, 14, 12)
+    st.Thickness = thickness or 2
+    st.Transparency = transparency or 0
+    st.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    st.Parent = parent
+    return st
 end
 
 function Theme.AddPadding(parent, top, right, bottom, left)
@@ -102,6 +112,7 @@ function Theme.Label(parent, text, size, color, font, name)
     return lbl
 end
 
+-- Chunky cartoon button: dark outline, top-lit gradient, outlined text, springy hover / press.
 function Theme.Button(parent, text, bgColor, textColor, name)
     local btn = Instance.new("TextButton")
     btn.Name = name or "Button"
@@ -110,10 +121,30 @@ function Theme.Button(parent, text, bgColor, textColor, name)
     btn.Text = text or ""
     btn.TextSize = Theme.TextSize.Body
     btn.TextColor3 = textColor or Color3.fromRGB(255, 255, 255)
+    btn.TextStrokeColor3 = Color3.fromRGB(20, 12, 8)
+    btn.TextStrokeTransparency = 0.55
     btn.Font = Theme.Fonts.Heading
-    btn.AutoButtonColor = true
+    btn.AutoButtonColor = false
     btn.Parent = parent
     Theme.AddCorner(btn, Theme.Corner.Small)
+    Theme.AddStroke(btn, Color3.fromRGB(20, 14, 12), 2)
+
+    local grad = Instance.new("UIGradient")
+    grad.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(190, 190, 190))
+    grad.Rotation = 90
+    grad.Parent = btn
+
+    local scale = Instance.new("UIScale")
+    scale.Parent = btn
+    local function to(target, t)
+        pcall(function()
+            game:GetService("TweenService"):Create(scale, TweenInfo.new(t, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = target }):Play()
+        end)
+    end
+    btn.MouseEnter:Connect(function() if btn.Active then to(1.05, 0.12) end end)
+    btn.MouseLeave:Connect(function() to(1, 0.12) end)
+    btn.MouseButton1Down:Connect(function() to(0.94, 0.06) end)
+    btn.MouseButton1Up:Connect(function() to(1.05, 0.12) end)
     return btn
 end
 
@@ -124,6 +155,7 @@ function Theme.Panel(parent, name, bgColor)
     f.BorderSizePixel = 0
     f.Parent = parent
     Theme.AddCorner(f, Theme.Corner.Medium)
+    Theme.AddStroke(f, Color3.fromRGB(24, 17, 14), 2, 0.35)
     return f
 end
 
@@ -132,7 +164,7 @@ function Theme.ScrollFrame(parent, name)
     sf.Name = name or "Scroll"
     sf.BackgroundTransparency = 1
     sf.BorderSizePixel = 0
-    sf.ScrollBarThickness = 4
+    sf.ScrollBarThickness = 6
     sf.ScrollBarImageColor3 = Theme.Colors.Accent
     sf.CanvasSize = UDim2.new(0, 0, 0, 0)
     sf.AutomaticCanvasSize = Enum.AutomaticSize.Y

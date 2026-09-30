@@ -13,8 +13,6 @@ local GameConfig = require(game.ReplicatedStorage.Shared.Data.GameConfig)
 local HUDController = {}
 
 local hudGui     -- main ScreenGui reference
-local notifQueue = {}
-local showingNotif = false
 local StartBoostCountdowns   -- forward declaration (defined below)
 
 -- ── Init ──────────────────────────────────────────────────────────────────────
@@ -251,20 +249,20 @@ function HUDController._FloatText(text)
     screenGui.Parent = PlayerGui
 
     local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(0, 200, 0, 40)
-    lbl.Position = UDim2.new(0.5, -100, 0.6, 0)
+    lbl.Size = UDim2.new(0, 260, 0, 44)
+    lbl.Position = UDim2.new(0.5, -130, 0.6, 0)
     lbl.BackgroundTransparency = 1
     lbl.Text = text
     lbl.TextColor3 = Color3.fromRGB(255, 220, 60)
     lbl.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     lbl.TextStrokeTransparency = 0
-    lbl.Font = Enum.Font.GothamBold
-    lbl.TextSize = 18
+    lbl.Font = Enum.Font.GothamBlack
+    lbl.TextSize = 26
     lbl.Parent = screenGui
 
     local tween = TweenService:Create(lbl,
         TweenInfo.new(1.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-        { Position = UDim2.new(0.5, -100, 0.45, 0), TextTransparency = 1, TextStrokeTransparency = 1 }
+        { Position = UDim2.new(0.5, -130, 0.42, 0), TextTransparency = 1, TextStrokeTransparency = 1 }
     )
     tween:Play()
     tween.Completed:Connect(function()
@@ -272,80 +270,121 @@ function HUDController._FloatText(text)
     end)
 end
 
--- ── Notifications ─────────────────────────────────────────────────────────────
-function HUDController.ShowNotification(title, message)
-    table.insert(notifQueue, { title = title, message = message })
-    if not showingNotif then
-        HUDController._ProcessNotifQueue()
+-- ── Notifications: stacking, colour-coded toasts ──────────────────────────────
+local toastHolder
+local MAX_TOASTS = 4
+local TOAST_SECONDS = 3.6
+
+local function ToastKind(title)
+    local t = tostring(title):lower()
+    if t:find("can't") or t:find("cannot") or t:find("fail") or t:find("error") or t:find("not enough") or t:find("no free") then
+        return Theme.Colors.Danger, "!"
+    elseif t:find("level") or t:find("complete") or t:find("crafted") or t:find("upgrade") or t:find("neon") or t:find("unlock") or t:find("!") then
+        return Theme.Colors.Gold, "★"
     end
+    return Theme.Colors.Info, "i"
 end
 
-function HUDController._ProcessNotifQueue()
-    if #notifQueue == 0 then
-        showingNotif = false
-        return
+local function EnsureToastHolder()
+    if toastHolder and toastHolder.Parent then return toastHolder end
+    local sg = Instance.new("ScreenGui")
+    sg.Name = "Toasts"
+    sg.ResetOnSpawn = false
+    sg.DisplayOrder = 50
+    sg.Parent = PlayerGui
+    toastHolder = Instance.new("Frame")
+    toastHolder.Name = "Stack"
+    toastHolder.AnchorPoint = Vector2.new(1, 0)
+    toastHolder.Position = UDim2.new(1, -16, 0, 16)
+    toastHolder.Size = UDim2.new(0, 320, 1, -32)
+    toastHolder.BackgroundTransparency = 1
+    toastHolder.Parent = sg
+    local layout = Instance.new("UIListLayout")
+    layout.Padding = UDim.new(0, 8)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+    layout.Parent = toastHolder
+    return toastHolder
+end
+
+local toastOrder = 0
+function HUDController.ShowNotification(title, message)
+    local holder = EnsureToastHolder()
+    title, message = tostring(title), tostring(message or "")
+
+    -- The same message again: bump a counter on the existing toast instead of stacking copies
+    for _, t in ipairs(holder:GetChildren()) do
+        if t:IsA("Frame") and t:GetAttribute("Key") == title .. "|" .. message then
+            local n = (t:GetAttribute("Count") or 1) + 1
+            t:SetAttribute("Count", n)
+            t:SetAttribute("Expires", os.clock() + TOAST_SECONDS)
+            local lbl = t:FindFirstChild("Title")
+            if lbl then lbl.Text = title .. "  x" .. n end
+            return
+        end
     end
-    showingNotif = true
 
-    local notif = table.remove(notifQueue, 1)
+    local color, glyph = ToastKind(title)
+    toastOrder += 1
+    local toast = Instance.new("Frame")
+    toast.Name = "Toast"
+    toast.LayoutOrder = toastOrder
+    toast.Size = UDim2.new(1, 0, 0, 62)
+    toast.BackgroundColor3 = Theme.Colors.Panel
+    toast.BorderSizePixel = 0
+    toast:SetAttribute("Key", title .. "|" .. message)
+    toast:SetAttribute("Expires", os.clock() + TOAST_SECONDS)
+    toast.Parent = holder
+    Theme.AddCorner(toast, Theme.Corner.Medium)
+    Theme.AddStroke(toast, color, 2)
 
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.ResetOnSpawn = false
-    screenGui.Name = "Notification"
-    screenGui.Parent = PlayerGui
+    local badge = Instance.new("TextLabel")
+    badge.Size = UDim2.new(0, 38, 0, 38)
+    badge.Position = UDim2.new(0, 10, 0.5, -19)
+    badge.BackgroundColor3 = color
+    badge.Text = glyph
+    badge.TextColor3 = Color3.fromRGB(30, 20, 14)
+    badge.Font = Enum.Font.GothamBlack
+    badge.TextSize = 22
+    badge.BorderSizePixel = 0
+    badge.Parent = toast
+    Theme.AddCorner(badge, UDim.new(1, 0))
 
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 280, 0, 70)
-    frame.Position = UDim2.new(1, -300, 0, 20)
-    frame.BackgroundColor3 = Color3.fromRGB(30, 25, 20)
-    frame.BorderSizePixel = 0
-    frame.Parent = screenGui
+    local titleLbl = Theme.Label(toast, title, Theme.TextSize.Heading, color, Theme.Fonts.Heading, "Title")
+    titleLbl.Position = UDim2.new(0, 58, 0, 6)
+    titleLbl.Size = UDim2.new(1, -66, 0, 24)
+    titleLbl.TextWrapped = false
+    titleLbl.TextTruncate = Enum.TextTruncate.AtEnd
+    local msgLbl = Theme.Label(toast, message, Theme.TextSize.Body, Theme.Colors.TextPrimary, Theme.Fonts.Body, "Message")
+    msgLbl.Position = UDim2.new(0, 58, 0, 30)
+    msgLbl.Size = UDim2.new(1, -66, 0, 26)
+    msgLbl.TextTruncate = Enum.TextTruncate.AtEnd
 
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = frame
+    -- Pop in
+    local scale = Instance.new("UIScale")
+    scale.Scale = 0.6
+    scale.Parent = toast
+    pcall(function()
+        TweenService:Create(scale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+    end)
 
-    local titleLbl = Instance.new("TextLabel")
-    titleLbl.Size = UDim2.new(1, -10, 0, 28)
-    titleLbl.Position = UDim2.new(0, 10, 0, 5)
-    titleLbl.BackgroundTransparency = 1
-    titleLbl.Text = notif.title
-    titleLbl.TextColor3 = Color3.fromRGB(255, 180, 50)
-    titleLbl.Font = Enum.Font.GothamBold
-    titleLbl.TextSize = 16
-    titleLbl.TextXAlignment = Enum.TextXAlignment.Left
-    titleLbl.Parent = frame
+    -- Keep at most MAX_TOASTS on screen: retire the oldest early
+    local kids = {}
+    for _, t in ipairs(holder:GetChildren()) do
+        if t:IsA("Frame") then table.insert(kids, t) end
+    end
+    table.sort(kids, function(x, y) return x.LayoutOrder < y.LayoutOrder end)
+    for i = 1, #kids - MAX_TOASTS do kids[i]:SetAttribute("Expires", 0) end
 
-    local msgLbl = Instance.new("TextLabel")
-    msgLbl.Size = UDim2.new(1, -10, 0, 24)
-    msgLbl.Position = UDim2.new(0, 10, 0, 36)
-    msgLbl.BackgroundTransparency = 1
-    msgLbl.Text = notif.message
-    msgLbl.TextColor3 = Color3.fromRGB(220, 200, 180)
-    msgLbl.Font = Enum.Font.Gotham
-    msgLbl.TextSize = 13
-    msgLbl.TextXAlignment = Enum.TextXAlignment.Left
-    msgLbl.Parent = frame
-
-    -- Slide in
-    local slideIn = TweenService:Create(frame,
-        TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-        { Position = UDim2.new(1, -300, 0, 20) }
-    )
-    slideIn:Play()
-
-    task.wait(3)
-
-    -- Slide out
-    local slideOut = TweenService:Create(frame,
-        TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-        { Position = UDim2.new(1, 10, 0, 20) }
-    )
-    slideOut:Play()
-    slideOut.Completed:Connect(function()
-        screenGui:Destroy()
-        task.wait(0.1)
-        HUDController._ProcessNotifQueue()
+    task.spawn(function()
+        while toast.Parent and os.clock() < (toast:GetAttribute("Expires") or 0) do task.wait(0.2) end
+        if not toast.Parent then return end
+        pcall(function()
+            local tw = TweenService:Create(scale, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 })
+            tw:Play()
+            task.wait(0.2)
+        end)
+        toast:Destroy()
     end)
 end
 

@@ -4,7 +4,7 @@
 local GUI_OBJECT = { Frame = true, TextLabel = true, TextButton = true, TextBox = true, ScrollingFrame = true,
     ImageLabel = true, ImageButton = true, ViewportFrame = true, CanvasGroup = true }
 local BUTTONS = { TextButton = true, ImageButton = true }
-local SIGNALS = { MouseButton1Click = true, MouseButton1Down = true, MouseButton2Click = true, InputBegan = true, InputEnded = true,
+local SIGNALS = { MouseButton1Click = true, MouseButton1Down = true, MouseButton1Up = true, MouseButton2Click = true, InputBegan = true, InputEnded = true,
     FocusLost = true, Focused = true, Changed = true, ChildAdded = true, ChildRemoved = true, DescendantAdded = true,
     DescendantRemoving = true, Touched = true, TouchEnded = true, Triggered = true, Completed = true, Activated = true,
     Event = true, OnServerEvent = true, OnClientEvent = true, PlayerAdded = true, PlayerRemoving = true, Chatted = true,

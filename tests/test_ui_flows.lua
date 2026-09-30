@@ -248,4 +248,26 @@ local lb = gui("LeaderboardMenu")
 lb.Enabled = true
 expect(lb.Enabled == true, "leaderboard opens without errors")
 
+print("== Toast notifications")
+local function Theme_Danger() return load("game/ReplicatedStorage/Shared/Modules/Theme").Colors.Danger end
+local function toasts()
+    local g = gui("Toasts")
+    local n = 0
+    local st = g:FindFirstChild("Stack")
+    for _, c in ipairs(st:GetChildren()) do if c.Name == "Toast" then n += 1 end end
+    return n, st
+end
+HUDController.ShowNotification("Golem Crafted!", "Ember Golem")
+HUDController.ShowNotification("Golem Crafted!", "Ember Golem")
+local n1, stack = toasts()
+expect(n1 == 1, "identical toasts merge into one with a counter (" .. n1 .. ")")
+expect(stack:FindFirstChild("Toast"):FindFirstChild("Title").Text:find("x2") ~= nil, "merged toast shows x2")
+for i = 1, 8 do HUDController.ShowNotification("Note " .. i, "hello") end
+local n2 = toasts()
+expect(n2 <= 9, "toasts are capped after a burst")
+HUDController.ShowNotification("Can't craft", "Not enough Coal")
+local last
+for _, c in ipairs(stack:GetChildren()) do if c.Name == "Toast" then last = c end end
+expect(last and last:FindFirstChild("Title").TextColor3 == Theme_Danger(), "errors are red")
+
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")
