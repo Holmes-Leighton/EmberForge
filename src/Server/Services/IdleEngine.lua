@@ -27,6 +27,38 @@ local function MasteryBonuses(playerData, elementId)
     }
 end
 
+-- Storm Golems energise the rest of the crew (spec 3.1): each deployed Storm Golem adds
+-- 3% x its tier to every other Golem's efficiency, up to +25%.
+local function StormBoost(playerData)
+    local sum = 0
+    for _, g in ipairs(playerData.Golems or {}) do
+        if g.deployed and g.element == "Storm" then sum += (g.tier or 1) end
+    end
+    return math.min(0.25, 0.03 * sum)
+end
+
+-- Rare blueprint discovery (spec 4.3: "Golem rare mining drops", Tier 2-4).
+-- `produced` is how many resources were just mined; luck raises the odds. Returns the id or nil.
+local function RollBlueprintDrop(playerData, produced, luck)
+    local chance = (produced / 100) * 0.001 * (1 + (luck or 0) * 3)
+    if math.random() >= chance then return nil end
+
+    local RecipeData = require(game.ReplicatedStorage.Shared.Data.RecipeData)
+    local pool = {}
+    for bpId, bp in pairs(RecipeData.Blueprints) do
+        if not bp.isEventGolem and bp.tier >= 2 and bp.tier <= 4
+            and not Utils.TableContains(playerData.Blueprints, bpId)
+            and (playerData.ForgeLevel or 1) >= ((bp.forgeLevelRequired or 1) - 2) then
+            table.insert(pool, { item = bpId, weight = ({ 0, 6, 3, 1 })[bp.tier] })
+        end
+    end
+    if #pool == 0 then return nil end
+    local pick = Utils.WeightedRandom(pool)
+    table.insert(playerData.Blueprints, pick)
+    return pick
+end
+IdleEngine.RollBlueprintDrop = RollBlueprintDrop
+
 -- Maximum offline accumulation time in seconds based on storage tier
 local function StorageCapSeconds(storageTier)
     if storageTier >= 2 then
@@ -39,7 +71,7 @@ local function StorageCapSeconds(storageTier)
 end
 
 -- Returns a production summary for a single golem over `seconds` elapsed
-local function GolemProduction(golem, seconds, storageTier, playerData)
+local function GolemProduction(golem, seconds, storageTier, playerData, stormBoost)
     if not golem.deployed or not golem.zoneId then return {} end
 
     -- Durability: drain time, clamp at 0, produce nothing when broken
@@ -51,7 +83,7 @@ local function GolemProduction(golem, seconds, storageTier, playerData)
         seconds = active
     end
 
-    local stats  = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus)
+    local stats  = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus, golem.quality)
     if not stats then return {} end
 
     -- Apply mastery bonuses
@@ -63,7 +95,8 @@ local function GolemProduction(golem, seconds, storageTier, playerData)
     local capSeconds = StorageCapSeconds(storageTier)
     local effectiveSeconds = math.min(seconds, capSeconds)
 
-    local rawRate = miningRate * stats.efficiency
+    local efficiency = stats.efficiency * (golem.element ~= "Storm" and (1 + (stormBoost or 0)) or 1)
+    local rawRate = miningRate * efficiency
     local produced = math.floor(rawRate * (effectiveSeconds / 3600))
     local carryCapped = math.min(produced, stats.carryCapacity)
 
@@ -98,9 +131,10 @@ function IdleEngine.CalculateOfflineProduction(playerData)
     local magnetActive = (playerData.MaterialMagnetExpiry or 0) > Utils.UnixTimestamp()
     if magnetActive then eventMult = eventMult * 2 end
 
+    local stormBoost = StormBoost(playerData)
     for _, golem in ipairs(playerData.Golems or {}) do
         if golem.deployed then
-            local production = GolemProduction(golem, elapsed, storageTier, playerData)
+            local production = GolemProduction(golem, elapsed, storageTier, playerData, stormBoost)
             if production.produced and production.produced > 0 then
                 -- Sample drop types based on zone drop table and luck
                 local MiningZoneData = require(game.ReplicatedStorage.Shared.Data.MiningZoneData)
@@ -117,24 +151,9 @@ function IdleEngine.CalculateOfflineProduction(playerData)
                     remaining = remaining - batch
                 end
 
-                -- Rare blueprint drop (0.1% per 100 resources collected offline)
-                local RecipeData = require(game.ReplicatedStorage.Shared.Data.RecipeData)
-                local dropChance = math.floor(production.produced / 100) * 0.001
-                if math.random() < dropChance then
-                    -- Pick a random locked blueprint of appropriate tier
-                    local candidates = {}
-                    for bpId, bp in pairs(RecipeData.Blueprints) do
-                        if not bp.isEventGolem and bp.tier <= 3
-                            and not Utils.TableContains(playerData.Blueprints, bpId) then
-                            table.insert(candidates, bpId)
-                        end
-                    end
-                    if #candidates > 0 then
-                        local pick = candidates[math.random(#candidates)]
-                        table.insert(playerData.Blueprints, pick)
-                        gains["__blueprint:" .. pick] = 1  -- signal to caller
-                    end
-                end
+                -- Rare blueprint discovery
+                local found = RollBlueprintDrop(playerData, production.produced, production.luck)
+                if found then gains["__blueprint:" .. found] = 1 end
             end
         end
     end
@@ -164,6 +183,7 @@ function IdleEngine.TickOnlineProduction(playerData, deltaSeconds)
     local magnetActive = (playerData.MaterialMagnetExpiry or 0) > Utils.UnixTimestamp()
     if magnetActive then eventMult = eventMult * 2 end
 
+    local stormBoost = StormBoost(playerData)
     for _, golem in ipairs(playerData.Golems or {}) do
         if golem.deployed and golem.zoneId then
             -- Drain durability; skip production when broken
@@ -174,14 +194,15 @@ function IdleEngine.TickOnlineProduction(playerData, deltaSeconds)
                 end
             end
 
-            local stats = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus)
+            local stats = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus, golem.quality)
             local carried = golem._carriedResources or 0
             -- A full Golem waits (still deployed) until the player collects
             if stats and carried < stats.carryCapacity then
                 local mb     = MasteryBonuses(playerData, golem.element)
                 local mRate  = stats.miningRate * (1 + mb.miningRateBonus + mb.allStatsBonus)
                 local luckM  = stats.luck       * (1 + mb.luckBonus       + mb.allStatsBonus)
-                local rate   = mRate * stats.efficiency
+                local efficiency = stats.efficiency * (golem.element ~= "Storm" and (1 + stormBoost) or 1)
+                local rate   = mRate * efficiency
                 local speed  = GameConfig.ONLINE_PRODUCTION_SPEED or 1
                 golem._accumulatedResources = (golem._accumulatedResources or 0) + rate * (deltaSeconds * speed / 3600)
 
@@ -197,6 +218,9 @@ function IdleEngine.TickOnlineProduction(playerData, deltaSeconds)
                             gains[materialId] = (gains[materialId] or 0) + amount
                             byElement[golem.element] = (byElement[golem.element] or 0) + amount
                             golem._carriedResources = carried + actual
+
+                            local found = RollBlueprintDrop(playerData, actual, luckM)
+                            if found then gains["__blueprint:" .. found] = 1 end
                         end
                     end
                 end

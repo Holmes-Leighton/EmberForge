@@ -166,9 +166,6 @@ local function CraftOnce(player, blueprintId, skinId)
             if leveled then
                 RemoteEvents.LevelUp:FireClient(player, level)
             end
-            if forgeUp then
-                RemoteEvents.ForgeUpgraded:FireClient(player, PlayerDataService.Get(player).ForgeLevel)
-            end
             return true
         else
             RemoteEvents.GolemCrafted:FireClient(player, nil, err)

@@ -50,9 +50,40 @@ function ForgeService.AddForgeXP(player, xp)
     if leveledUp then
         local ChallengeService = require(script.Parent.ChallengeService)
         ChallengeService.TrackEvent(player, "ForgeLevelUp", { level = data.ForgeLevel })
+        ForgeService.GrantMilestoneBlueprints(player)
+        local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
+        if RemoteEvents.ForgeUpgraded then RemoteEvents.ForgeUpgraded:FireClient(player, data.ForgeLevel) end
     end
 
     return leveledUp
+end
+
+-- Spec 4.3: Tier 2-3 blueprints unlock at forge-level milestones. Safe to call any time
+-- (also runs on join so existing saves catch up).
+function ForgeService.GrantMilestoneBlueprints(player)
+    local data = PlayerDataService.Get(player)
+    if not data then return {} end
+    local RecipeData = require(game.ReplicatedStorage.Shared.Data.RecipeData)
+    local granted = {}
+    for bpId, bp in pairs(RecipeData.Blueprints) do
+        if bp.source == RecipeData.Source.ForgeMilestone and bp.forgeLevelRequired
+            and (data.ForgeLevel or 1) >= bp.forgeLevelRequired
+            and not Utils.TableContains(data.Blueprints, bpId) then
+            table.insert(data.Blueprints, bpId)
+            table.insert(granted, bp)
+        end
+    end
+    if #granted > 0 then
+        PlayerDataService.MarkDirty(player)
+        local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
+        for _, bp in ipairs(granted) do
+            if RemoteEvents.Notify then
+                RemoteEvents.Notify:FireClient(player, "New blueprint!",
+                    string.format("%s Golem (Tier %d) unlocked by your Forge level", bp.element, bp.tier))
+            end
+        end
+    end
+    return granted
 end
 
 -- ── Smelting ─────────────────────────────────────────────────────────────────
@@ -96,7 +127,9 @@ function ForgeService.StartSmelt(player, materialId, quantity)
     end
     if masteryLvl >= 15 then speedBonus = math.min(0.55, speedBonus + 0.15) end
 
-    local duration = math.floor(mat.smeltTime * quantity * (1 - speedBonus))
+    -- The smelter works through SMELT_BATCH_SIZE units per cycle of the material's smelt time
+    local cycles   = math.ceil(quantity / GameConfig.SMELT_BATCH_SIZE)
+    local duration = math.floor(mat.smeltTime * cycles * (1 - speedBonus))
 
     local job = {
         id          = Utils.GenerateId(),
@@ -169,8 +202,14 @@ function ForgeService.TickSmeltJobs(player)
             -- Award refined materials
             PlayerDataService.AddMaterial(player, job.outputId, job.outputQty)
 
-            -- Forge XP for smelting
+            -- Smelting earns Forge XP and Player XP (spec 6.1)
             ForgeService.AddForgeXP(player, GameConfig.XP_PER_SMELT * job.quantity)
+            local ProgressionService = require(script.Parent.ProgressionService)
+            local leveled, newLevel = ProgressionService.AddPlayerXP(player, GameConfig.XP_PER_SMELT * job.quantity)
+            if leveled then
+                local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
+                RemoteEvents.LevelUp:FireClient(player, newLevel)
+            end
 
             -- Clean from persisted queue
             data.SmeltQueue = data.SmeltQueue or {}

@@ -19,6 +19,7 @@ MiningZoneData.Zones = {
         dropTable = {
             { materialId = "GraniteShard",  weight = 70, rarity = "Common"   },
             { materialId = "BasicOre",      weight = 20, rarity = "Common"   },
+            { materialId = "ShadowDust", weight = 6, rarity = "Uncommon" },
             { materialId = "AncientBedrock", weight = 10, rarity = "Rare"   },
         },
     },
@@ -29,6 +30,7 @@ MiningZoneData.Zones = {
         dropTable = {
             { materialId = "GlacialCrystal", weight = 70, rarity = "Common" },
             { materialId = "BasicOre",       weight = 15, rarity = "Common" },
+            { materialId = "ShadowDust", weight = 6, rarity = "Uncommon" },
             { materialId = "EternalIce",     weight = 15, rarity = "Rare"   },
         },
     },
@@ -39,6 +41,7 @@ MiningZoneData.Zones = {
         dropTable = {
             { materialId = "ChargedFlint", weight = 70, rarity = "Common" },
             { materialId = "BasicOre",     weight = 15, rarity = "Common" },
+            { materialId = "ShadowDust", weight = 6, rarity = "Uncommon" },
             { materialId = "ThunderShard", weight = 15, rarity = "Rare"   },
         },
     },

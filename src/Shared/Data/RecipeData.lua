@@ -152,59 +152,54 @@ RecipeData.Blueprints = {
     -- ── Tier 4 ─────────────────────────────────────────────────────────────
     BP_Ember_T4 = {
         id = "BP_Ember_T4", element = "Ember", tier = 4,
-        source = RecipeData.Source.SeasonalEvent,
+        source = RecipeData.Source.RareDrop,
         forgeLevelRequired = 8,
         materialsRequired = {
             { id = "PureIngot",    qty = 200 },
             { id = "EssenceShard", qty = 100 },
             { id = "MoltenCore",   qty = 20  },
-            { id = "Blueprint_T4", qty = 1   },
         },
     },
     BP_Stone_T4 = {
         id = "BP_Stone_T4", element = "Stone", tier = 4,
-        source = RecipeData.Source.SeasonalEvent,
+        source = RecipeData.Source.RareDrop,
         forgeLevelRequired = 8,
         materialsRequired = {
             { id = "PureIngot",     qty = 200 },
             { id = "EssenceShard",  qty = 100 },
             { id = "AncientBedrock", qty = 15 },
-            { id = "Blueprint_T4",  qty = 1   },
         },
     },
 
     -- ── Tier 4 (continued) ────────────────────────────────────────────────────
     BP_Frost_T4 = {
         id = "BP_Frost_T4", element = "Frost", tier = 4,
-        source = RecipeData.Source.SeasonalEvent,
+        source = RecipeData.Source.RareDrop,
         forgeLevelRequired = 8,
         materialsRequired = {
             { id = "PureIngot",      qty = 200 },
             { id = "EssenceShard",   qty = 100 },
             { id = "EternalIce",     qty = 20  },
-            { id = "Blueprint_T4",   qty = 1   },
         },
     },
     BP_Storm_T4 = {
         id = "BP_Storm_T4", element = "Storm", tier = 4,
-        source = RecipeData.Source.SeasonalEvent,
+        source = RecipeData.Source.Challenge,
         forgeLevelRequired = 8,
         materialsRequired = {
             { id = "PureIngot",      qty = 200 },
             { id = "EssenceShard",   qty = 100 },
             { id = "ThunderShard",   qty = 30  },
-            { id = "Blueprint_T4",   qty = 1   },
         },
     },
     BP_Void_T4 = {
         id = "BP_Void_T4", element = "Void", tier = 4,
-        source = RecipeData.Source.SeasonalEvent,
+        source = RecipeData.Source.Challenge,
         forgeLevelRequired = 8,
         materialsRequired = {
             { id = "PureIngot",      qty = 200 },
             { id = "EssenceShard",   qty = 100 },
             { id = "VoidEssence",    qty = 25  },
-            { id = "Blueprint_T4",   qty = 1   },
         },
     },
 

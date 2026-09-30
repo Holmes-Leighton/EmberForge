@@ -3,6 +3,7 @@
 local GolemData        = require(game.ReplicatedStorage.Shared.Data.GolemData)
 local RecipeData       = require(game.ReplicatedStorage.Shared.Data.RecipeData)
 local GameConfig       = require(game.ReplicatedStorage.Shared.Data.GameConfig)
+local CraftRules       = require(game.ReplicatedStorage.Shared.Modules.CraftRules)
 local Utils            = require(game.ReplicatedStorage.Shared.Modules.Utils)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 
@@ -17,22 +18,10 @@ function GolemService.CraftGolem(player, blueprintId, skinId)
     local bp = RecipeData.Get(blueprintId)
     if not bp then return nil, "Unknown blueprint" end
 
-    -- Check blueprint is unlocked
-    if not Utils.TableContains(data.Blueprints, blueprintId) then
-        return nil, "Blueprint not unlocked"
-    end
-
-    -- Check forge level gate
-    if bp.forgeLevelRequired and data.ForgeLevel < bp.forgeLevelRequired then
-        return nil, "Forge level too low"
-    end
-
-    -- Check unlock gate (e.g. craft_first_tier2)
-    if bp.unlockGate then
-        if not GolemService._CheckUnlockGate(data, bp.unlockGate) then
-            return nil, "Unlock condition not met"
-        end
-    end
+    -- Ownership, forge level, tier progression, material slots, live event windows
+    local SeasonPassService = require(script.Parent.SeasonPassService)
+    local lock = CraftRules.GetLockReason(data, bp, SeasonPassService.GetAvailableEventBlueprints())
+    if lock then return nil, lock end
 
     -- Consume materials
     if not PlayerDataService.ConsumeMaterials(player, bp.materialsRequired) then
@@ -51,6 +40,7 @@ function GolemService.CraftGolem(player, blueprintId, skinId)
         deployed  = false,
         zoneId    = nil,
         fusionBonus = nil,
+        quality   = CraftRules.QualityFor(bp),       -- stat bonus from the grade of materials used
         _carriedResources = 0,
         _accumulatedResources = 0,
         _durabilitySeconds = durabilitySeconds,
@@ -59,6 +49,8 @@ function GolemService.CraftGolem(player, blueprintId, skinId)
     }
 
     table.insert(data.Golems, golem)
+    data.CraftedByTier = data.CraftedByTier or {}
+    data.CraftedByTier[bp.tier] = (data.CraftedByTier[bp.tier] or 0) + 1
     PlayerDataService.MarkDirty(player)
 
     return golem, nil
@@ -123,7 +115,7 @@ function GolemService.ReturnGolem(player, golemId)
 end
 
 -- ── Fusion ───────────────────────────────────────────────────────────────────
--- Fuses two same-tier same-element golems; sacrifices golem2, boosts golem1
+-- Fuses two same-tier golems (any elements); sacrifices golem2, boosts golem1
 function GolemService.FuseGolems(player, golem1Id, golem2Id)
     local data = PlayerDataService.Get(player)
     if not data then return false, "No player data" end
@@ -135,7 +127,6 @@ function GolemService.FuseGolems(player, golem1Id, golem2Id)
     end
 
     if not g1 or not g2 then return false, "Golem not found" end
-    if g1.element ~= g2.element then return false, "Elements must match for fusion" end
     if g1.tier ~= g2.tier then return false, "Tiers must match for fusion" end
     if g1.deployed or g2.deployed then return false, "Cannot fuse deployed Golems" end
 

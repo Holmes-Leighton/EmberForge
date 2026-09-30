@@ -57,6 +57,9 @@ local function OnPlayerAdded(player)
         PlayerDataService.MarkDirty(player)
     end
 
+    -- Catch existing saves up on forge-milestone blueprints
+    ForgeService.GrantMilestoneBlueprints(player)
+
     -- Restore smelt jobs
     ForgeService.RestoreSmeltJobs(player)
 
@@ -103,7 +106,15 @@ task.spawn(function()
                         PlayerDataService.AddPending(player, matId, qty)
                         totalGained = totalGained + qty
                         gains[matId] = qty
+                    else
+                        local RecipeData = require(game.ReplicatedStorage.Shared.Data.RecipeData)
+                        local bp = RecipeData.Get(matId:sub(13))
+                        RemoteEvents.Notify:FireClient(player, "Blueprint discovered!",
+                            bp and string.format("%s Golem (Tier %d)", bp.element, bp.tier) or matId:sub(13))
                     end
+                end
+                if totalGained > 0 then
+                    ChallengeService.TrackEvent(player, "ResourcesMined", { count = totalGained })
                 end
 
                 -- Mastery XP goes to the element whose Golems did the mining

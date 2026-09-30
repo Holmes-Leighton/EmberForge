@@ -88,7 +88,8 @@ ChallengeData.Weekly = {
         type = ChallengeData.Type.Weekly,
         trackEvent = "ForgeLevelUp",
         target = 1,
-        rewards = { coins = 300, xp = 600, materials = { { id = "ElementalIngot", qty = 20 } } },
+        rewards = { coins = 300, xp = 600, blueprints = { "BP_Storm_T3" },
+                    materials = { { id = "ElementalIngot", qty = 20 } } },
     },
     {
         id = "weekly_discover_zone", displayName = "Discover a New Mining Zone",
@@ -96,7 +97,8 @@ ChallengeData.Weekly = {
         type = ChallengeData.Type.Weekly,
         trackEvent = "ZoneUnlocked",
         target = 1,
-        rewards = { coins = 400, xp = 800, materials = { { id = "CrystalFragment", qty = 15 } } },
+        rewards = { coins = 400, xp = 800, blueprints = { "BP_Frost_T2" },
+                    materials = { { id = "CrystalFragment", qty = 15 } } },
     },
     {
         id = "weekly_smelt_100", displayName = "Smelt 100 Items",
@@ -112,7 +114,25 @@ ChallengeData.Weekly = {
         type = ChallengeData.Type.Weekly,
         trackEvent = "TradeComplete",
         target = 5,
-        rewards = { coins = 500, xp = 1000, materials = { { id = "PureIngot", qty = 2 } } },
+        rewards = { coins = 500, xp = 1000, blueprints = { "BP_Void_T4" },
+                    materials = { { id = "PureIngot", qty = 2 } } },
+    },
+    -- Event grind (spec 8.1: Event Catalysts must be earnable through play)
+    {
+        id = "weekly_mine_20000", displayName = "Mine 20,000 Resources",
+        description = "Have your Golems mine 20,000 resources this week.",
+        type = ChallengeData.Type.Weekly,
+        trackEvent = "ResourcesMined",
+        target = 20000,
+        rewards = { coins = 400, xp = 800, materials = { { id = "EventCatalyst", qty = 1 } } },
+    },
+    {
+        id = "weekly_craft_10", displayName = "Craft 10 Golems",
+        description = "Craft 10 Golems of any kind this week.",
+        type = ChallengeData.Type.Weekly,
+        trackEvent = "GolemCrafted",
+        target = 10,
+        rewards = { coins = 500, xp = 1000, materials = { { id = "EventCatalyst", qty = 1 } } },
     },
 }
 
@@ -150,7 +170,8 @@ ChallengeData.Lifetime = {
         type = ChallengeData.Type.Lifetime,
         trackEvent = "AllElementsCrafted",
         target = 1,
-        rewards = { title = "Elemental Master", xp = 3000, accessories = { "AccessoryAllElement" } },
+        rewards = { title = "Elemental Master", xp = 3000, blueprints = { "BP_Storm_T4" },
+                    accessories = { "AccessoryAllElement" } },
     },
     {
         id = "ach_forge_mastery", displayName = "Forge Mastery",

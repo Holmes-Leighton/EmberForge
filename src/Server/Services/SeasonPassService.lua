@@ -19,6 +19,21 @@ local function CurrentSeasonWeek()
     return math.max(1, math.min(week, season.durationWeeks))
 end
 
+-- Event Golem blueprints on offer right now (spec 11.2: from Week 2 of the live season, then gone)
+function SeasonPassService.GetAvailableEventBlueprints()
+    local available = {}
+    local season = SeasonData.GetCurrentSeason()
+    if season and season.eventGolemBlueprintId then
+        local now = Utils.UnixTimestamp()
+        local start = season.startTimestamp or 0
+        local finish = start + season.durationWeeks * 7 * 86400
+        if now >= start and now < finish and CurrentSeasonWeek() >= 2 then
+            available[season.eventGolemBlueprintId] = true
+        end
+    end
+    return available
+end
+
 -- ── Claim a week's reward ─────────────────────────────────────────────────────
 function SeasonPassService.ClaimWeekReward(player, seasonId, weekNumber, track)
     local data = PlayerDataService.Get(player)

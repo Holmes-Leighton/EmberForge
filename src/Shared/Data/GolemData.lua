@@ -104,7 +104,6 @@ GolemData.Tiers = {
         materialsRequired = {
             { id = "PureIngot",    qty = 200 },
             { id = "EssenceShard", qty = 100 },
-            { id = "Blueprint_T4", qty = 1   },
         },
         unlockCondition = "unlock_tier4_forge",
         craftXP = 1000,
@@ -121,7 +120,6 @@ GolemData.Tiers = {
             { id = "PrimordialOre",    qty = 50  },
             { id = "VoidEssence",      qty = 25  },
             { id = "EventCatalyst",    qty = 1   },
-            { id = "Blueprint_T5",     qty = 1   },
         },
         unlockCondition = "seasonal_event",
         craftXP = 3000,
@@ -135,6 +133,7 @@ GolemData.ElementMultipliers = {
     Frost = { MiningRate = 1.00, CarryCapacity = 1.00, Efficiency = 1.00, Luck = 1.35 },
     Storm = { MiningRate = 1.00, CarryCapacity = 1.00, Efficiency = 1.20, Luck = 1.00 },
     Void  = { MiningRate = 0.95, CarryCapacity = 0.95, Efficiency = 1.05, Luck = 1.50 },
+    All   = { MiningRate = 1.10, CarryCapacity = 1.10, Efficiency = 1.10, Luck = 1.10 },   -- multi-element event Golems
 }
 
 -- Golem slot unlock milestones
@@ -147,17 +146,19 @@ GolemData.SlotMilestones = {
 }
 
 -- Compute final stats for a golem given element + tier + optional fusion bonus
-function GolemData.ComputeStats(elementId, tierIndex, fusionBonus)
+-- `quality` (0..0.15) is the bonus a Golem earned from the grade of materials it was crafted with
+function GolemData.ComputeStats(elementId, tierIndex, fusionBonus, quality)
     local tier = GolemData.Tiers[tierIndex]
     local mult = GolemData.ElementMultipliers[elementId]
     if not tier or not mult then return nil end
 
     fusionBonus = fusionBonus or {}
+    local q = 1 + (quality or 0)
     return {
-        miningRate    = math.floor(tier.resourcesPerHour * mult.MiningRate  * (1 + (fusionBonus.miningRate or 0))),
-        carryCapacity = math.floor(tier.carryCapacity    * mult.CarryCapacity * (1 + (fusionBonus.carryCapacity or 0))),
-        efficiency    = tier.efficiency * mult.Efficiency * (1 + (fusionBonus.efficiency or 0)),
-        luck          = tier.luck       * mult.Luck       * (1 + (fusionBonus.luck or 0)),
+        miningRate    = math.floor(tier.resourcesPerHour * mult.MiningRate  * (1 + (fusionBonus.miningRate or 0)) * q),
+        carryCapacity = math.floor(tier.carryCapacity    * mult.CarryCapacity * (1 + (fusionBonus.carryCapacity or 0)) * q),
+        efficiency    = tier.efficiency * mult.Efficiency * (1 + (fusionBonus.efficiency or 0)) * q,
+        luck          = tier.luck       * mult.Luck       * (1 + (fusionBonus.luck or 0)) * q,
         durabilityHours = tier.durabilityHours,
     }
 end

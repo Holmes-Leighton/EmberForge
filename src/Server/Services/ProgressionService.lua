@@ -20,6 +20,7 @@ function ProgressionService.AddPlayerXP(player, xp)
     PlayerDataService.MarkDirty(player)
 
     local leveledUp = false
+    local startLevel = data.PlayerLevel
     while true do
         local needed = XPForLevel(data.PlayerLevel + 1)
         if data.PlayerXP >= needed then
@@ -30,7 +31,36 @@ function ProgressionService.AddPlayerXP(player, xp)
         end
     end
 
+    if leveledUp then
+        ProgressionService.GrantLevelRewards(player, startLevel + 1, data.PlayerLevel)
+    end
     return leveledUp, data.PlayerLevel
+end
+
+-- Cosmetic / coin rewards for every level in [fromLevel, toLevel]
+function ProgressionService.GrantLevelRewards(player, fromLevel, toLevel)
+    local data = PlayerDataService.Get(player)
+    if not data then return end
+    local LevelData = require(game.ReplicatedStorage.Shared.Data.LevelData)
+    local CosmeticData = require(game.ReplicatedStorage.Shared.Data.CosmeticData)
+    for level = fromLevel, toLevel do
+        local reward = LevelData.Rewards[level]
+        if reward then
+            if reward.type == "coins" then
+                data.EmberCoins = (data.EmberCoins or 0) + reward.qty
+            elseif reward.type == "cosmetic" then
+                data.OwnedCosmetics = data.OwnedCosmetics or {}
+                if not Utils.TableContains(data.OwnedCosmetics, reward.id) then
+                    table.insert(data.OwnedCosmetics, reward.id)
+                end
+            end
+            local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
+            if RemoteEvents.Notify then
+                RemoteEvents.Notify:FireClient(player, "Level " .. level .. " reward", CosmeticData.RewardText(reward))
+            end
+        end
+    end
+    PlayerDataService.MarkDirty(player)
 end
 
 function ProgressionService.GetPlayerLevelProgress(player)
@@ -115,7 +145,15 @@ function ProgressionService.OnGolemMined(player, elementId, resourcesThisTick)
     local data = PlayerDataService.Get(player)
     local before = ProgressionService.GetMasteryLevel(((data and data.MasteryLevels) or {})[elementId] or 0)
     local after = ProgressionService.AddMasteryXP(player, elementId, masteryXP)
-    if after and after > before then return after end
+    if after and after > before then
+        -- Mastery 20 earns the element's exclusive title (spec 6.2)
+        if after >= 20 and data then
+            data.Titles = data.Titles or {}
+            local title = elementId .. " Sage"
+            if not Utils.TableContains(data.Titles, title) then table.insert(data.Titles, title) end
+        end
+        return after
+    end
     return nil
 end
 

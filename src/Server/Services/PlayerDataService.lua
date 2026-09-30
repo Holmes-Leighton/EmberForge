@@ -45,6 +45,7 @@ local function DefaultData()
         Achievements    = {},
         ClaimedAchievements = {},      -- achievementId → true once its reward is taken
         TradeHistory    = {},          -- last trades, newest first
+        CraftedByTier   = {},          -- tier → how many Golems of that tier were ever crafted
         DailyChallenges  = {},         -- challengeId → { progress, claimed } (resets daily)
         WeeklyChallenges = {},         -- challengeId → { progress, claimed } (resets weekly)
         LastDailyReset  = 0,
@@ -128,6 +129,13 @@ function PlayerDataService.Load(player)
             if data[field] == nil then
                 data[field] = Utils.DeepCopy(default)
             end
+        end
+    end
+    -- Older saves: rebuild the crafted-per-tier counters from the Golems they own
+    if next(data.CraftedByTier or {}) == nil then
+        data.CraftedByTier = {}
+        for _, g in ipairs(data.Golems or {}) do
+            data.CraftedByTier[g.tier] = (data.CraftedByTier[g.tier] or 0) + 1
         end
     end
     data._lock = { jobId = JOB_ID, time = Utils.UnixTimestamp() }

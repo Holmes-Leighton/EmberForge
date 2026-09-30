@@ -11,6 +11,9 @@ GameConfig.OFFLINE_STORAGE_PREMIUM_HOURS = 24    -- premium (Robux / Season Pass
 -- Offline production still uses real time. Set to 1 for true hourly rates.
 GameConfig.ONLINE_PRODUCTION_SPEED = 60
 
+-- Smelting: a job processes SMELT_BATCH_SIZE units per smelt-time cycle
+GameConfig.SMELT_BATCH_SIZE = 10
+
 -- Forge
 GameConfig.BASE_SMELT_SLOTS = 5
 GameConfig.MAX_SMELT_SLOTS = 10

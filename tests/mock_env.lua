@@ -34,6 +34,10 @@ local stubs = {
     MarketplaceService = {},
     ReplicatedStorage = {}, UserService = {},
 }
+local ColorMeta = {}
+ColorMeta.__index = { Lerp = function(a, b, t) return setmetatable({ R = a.R + (b.R - a.R) * t, G = a.G + (b.G - a.G) * t, B = a.B + (b.B - a.B) * t }, ColorMeta) end }
+Color3 = { fromRGB = function(r, g, b) return setmetatable({ R = r / 255, G = g / 255, B = b / 255 }, ColorMeta) end,
+           new = function(r, g, b) return setmetatable({ R = r, G = g, B = b }, ColorMeta) end }
 Enum = setmetatable({}, { __index = function(_, k) return setmetatable({}, { __index = function(_, v) return k .. "." .. v end }) end })
 
 local function newObj(path, parent)
@@ -61,7 +65,11 @@ function moduleEnv(path)
     -- `script` for a module: an object whose Parent is its folder
     local dir = path:match("^(.*)/[^/]+$")
     local env = setmetatable({}, { __index = getfenv(1) })
-    local parent = newObj(dir, nil)
+    local function objFromPath(pp)
+        local up = pp:match("^(.*)/[^/]+$")
+        return newObj(pp, up and objFromPath(up) or nil)
+    end
+    local parent = objFromPath(dir)
     env.script = setmetatable({ Parent = parent, Name = path:match("([^/]+)$") }, { __index = function(_, k) return newObj(path .. "/" .. k, nil) end })
     return env
 end
