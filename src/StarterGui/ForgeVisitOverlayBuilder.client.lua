@@ -111,7 +111,7 @@ tradeBtn.Size     = UDim2.new(1, -16, 0, 36)
 tradeBtn.Position = UDim2.new(0, 8, 1, -96)
 tradeBtn.TextSize = 13
 
-local closeBtn = Theme.Button(panel, "✕  Leave View",
+local closeBtn = Theme.Button(panel, "X  Leave View",
     Theme.Colors.PanelAlt, Theme.Colors.TextSecondary, "CloseButton")
 closeBtn.Size     = UDim2.new(1, -16, 0, 30)
 closeBtn.Position = UDim2.new(0, 8, 1, -52)

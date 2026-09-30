@@ -63,7 +63,7 @@ local weekLabel = Theme.Label(titleBar, "Week 1 of 7", Theme.TextSize.Body,
 weekLabel.Size = UDim2.new(0.3, 0, 0, 20)
 weekLabel.Position = UDim2.new(0, 16, 0, 36)
 
-local closeBtn = Theme.Button(titleBar, "✕", Theme.Colors.Danger, Color3.fromRGB(255,255,255), "CloseButton")
+local closeBtn = Theme.Button(titleBar, "X", Theme.Colors.Danger, Color3.fromRGB(255,255,255), "CloseButton")
 closeBtn.Size = UDim2.new(0, 36, 0, 36)
 closeBtn.Position = UDim2.new(1, -44, 0, 12)
 closeBtn.MouseButton1Click:Connect(function() gui.Enabled = false end)

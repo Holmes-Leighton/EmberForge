@@ -57,7 +57,7 @@ local weeklyResetLabel = Theme.Label(titleBar, "Weekly reset: —", Theme.TextSi
 weeklyResetLabel.Size = UDim2.new(0, 180, 0, 20)
 weeklyResetLabel.Position = UDim2.new(0.5, 0, 0, 26)
 
-local closeBtn = Theme.Button(titleBar, "✕", Theme.Colors.Danger, Color3.fromRGB(255,255,255), "CloseButton")
+local closeBtn = Theme.Button(titleBar, "X", Theme.Colors.Danger, Color3.fromRGB(255,255,255), "CloseButton")
 closeBtn.Size = UDim2.new(0, 36, 0, 36)
 closeBtn.Position = UDim2.new(1, -44, 0, 7)
 closeBtn.MouseButton1Click:Connect(function() gui.Enabled = false end)

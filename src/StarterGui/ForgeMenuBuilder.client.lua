@@ -57,7 +57,7 @@ titleLbl.Size = UDim2.new(0, 220, 1, 0)
 titleLbl.Position = UDim2.new(0, 16, 0, 0)
 titleLbl.TextXAlignment = Enum.TextXAlignment.Left
 
-local closeBtn = Theme.Button(titleBar, "✕", Theme.Colors.Danger, Color3.fromRGB(255,255,255), "CloseButton")
+local closeBtn = Theme.Button(titleBar, "X", Theme.Colors.Danger, Color3.fromRGB(255,255,255), "CloseButton")
 closeBtn.Size = UDim2.new(0, 36, 0, 36)
 closeBtn.Position = UDim2.new(1, -44, 0, 7)
 closeBtn.MouseButton1Click:Connect(function() gui.Enabled = false end)

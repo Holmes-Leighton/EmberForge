@@ -89,7 +89,7 @@ function ForgeController._CreateBlueprintCard(bp, data, yOffset)
     local reqText = ""
     for i, req in ipairs(bp.materialsRequired or {}) do
         local have = (data.Inventory or {})[req.id] or 0
-        local colour = have >= req.qty and "✓" or "✗"
+        local colour = have >= req.qty and "[OK]" or "[NEED]"
         reqText = reqText .. colour .. " " .. req.id .. " x" .. req.qty
         if i < #bp.materialsRequired then reqText = reqText .. "\n" end
     end
@@ -247,7 +247,7 @@ function ForgeController._BuildDeployPanel()
         for _, zoneId in ipairs(unlocked) do
             local zone = MiningZoneData.Get(zoneId)
             local selected = zoneId == ForgeController._selectedZone
-            local btn = Theme.Button(strip, (selected and "✔ " or "⛏ ") .. (zone and zone.displayName or zoneId),
+            local btn = Theme.Button(strip, (selected and "> " or "") .. (zone and zone.displayName or zoneId),
                 selected and Theme.Colors.Success or Theme.Colors.PanelAlt,
                 selected and Color3.fromRGB(255, 255, 255) or Theme.Colors.AccentBright, zoneId)
             btn.Size = UDim2.new(0, 170, 0, 56)

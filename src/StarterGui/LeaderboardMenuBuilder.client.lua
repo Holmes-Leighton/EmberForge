@@ -45,7 +45,7 @@ titleLabel.Size             = UDim2.new(0.8, 0, 1, 0)
 titleLabel.Position         = UDim2.new(0, 14, 0, 0)
 titleLabel.TextXAlignment   = Enum.TextXAlignment.Left
 
-local closeBtn = Theme.Button(titleBar, "✕", Theme.Colors.Danger,
+local closeBtn = Theme.Button(titleBar, "X", Theme.Colors.Danger,
     Color3.fromRGB(255, 255, 255), "CloseButton")
 closeBtn.Size       = UDim2.new(0, 36, 0, 36)
 closeBtn.Position   = UDim2.new(1, -44, 0, 7)
