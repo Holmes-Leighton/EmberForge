@@ -21,7 +21,9 @@ local marketListing = { id = "L1", sellerId = 5, sellerName = "Seller", priceCoi
     item = { type = "golem", id = "gx", element = "Frost", tier = 2, name = "Frost Shard Golem (Uncommon)" },
     golem = { id = "gx", element = "Frost", tier = 2, rarity = "Uncommon" } }
 local Remotes = installFakeRemotes({ GetPlayerData = function() return Snapshot end,
-    GetMarketListings = function() return { marketListing } end, GetMyListings = function() return {} end,
+    GetMarketListings = function() return { marketListing } end,
+    GetSupplierStock = function() return { { id = "BasicOre", kind = "material", price = 3, dailyLimit = 600, bought = 10, name = "Basic Ore", rarity = "Common", note = "Needed for every Tier 1 Golem" },
+                                            { id = "SpeedUp", kind = "speedup", price = 600, dailyLimit = 2, bought = 2, name = "Smelt Speed-Up", rarity = "Common" } } end, GetMyListings = function() return {} end,
     GetTradeHistory = function() return { { time = os.time(), partner = "Bob", gave = { "Coal x5" }, got = { "Frost Golem" } } } end,
     GetLeaderboard = function() return {} end })
 
@@ -157,7 +159,16 @@ expect(byTextLike(trade, "No active trade") ~= nil, "closing returns to the idle
 print("== Market")
 local market = gui("MarketMenu")
 market.Enabled = true
-expect(byTextLike(market, "Frost Shard") ~= nil or byTextLike(market, "Frost") ~= nil, "listing shows the golem")
+expect(byTextLike(market, "Basic Ore") ~= nil, "the Supplier tab is the first thing you see")
+expect(byTextLike(market, "590/600 left today") ~= nil, "shows today's remaining stock")
+expect(byText(market, "Sold out") ~= nil, "sold-out items say so")
+local supplierBuy
+for _, dd in ipairs(all(market:FindFirstChild("ListingScroll", true))) do if dd:IsA("GuiButton") and dd.Text == "Buy" then supplierBuy = dd break end end
+click(supplierBuy)
+local sb = lastFired("BuyFromSupplier")
+expect(sb and sb[1] == "BasicOre" and sb[2] == 1, "Buy asks the Supplier for the item and amount")
+click(market:FindFirstChild("GolemsTab", true))
+expect(byTextLike(market, "Frost") ~= nil, "Golems tab shows the player listing")
 local buy = byText(market:FindFirstChild("ListingScroll", true), "Buy")
 click(buy)
 expect(lastFired("BuyFromMarket")[1] == "L1", "Buy sends the listing id")
@@ -205,6 +216,30 @@ local claimBtn
 for _, dd in ipairs(all(chal)) do if dd:IsA("GuiButton") and dd.Text == "Claim!" then claimBtn = dd break end end
 expect(claimBtn ~= nil, "a completed challenge offers Claim")
 if claimBtn then click(claimBtn) expect(lastFired("ClaimChallengeReward")[1] == "daily_deploy_golem", "claim sends the challenge id") end
+
+print("== Notification badges")
+local BadgeController = load("SPS/EmberForge/Controllers/BadgeController")
+Snapshot.SeenCosmetics = {}
+Snapshot.DailyChallenges.daily_deploy_golem.claimed = false   -- (an earlier step claimed it optimistically)
+BadgeController.SetPending({ BasicOre = 12, Coal = 3 })
+BadgeController.Update(Snapshot)
+local function badge(name) return hud:FindFirstChild(name, true):FindFirstChild("Badge") end
+expect(badge("ChallengesButton").Visible == true and badge("ChallengesButton").Text == "1", "Challenges: one completed challenge to claim")
+expect(badge("InventoryButton").Visible == true and badge("InventoryButton").Text == "15", "Inventory: 15 uncollected resources")
+expect(badge("ForgeButton").Visible == true and badge("ForgeButton").Text == "4", "Forge: 2 golems could work + 1 broken + 1 fusion ready = " .. tostring(badge("ForgeButton").Text))
+expect(badge("StyleButton").Visible == true and badge("StyleButton").Text == "3", "Style: 2 cosmetics + 1 title unseen = " .. tostring(badge("StyleButton").Text))
+expect(badge("SeasonButton").Visible == true and badge("SeasonButton").Text == "1", "Season: week 1 already claimed, week 2 free reward waiting")
+Snapshot.SeasonStatus.claimedWeeks = {}
+BadgeController.Update(Snapshot)
+expect(badge("SeasonButton").Text == "2", "Season badge counts both unclaimed free rewards (" .. tostring(badge("SeasonButton").Text) .. ")")
+Snapshot.SeenCosmetics = { "ForgeSkin_Ember_Basic", "TitleBadge_Apprentice", "T:Forge Initiate" }
+BadgeController.Update(Snapshot)
+expect(badge("StyleButton").Visible == false, "Style badge clears once everything has been seen")
+BadgeController.SetPending({})
+expect(badge("InventoryButton").Visible == false, "Inventory badge clears after collecting")
+Snapshot.DailyChallenges.daily_deploy_golem.claimed = true
+BadgeController.Update(Snapshot)
+expect(badge("ChallengesButton").Visible == false, "Challenges badge clears after claiming")
 
 print("== Leaderboard")
 local LeaderboardController = load("SPS/EmberForge/Controllers/LeaderboardController")

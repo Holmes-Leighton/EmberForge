@@ -45,6 +45,8 @@ local function DefaultData()
         Achievements    = {},
         ClaimedAchievements = {},      -- achievementId → true once its reward is taken
         TradeHistory    = {},          -- last trades, newest first
+        SeenCosmetics   = {},          -- cosmetics/titles the player has already looked at
+        SupplierPurchases = { day = 0, bought = {} },
         Funnel          = {},          -- onboarding steps already logged to analytics
         Equipped        = {},          -- slot → cosmetic id (Title is stored as its text)
         CraftedByTier   = {},          -- tier → how many Golems of that tier were ever crafted

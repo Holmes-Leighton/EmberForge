@@ -15,6 +15,7 @@ local TradingService    = require(script.Parent.Services.TradingService)
 local ShopService       = require(script.Parent.Services.ShopService)
 local CosmeticService   = require(script.Parent.Services.CosmeticService)
 local Analytics         = require(script.Parent.Services.AnalyticsHelper)
+local SupplierService   = require(script.Parent.Services.SupplierService)
 local ForgeZoneService  = require(script.Parent.Services.ForgeZoneService)
 local SeasonPassService = require(script.Parent.Services.SeasonPassService)
 local LeaderboardService = require(script.Parent.Services.LeaderboardService)
@@ -365,6 +366,19 @@ RemoteEvents.GetMyListings.OnServerInvoke = function(player)
     return TradingService.GetMyListings(player)
 end
 
+-- ── Forge Supplier (standard goods) ───────────────────────────────────────────
+RemoteEvents.BuyFromSupplier.OnServerEvent:Connect(function(player, itemId, quantity)
+    SafeCall(player, function()
+        local ok, msg = SupplierService.Buy(player, itemId, quantity)
+        Tell(player, ok and "Purchased" or "Can't buy", msg)
+        RemoteEvents.PurchaseResult:FireClient(player, ok, nil, if ok then nil else msg)
+    end)
+end)
+
+RemoteEvents.GetSupplierStock.OnServerInvoke = function(player)
+    return SupplierService.GetCatalog(player)
+end
+
 -- ── Style & access ────────────────────────────────────────────────────────────
 RemoteEvents.EquipCosmetic.OnServerEvent:Connect(function(player, slot, id)
     SafeCall(player, function()
@@ -377,6 +391,10 @@ RemoteEvents.EquipCosmetic.OnServerEvent:Connect(function(player, slot, id)
             ForgeZoneService.Refresh(player)
         end
     end)
+end)
+
+RemoteEvents.MarkCosmeticsSeen.OnServerEvent:Connect(function(player)
+    SafeCall(player, function() CosmeticService.MarkAllSeen(player) end)
 end)
 
 RemoteEvents.SetForgeAccess.OnServerEvent:Connect(function(player, friendsOnly)

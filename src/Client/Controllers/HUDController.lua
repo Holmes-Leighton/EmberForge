@@ -86,6 +86,7 @@ end
 function HUDController.SetPending(pending)
     pending = pending or {}
     HUDController._pending = pending
+    require(script.Parent.BadgeController).SetPending(pending)
     if not hudGui then return end
 
     local ids, total = {}, 0
@@ -150,6 +151,8 @@ function HUDController.Refresh(data)
         slotLbl.TextColor3 = broken > 0 and Color3.fromRGB(230, 90, 70) or Theme.Colors.TextSecondary
         if broken > 0 then slotLbl.Text = string.format("Golems %d/%d (%d broken!)", deployed, slots, broken) end
     end
+
+    require(script.Parent.BadgeController).Update(data)
 
     -- Smelter: how many jobs and when the next one finishes
     local jobs = data.SmeltQueue or {}

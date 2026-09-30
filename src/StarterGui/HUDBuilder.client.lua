@@ -139,6 +139,25 @@ for i, nav in ipairs(navData) do
     btn.Position = UDim2.new(0, 6, 0, BTN_GAP + (i - 1) * (BTN_H + BTN_GAP))
     btn.TextSize = 13
 
+    -- notification badge (shown by BadgeController when something is waiting)
+    local badge = Instance.new("TextLabel")
+    badge.Name = "Badge"
+    badge.AnchorPoint = Vector2.new(1, 0)
+    badge.Position = UDim2.new(1, 4, 0, -6)
+    badge.Size = UDim2.new(0, 22, 0, 22)
+    badge.AutomaticSize = Enum.AutomaticSize.X
+    badge.BackgroundColor3 = Color3.fromRGB(215, 48, 42)
+    badge.BorderSizePixel = 0
+    badge.Text = ""
+    badge.TextColor3 = Color3.fromRGB(255, 255, 255)
+    badge.Font = Enum.Font.GothamBold
+    badge.TextSize = 12
+    badge.ZIndex = 6
+    badge.Visible = false
+    badge.Parent = btn
+    Theme.AddCorner(badge, UDim.new(0, 11))
+    Theme.AddPadding(badge, 0, 6, 0, 6)
+
     btn.MouseButton1Click:Connect(function()
         if nav.action then
             local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)

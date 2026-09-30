@@ -18,6 +18,7 @@ local ForgeZoneController    = require(script.Controllers.ForgeZoneController)
 local TutorialController     = require(script.Controllers.TutorialController)
 local GolemAnimator          = require(script.Controllers.GolemAnimator)
 local SoundController        = require(script.Controllers.SoundController)
+local BadgeController        = require(script.Controllers.BadgeController)
 
 -- Fetch initial data from server
 -- The server may still be loading our save when we arrive: keep asking for a while
@@ -46,6 +47,7 @@ ForgeZoneController.Init(playerData)
 TutorialController.Init(playerData)
 GolemAnimator.Init()
 SoundController.Init()
+BadgeController.Init()
 
 -- ── Global event listeners ────────────────────────────────────────────────────
 
@@ -188,7 +190,7 @@ end)
 -- Anything that changes slots, durability, smelting or levels refreshes the HUD from the server
 for _, name in ipairs({ "GolemCrafted", "GolemDeployed", "GolemReturned", "GolemFused", "GolemRepaired", "SmeltQueued",
     "SmeltCompleted", "ForgeUpgraded", "LevelUp", "TradeCompleted", "PurchaseResult", "StorageVaultCrafted",
-    "DailyReward", "ChallengeRewardClaimed" }) do
+    "DailyReward", "ChallengeRewardClaimed", "ChallengeCompleted", "AchievementUnlocked" }) do
     RemoteEvents[name].OnClientEvent:Connect(function() HUDController.QueueResync() end)
 end
 

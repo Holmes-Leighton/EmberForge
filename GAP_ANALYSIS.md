@@ -51,6 +51,7 @@ challenges) · forge-milestone blueprints · tier unlock rules (3x T1 → T2, 2x
 | Performance: Golem animation is client-side with distance LOD; UI scales for small screens | Done (untested on a real phone) |
 | Live ops: remote config, timed events, Double-XP weekends, admin commands | Done |
 | Analytics hooks, loading screen, audio framework | Done (audio silent until you add sounds) |
+| **Forge Supplier** (standard goods always in stock, daily limits, coin sink) and **notification badges** on the sidebar | Done |
 
 ## 4. Still open
 **Needs you (cannot be done from code)**

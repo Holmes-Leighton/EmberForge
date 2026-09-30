@@ -244,5 +244,8 @@ for id, b in pairs(tabButtons) do
 end
 
 gui:GetPropertyChangedSignal("Enabled"):Connect(function()
-    if gui.Enabled then task.spawn(Reload) end
+    if gui.Enabled then
+        task.spawn(Reload)
+        RemoteEvents.MarkCosmeticsSeen:FireServer()     -- clears the NEW badge on the sidebar
+    end
 end)

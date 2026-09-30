@@ -56,6 +56,17 @@ function CosmeticService.Equip(player, slot, id)
     return true
 end
 
+-- Everything owned counts as "seen" once the player has opened the Style menu (drives the NEW badge)
+function CosmeticService.MarkAllSeen(player)
+    local data = PlayerDataService.Get(player)
+    if not data then return end
+    local seen = {}
+    for _, id in ipairs(data.OwnedCosmetics or {}) do table.insert(seen, id) end
+    for _, t in ipairs(data.Titles or {}) do table.insert(seen, "T:" .. t) end
+    data.SeenCosmetics = seen
+    PlayerDataService.MarkDirty(player)
+end
+
 -- Forge access: false = anyone may visit, true = friends only (spec 7.2)
 function CosmeticService.SetFriendsOnly(player, on)
     local data = PlayerDataService.Get(player)
