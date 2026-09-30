@@ -17,6 +17,7 @@ local TradingService     = require(script.Services.TradingService)
 local ShopService        = require(script.Services.ShopService)
 local SeasonPassService  = require(script.Services.SeasonPassService)
 local LeaderboardService = require(script.Services.LeaderboardService)
+local GuildService       = require(script.Services.GuildService)
 local ForgeZoneService   = require(script.Services.ForgeZoneService)
 local WorldBuilder       = require(script.Services.WorldBuilder)
 local PadService         = require(script.Services.PadService)
@@ -38,6 +39,7 @@ GolemVisuals.Init()
 -- Start periodic auto-save and leaderboard flush
 PlayerDataService.StartAutoSave()
 LeaderboardService.StartFlushLoop()
+GuildService.StartFlushLoop()
 
 -- ── Player join ───────────────────────────────────────────────────────────────
 -- Roblox's default character script loads a facial "mood" animation that Studio can't fetch for an
@@ -131,6 +133,7 @@ end
 local function OnPlayerLeave(player)
     ForgeZoneService.OnPlayerLeave(player)
     LeaderboardService.OnPlayerLeave(player)
+    GuildService.OnPlayerLeave(player)
     PlayerDataService.OnPlayerLeave(player)
     print("[Main] " .. player.Name .. " left — data saved.")
 end
@@ -177,6 +180,7 @@ task.spawn(function()
                 end
                 if totalGained > 0 then
                     LeaderboardService.OnResourcesGained(player, totalGained)
+                    GuildService.OnResourcesGained(player, totalGained)
                 end
 
                 -- Tick smelt jobs

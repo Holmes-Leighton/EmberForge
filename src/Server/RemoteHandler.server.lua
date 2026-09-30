@@ -416,6 +416,43 @@ RemoteEvents.GoToMyForge.OnServerEvent:Connect(function(player)
     SafeCall(player, function() ForgeZoneService.Teleport(player) end)
 end)
 
+-- ── Guilds ────────────────────────────────────────────────────────────────────
+RemoteEvents.CreateGuild.OnServerEvent:Connect(function(player, name)
+    SafeCall(player, function()
+        if type(name) ~= "string" or #name > 100 then return end
+        local guild, err = require(script.Parent.Services.GuildService).Create(player, name)
+        RemoteEvents.GuildResult:FireClient(player, "create", guild ~= nil, guild and ("Founded " .. guild.name .. "!") or err)
+    end)
+end)
+
+RemoteEvents.JoinGuild.OnServerEvent:Connect(function(player, name)
+    SafeCall(player, function()
+        if type(name) ~= "string" or #name > 100 then return end
+        local guild, err = require(script.Parent.Services.GuildService).Join(player, name)
+        RemoteEvents.GuildResult:FireClient(player, "join", guild ~= nil, guild and ("Joined " .. guild.name .. "!") or err)
+    end)
+end)
+
+RemoteEvents.LeaveGuild.OnServerEvent:Connect(function(player)
+    SafeCall(player, function()
+        local ok, err = require(script.Parent.Services.GuildService).Leave(player)
+        RemoteEvents.GuildResult:FireClient(player, "leave", ok == true, ok and "You left the guild." or err)
+    end)
+end)
+
+RemoteEvents.ClaimGuildReward.OnServerEvent:Connect(function(player)
+    SafeCall(player, function()
+        local ok, result = require(script.Parent.Services.GuildService).ClaimReward(player)
+        local msg = ok and string.format("+%d coins and %d Speed-Up from your guild's weekly challenge!", result.coins, result.speedUps) or result
+        RemoteEvents.GuildResult:FireClient(player, "claim", ok == true, msg)
+    end)
+end)
+
+RemoteEvents.GetGuildInfo.OnServerInvoke = function(player)
+    local GuildService = require(script.Parent.Services.GuildService)
+    return { mine = GuildService.GetMine(player), top = GuildService.Top(10) }
+end
+
 -- ── Pets ──────────────────────────────────────────────────────────────────────
 RemoteEvents.HatchPet.OnServerEvent:Connect(function(player, eggId)
     SafeCall(player, function()

@@ -81,6 +81,14 @@ local DEFINITIONS = {
     MergePets           = "event",   -- client → server (petType, variant or nil): 4 identical -> 1 rarer
     PetsMerged          = "event",   -- server → client (ok, pet or reason)
 
+    -- Guilds
+    CreateGuild         = "event",   -- client → server (name)
+    JoinGuild           = "event",   -- client → server (name)
+    LeaveGuild          = "event",
+    ClaimGuildReward    = "event",
+    GuildResult         = "event",   -- server → client (action, ok, message)
+    GetGuildInfo        = "function", -- → { mine = snapshot or nil, top = {...} }
+
     -- Season Pass
     ClaimSeasonReward   = "event",
 
