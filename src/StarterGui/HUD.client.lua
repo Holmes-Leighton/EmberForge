@@ -129,6 +129,8 @@ for i, nav in ipairs(navData) do
         local target = pg:FindFirstChild(nav.targetGui)
         if target then
             target.Enabled = not target.Enabled
+        else
+            warn("[HUD] Menu not found in PlayerGui: " .. nav.targetGui)
         end
     end)
 end

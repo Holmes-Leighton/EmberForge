@@ -32,17 +32,6 @@ function InventoryController.Init(playerData)
         if not inventoryGui then return end
         InventoryController._BuildMaterialList()
         InventoryController._BuildGolemList()
-
-        -- Open/close button
-        local toggleBtn = PlayerGui:FindFirstChild("HUD", true)
-        if toggleBtn then
-            local btn = toggleBtn:FindFirstChild("InventoryButton", true)
-            if btn then
-                btn.MouseButton1Click:Connect(function()
-                    inventoryGui.Enabled = not inventoryGui.Enabled
-                end)
-            end
-        end
     end)
 end
 
