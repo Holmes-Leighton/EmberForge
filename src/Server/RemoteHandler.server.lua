@@ -221,7 +221,7 @@ RemoteEvents.DeployGolem.OnServerEvent:Connect(function(player, golemId, zoneId)
 
         local ok, err = GolemService.DeployGolem(player, golemId, zoneId)
         if not ok and err == "No free deployment slots" then
-            ShopService.Offer(player, "product", "SlotBoost_7d", "All your deploy slots are busy. Add one for a week?")
+            ShopService.Offer(player, "product", "SlotPack_5", "All your Golem slots are busy. Add 5 more, forever?")
         end
         if ok then
             ChallengeService.TrackEvent(player, "GolemDeploy", { count = 1 })

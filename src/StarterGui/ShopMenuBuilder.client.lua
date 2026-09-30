@@ -26,8 +26,8 @@ end)
 -- ── Container ─────────────────────────────────────────────────────────────────
 local container = Instance.new("Frame")
 container.Name = "Container"
-container.Size = UDim2.new(0, 740, 0, 560)
-ScaleUI.Apply(container, 740, 560)
+container.Size = UDim2.new(0, 740, 0, 610)
+ScaleUI.Apply(container, 740, 610)
 container.BackgroundColor3 = Theme.Colors.Background
 container.BorderSizePixel = 0
 container.Parent = gui
@@ -65,7 +65,7 @@ sectionLabel("⚡ Convenience", 58)
 -- Shop item grid
 local convGrid = Instance.new("Frame")
 convGrid.Name = "ConvenienceGrid"
-convGrid.Size = UDim2.new(1, -16, 0, 160)
+convGrid.Size = UDim2.new(1, -16, 0, 176)
 convGrid.Position = UDim2.new(0, 8, 0, 88)
 convGrid.BackgroundTransparency = 1
 convGrid.Parent = container
@@ -74,56 +74,55 @@ convGrid.Parent = container
 local convItems = {
     { name="SpeedUpx1Btn",        emoji="⚗",  title="Speed-Up",          sub="Instantly smelt 1 item",        price="25 R$",    color=Theme.Colors.Info    },
     { name="SpeedUpx10Btn",       emoji="⚗⚗", title="Speed-Up Pack",     sub="10 instant completions",        price="200 R$",   color=Theme.Colors.Info    },
-    { name="StorageExpansionBtn", emoji="📦",  title="Storage Expansion", sub="Offline cap → 24 hrs",          price="299 R$",   color=Theme.Colors.Frost   },
+    { name="StorageExpansionBtn", emoji="📦",  title="Offline Storage",   sub="Keep 24 hrs of mining. Once.",  price="299 R$",   color=Theme.Colors.Frost   },
+    { name="SlotPackBtn",         emoji="🧩",  title="+5 Golem Slots",    sub="Permanent. Buy again for more.", price="249 R$",  color=Theme.Colors.Gold    },
     { name="SlotBoostBtn",        emoji="🔓",  title="Slot Boost",        sub="+1 deploy slot for 7 days",     price="149 R$/wk",color=Theme.Colors.Storm   },
     { name="MaterialMagnetBtn",   emoji="🧲",  title="Material Magnet",   sub="2× resource collection 24 hrs", price="199 R$",   color=Theme.Colors.Success },
     { name="EventCatalystBtn",    emoji="✨",  title="Event Catalyst",    sub="Skip the grind for 1 event mat",price="~400 R$",  color=Theme.Colors.Legendary },
 }
 
-local itemW = math.floor((740 - 16) / 3) - 6
-local itemH = 70
+local COLS = 4
+local itemW = math.floor((740 - 16 - (COLS - 1) * 8) / COLS)
+local itemH = 84
 
 for i, item in ipairs(convItems) do
-    local col = (i - 1) % 3
-    local row = math.floor((i - 1) / 3)
-    local xOff = col * (itemW + 8)
-    local yOff = row * (itemH + 8)
+    local col = (i - 1) % COLS
+    local row = math.floor((i - 1) / COLS)
 
     local card = Instance.new("Frame")
     card.Name = item.name .. "Card"
     card.Size = UDim2.new(0, itemW, 0, itemH)
-    card.Position = UDim2.new(0, xOff, 0, yOff)
+    card.Position = UDim2.new(0, col * (itemW + 8), 0, row * (itemH + 8))
     card.BackgroundColor3 = Theme.Colors.Panel
     card.BorderSizePixel = 0
     card.Parent = convGrid
     Theme.AddCorner(card, Theme.Corner.Small)
+    Theme.AddStroke(card, item.color, 2, 0.5)
 
-    -- Left colour stripe
-    local stripe = Theme.Stripe(card, item.color)
-    stripe.Size = UDim2.new(0, 4, 1, 0)
+    local titleLbl = Theme.Label(card, item.emoji .. " " .. item.title, 13, item.color, Theme.Fonts.Heading)
+    titleLbl.Size = UDim2.new(1, -12, 0, 18)
+    titleLbl.Position = UDim2.new(0, 8, 0, 4)
+    titleLbl.TextWrapped = false
+    titleLbl.TextTruncate = Enum.TextTruncate.AtEnd
 
-    local titleLbl = Theme.Label(card, item.emoji .. " " .. item.title,
-        Theme.TextSize.Body, item.color, Theme.Fonts.Heading)
-    titleLbl.Size = UDim2.new(0.65, 0, 0, 22)
-    titleLbl.Position = UDim2.new(0, 12, 0, 6)
+    local subLbl = Theme.Label(card, item.sub, Theme.TextSize.Small, Theme.Colors.TextSecondary)
+    subLbl.Size = UDim2.new(1, -12, 0, 28)
+    subLbl.Position = UDim2.new(0, 8, 0, 22)
+    subLbl.TextYAlignment = Enum.TextYAlignment.Top
 
-    local subLbl = Theme.Label(card, item.sub, Theme.TextSize.Small, Theme.Colors.TextDim)
-    subLbl.Size = UDim2.new(0.65, 0, 0, 16)
-    subLbl.Position = UDim2.new(0, 12, 0, 28)
-
-    local buyBtn = Theme.Button(card, item.price, item.color, Color3.fromRGB(255,255,255), item.name)
-    buyBtn.Size = UDim2.new(0, 86, 0, 28)
-    buyBtn.Position = UDim2.new(1, -94, 0, (itemH - 28) / 2)
-    buyBtn.TextSize = 11
+    local buyBtn = Theme.Button(card, item.price, item.color, Color3.fromRGB(30, 20, 12), item.name)
+    buyBtn.Size = UDim2.new(1, -16, 0, 26)
+    buyBtn.Position = UDim2.new(0, 8, 1, -30)
+    buyBtn.TextSize = 12
 end
 
 -- ── Section: Season Passes ────────────────────────────────────────────────────
-sectionLabel("🌟 Season Passes", 258)
+sectionLabel("🌟 Season Passes", 274)
 
 local passGrid = Instance.new("Frame")
 passGrid.Name = "PassGrid"
 passGrid.Size = UDim2.new(1, -16, 0, 120)
-passGrid.Position = UDim2.new(0, 8, 0, 288)
+passGrid.Position = UDim2.new(0, 8, 0, 304)
 passGrid.BackgroundTransparency = 1
 passGrid.Parent = container
 
@@ -185,12 +184,12 @@ for i, pass in ipairs(passItems) do
 end
 
 -- ── Section: Mining Pads (permanent game passes) ─────────────────────────────
-sectionLabel("⛏ Mining Pads  -  unlock forever, no grinding", 414)
+sectionLabel("⛏ Mining Pads  -  unlock forever, no grinding", 434)
 
 local padGrid = Instance.new("Frame")
 padGrid.Name = "PadGrid"
 padGrid.Size = UDim2.new(1, -16, 0, 86)
-padGrid.Position = UDim2.new(0, 8, 0, 442)
+padGrid.Position = UDim2.new(0, 8, 0, 462)
 padGrid.BackgroundTransparency = 1
 padGrid.Parent = container
 

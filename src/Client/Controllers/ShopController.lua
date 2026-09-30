@@ -8,6 +8,7 @@ local PlayerGui          = LocalPlayer:WaitForChild("PlayerGui")
 local RemoteEvents   = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local SeasonData     = require(game.ReplicatedStorage.Shared.Data.SeasonData)
 local ProductData    = require(game.ReplicatedStorage.Shared.Data.ProductData)
+local GameConfig     = require(game.ReplicatedStorage.Shared.Data.GameConfig)
 local Theme          = require(game.ReplicatedStorage.Shared.Modules.Theme)
 local Utils          = require(game.ReplicatedStorage.Shared.Modules.Utils)
 
@@ -41,6 +42,7 @@ function ShopController._SetupShopGui()
 
     wireBtn("SpeedUpx1Btn",          "SpeedUp_x1")
     wireBtn("SpeedUpx10Btn",         "SpeedUp_x10")
+    wireBtn("SlotPackBtn",           "SlotPack_5")
     wireBtn("SlotBoostBtn",          "SlotBoost_7d")
     wireBtn("MaterialMagnetBtn",     "MaterialMagnet")
     wireBtn("EventCatalystBtn",      "EventCatalyst")
@@ -116,6 +118,15 @@ function ShopController.RefreshPads()
                 (data.PlayerLevel or 1) >= (def.minLevel or 1))
         end
     end
+    local packBtn = shopGui:FindFirstChild("SlotPackBtn", true)
+    if packBtn then
+        local bought = data.PurchasedSlots or 0
+        if bought >= GameConfig.MAX_PURCHASED_SLOTS then
+            packBtn.Text, packBtn.Active, packBtn.BackgroundColor3 = "Maxed (" .. bought .. ")", false, Theme.Colors.PanelAlt
+        else
+            packBtn.Text, packBtn.Active = string.format("249 R$  (%d/%d)", bought, GameConfig.MAX_PURCHASED_SLOTS), true
+        end
+    end
     local storage = shopGui:FindFirstChild("StorageExpansionBtn", true)
     if storage then
         if ProductData.PassOwned(ProductData.GamePasses.Storage24h, data) then
@@ -132,6 +143,12 @@ function ShopController._Prompt(productKey)
     if not product or not ProductData.IsAvailable(productKey) then
         require(script.Parent.HUDController).ShowNotification("Not available yet",
             (product and product.displayName or productKey) .. " isn't on sale yet.")
+        return
+    end
+    if productKey == "SlotPack_5" and ShopController._data
+        and (ShopController._data.PurchasedSlots or 0) >= GameConfig.MAX_PURCHASED_SLOTS then
+        require(script.Parent.HUDController).ShowNotification("Slots maxed out",
+            "You've bought the maximum of " .. GameConfig.MAX_PURCHASED_SLOTS .. " extra slots.")
         return
     end
     -- Don't let someone pay twice for a season pass they already hold

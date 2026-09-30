@@ -294,6 +294,14 @@ do
     Offer.Show("pass", "NoSuchPass", "x")
     expect(og:FindFirstChild("OfferCard") == nil, "unknown offers are ignored")
     task.delay = realDelay
+    Snapshot.PurchasedSlots = 10
+    ShopController.RefreshPads()
+    local packBtn = gui("ShopMenu"):FindFirstChild("SlotPackBtn", true)
+    expect(packBtn ~= nil and packBtn.Text:find("10/30") ~= nil, "slot pack button shows how many extra slots are bought (" .. tostring(packBtn and packBtn.Text) .. ")")
+    Snapshot.PurchasedSlots = 30
+    ShopController.RefreshPads()
+    expect(packBtn.Text:find("Maxed") ~= nil, "slot pack button shows Maxed at the limit")
+    Snapshot.PurchasedSlots = 0
     Snapshot.StorageTier = 2
     ShopController.RefreshPads()
     expect(gui("ShopMenu"):FindFirstChild("StorageExpansionBtn", true).Text == "Owned", "Shop shows the storage upgrade as owned")

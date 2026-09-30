@@ -8,6 +8,7 @@ ProductData.Products = {
     -- Convenience
     SpeedUp_x1        = { id = 0, displayName = "Smelt Speed-Up",        robux = 25   },
     SpeedUp_x10       = { id = 0, displayName = "Smelt Speed-Up Pack",   robux = 200  },
+    SlotPack_5        = { id = 0, displayName = "+5 Golem Slots (permanent)", robux = 249, stackable = true },
     SlotBoost_7d      = { id = 0, displayName = "Forge Slot Boost (7d)", robux = 149  },
     MaterialMagnet    = { id = 0, displayName = "Material Magnet (24h)", robux = 199  },
     EventCatalyst     = { id = 0, displayName = "Event Catalyst",        robux = 400  },
@@ -28,7 +29,7 @@ ProductData.GamePasses = {
     Pad_Gold   = { id = 0, padId = "Gold",   displayName = "Gold Pad (10x)",  robux = 599 },
 
     -- Offline storage: 24 hours instead of 8
-    Storage24h = { id = 0, storageTier = 2, displayName = "Storage Expansion (24h)", robux = 299 },
+    Storage24h = { id = 0, storageTier = 2, displayName = "Offline Storage (24h)", robux = 299 },
 
     -- Forge skins (cosmetic)
     Skin_Basic = { id = 0, cosmeticId = "ForgeSkin_Basic", displayName = "Forge Skin: Basic", robux = 200 },

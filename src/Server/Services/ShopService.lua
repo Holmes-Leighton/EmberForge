@@ -31,6 +31,15 @@ end
 PRODUCT_HANDLERS.SpeedUp_x1  = function(player) return withData(player, function(d) d.SpeedUps = (d.SpeedUps or 0) + 1  end) end
 PRODUCT_HANDLERS.SpeedUp_x10 = function(player) return withData(player, function(d) d.SpeedUps = (d.SpeedUps or 0) + 10 end) end
 
+-- ── Slot packs: +5 permanent Golem slots per purchase, stackable ───────────────
+-- (Repeatable, so a Developer Product. The cap is enforced where the purchase is offered; once
+-- Robux has been paid the grant always goes through, so nobody is ever charged for nothing.)
+PRODUCT_HANDLERS.SlotPack_5 = function(player)
+    return withData(player, function(d)
+        d.PurchasedSlots = (d.PurchasedSlots or 0) + GameConfig.SLOT_PACK_SIZE
+    end)
+end
+
 -- ── Temporary Golem slot boost (7 days) ───────────────────────────────────────
 PRODUCT_HANDLERS.SlotBoost_7d = function(player)
     return withData(player, function(d)
@@ -133,6 +142,7 @@ function ShopService.Offer(player, kind, key, reason)
     local data = PlayerDataService.Get(player)
     if not data then return false end
     if kind == "pass" and ProductData.PassOwned(item, data) then return false end
+    if key == "SlotPack_5" and (data.PurchasedSlots or 0) >= GameConfig.MAX_PURCHASED_SLOTS then return false end
     local now, uid = os.clock(), player.UserId
     if now - (lastAnyOffer[uid] or -1e9) < 180 then return false end
     local k = uid .. ":" .. key
@@ -206,6 +216,7 @@ function ShopService.GetEffectiveGolemSlots(player)
     local slots = data.GolemSlots or GameConfig.BASE_GOLEM_SLOTS
     if (data.SeasonPassTier or 0) >= 1 then slots = slots + 3 end          -- pass holder bonus (spec 3.4)
     if (data.TempSlotBoostExpiry or 0) > Utils.UnixTimestamp() then slots = slots + 1 end
+    slots = slots + (data.PurchasedSlots or 0)
     return math.min(slots, GameConfig.MAX_GOLEM_SLOTS)
 end
 

@@ -172,6 +172,26 @@ do
     MPS._owned = {}
 end
 
+print("== Stackable slot packs")
+do
+    local GC = load("game/ReplicatedStorage/Shared/Data/GameConfig")
+    local MPS = game:GetService("MarketplaceService")
+    Product.Products.SlotPack_5.id = 556
+    d3.SeasonPassTier = 0; d3.GolemSlots = 3; d3.PurchasedSlots = 0; d3.TempSlotBoostExpiry = 0
+    local before = Shop.GetEffectiveGolemSlots(p3)
+    MPS.ProcessReceipt({ PlayerId = 12, ProductId = 556, PurchaseId = "sp1" })
+    expect(d3.PurchasedSlots == 5 and Shop.GetEffectiveGolemSlots(p3) == before + 5, "one pack adds 5 slots")
+    MPS.ProcessReceipt({ PlayerId = 12, ProductId = 556, PurchaseId = "sp2" })
+    MPS.ProcessReceipt({ PlayerId = 12, ProductId = 556, PurchaseId = "sp2" })
+    expect(d3.PurchasedSlots == 10 and Shop.GetEffectiveGolemSlots(p3) == before + 10, "a second pack stacks, and a repeated receipt is ignored")
+    expect(GC.MAX_GOLEM_SLOTS >= 12 + 3 + 1 + GC.MAX_PURCHASED_SLOTS, "the slot ceiling leaves room for every pack")
+    d3.PurchasedSlots = GC.MAX_PURCHASED_SLOTS
+    local RE2 = load("game/ReplicatedStorage/Shared/Modules/RemoteEvents")
+    RE2.ShopOffer = { FireClient = function() end }
+    expect(Shop.Offer(p3, "product", "SlotPack_5", "x") == false, "no slot-pack offer once the maximum is bought")
+    d3.PurchasedSlots = 0
+end
+
 print("== Premium bonus")
 do
     local CS = load("SSS/EmberForge/Services/ChallengeService")
