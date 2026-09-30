@@ -87,7 +87,12 @@ end
 
 -- Generate a simple unique ID using tick and a random suffix
 function Utils.GenerateId()
-    return string.format("%d_%d", math.floor(tick() * 1000), math.random(1000, 9999))
+    local ok, guid = pcall(function()
+        return game:GetService("HttpService"):GenerateGUID(false)
+    end)
+    if ok and guid then return guid end
+    -- Fallback (should not happen in Roblox): time + two random parts
+    return string.format("%d_%d_%d", math.floor(tick() * 1000), math.random(100000, 999999), math.random(100000, 999999))
 end
 
 -- Weighted random selection: pool is array of { item, weight }

@@ -32,12 +32,19 @@ local DEFINITIONS = {
 
     -- Trading
     InitiateTrade       = "event",
-    TradeOffer          = "event",   -- server → client (incoming offer)
-    AcceptTrade         = "event",
-    DeclineTrade        = "event",
+    TradeOffer          = "event",   -- server → client (a trade window opened: tradeId, err)
+    AddTradeItem        = "event",   -- client → server (tradeId, item)
+    RemoveTradeItem     = "event",   -- client → server (tradeId, index)
+    TradeUpdated        = "event",   -- server → client (full view of the trade)
+    TradeClosed         = "event",   -- server → client (tradeId, reason)
+    AcceptTrade         = "event",   -- confirm my side
+    DeclineTrade        = "event",   -- cancel the trade
     TradeCompleted      = "event",   -- server → client
+    GetTradeHistory     = "function",
     ListOnMarket        = "event",
     BuyFromMarket       = "event",
+    CancelListing       = "event",
+    GetMyListings       = "function",
 
     -- Purchases
     PurchaseItem        = "event",

@@ -15,6 +15,12 @@ local PlayerDataService = {}
 local SafeDataStore = require(script.Parent.SafeDataStore)
 local primaryStore = SafeDataStore.GetDataStore("EmberForge_v1")
 local backupStore  = SafeDataStore.GetDataStore("EmberForge_v1_backup")
+local creditStore  = SafeDataStore.GetDataStore("EmberForge_Credits_v1")   -- coins owed to players who weren't here
+
+-- Session locking: a record is "owned" by one server (game.JobId) at a time so two servers
+-- can never overwrite each other. A lock older than LOCK_TIMEOUT is assumed dead (crashed server).
+local JOB_ID       = (game.JobId ~= "" and game.JobId) or "studio"
+local LOCK_TIMEOUT = 900
 
 -- In-memory cache: userId → { data, dirty }
 local cache = {}
@@ -37,6 +43,8 @@ local function DefaultData()
         SeasonPassTier  = 0,
         SeasonProgress  = {},          -- seasonId → { claimedWeeks }
         Achievements    = {},
+        ClaimedAchievements = {},      -- achievementId → true once its reward is taken
+        TradeHistory    = {},          -- last trades, newest first
         DailyChallenges  = {},         -- challengeId → { progress, claimed } (resets daily)
         WeeklyChallenges = {},         -- challengeId → { progress, claimed } (resets weekly)
         LastDailyReset  = 0,
@@ -62,29 +70,57 @@ local function DefaultData()
     }
 end
 
+-- ── Locking helpers ─────────────────────────────────────────────────────────
+local function LockedByOther(record)
+    local lock = type(record) == "table" and record._lock or nil
+    if type(lock) ~= "table" then return false end
+    return lock.jobId ~= JOB_ID and (Utils.UnixTimestamp() - (lock.time or 0)) < LOCK_TIMEOUT
+end
+
+-- Claims the record for this server and returns it. Returns nil, reason on failure.
+local function AcquireRecord(key)
+    local lastReason = "unavailable"
+    for attempt = 1, 5 do
+        local acquired = false
+        local record
+        local ok, err = pcall(function()
+            record = primaryStore:UpdateAsync(key, function(old)
+                if LockedByOther(old) then return nil end          -- another server has it: don't write
+                acquired = true
+                old = type(old) == "table" and old or {}
+                old._lock = { jobId = JOB_ID, time = Utils.UnixTimestamp() }
+                return old
+            end)
+        end)
+        if ok and acquired then return record or {} end
+        lastReason = ok and "locked" or tostring(err)
+        task.wait(attempt < 3 and 2 or 4)
+    end
+    return nil, lastReason
+end
+
 -- ── Load ────────────────────────────────────────────────────────────────────
+-- Returns the player's data, or nil + reason if it could not be loaded *safely*.
+-- (We never fall back to fresh data when a real record might exist: saving that would erase progress.)
 function PlayerDataService.Load(player)
     local userId = tostring(player.UserId)
     local key    = GameConfig.DATASTORE_KEY_PREFIX .. userId
 
-    local data
-    local ok, err = pcall(function()
-        data = primaryStore:GetAsync(key)
-    end)
-
-    if not ok then
-        warn("[PlayerDataService] Primary load failed for " .. userId .. ": " .. tostring(err))
-        -- Try backup
-        local backupOk, _ = pcall(function()
-            data = backupStore:GetAsync(key)
-        end)
-        if not backupOk then
-            warn("[PlayerDataService] Backup load also failed — using default data")
-        end
+    local data, reason = AcquireRecord(key)
+    if not data then
+        warn("[PlayerDataService] Could not load " .. userId .. ": " .. tostring(reason))
+        return nil, reason
     end
 
-    if not data or not Utils.ValidatePlayerData(data) then
-        data = DefaultData()
+    if not Utils.ValidatePlayerData(data) then
+        if next(data) ~= nil and data.PlayerLevel ~= nil then
+            -- a record exists but failed validation: try the backup before starting over
+            local okB, backup = pcall(function() return backupStore:GetAsync(key) end)
+            if okB and Utils.ValidatePlayerData(backup) then data = backup end
+        end
+        if not Utils.ValidatePlayerData(data) then
+            data = DefaultData()
+        end
     else
         -- Migrate any missing fields forward
         local defaults = DefaultData()
@@ -94,9 +130,34 @@ function PlayerDataService.Load(player)
             end
         end
     end
+    data._lock = { jobId = JOB_ID, time = Utils.UnixTimestamp() }
 
-    cache[userId] = { data = data, dirty = false }
+    cache[userId] = { data = data, dirty = true }
+    PlayerDataService.ApplyCredits(player)
     return data
+end
+
+-- Coins owed while the player was away (market sales handled by another server)
+function PlayerDataService.ApplyCredits(player)
+    local userId = tostring(player.UserId)
+    local entry = cache[userId]
+    if not entry then return end
+    local taken = 0
+    local ok = pcall(function()
+        creditStore:UpdateAsync(GameConfig.DATASTORE_KEY_PREFIX .. userId, function(old)
+            taken = tonumber(old) or 0
+            if taken == 0 then return nil end
+            return 0
+        end)
+    end)
+    if ok and taken > 0 then
+        entry.data.EmberCoins = (entry.data.EmberCoins or 0) + taken
+        entry.dirty = true
+        local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
+        if RemoteEvents.Notify then
+            RemoteEvents.Notify:FireClient(player, "Market sales", "You earned " .. taken .. " Ember Coins while away.")
+        end
+    end
 end
 
 -- ── Get (from cache) ────────────────────────────────────────────────────────
@@ -116,31 +177,34 @@ function PlayerDataService.MarkDirty(player)
 end
 
 -- ── Save ────────────────────────────────────────────────────────────────────
-function PlayerDataService.Save(player, force)
+-- `release` clears our session lock (used when the player leaves).
+function PlayerDataService.Save(player, force, release)
     local userId = tostring(player.UserId)
     local entry  = cache[userId]
-    if not entry then return end
-    if not force and not entry.dirty then return end
+    if not entry then return false end
+    if not force and not entry.dirty then return true end
 
     local key  = GameConfig.DATASTORE_KEY_PREFIX .. userId
     local data = entry.data
-
-    -- Update timestamp
     data.LastOnline = Utils.UnixTimestamp()
 
+    local wrote = false
     local ok, err = pcall(function()
-        primaryStore:SetAsync(key, data)
+        primaryStore:UpdateAsync(key, function(old)
+            if LockedByOther(old) then return nil end   -- we lost the lock: refuse to overwrite the other server
+            data._lock = (not release) and { jobId = JOB_ID, time = Utils.UnixTimestamp() } or nil
+            wrote = true
+            return data
+        end)
     end)
 
-    if ok then
-        -- Mirror to backup on every successful primary write
-        pcall(function()
-            backupStore:SetAsync(key, data)
-        end)
+    if ok and wrote then
+        pcall(function() backupStore:SetAsync(key, data) end)   -- mirror to backup
         entry.dirty = false
-    else
-        warn("[PlayerDataService] Save failed for " .. userId .. ": " .. tostring(err))
+        return true
     end
+    warn("[PlayerDataService] Save failed for " .. userId .. ": " .. tostring(ok and "record locked by another server" or err))
+    return false
 end
 
 -- ── Mutate helpers ──────────────────────────────────────────────────────────
@@ -207,19 +271,25 @@ function PlayerDataService.StartAutoSave()
         while true do
             task.wait(GameConfig.DATASTORE_SAVE_INTERVAL)
             for userId, entry in pairs(cache) do
-                if entry.dirty then
-                    local player = Players:GetPlayerByUserId(tonumber(userId))
-                    if player then
-                        PlayerDataService.Save(player)
-                    end
+                local player = Players:GetPlayerByUserId(tonumber(userId))
+                if player then
+                    PlayerDataService.ApplyCredits(player)
+                    PlayerDataService.Save(player, true)   -- also refreshes our session lock
                 end
             end
         end
     end)
+
+    -- Make sure everyone is saved (and unlocked) when the server shuts down
+    game:BindToClose(function()
+        for userId in pairs(cache) do
+            local player = Players:GetPlayerByUserId(tonumber(userId))
+            if player then PlayerDataService.Save(player, true, true) end
+        end
+    end)
 end
 
--- ── Credit coins to a player who may be offline ────────────────────────────
--- Used by market sale proceeds when the seller has already disconnected.
+-- ── Credit coins to a player who may be on another server ──────────────────
 function PlayerDataService.CreditOfflineCoins(userId, amount)
     local entry = cache[tostring(userId)]
     if entry then
@@ -227,22 +297,17 @@ function PlayerDataService.CreditOfflineCoins(userId, amount)
         entry.dirty = true
         return
     end
-    local key = GameConfig.DATASTORE_KEY_PREFIX .. tostring(userId)
     pcall(function()
-        primaryStore:UpdateAsync(key, function(existing)
-            if type(existing) == "table" then
-                existing.EmberCoins = (existing.EmberCoins or 0) + amount
-                return existing
-            end
+        creditStore:UpdateAsync(GameConfig.DATASTORE_KEY_PREFIX .. tostring(userId), function(old)
+            return (tonumber(old) or 0) + amount
         end)
     end)
 end
 
--- ── On player leave: force save and evict cache ─────────────────────────────
+-- ── On player leave: force save, release the session lock, evict cache ───────
 function PlayerDataService.OnPlayerLeave(player)
-    PlayerDataService.Save(player, true)
-    local userId = tostring(player.UserId)
-    cache[userId] = nil
+    PlayerDataService.Save(player, true, true)
+    cache[tostring(player.UserId)] = nil
 end
 
 return PlayerDataService

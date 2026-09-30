@@ -18,7 +18,7 @@ SeasonData.PassPricing = {
 SeasonData.Seasons = {
     Season1 = {
         id = "Season1", displayName = "The First Forge",
-        startTimestamp = 1747612800,  -- 2026-05-19 00:00:00 UTC
+        startTimestamp = 1779148800,  -- 2026-05-19 00:00:00 UTC
         featuredElement = "Ember",
         eventGolem = "MagmaTitan",
         eventGolemBlueprintId = "BP_Season1_MagmaTitan",
@@ -59,7 +59,7 @@ SeasonData.Seasons = {
     },
     Season2 = {
         id = "Season2", displayName = "The Frozen Veil",
-        startTimestamp = 1751846400,  -- 2026-07-07 00:00:00 UTC
+        startTimestamp = 1783382400,  -- 2026-07-07 00:00:00 UTC
         featuredElement = "Frost",
         eventGolem = "CrystalWraith",
         eventGolemBlueprintId = "BP_Season2_CrystalWraith",
@@ -99,7 +99,7 @@ SeasonData.Seasons = {
     },
     Season3 = {
         id = "Season3", displayName = "Stormrise",
-        startTimestamp = 1756080000,  -- 2026-08-25 00:00:00 UTC
+        startTimestamp = 1787616000,  -- 2026-08-25 00:00:00 UTC
         featuredElement = "Storm",
         eventGolem = "ThunderColossus",
         eventGolemBlueprintId = "BP_Season3_ThunderColossus",
@@ -139,7 +139,7 @@ SeasonData.Seasons = {
     },
     Season4 = {
         id = "Season4", displayName = "The Deep Hollow",
-        startTimestamp = 1760313600,  -- 2026-10-13 00:00:00 UTC
+        startTimestamp = 1791849600,  -- 2026-10-13 00:00:00 UTC
         featuredElement = "Void",
         eventGolem = "VoidWalker",
         eventGolemBlueprintId = "BP_Season4_VoidWalker",
@@ -179,7 +179,7 @@ SeasonData.Seasons = {
     },
     Season5 = {
         id = "Season5", displayName = "The Ancient Forge",
-        startTimestamp = 1764547200,  -- 2026-12-01 00:00:00 UTC
+        startTimestamp = 1796083200,  -- 2026-12-01 00:00:00 UTC
         featuredElement = "All",
         eventGolem = "PrimordialGolem",
         eventGolemBlueprintId = "BP_Season5_PrimordialGolem",

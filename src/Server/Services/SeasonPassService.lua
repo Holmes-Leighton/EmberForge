@@ -13,10 +13,10 @@ local communityStore = SafeDataStore.GetDataStore("EmberForge_Community_v1")
 -- Returns which week of the current season the player is on
 local function CurrentSeasonWeek()
     local season     = SeasonData.GetCurrentSeason()
-    local seasonStart = season.startTimestamp or 0  -- set in live config
+    local seasonStart = season.startTimestamp or 0
     local elapsed    = Utils.UnixTimestamp() - seasonStart
     local week       = math.floor(elapsed / (7 * 86400)) + 1
-    return math.min(week, season.durationWeeks)
+    return math.max(1, math.min(week, season.durationWeeks))
 end
 
 -- ── Claim a week's reward ─────────────────────────────────────────────────────
@@ -27,9 +27,15 @@ function SeasonPassService.ClaimWeekReward(player, seasonId, weekNumber, track)
     local season = SeasonData.Get(seasonId)
     if not season then return false, "Unknown season" end
 
-    -- Verify week is available
+    -- Only the live season can be claimed from (the client supplies seasonId, so verify it)
+    local current = SeasonData.GetCurrentSeason()
+    if not current or current.id ~= seasonId then return false, "That season isn't active" end
+
+    -- Verify week is a whole number and has started
+    if weekNumber ~= math.floor(weekNumber) or weekNumber < 1 then return false, "Invalid week" end
     local currentWeek = CurrentSeasonWeek()
     if weekNumber > currentWeek then return false, "Week not yet available" end
+    if track ~= "free" and track ~= "standard" and track ~= "premium" then return false, "Invalid track" end
 
     -- Check pass tier authorises this track
     local passTier = data.SeasonPassTier or 0

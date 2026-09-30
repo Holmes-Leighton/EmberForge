@@ -106,13 +106,17 @@ function ProgressionService.OnTradeCompleted(player)
     ProgressionService.AddPlayerXP(player, GameConfig.XP_PER_TRADE)
 end
 
+-- Awards mastery XP proportional to what an element's Golems mined.
+-- Returns the new mastery level only when this call actually raised it.
 function ProgressionService.OnGolemMined(player, elementId, resourcesThisTick)
-    -- Award mastery XP proportional to resources mined
     local masteryXP = math.floor(resourcesThisTick * GameConfig.MASTERY_XP_PER_HOUR_MINED)
-    if masteryXP > 0 then
-        local newMasteryLevel = ProgressionService.AddMasteryXP(player, elementId, masteryXP)
-        return newMasteryLevel
-    end
+    if masteryXP <= 0 then return nil end
+
+    local data = PlayerDataService.Get(player)
+    local before = ProgressionService.GetMasteryLevel(((data and data.MasteryLevels) or {})[elementId] or 0)
+    local after = ProgressionService.AddMasteryXP(player, elementId, masteryXP)
+    if after and after > before then return after end
+    return nil
 end
 
 return ProgressionService

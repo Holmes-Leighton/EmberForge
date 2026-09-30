@@ -13,6 +13,7 @@ local PadService = {}
 
 local pads = {}      -- { def, part }
 local tickCount = {} -- userId → ticks spent on pads (for the coal cadence)
+local lastFullNotice   = {}   -- userId → os.clock() of the last "stock full" message
 local lastLockedNotice = {}   -- userId → os.clock() of the last "locked" message
 
 local function IsAdmin(player)
@@ -127,14 +128,34 @@ local function Payout()
             local n = (tickCount[player.UserId] or 0) + 1
             tickCount[player.UserId] = n
 
-            local gains = { BasicOre = PadData.ORE_PER_TICK * def.multiplier }
+            local wanted = { BasicOre = PadData.ORE_PER_TICK * def.multiplier }
             if n % PadData.COAL_EVERY_N == 0 then
-                gains.Coal = def.multiplier
+                wanted.Coal = def.multiplier
             end
-            for matId, qty in pairs(gains) do
-                PlayerDataService.AddMaterial(player, matId, qty)
+
+            -- never push a stock above its cap
+            local gains, anyRoom = {}, false
+            for matId, qty in pairs(wanted) do
+                local cap  = PadData.STOCK_CAP[matId] or math.huge
+                local room = cap - (data.Inventory[matId] or 0)
+                local give = math.min(qty, math.max(0, room))
+                if room > 0 then anyRoom = true end
+                if give > 0 then
+                    gains[matId] = give
+                    PlayerDataService.AddMaterial(player, matId, give)
+                end
             end
-            RemoteEvents.ResourcesCollected:FireClient(player, gains, 0)
+            if next(gains) then
+                RemoteEvents.ResourcesCollected:FireClient(player, gains, 0)
+            elseif not anyRoom then
+                local last = lastFullNotice[player.UserId] or 0
+                if os.clock() - last > 15 then
+                    lastFullNotice[player.UserId] = os.clock()
+                    RemoteEvents.Notify:FireClient(player, "Pad stock full",
+                        "Pads top up to " .. PadData.STOCK_CAP.BasicOre .. " Basic Ore / "
+                        .. PadData.STOCK_CAP.Coal .. " Coal. Spend some to keep mining.")
+                end
+            end
         end
     end
 end
@@ -152,6 +173,7 @@ function PadService.Init()
     Players.PlayerRemoving:Connect(function(p)
         tickCount[p.UserId] = nil
         lastLockedNotice[p.UserId] = nil
+        lastFullNotice[p.UserId] = nil
     end)
 
     local function WelcomeAdmin(player)

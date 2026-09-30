@@ -218,8 +218,6 @@ function GolemService.CheckSlotMilestones(player)
                 end
             elseif condition == "forge_mastery_challenge" then
                 met = Utils.TableContains(data.Achievements, "ach_forge_mastery")
-            elseif condition == "season_pass_holder" then
-                met = data.SeasonPassTier >= 1
             end
 
             if met then

@@ -19,7 +19,16 @@ local ForgeZoneController    = require(script.Controllers.ForgeZoneController)
 local TutorialController     = require(script.Controllers.TutorialController)
 
 -- Fetch initial data from server
-local playerData = RemoteEvents.GetPlayerData:InvokeServer()
+-- The server may still be loading our save when we arrive: keep asking for a while
+local playerData
+for attempt = 1, 30 do
+    local ok, result = pcall(function() return RemoteEvents.GetPlayerData:InvokeServer() end)
+    if ok and result then
+        playerData = result
+        break
+    end
+    task.wait(1)
+end
 if not playerData then
     warn("[Client] Failed to get player data on init")
     return

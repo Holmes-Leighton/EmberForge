@@ -154,6 +154,7 @@ end
 -- Returns incremental gains for this tick (used to update HUD)
 function IdleEngine.TickOnlineProduction(playerData, deltaSeconds)
     local gains = {}
+    local byElement = {}   -- element → resources its Golems mined this tick (for mastery)
     local storageTier = playerData.StorageTier or 0
     local MiningZoneData = require(game.ReplicatedStorage.Shared.Data.MiningZoneData)
     local SeasonPassService = require(script.Parent.SeasonPassService)
@@ -192,7 +193,9 @@ function IdleEngine.TickOnlineProduction(playerData, deltaSeconds)
                         local luckMult = 1 + (luckM * 3)
                         local materialId = MiningZoneData.SampleDrop(golem.zoneId, luckMult)
                         if materialId then
-                            gains[materialId] = (gains[materialId] or 0) + math.floor(actual * eventMult)
+                            local amount = math.floor(actual * eventMult)
+                            gains[materialId] = (gains[materialId] or 0) + amount
+                            byElement[golem.element] = (byElement[golem.element] or 0) + amount
                             golem._carriedResources = carried + actual
                         end
                     end
@@ -201,7 +204,7 @@ function IdleEngine.TickOnlineProduction(playerData, deltaSeconds)
         end
     end
 
-    return gains
+    return gains, byElement
 end
 
 return IdleEngine

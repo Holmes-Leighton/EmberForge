@@ -1,268 +1,440 @@
 -- Player-to-player trading and the Forge Market (player-run marketplace).
+-- Every number and id a client sends is treated as hostile: quantities must be positive
+-- integers, prices are bounded, and Golems are always moved as the real server-side object.
 
-local DataStoreService  = game:GetService("DataStoreService")
+local Players           = game:GetService("Players")
 local GameConfig        = require(game.ReplicatedStorage.Shared.Data.GameConfig)
+local MaterialData      = require(game.ReplicatedStorage.Shared.Data.MaterialData)
 local Utils             = require(game.ReplicatedStorage.Shared.Modules.Utils)
 local PlayerDataService = require(script.Parent.PlayerDataService)
+local SafeDataStore     = require(script.Parent.SafeDataStore)
 
 local TradingService = {}
 
--- Pending trade sessions: tradeId → { offererId, targetId, offererItems, targetItems, confirmed }
+-- ── Limits ────────────────────────────────────────────────────────────────────
+local MAX_ITEM_QTY          = 1000000
+local MAX_PRICE             = 1000000000
+local MAX_LISTINGS_PER_USER = 20
+local TRADE_REQUEST_TTL     = 300      -- seconds a trade window may stay open
+local MAX_HISTORY           = 20
+
+-- Active direct trades: tradeId → session
 local pendingTrades = {}
+local tradeOfUser   = {}   -- userId → tradeId (a player can only be in one trade at a time)
 
--- Market listings: in-memory cache backed by DataStore
-local marketListings = {}  -- listingId → listing
-local SafeDataStore = require(script.Parent.SafeDataStore)
+-- Market listings: shared through a DataStore so every server sees the same market.
+-- Writes go through UpdateAsync (atomic) so two servers can never sell the same listing.
+local marketListings = {}  -- listingId → listing (local cache)
 local marketStore    = SafeDataStore.GetDataStore("EmberForge_Market_v1")
-local MARKET_KEY     = "listings_v1"
+local MARKET_KEY     = "listings_v2"
 
-local function PersistMarket()
-    task.spawn(function()
-        pcall(function()
-            marketStore:SetAsync(MARKET_KEY, marketListings)
-        end)
-    end)
-end
-
--- Load persisted listings on server start
-task.spawn(function()
-    local ok, saved = pcall(function()
-        return marketStore:GetAsync(MARKET_KEY)
-    end)
+local function RefreshMarketCache()
+    local ok, saved = pcall(function() return marketStore:GetAsync(MARKET_KEY) end)
     if ok and type(saved) == "table" then
         marketListings = saved
     end
+end
+
+task.spawn(function()
+    RefreshMarketCache()
+    while true do
+        task.wait(20)
+        RefreshMarketCache()
+    end
 end)
+
+-- Atomically edit the shared listing table. `edit(listings)` may mutate it and return a result.
+local function EditMarket(edit)
+    local result
+    local ok, err = pcall(function()
+        marketStore:UpdateAsync(MARKET_KEY, function(old)
+            local listings = type(old) == "table" and old or {}
+            result = edit(listings)
+            return listings
+        end)
+    end)
+    if not ok then
+        warn("[TradingService] Market write failed: " .. tostring(err))
+        return nil, "Market unavailable, try again"
+    end
+    return result
+end
+
+-- ── Item validation ───────────────────────────────────────────────────────────
+local function PositiveInt(n, max)
+    return type(n) == "number" and n == n and n >= 1 and n <= max and math.floor(n) == n
+end
+
+-- Ownership totals already committed by `items`, so the same stack can't be offered twice
+local function CommittedTotals(items)
+    local mats, golems = {}, {}
+    for _, it in ipairs(items) do
+        if it.type == "material" then
+            mats[it.id] = (mats[it.id] or 0) + it.qty
+        elseif it.type == "golem" then
+            golems[it.id] = true
+        end
+    end
+    return mats, golems
+end
+
+-- Returns a clean item table built from *our* data (never the client's), or nil + reason.
+-- `alreadyOffered` is the list of items already in this offer.
+local function ValidateItem(data, raw, alreadyOffered)
+    if type(raw) ~= "table" then return nil, "Bad item" end
+    local kind, id = raw.type, raw.id
+    if kind == "blueprint" then return nil, "Blueprints cannot be traded" end
+    if type(id) ~= "string" then return nil, "Bad item" end
+
+    local mats, golems = CommittedTotals(alreadyOffered or {})
+
+    if kind == "material" then
+        if not PositiveInt(raw.qty, MAX_ITEM_QTY) then return nil, "Invalid quantity" end
+        local def = MaterialData.Get(id)
+        if not def then return nil, "Unknown material" end
+        if def.tradeable == false then return nil, def.displayName .. " cannot be traded" end
+        local have = (data.Inventory[id] or 0) - (mats[id] or 0)
+        if have < raw.qty then return nil, "Not enough " .. def.displayName end
+        return { type = "material", id = id, qty = raw.qty, element = def.element, name = def.displayName }
+
+    elseif kind == "golem" then
+        if golems[id] then return nil, "Golem already offered" end
+        for _, g in ipairs(data.Golems) do
+            if g.id == id then
+                if g.deployed then return nil, "Recall that Golem before trading it" end
+                return { type = "golem", id = id, qty = 1, element = g.element, tier = g.tier,
+                         name = string.format("%s Golem (Tier %d)", tostring(g.element), g.tier or 1) }
+            end
+        end
+        return nil, "Golem not found"
+    end
+    return nil, "Unknown item type"
+end
+
+local function DescribeItems(items)
+    local out = {}
+    for _, it in ipairs(items) do
+        table.insert(out, it.type == "material" and string.format("%s x%d", it.name or it.id, it.qty) or (it.name or it.id))
+    end
+    return out
+end
 
 -- ── Direct Trading ────────────────────────────────────────────────────────────
 function TradingService.InitiateTrade(offererPlayer, targetPlayer)
+    if not offererPlayer or not targetPlayer then return nil, "Player not found" end
+    if offererPlayer == targetPlayer then return nil, "You can't trade with yourself" end
+    if tradeOfUser[offererPlayer.UserId] then return nil, "You are already in a trade" end
+    if tradeOfUser[targetPlayer.UserId] then return nil, targetPlayer.DisplayName .. " is already in a trade" end
+    if not PlayerDataService.Get(targetPlayer) then return nil, "That player isn't ready" end
+
     local tradeId = Utils.GenerateId()
     pendingTrades[tradeId] = {
-        tradeId     = tradeId,
-        offererId   = offererPlayer.UserId,
-        targetId    = targetPlayer.UserId,
-        offererItems = {},   -- array of { type="material"|"golem", id, qty }
-        targetItems  = {},
+        tradeId          = tradeId,
+        offererId        = offererPlayer.UserId,
+        targetId         = targetPlayer.UserId,
+        offererItems     = {},   -- array of clean items
+        targetItems      = {},
         offererConfirmed = false,
         targetConfirmed  = false,
-        createdAt   = Utils.UnixTimestamp(),
+        createdAt        = Utils.UnixTimestamp(),
     }
+    tradeOfUser[offererPlayer.UserId] = tradeId
+    tradeOfUser[targetPlayer.UserId]  = tradeId
     return tradeId
 end
 
-function TradingService.AddToOffer(player, tradeId, item)
+local function CloseTrade(tradeId)
     local trade = pendingTrades[tradeId]
-    if not trade then return false, "Trade not found" end
+    if not trade then return end
+    if tradeOfUser[trade.offererId] == tradeId then tradeOfUser[trade.offererId] = nil end
+    if tradeOfUser[trade.targetId]  == tradeId then tradeOfUser[trade.targetId]  = nil end
+    pendingTrades[tradeId] = nil
+end
 
-    local isOfferer = player.UserId == trade.offererId
-    local isTarget  = player.UserId == trade.targetId
-    if not isOfferer and not isTarget then return false, "Not in this trade" end
-
-    -- Reset confirmations when offer changes
-    trade.offererConfirmed = false
-    trade.targetConfirmed  = false
-
-    local offerSide = isOfferer and trade.offererItems or trade.targetItems
-    if #offerSide >= GameConfig.MAX_TRADE_ITEMS_PER_SIDE then
-        return false, "Trade offer full"
+local function GetTradeFor(player, tradeId)
+    local trade = type(tradeId) == "string" and pendingTrades[tradeId]
+    if not trade then return nil, "Trade not found" end
+    if Utils.UnixTimestamp() - trade.createdAt > TRADE_REQUEST_TTL then
+        CloseTrade(tradeId)
+        return nil, "Trade expired"
     end
+    if player.UserId ~= trade.offererId and player.UserId ~= trade.targetId then
+        return nil, "Not in this trade"
+    end
+    return trade
+end
 
-    -- Validate item ownership
+function TradingService.AddToOffer(player, tradeId, rawItem)
+    local trade, err = GetTradeFor(player, tradeId)
+    if not trade then return false, err end
     local data = PlayerDataService.Get(player)
     if not data then return false, "No player data" end
 
-    if item.type == "blueprint" then
-        return false, "Blueprints cannot be traded"
-    elseif item.type == "material" then
-        local have = data.Inventory[item.id] or 0
-        if have < (item.qty or 1) then return false, "Insufficient material" end
-    elseif item.type == "golem" then
-        local found = false
-        for _, g in ipairs(data.Golems) do
-            if g.id == item.id and not g.deployed then found = true; break end
-        end
-        if not found then return false, "Golem not found or deployed" end
-    else
-        return false, "Unknown item type"
-    end
+    local isOfferer = player.UserId == trade.offererId
+    local side = isOfferer and trade.offererItems or trade.targetItems
+    if #side >= GameConfig.MAX_TRADE_ITEMS_PER_SIDE then return false, "Trade offer full" end
 
-    table.insert(offerSide, item)
+    local item, why = ValidateItem(data, rawItem, side)
+    if not item then return false, why end
+
+    table.insert(side, item)
+    trade.offererConfirmed, trade.targetConfirmed = false, false   -- any change resets confirmations
     return true
 end
 
+function TradingService.RemoveFromOffer(player, tradeId, index)
+    local trade, err = GetTradeFor(player, tradeId)
+    if not trade then return false, err end
+    local side = player.UserId == trade.offererId and trade.offererItems or trade.targetItems
+    if not PositiveInt(index, #side) then return false, "Bad item" end
+    table.remove(side, index)
+    trade.offererConfirmed, trade.targetConfirmed = false, false
+    return true
+end
+
+-- Sets this player's confirmation. Executes the trade when both have confirmed.
+-- Returns ok, result   (result is the trade table when it has just executed)
 function TradingService.ConfirmTrade(player, tradeId)
-    local trade = pendingTrades[tradeId]
-    if not trade then return false, "Trade not found" end
+    local trade, err = GetTradeFor(player, tradeId)
+    if not trade then return false, err end
 
     if player.UserId == trade.offererId then
         trade.offererConfirmed = true
-    elseif player.UserId == trade.targetId then
-        trade.targetConfirmed = true
     else
-        return false, "Not in trade"
+        trade.targetConfirmed = true
     end
 
     if trade.offererConfirmed and trade.targetConfirmed then
         return TradingService._ExecuteTrade(tradeId)
     end
+    return true, "waiting"
+end
 
-    return true, "Waiting for both parties"
+-- What a player should see: their side, the other side, and who has confirmed.
+function TradingService.GetTradeView(player, tradeId)
+    local trade = GetTradeFor(player, tradeId)
+    if not trade then return nil end
+    local isOfferer = player.UserId == trade.offererId
+    local partner = Players:GetPlayerByUserId(isOfferer and trade.targetId or trade.offererId)
+    return {
+        tradeId      = tradeId,
+        partnerName  = partner and partner.DisplayName or "Player",
+        partnerId    = isOfferer and trade.targetId or trade.offererId,
+        yourItems    = isOfferer and trade.offererItems or trade.targetItems,
+        theirItems   = isOfferer and trade.targetItems or trade.offererItems,
+        youConfirmed = isOfferer and trade.offererConfirmed or trade.targetConfirmed,
+        theyConfirmed = isOfferer and trade.targetConfirmed or trade.offererConfirmed,
+    }
+end
+
+function TradingService.GetPartners(tradeId)
+    local trade = pendingTrades[tradeId]
+    if not trade then return nil end
+    return Players:GetPlayerByUserId(trade.offererId), Players:GetPlayerByUserId(trade.targetId)
 end
 
 function TradingService._ExecuteTrade(tradeId)
     local trade = pendingTrades[tradeId]
     if not trade then return false, "Trade not found" end
 
-    local Players = game:GetService("Players")
     local offerer = Players:GetPlayerByUserId(trade.offererId)
     local target  = Players:GetPlayerByUserId(trade.targetId)
-
     if not offerer or not target then
-        pendingTrades[tradeId] = nil
+        CloseTrade(tradeId)
         return false, "A player left"
     end
 
-    -- Atomic validation: both sides must still have their offered items
     local offData = PlayerDataService.Get(offerer)
     local tarData = PlayerDataService.Get(target)
+    if not offData or not tarData then
+        CloseTrade(tradeId)
+        return false, "Player data unavailable"
+    end
 
-    local function validateOffer(data, items)
-        for _, item in ipairs(items) do
-            if item.type == "material" then
-                if (data.Inventory[item.id] or 0) < item.qty then
-                    return false, item.id
-                end
-            elseif item.type == "golem" then
-                local found = false
-                for _, g in ipairs(data.Golems) do
-                    if g.id == item.id and not g.deployed then found = true; break end
-                end
-                if not found then return false, item.id end
-            end
+    -- Atomic validation: rebuild every item from current data; anything that changed cancels the trade
+    local function revalidate(data, items)
+        local checked = {}
+        for _, it in ipairs(items) do
+            local clean, why = ValidateItem(data, { type = it.type, id = it.id, qty = it.qty }, checked)
+            if not clean then return false, why end
+            table.insert(checked, clean)
         end
         return true
     end
-
-    local offOk, offMissing = validateOffer(offData, trade.offererItems)
-    local tarOk, tarMissing = validateOffer(tarData, trade.targetItems)
-
-    if not offOk then
-        pendingTrades[tradeId] = nil
-        return false, "Offerer no longer has: " .. tostring(offMissing)
-    end
-    if not tarOk then
-        pendingTrades[tradeId] = nil
-        return false, "Target no longer has: " .. tostring(tarMissing)
+    local offOk, offWhy = revalidate(offData, trade.offererItems)
+    local tarOk, tarWhy = revalidate(tarData, trade.targetItems)
+    if not offOk or not tarOk then
+        CloseTrade(tradeId)
+        return false, "Trade cancelled: " .. tostring(offWhy or tarWhy)
     end
 
-    -- Execute swap
-    local function transferItems(fromPlayer, fromData, toPlayer, toData, items)
-        for _, item in ipairs(items) do
-            if item.type == "material" then
-                fromData.Inventory[item.id] = (fromData.Inventory[item.id] or 0) - item.qty
-                toData.Inventory[item.id]   = (toData.Inventory[item.id] or 0) + item.qty
-            elseif item.type == "golem" then
+    local function transfer(fromData, toData, items)
+        for _, it in ipairs(items) do
+            if it.type == "material" then
+                fromData.Inventory[it.id] = (fromData.Inventory[it.id] or 0) - it.qty
+                if fromData.Inventory[it.id] <= 0 then fromData.Inventory[it.id] = nil end
+                toData.Inventory[it.id] = (toData.Inventory[it.id] or 0) + it.qty
+            elseif it.type == "golem" then
                 for i = #fromData.Golems, 1, -1 do
-                    if fromData.Golems[i].id == item.id then
-                        local golem = table.remove(fromData.Golems, i)
-                        table.insert(toData.Golems, golem)
+                    if fromData.Golems[i].id == it.id then
+                        table.insert(toData.Golems, table.remove(fromData.Golems, i))
                         break
                     end
                 end
             end
         end
-        PlayerDataService.MarkDirty(fromPlayer)
-        PlayerDataService.MarkDirty(toPlayer)
     end
+    transfer(offData, tarData, trade.offererItems)
+    transfer(tarData, offData, trade.targetItems)
 
-    transferItems(offerer, offData, target, tarData, trade.offererItems)
-    transferItems(target, tarData, offerer, offData, trade.targetItems)
+    -- History for both players
+    local now = Utils.UnixTimestamp()
+    local function record(data, partner, gave, got)
+        data.TradeHistory = data.TradeHistory or {}
+        table.insert(data.TradeHistory, 1, {
+            time = now, partner = partner.DisplayName,
+            gave = DescribeItems(gave), got = DescribeItems(got),
+        })
+        while #data.TradeHistory > MAX_HISTORY do table.remove(data.TradeHistory) end
+    end
+    record(offData, target, trade.offererItems, trade.targetItems)
+    record(tarData, offerer, trade.targetItems, trade.offererItems)
 
-    pendingTrades[tradeId] = nil
-    return true, trade
+    PlayerDataService.MarkDirty(offerer)
+    PlayerDataService.MarkDirty(target)
+    PlayerDataService.Save(offerer, true)   -- items moved: persist both sides right away
+    PlayerDataService.Save(target, true)
+
+    local result = {
+        tradeId = tradeId, offererId = trade.offererId, targetId = trade.targetId,
+        offererItems = trade.offererItems, targetItems = trade.targetItems,
+    }
+    CloseTrade(tradeId)
+    return true, result
 end
 
 function TradingService.CancelTrade(player, tradeId)
-    local trade = pendingTrades[tradeId]
+    local trade = type(tradeId) == "string" and pendingTrades[tradeId]
     if not trade then return false end
-    if player.UserId ~= trade.offererId and player.UserId ~= trade.targetId then
-        return false
-    end
-    pendingTrades[tradeId] = nil
-    return true
+    if player.UserId ~= trade.offererId and player.UserId ~= trade.targetId then return false end
+    CloseTrade(tradeId)
+    return true, trade
 end
 
 -- ── Forge Market ──────────────────────────────────────────────────────────────
-function TradingService.ListOnMarket(player, item, priceCoins)
+local function CountListings(userId)
+    local n = 0
+    for _, l in pairs(marketListings) do
+        if l.sellerId == userId then n = n + 1 end
+    end
+    return n
+end
+
+function TradingService.ListOnMarket(player, rawItem, priceCoins)
     local data = PlayerDataService.Get(player)
     if not data then return nil, "No player data" end
 
-    if priceCoins <= 0 then return nil, "Price must be positive" end
-
-    if item.type == "blueprint" then
-        return nil, "Blueprints cannot be listed on the market"
+    if not PositiveInt(priceCoins, MAX_PRICE) then return nil, "Price must be a whole number of coins" end
+    if CountListings(player.UserId) >= MAX_LISTINGS_PER_USER then
+        return nil, "You can have at most " .. MAX_LISTINGS_PER_USER .. " listings"
     end
 
-    -- Validate and consume item
+    local item, why = ValidateItem(data, rawItem, {})
+    if not item then return nil, why end
+
+    -- Take the item out of the seller's hands (the real object, not the client's copy)
+    local golemObject
     if item.type == "material" then
         if not PlayerDataService.RemoveMaterial(player, item.id, item.qty) then
-            return nil, "Insufficient material"
+            return nil, "Not enough material"
         end
-    elseif item.type == "golem" then
-        local found = false
+    else
         for i, g in ipairs(data.Golems) do
-            if g.id == item.id and not g.deployed then
-                table.remove(data.Golems, i)
-                found = true; break
+            if g.id == item.id then
+                golemObject = table.remove(data.Golems, i)
+                break
             end
         end
-        if not found then return nil, "Golem not found" end
-    else
-        return nil, "Not tradeable"
+        if not golemObject then return nil, "Golem not found" end
     end
+    PlayerDataService.MarkDirty(player)
 
     local listing = {
         id         = Utils.GenerateId(),
         sellerId   = player.UserId,
-        sellerName = player.Name,
-        item       = Utils.DeepCopy(item),
+        sellerName = player.DisplayName,
+        item       = item,
+        golem      = golemObject,            -- only set for Golem listings
         priceCoins = priceCoins,
         listedAt   = Utils.UnixTimestamp(),
     }
+
+    local _, err = EditMarket(function(listings) listings[listing.id] = listing return true end)
+    if err then
+        -- couldn't publish: give everything back
+        if golemObject then table.insert(data.Golems, golemObject)
+        else PlayerDataService.AddMaterial(player, item.id, item.qty) end
+        return nil, err
+    end
     marketListings[listing.id] = listing
-    PersistMarket()
+    PlayerDataService.Save(player, true)
     return listing, nil
 end
 
-function TradingService.BuyFromMarket(player, listingId)
-    local listing = marketListings[listingId]
-    if not listing then return false, "Listing not found" end
-    if listing.sellerId == player.UserId then return false, "Cannot buy own listing" end
+-- Hand a claimed listing's item to a player
+local function DeliverListing(player, listing)
+    if listing.item.type == "material" then
+        PlayerDataService.AddMaterial(player, listing.item.id, listing.item.qty)
+    elseif listing.golem then
+        local data = PlayerDataService.Get(player)
+        table.insert(data.Golems, listing.golem)
+        PlayerDataService.MarkDirty(player)
+    end
+end
 
+function TradingService.BuyFromMarket(player, listingId)
+    if type(listingId) ~= "string" then return false, "Bad listing" end
     local data = PlayerDataService.Get(player)
     if not data then return false, "No player data" end
 
-    local coins = data.EmberCoins or 0
-    if coins < listing.priceCoins then return false, "Insufficient Ember Coins" end
+    local cached = marketListings[listingId]
+    if not cached then return false, "Listing not found" end
+    if cached.sellerId == player.UserId then return false, "You can't buy your own listing" end
+    if (data.EmberCoins or 0) < cached.priceCoins then return false, "Not enough Ember Coins" end
 
-    -- Deduct coins from buyer
-    data.EmberCoins = coins - listing.priceCoins
+    -- Claim it atomically; whoever removes it from the shared table first owns it
+    local listing, err = EditMarket(function(listings)
+        local l = listings[listingId]
+        if l and l.sellerId ~= player.UserId then
+            listings[listingId] = nil
+            return l
+        end
+        return nil
+    end)
+    marketListings[listingId] = nil
+    if not listing then return false, err or "Someone else just bought that" end
 
-    -- Award item to buyer
-    if listing.item.type == "material" then
-        PlayerDataService.AddMaterial(player, listing.item.id, listing.item.qty)
-    elseif listing.item.type == "golem" then
-        table.insert(data.Golems, listing.item)
+    if (data.EmberCoins or 0) < listing.priceCoins then
+        -- spent the coins while we were waiting: put it back
+        EditMarket(function(listings) listings[listing.id] = listing return true end)
+        marketListings[listing.id] = listing
+        return false, "Not enough Ember Coins"
     end
 
-    -- Pay seller (minus listing fee); works whether they are online or offline
-    local netAmount = math.floor(listing.priceCoins * (1 - GameConfig.MARKET_LISTING_FEE_PERCENT))
-    PlayerDataService.CreditOfflineCoins(listing.sellerId, netAmount)
+    data.EmberCoins = data.EmberCoins - listing.priceCoins
+    DeliverListing(player, listing)
 
-    marketListings[listingId] = nil
-    PersistMarket()
+    local net = math.floor(listing.priceCoins * (1 - GameConfig.MARKET_LISTING_FEE_PERCENT))
+    PlayerDataService.CreditOfflineCoins(listing.sellerId, net)
+    local seller = Players:GetPlayerByUserId(listing.sellerId)
+    if seller then
+        local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
+        RemoteEvents.Notify:FireClient(seller, "Item sold!",
+            string.format("%s sold for %d coins", listing.item.name or listing.item.id, net))
+    end
+
     PlayerDataService.MarkDirty(player)
-
+    PlayerDataService.Save(player, true)
     return true, listing
 end
 
@@ -272,43 +444,66 @@ function TradingService.GetMarketListings(filterType, filterElement, maxResults)
         local include = true
         if filterType and listing.item.type ~= filterType then include = false end
         if filterElement and listing.item.element ~= filterElement then include = false end
-        if include then
-            table.insert(results, listing)
-            if maxResults and #results >= maxResults then break end
-        end
+        if include then table.insert(results, listing) end
     end
     table.sort(results, function(a, b) return a.listedAt > b.listedAt end)
+    if maxResults and #results > maxResults then
+        for i = #results, maxResults + 1, -1 do results[i] = nil end
+    end
     return results
 end
 
-function TradingService.CancelListing(player, listingId)
-    local listing = marketListings[listingId]
-    if not listing then return false, "Not found" end
-    if listing.sellerId ~= player.UserId then return false, "Not your listing" end
-
-    -- Return item to player
-    local data = PlayerDataService.Get(player)
-    if data then
-        if listing.item.type == "material" then
-            PlayerDataService.AddMaterial(player, listing.item.id, listing.item.qty)
-        elseif listing.item.type == "golem" then
-            table.insert(data.Golems, listing.item)
-        end
-        PlayerDataService.MarkDirty(player)
+function TradingService.GetMyListings(player)
+    local mine = {}
+    for _, listing in pairs(marketListings) do
+        if listing.sellerId == player.UserId then table.insert(mine, listing) end
     end
+    table.sort(mine, function(a, b) return a.listedAt > b.listedAt end)
+    return mine
+end
 
+function TradingService.CancelListing(player, listingId)
+    if type(listingId) ~= "string" then return false, "Bad listing" end
+    local data = PlayerDataService.Get(player)
+    if not data then return false, "No player data" end
+
+    local listing, err = EditMarket(function(listings)
+        local l = listings[listingId]
+        if l and l.sellerId == player.UserId then
+            listings[listingId] = nil
+            return l
+        end
+        return nil
+    end)
     marketListings[listingId] = nil
-    PersistMarket()
+    if not listing then return false, err or "Listing not found" end
+
+    DeliverListing(player, listing)
+    PlayerDataService.MarkDirty(player)
+    PlayerDataService.Save(player, true)
     return true
 end
 
--- Cleanup trades when player leaves
+-- Cleanup trades when a player leaves
+-- Returns the userId of the trading partner (so the caller can tell them), if any.
 function TradingService.OnPlayerLeave(player)
-    for tradeId, trade in pairs(pendingTrades) do
-        if trade.offererId == player.UserId or trade.targetId == player.UserId then
-            pendingTrades[tradeId] = nil
+    local tradeId = tradeOfUser[player.UserId]
+    local trade = tradeId and pendingTrades[tradeId]
+    if not trade then return nil end
+    local partnerId = trade.offererId == player.UserId and trade.targetId or trade.offererId
+    CloseTrade(tradeId)
+    return partnerId
+end
+
+-- Trades left open past their time-to-live are swept periodically
+task.spawn(function()
+    while true do
+        task.wait(60)
+        local now = Utils.UnixTimestamp()
+        for tradeId, trade in pairs(pendingTrades) do
+            if now - trade.createdAt > TRADE_REQUEST_TTL then CloseTrade(tradeId) end
         end
     end
-end
+end)
 
 return TradingService

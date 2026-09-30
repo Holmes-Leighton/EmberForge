@@ -39,6 +39,8 @@ local function OnPlayerAdded(player)
     local data = PlayerDataService.Load(player)
     if not data then
         warn("[Main] Failed to load data for " .. player.Name)
+        player:Kick("We couldn't load your save safely, so we stopped you playing to protect it. "
+            .. "Please rejoin in a minute. Your progress is safe.")
         return
     end
 
@@ -93,7 +95,7 @@ task.spawn(function()
             local data = PlayerDataService.Get(player)
             if data then
                 -- Tick idle production
-                local rawGains = IdleEngine.TickOnlineProduction(data, TICK_INTERVAL)
+                local rawGains, byElement = IdleEngine.TickOnlineProduction(data, TICK_INTERVAL)
                 local gains = {}
                 local totalGained = 0
                 for matId, qty in pairs(rawGains) do
@@ -101,18 +103,16 @@ task.spawn(function()
                         PlayerDataService.AddPending(player, matId, qty)
                         totalGained = totalGained + qty
                         gains[matId] = qty
+                    end
+                end
 
-                        -- Mastery XP for each element actively mined
-                        for _, golem in ipairs(data.Golems) do
-                            if golem.deployed then
-                                local newMastLvl = ProgressionService.OnGolemMined(player, golem.element, qty)
-                                if newMastLvl then
-                                    RemoteEvents.MasteryLevelUp:FireClient(player, golem.element, newMastLvl)
-                                    if newMastLvl >= 20 then
-                                        ChallengeService.TrackEvent(player, "MasteryLevel20", { count = 1 })
-                                    end
-                                end
-                            end
+                -- Mastery XP goes to the element whose Golems did the mining
+                for element, mined in pairs(byElement or {}) do
+                    local newMasteryLevel = ProgressionService.OnGolemMined(player, element, mined)
+                    if newMasteryLevel then
+                        RemoteEvents.MasteryLevelUp:FireClient(player, element, newMasteryLevel)
+                        if newMasteryLevel >= 20 then
+                            ChallengeService.TrackEvent(player, "MasteryLevel20", { count = 1 })
                         end
                     end
                 end

@@ -35,12 +35,17 @@ local function NewMock()
     return mock
 end
 
+local mocks = {}   -- like the real DataStoreService, asking for the same name twice gives the same store
+
 local function TryGet(getter, name)
     local ok, store = pcall(getter, DataStoreService, name)
     if ok and store then return store end
-    warn("[SafeDataStore] '" .. name .. "' unavailable (" .. tostring(store)
-        .. ") — using in-memory store; data will NOT persist.")
-    return NewMock()
+    if not mocks[name] then
+        warn("[SafeDataStore] '" .. name .. "' unavailable (" .. tostring(store)
+            .. ") — using in-memory store; data will NOT persist.")
+        mocks[name] = NewMock()
+    end
+    return mocks[name]
 end
 
 function SafeDataStore.GetDataStore(name)

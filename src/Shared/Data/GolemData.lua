@@ -144,7 +144,6 @@ GolemData.SlotMilestones = {
     { slots = 5,  condition = "forge_level_5"      },
     { slots = 7,  condition = "forge_mastery_challenge" },
     { slots = 9,  condition = "craft_first_tier4"  },
-    { slots = 12, condition = "season_pass_holder" },
 }
 
 -- Compute final stats for a golem given element + tier + optional fusion bonus

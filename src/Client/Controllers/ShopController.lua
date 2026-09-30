@@ -7,24 +7,13 @@ local PlayerGui          = LocalPlayer:WaitForChild("PlayerGui")
 
 local RemoteEvents   = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local SeasonData     = require(game.ReplicatedStorage.Shared.Data.SeasonData)
+local ProductData    = require(game.ReplicatedStorage.Shared.Data.ProductData)
 local Utils          = require(game.ReplicatedStorage.Shared.Modules.Utils)
 
 local ShopController = {}
 
 local shopGui
 local seasonGui
-
--- Developer product IDs must match Roblox Creator Dashboard
-local PRODUCT_IDS = {
-    SpeedUp_x1         = 0,  -- replace with real product IDs
-    SpeedUp_x10        = 0,
-    StorageExpansion   = 0,
-    SlotBoost_7d       = 0,
-    MaterialMagnet     = 0,
-    EventCatalyst_S1   = 0,
-    SeasonPass_Standard = 0,
-    SeasonPass_Premium  = 0,
-}
 
 -- ── Init ──────────────────────────────────────────────────────────────────────
 function ShopController.Init(playerData)
@@ -54,7 +43,7 @@ function ShopController._SetupShopGui()
     wireBtn("StorageExpansionBtn",   "StorageExpansion")
     wireBtn("SlotBoostBtn",          "SlotBoost_7d")
     wireBtn("MaterialMagnetBtn",     "MaterialMagnet")
-    wireBtn("EventCatalystBtn",      "EventCatalyst_S1")
+    wireBtn("EventCatalystBtn",      "EventCatalyst")
     wireBtn("StandardPassBtn",       "SeasonPass_Standard")
     wireBtn("PremiumPassBtn",        "SeasonPass_Premium")
 
@@ -67,11 +56,13 @@ function ShopController._SetupShopGui()
 end
 
 function ShopController._Prompt(productKey)
-    local productId = PRODUCT_IDS[productKey]
-    if not productId or productId == 0 then
-        warn("[ShopController] Product ID not configured for: " .. productKey)
+    local product = ProductData.Products[productKey]
+    if not product or not ProductData.IsAvailable(productKey) then
+        require(script.Parent.HUDController).ShowNotification("Not available yet",
+            (product and product.displayName or productKey) .. " isn't on sale yet.")
         return
     end
+    local productId = product.id
     local ok, err = pcall(function()
         MarketplaceService:PromptProductPurchase(LocalPlayer, productId)
     end)

@@ -18,6 +18,10 @@ PadData.Pads = {
 
 PadData.SIZE = Vector3.new(22, 1, 22)
 
+-- Pads only top your stock up to these amounts (they're a starter/convenience source, not
+-- an unlimited faucet). Higher pads fill the same cap faster. Spend materials to keep mining.
+PadData.STOCK_CAP = { BasicOre = 300, Coal = 150 }
+
 -- Pads pay out every TICK_SECONDS. Coal comes every COAL_EVERY_N ticks so Ore:Coal is
 -- 2:1, matching the Tier 1 recipes (10 Basic Ore + 5 Coal). At 1x that is 4 Ore/s.
 PadData.TICK_SECONDS    = 0.25

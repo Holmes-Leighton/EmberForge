@@ -210,43 +210,80 @@ RemoteEvents.ReturnGolem.OnServerEvent:Connect(function(player, golemId)
     end)
 end)
 
--- ── InitiateTrade ─────────────────────────────────────────────────────────────
+-- ── Direct trading ────────────────────────────────────────────────────────────
+local function Tell(player, title, message)
+    if player and player.Parent then RemoteEvents.Notify:FireClient(player, title, message) end
+end
+
+-- Send each participant their own view of the trade
+local function PushTradeView(tradeId)
+    local a, b = TradingService.GetPartners(tradeId)
+    for _, p in ipairs({ a, b }) do
+        if p then
+            local view = TradingService.GetTradeView(p, tradeId)
+            if view then RemoteEvents.TradeUpdated:FireClient(p, view) end
+        end
+    end
+end
+
 RemoteEvents.InitiateTrade.OnServerEvent:Connect(function(player, targetUserId)
     SafeCall(player, function()
-        local Players_ = game:GetService("Players")
-        local target   = Players_:GetPlayerByUserId(tonumber(targetUserId))
+        if type(targetUserId) ~= "number" then return end
+        local target = Players:GetPlayerByUserId(targetUserId)
         if not target then
-            RemoteEvents.TradeOffer:FireClient(player, nil, "Target player not found")
+            Tell(player, "Trade", "That player isn't here any more.")
             return
         end
-        local tradeId = TradingService.InitiateTrade(player, target)
-        -- Notify both parties
+        local tradeId, err = TradingService.InitiateTrade(player, target)
+        if not tradeId then
+            Tell(player, "Can't trade", tostring(err))
+            return
+        end
         RemoteEvents.TradeOffer:FireClient(player, tradeId, nil)
         RemoteEvents.TradeOffer:FireClient(target, tradeId, nil)
+        Tell(target, "Trade request", player.DisplayName .. " wants to trade with you.")
+        PushTradeView(tradeId)
+    end)
+end)
+
+RemoteEvents.AddTradeItem.OnServerEvent:Connect(function(player, tradeId, item)
+    SafeCall(player, function()
+        local ok, err = TradingService.AddToOffer(player, tradeId, item)
+        if not ok then Tell(player, "Can't add that", tostring(err)) end
+        PushTradeView(tradeId)
+    end)
+end)
+
+RemoteEvents.RemoveTradeItem.OnServerEvent:Connect(function(player, tradeId, index)
+    SafeCall(player, function()
+        local ok, err = TradingService.RemoveFromOffer(player, tradeId, index)
+        if not ok then Tell(player, "Trade", tostring(err)) end
+        PushTradeView(tradeId)
     end)
 end)
 
 RemoteEvents.AcceptTrade.OnServerEvent:Connect(function(player, tradeId)
     SafeCall(player, function()
         if type(tradeId) ~= "string" then return end
+        local offerer, target = TradingService.GetPartners(tradeId)   -- grab before it may close
         local ok, result = TradingService.ConfirmTrade(player, tradeId)
-        if ok and type(result) == "table" then
-            -- Trade executed — reward both parties exactly once each
-            local Players_ = game:GetService("Players")
-            local offerer  = Players_:GetPlayerByUserId(result.offererId)
-            local target   = Players_:GetPlayerByUserId(result.targetId)
 
-            if offerer then
-                ProgressionService.OnTradeCompleted(offerer)
-                ChallengeService.TrackEvent(offerer, "TradeComplete", { count = 1 })
-                LeaderboardService.OnTradeComplete(offerer)
-                RemoteEvents.TradeCompleted:FireClient(offerer, result)
+        if ok and type(result) == "table" then
+            -- Executed: reward both parties exactly once each
+            for _, p in ipairs({ offerer, target }) do
+                if p then
+                    ProgressionService.OnTradeCompleted(p)
+                    ChallengeService.TrackEvent(p, "TradeComplete", { count = 1 })
+                    LeaderboardService.OnTradeComplete(p)
+                    RemoteEvents.TradeCompleted:FireClient(p, result)
+                end
             end
-            if target then
-                ProgressionService.OnTradeCompleted(target)
-                ChallengeService.TrackEvent(target, "TradeComplete", { count = 1 })
-                LeaderboardService.OnTradeComplete(target)
-                RemoteEvents.TradeCompleted:FireClient(target, result)
+        elseif ok then
+            PushTradeView(tradeId)          -- waiting for the other side
+        else
+            Tell(player, "Trade", tostring(result))
+            for _, p in ipairs({ offerer, target }) do
+                if p then RemoteEvents.TradeClosed:FireClient(p, tradeId, tostring(result)) end
             end
         end
     end)
@@ -255,30 +292,59 @@ end)
 RemoteEvents.DeclineTrade.OnServerEvent:Connect(function(player, tradeId)
     SafeCall(player, function()
         if type(tradeId) ~= "string" then return end
-        TradingService.CancelTrade(player, tradeId)
+        local offerer, target = TradingService.GetPartners(tradeId)
+        if TradingService.CancelTrade(player, tradeId) then
+            for _, p in ipairs({ offerer, target }) do
+                if p then RemoteEvents.TradeClosed:FireClient(p, tradeId, player.DisplayName .. " cancelled the trade") end
+            end
+        end
     end)
 end)
 
+RemoteEvents.GetTradeHistory.OnServerInvoke = function(player)
+    local data = PlayerDataService.Get(player)
+    return data and data.TradeHistory or {}
+end
+
+-- ── Forge Market ──────────────────────────────────────────────────────────────
 RemoteEvents.ListOnMarket.OnServerEvent:Connect(function(player, item, priceCoins)
     SafeCall(player, function()
-        if type(item) ~= "table" or type(priceCoins) ~= "number" then return end
         local listing, err = TradingService.ListOnMarket(player, item, priceCoins)
+        if listing then
+            Tell(player, "Listed", (listing.item.name or listing.item.id) .. " for " .. listing.priceCoins .. " coins")
+        else
+            Tell(player, "Couldn't list it", tostring(err))
+        end
         RemoteEvents.PurchaseResult:FireClient(player, listing ~= nil, listing, err)
     end)
 end)
 
 RemoteEvents.BuyFromMarket.OnServerEvent:Connect(function(player, listingId)
     SafeCall(player, function()
-        if type(listingId) ~= "string" then return end
         local ok, result = TradingService.BuyFromMarket(player, listingId)
         if ok then
             ChallengeService.TrackEvent(player, "TradeComplete", { count = 1 })
             ProgressionService.OnTradeCompleted(player)
             LeaderboardService.OnTradeComplete(player)
+            Tell(player, "Purchased", (result.item.name or result.item.id) .. " for " .. result.priceCoins .. " coins")
+        else
+            Tell(player, "Couldn't buy it", tostring(result))
         end
-        RemoteEvents.PurchaseResult:FireClient(player, ok, result)
+        RemoteEvents.PurchaseResult:FireClient(player, ok, ok and result or nil, ok and nil or result)
     end)
 end)
+
+RemoteEvents.CancelListing.OnServerEvent:Connect(function(player, listingId)
+    SafeCall(player, function()
+        local ok, err = TradingService.CancelListing(player, listingId)
+        Tell(player, ok and "Listing cancelled" or "Couldn't cancel", ok and "Your item was returned." or tostring(err))
+        RemoteEvents.PurchaseResult:FireClient(player, ok, nil, err)
+    end)
+end)
+
+RemoteEvents.GetMyListings.OnServerInvoke = function(player)
+    return TradingService.GetMyListings(player)
+end
 
 -- ── FuseGolems ────────────────────────────────────────────────────────────────
 RemoteEvents.FuseGolems.OnServerEvent:Connect(function(player, golem1Id, golem2Id)
@@ -296,14 +362,11 @@ end)
 RemoteEvents.ClaimChallengeReward.OnServerEvent:Connect(function(player, challengeId)
     SafeCall(player, function()
         if type(challengeId) ~= "string" then return end
-        local ok, result = ChallengeService.ClaimReward(player, challengeId)
-        if ok and type(result) == "table" and result.xp then
-            local leveled, newLevel = ProgressionService.AddPlayerXP(player, result.xp)
-            if leveled then
-                RemoteEvents.LevelUp:FireClient(player, newLevel)
-            end
+        local ok, result, newLevel = ChallengeService.ClaimReward(player, challengeId)
+        if ok and newLevel then
+            RemoteEvents.LevelUp:FireClient(player, newLevel)   -- XP itself is granted inside ClaimReward
         end
-        RemoteEvents.ChallengeRewardClaimed:FireClient(player, ok, challengeId, ok and result or result)
+        RemoteEvents.ChallengeRewardClaimed:FireClient(player, ok, challengeId, result)
     end)
 end)
 
@@ -383,7 +446,9 @@ end
 -- ── Cleanup ────────────────────────────────────────────────────────────────────
 Players.PlayerRemoving:Connect(function(player)
     rateLimits[tostring(player.UserId)] = nil
-    TradingService.OnPlayerLeave(player)
+    local partnerId = TradingService.OnPlayerLeave(player)
+    local partner = partnerId and Players:GetPlayerByUserId(partnerId)
+    if partner then RemoteEvents.TradeClosed:FireClient(partner, "", player.DisplayName .. " left the game") end
     ForgeService.OnPlayerLeave(player)
 end)
 

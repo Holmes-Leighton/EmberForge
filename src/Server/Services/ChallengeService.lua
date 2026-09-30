@@ -113,10 +113,10 @@ function ChallengeService.TrackEvent(player, eventName, eventData)
 
                     if passes then
                         local increment = (eventData and eventData.count) or 1
-                        entry.progress = (entry.progress or 0) + increment
-                        if entry.progress >= challengeDef.target then
-                            entry.progress = challengeDef.target  -- cap
-                            table.insert(completed, challengeDef.id)
+                        local wasComplete = (entry.progress or 0) >= challengeDef.target
+                        entry.progress = math.min(challengeDef.target, (entry.progress or 0) + increment)
+                        if entry.progress >= challengeDef.target and not wasComplete then
+                            table.insert(completed, challengeDef.id)   -- only on the completing event
                         end
                     end
                 end
@@ -156,6 +156,15 @@ function ChallengeService.TrackEvent(player, eventName, eventData)
 
     if #completed > 0 then
         PlayerDataService.MarkDirty(player)
+        local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
+        for _, id in ipairs(completed) do
+            local def = ChallengeData.Get(id)
+            if def and def.type == ChallengeData.Type.Lifetime then
+                RemoteEvents.AchievementUnlocked:FireClient(player, id)
+            else
+                RemoteEvents.ChallengeCompleted:FireClient(player, id)
+            end
+        end
     end
     return completed
 end
@@ -170,13 +179,21 @@ function ChallengeService.ClaimReward(player, challengeId)
 
     -- Find the progress entry
     local entry
+    local lifetimeEntry = false
     if challengeDef.type == ChallengeData.Type.Daily then
         entry = (data.DailyChallenges or {})[challengeId]
     elseif challengeDef.type == ChallengeData.Type.Weekly then
         entry = (data.WeeklyChallenges or {})[challengeId]
     elseif challengeDef.type == ChallengeData.Type.Lifetime then
-        -- Lifetime reward is auto-claimed on completion
-        entry = Utils.TableContains(data.Achievements, challengeId) and { progress = 1, claimed = false } or nil
+        -- Lifetime achievements: complete once listed in data.Achievements; the claim is remembered
+        data.ClaimedAchievements = data.ClaimedAchievements or {}
+        if Utils.TableContains(data.Achievements, challengeId) then
+            entry = {
+                progress = challengeDef.target,
+                claimed  = data.ClaimedAchievements[challengeId] == true,
+            }
+            lifetimeEntry = true
+        end
     end
 
     if not entry then return false, "Challenge not active" end
@@ -188,9 +205,10 @@ function ChallengeService.ClaimReward(player, challengeId)
     if rewards.coins then
         data.EmberCoins = (data.EmberCoins or 0) + rewards.coins
     end
+    local leveled, newLevel
     if rewards.xp then
         local ProgressionService = require(script.Parent.ProgressionService)
-        ProgressionService.AddPlayerXP(player, rewards.xp)
+        leveled, newLevel = ProgressionService.AddPlayerXP(player, rewards.xp)
     end
     if rewards.materials then
         for _, mat in ipairs(rewards.materials) do
@@ -220,9 +238,10 @@ function ChallengeService.ClaimReward(player, challengeId)
     end
 
     entry.claimed = true
+    if lifetimeEntry then data.ClaimedAchievements[challengeId] = true end
     PlayerDataService.MarkDirty(player)
 
-    return true, rewards
+    return true, rewards, (leveled and newLevel or nil)
 end
 
 return ChallengeService
