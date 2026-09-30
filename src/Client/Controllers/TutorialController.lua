@@ -48,7 +48,7 @@ local function Build()
     tracker.Name = "Tracker"
     tracker.AnchorPoint = Vector2.new(0.5, 0)
     tracker.Size = UDim2.new(0, 400, 0, 70)
-    tracker.Position = UDim2.new(0.5, 0, 0, 96)
+    tracker.Position = UDim2.new(0.5, 0, 0, 12)
     tracker.BackgroundColor3 = Theme.Colors.Panel
     tracker.BackgroundTransparency = 0.05
     tracker.BorderSizePixel = 0

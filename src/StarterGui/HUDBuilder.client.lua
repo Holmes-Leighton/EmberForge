@@ -13,39 +13,23 @@ gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.IgnoreGuiInset = false
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- ── Top bar ───────────────────────────────────────────────────────────────────
-local topBar = Instance.new("Frame")
-topBar.Name = "TopBar"
-topBar.Size = UDim2.new(1, 0, 0, 48)
-topBar.Position = UDim2.new(0, 0, 0, 0)
-topBar.BackgroundColor3 = Theme.Colors.Background
-topBar.BackgroundTransparency = 0.15
-topBar.BorderSizePixel = 0
-topBar.Parent = gui
-
-Theme.AddCorner(topBar, UDim.new(0, 0))  -- no radius on top bar
-
--- gradient
-local grad = Instance.new("UIGradient")
-grad.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Theme.Colors.Panel),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 8, 6)),
-})
-grad.Rotation = 90
-grad.Parent = topBar
-
 -- ── MainFrame (controller reference point) ────────────────────────────────────
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(1, 0, 0, 48)
-mainFrame.BackgroundTransparency = 1
-mainFrame.Parent = topBar
+mainFrame.AnchorPoint = Vector2.new(0, 0.5)
+mainFrame.Size = UDim2.new(0, 132, 0, 5 * 36 + 12)
+mainFrame.Position = UDim2.new(0, 8, 0.5, 0)
+mainFrame.BackgroundColor3 = Theme.Colors.Panel
+mainFrame.BackgroundTransparency = 0.15
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = gui
+Theme.AddCorner(mainFrame, Theme.Corner.Large)
 
 -- Player Level
 local playerLevelLabel = Instance.new("TextLabel")
 playerLevelLabel.Name = "PlayerLevelLabel"
-playerLevelLabel.Size = UDim2.new(0, 110, 0, 44)
-playerLevelLabel.Position = UDim2.new(0, 8, 0, 2)
+playerLevelLabel.Size = UDim2.new(1, -20, 0, 32)
+playerLevelLabel.Position = UDim2.new(0, 12, 0, 6)
 playerLevelLabel.BackgroundTransparency = 1
 playerLevelLabel.Text = "Level 1"
 playerLevelLabel.TextColor3 = Theme.Colors.Gold
@@ -57,8 +41,8 @@ playerLevelLabel.Parent = mainFrame
 -- Forge Level
 local forgeLevelLabel = Instance.new("TextLabel")
 forgeLevelLabel.Name = "ForgeLevelLabel"
-forgeLevelLabel.Size = UDim2.new(0, 110, 0, 44)
-forgeLevelLabel.Position = UDim2.new(0, 118, 0, 2)
+forgeLevelLabel.Size = UDim2.new(1, -20, 0, 32)
+forgeLevelLabel.Position = UDim2.new(0, 12, 0, 42)
 forgeLevelLabel.BackgroundTransparency = 1
 forgeLevelLabel.Text = "Forge 1"
 forgeLevelLabel.TextColor3 = Theme.Colors.Ember
@@ -70,8 +54,8 @@ forgeLevelLabel.Parent = mainFrame
 -- Ember Coins
 local coinsLabel = Instance.new("TextLabel")
 coinsLabel.Name = "CoinsLabel"
-coinsLabel.Size = UDim2.new(0, 120, 0, 44)
-coinsLabel.Position = UDim2.new(0, 228, 0, 2)
+coinsLabel.Size = UDim2.new(1, -20, 0, 32)
+coinsLabel.Position = UDim2.new(0, 12, 0, 78)
 coinsLabel.BackgroundTransparency = 1
 coinsLabel.Text = "200 ⚡"
 coinsLabel.TextColor3 = Theme.Colors.Gold
@@ -83,8 +67,8 @@ coinsLabel.Parent = mainFrame
 -- Golem Slots
 local golemSlotsLabel = Instance.new("TextLabel")
 golemSlotsLabel.Name = "GolemSlotsLabel"
-golemSlotsLabel.Size = UDim2.new(0, 100, 0, 44)
-golemSlotsLabel.Position = UDim2.new(0, 348, 0, 2)
+golemSlotsLabel.Size = UDim2.new(1, -20, 0, 32)
+golemSlotsLabel.Position = UDim2.new(0, 12, 0, 114)
 golemSlotsLabel.BackgroundTransparency = 1
 golemSlotsLabel.Text = "3 Slots"
 golemSlotsLabel.TextColor3 = Theme.Colors.TextSecondary
@@ -96,8 +80,8 @@ golemSlotsLabel.Parent = mainFrame
 -- Mastery (highest element mastery across all elements)
 local masteryLabel = Instance.new("TextLabel")
 masteryLabel.Name = "MasteryLabel"
-masteryLabel.Size = UDim2.new(0, 90, 0, 44)
-masteryLabel.Position = UDim2.new(0, 448, 0, 2)
+masteryLabel.Size = UDim2.new(1, -20, 0, 32)
+masteryLabel.Position = UDim2.new(0, 12, 0, 150)
 masteryLabel.BackgroundTransparency = 1
 masteryLabel.Text = "M: Lv 0"
 masteryLabel.TextColor3 = Color3.fromRGB(160, 120, 220)
@@ -106,7 +90,7 @@ masteryLabel.TextSize = 13
 masteryLabel.TextXAlignment = Enum.TextXAlignment.Left
 masteryLabel.Parent = mainFrame
 
--- ── Right-side nav buttons ────────────────────────────────────────────────────
+-- ── Right-hand nav sidebar ────────────────────────────────────────────────────
 local navData = {
     { name = "InventoryButton",   label = "🎒 Inventory",  targetGui = "InventoryMenu"   },
     { name = "ForgeButton",       label = "🔥 Forge",      targetGui = "ForgeMenu"       },
