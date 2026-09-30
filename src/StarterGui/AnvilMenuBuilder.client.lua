@@ -224,6 +224,12 @@ local function ShowPreview(bp)
     previewModel = GolemModel.Build(bp.element, bp.tier)
     previewModel.Parent = viewport
     previewPivot = previewModel:GetPivot().Position       -- spin on the spot, don't drift to the origin
+    -- Frame whatever was built (a 13-stud Dragonbone, a high tier, wings and a halo ...): the camera backs off
+    -- far enough that a sphere around the model, however it spins, fits inside the view.
+    local box, size = previewModel:GetBoundingBox()
+    local reach = size.Magnitude / 2 + 2 * (box.Position - previewPivot).Magnitude
+    local dist = reach / math.sin(math.rad(camera.FieldOfView / 2)) * 1.05
+    camera.CFrame = CFrame.lookAt(box.Position + Vector3.new(0, reach * 0.12, -dist), box.Position)
 end
 
 local function RenderDetail()

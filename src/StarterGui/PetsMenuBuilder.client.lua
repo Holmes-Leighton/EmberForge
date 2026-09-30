@@ -246,11 +246,13 @@ ShowReveal = function(pet)
         model.Parent = viewport
         local box, size = model:GetBoundingBox()
         local centre = box.Position
-        local dist = math.max(size.X, size.Y, size.Z) * 1.9 + 1
+        -- far enough back that the whole pet (wings, halo, cape and all) fits as the camera orbits it
+        local reach = size.Magnitude / 2
+        local dist = reach / math.sin(math.rad(vpCam.FieldOfView / 2)) * 1.0
         local angle = 0
         spinConn = RunService.RenderStepped:Connect(function(dt)
             angle += dt * 1.2
-            vpCam.CFrame = CFrame.lookAt(centre + Vector3.new(math.sin(angle) * dist, size.Y * 0.15, math.cos(angle) * dist), centre)
+            vpCam.CFrame = CFrame.lookAt(centre + Vector3.new(math.sin(angle) * dist, reach * 0.15, math.cos(angle) * dist), centre)
         end)
     end
     local rc = Theme.Colors[def.rarity] or Theme.Colors.AccentBright
