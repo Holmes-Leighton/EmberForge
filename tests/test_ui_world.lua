@@ -111,7 +111,7 @@ expect(cave ~= nil, "a Cave folder exists")
 expect(countNamed(cave, "ArchLintel") == 6, "six tunnel arches, one per zone (" .. countNamed(cave, "ArchLintel") .. ")")
 expect(countNamed(cave, "Ceiling") >= 1 and countNamed(cave, "WallWest") >= 1 and countNamed(cave, "WallEast") >= 1, "the hub has walls and a ceiling")
 expect(countNamed(cave, "ChamberWall") == 7, "zone caves are separated by walls (" .. countNamed(cave, "ChamberWall") .. ")")
-expect(countNamed(cave, "StalactiteBase") > 50, "stalactites hang from the ceiling")
+expect(countNamed(cave, "Stalactite") > 250, "stalactites hang from the ceiling")
 expect(world:FindFirstChild("PadPlaza") ~= nil, "pad plaza exists")
 for _, id in ipairs({ "EmberDepths", "GlacialPeaks", "TheDeepForge" }) do
     expect(countNamed(world:FindFirstChild("Zone_" .. id), "ArchTrim") == 3, id .. " has a glowing tunnel mouth")

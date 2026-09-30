@@ -31,7 +31,7 @@ local function Part(props, parent)
     return p
 end
 
-local function Sign(parent, text, subText, position, color)
+local function Sign(parent, text, subText, position, color, maxDistance)
     local anchor = Part({
         Name = "SignAnchor", Size = Vector3.new(1, 1, 1), Transparency = 1,
         CanCollide = false, CFrame = CFrame.new(position),
@@ -39,7 +39,7 @@ local function Sign(parent, text, subText, position, color)
     local bb = Instance.new("BillboardGui")
     bb.Size = UDim2.new(0, 320, 0, 90)
     bb.AlwaysOnTop = false
-    bb.MaxDistance = 250
+    bb.MaxDistance = maxDistance or 140      -- fades out at range so signs never pile up on top of each other
     bb.Parent = anchor
 
     local title = Instance.new("TextLabel")
@@ -86,7 +86,7 @@ local function BuildStarterStation(world)
     local glow = Instance.new("PointLight")
     glow.Color = Color3.fromRGB(255, 140, 50); glow.Range = 24; glow.Parent = anvil
     Sign(world, "Golem Anvil", "Press E to choose a Golem to forge",
-        Vector3.new(0, 13, -100), Color3.fromRGB(255, 170, 60))
+        Vector3.new(0, 13, -100), Color3.fromRGB(255, 170, 60), 55)
 
     -- The menu itself is client-side: AnvilMenuBuilder opens when this prompt fires
     local prompt = AddPrompt(anvil, "Use Anvil", "Golem Anvil", 0)
@@ -688,8 +688,11 @@ local function BuildPadPlaza(world)
     Part({ Name = "PlazaFloor", Material = Enum.Material.Basalt, Color = Color3.fromRGB(38, 32, 34), Size = Vector3.new(330, 0.5, 108),
         CFrame = CFrame.new(0, 0.25, -162) }, plaza)
     for _, dz in ipairs({ -54, 54 }) do
-        Part({ Name = "PlazaEdge", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 170, 60), Size = Vector3.new(330, 0.3, 1.2),
-            CFrame = CFrame.new(0, 0.6, -162 + dz), CanCollide = false }, plaza)
+        -- a dashed run of light, not one hard 330-stud line across the horizon
+        for x = -150, 150, 25 do
+            Part({ Name = "PlazaEdge", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 170, 60), Transparency = 0.25,
+                Size = Vector3.new(14, 0.3, 1.2), CFrame = CFrame.new(x, 0.6, -162 + dz), CanCollide = false }, plaza)
+        end
     end
     -- gateway over the plaza entrance
     for _, dx in ipairs({ -30, 30 }) do
@@ -749,9 +752,20 @@ local function BuildScenery(world)
         if not (inPlots or onRoad or inPads or nearSpawn or inTunnels) then
             local roll = rng:NextNumber()
             if roll < 0.45 then
-                local h = rng:NextInteger(6, 22)
-                Part({ Name = "Stalagmite", Material = Enum.Material.Slate, Color = Color3.fromRGB(88, 78, 72), Size = Vector3.new(rng:NextInteger(3, 6), h, rng:NextInteger(3, 6)),
-                    CFrame = CFrame.new(x, h / 2, z) * CFrame.Angles(rng:NextNumber(-0.12, 0.12), rng:NextNumber(0, 6), rng:NextNumber(-0.12, 0.12)) }, folder)
+                -- tapered: four narrowing segments, like the stalactites above
+                local h = rng:NextInteger(8, 26)
+                local w = rng:NextInteger(4, 8)
+                local lean = rng:NextNumber(-0.05, 0.05)
+                local tint = rng:NextNumber()
+                local y = 0
+                for i = 1, 4 do
+                    local segH = h / 4
+                    local segW = w * (1 - (i - 1) * 0.24)
+                    Part({ Name = "Stalagmite", Material = Enum.Material.Sandstone,
+                        Color = Color3.fromRGB(104, 66, 50):Lerp(Color3.fromRGB(150, 96, 68), tint),
+                        Size = Vector3.new(segW, segH + 0.4, segW), CFrame = CFrame.new(x + lean * (i - 1) * segH, y + segH / 2, z) }, folder)
+                    y += segH
+                end
             elseif roll < 0.8 then
                 local c = palette[rng:NextInteger(1, #palette)]
                 local h = rng:NextInteger(4, 11)
@@ -975,7 +989,7 @@ function WorldBuilder.Build()
 
     Sign(world, "Welcome to EmberForge",
         "1) Stand on the Starter Pad  2) Press E at the Golem Anvil to forge a Golem  3) Deploy it in the Forge menu",
-        Vector3.new(0, 22, -60), Color3.fromRGB(255, 170, 60))
+        Vector3.new(0, 22, -60), Color3.fromRGB(255, 170, 60), 70)
 
     BuildStarterStation(world)
     BuildPadPlaza(world)

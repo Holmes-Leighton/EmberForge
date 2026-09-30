@@ -74,7 +74,7 @@ local function BuildZone(player, plotIndex)
     billboard.Name        = "PlotSign"
     billboard.Size        = UDim2.new(0, 260, 0, 56)
     billboard.StudsOffset = Vector3.new(0, ZONE_SIZE.Y / 2 + 4, 0)
-    billboard.MaxDistance = 300
+    billboard.MaxDistance = 150
     billboard.AlwaysOnTop = false
     billboard.Parent      = part
 
