@@ -13,7 +13,7 @@ local TutorialController = {}
 
 local STEPS = {
     { title = "Stand on the Starter Pad", hint = "Walk south to the glowing Starter Pad and stand on it. It mines for you: you need 10 Basic Ore and 5 Coal." },
-    { title = "Forge your first Golem", hint = "Take them to the Golem Anvil and hold E. You'll get a random Tier 1 Golem!" },
+    { title = "Forge your first Golem", hint = "Walk to the Golem Anvil near spawn and press E. Pick a Golem from the list and press Forge." },
     { title = "Deploy your Golem",    hint = "Open the 🔥 Forge menu (right sidebar) and send your Golem to its mining zone." },
     { title = "Collect resources",    hint = "Golems mine on their own. Watch the totals build up above the button, then press ⛏ Collect." },
 }
@@ -22,7 +22,7 @@ local HOW_TO_PLAY = table.concat({
     "EmberForge is an idle crafting game. Your Golems mine while you play, and while you're away.",
     "",
     "1.  Stand on the glowing Starter Pad south of spawn. It mines for you (10 Basic Ore + 5 Coal is enough for a Golem).",
-    "2.  Hold E at the Golem Anvil to forge your first Golem. Its element is random!",
+    "2.  Press E at the Golem Anvil, pick a Golem you like, and forge it.",
     "3.  Open the 🔥 Forge menu and deploy it to a mining zone, then press ⛏ Collect Resources.",
     "4.  Craft more Golems from blueprints. Each new element unlocks a new mining zone.",
     "5.  Level up to unlock stronger pads (3x, 5x, 10x). Finish 📋 Challenges, trade in the 🏪 Market, check 🏆 Leaders.",
