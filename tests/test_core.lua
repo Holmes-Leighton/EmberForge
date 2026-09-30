@@ -137,12 +137,52 @@ do
     local Shop2 = load("SSS/EmberForge/Services/ShopService")
     Shop2.OnPlayerAdded(p3)
     expect(d3.UnlockedPads.Iron == true, "passes already owned on Roblox unlock on join")
-    expect(Shop2.RefreshPadPasses(p3) == false, "nothing new to unlock the second time")
+    expect(Shop2.RefreshPasses(p3) == false, "nothing new to unlock the second time")
+
+    -- other permanent unlocks are passes too, and can't be granted twice
+    Product.GamePasses.Storage24h.id = 901
+    Product.GamePasses.Skin_Ember.id = 902
+    d3.StorageTier = 0; d3.OwnedCosmetics = {}
+    MPS.FireGamePassFinished(p3, 901, true)
+    expect(d3.StorageTier == 2, "the Storage pass gives 24h storage")
+    MPS.FireGamePassFinished(p3, 902, true)
+    MPS.FireGamePassFinished(p3, 902, true)
+    local skins = 0
+    for _, id in ipairs(d3.OwnedCosmetics) do if id == "ForgeSkin_Ember" then skins += 1 end end
+    expect(skins == 1, "a forge skin pass adds the skin exactly once")
+    expect(Product.Products.StorageExpansion == nil and Product.Products.ForgeSkin_Ember == nil, "permanent items are no longer Developer Products")
+    expect(Shop2.GrantPass(p3, "Storage24h", false) == false, "granting an owned pass does nothing")
+
+    -- contextual offers
+    local RE = load("game/ReplicatedStorage/Shared/Modules/RemoteEvents")
+    local offers = {}
+    RE.ShopOffer = { FireClient = function(_, _, kind, key, reason) table.insert(offers, key) end }
+    d3.StorageTier = 0
+    expect(Shop2.Offer(p3, "pass", "Storage24h", "why") == true and offers[1] == "Storage24h", "an offer is sent when it is useful")
+    expect(Shop2.Offer(p3, "pass", "Storage24h", "again") == false, "the same offer is not repeated straight away")
+    expect(Shop2.Offer(p3, "product", "SpeedUp_x10", "x") == false, "offers are limited to one every few minutes")
+    d3.StorageTier = 2
+    expect(Shop2.Offer(p3, "pass", "Storage24h", "owned") == false, "never offers what they already own")
+    Product.GamePasses.Storage24h.id = 0
+    expect(Shop2.Offer(p3, "pass", "Storage24h", "unset") == false, "never offers something not on sale")
 
     d3.UnlockedPads = {}; d3.PlayerLevel = 10
     expect(PadService.CanUse(p3, pad("Iron"), d3) == true, "levelling up still unlocks pads for free")
     d3.PlayerLevel = 1; d3.UnlockedPads = {}
     MPS._owned = {}
+end
+
+print("== Premium bonus")
+do
+    local CS = load("SSS/EmberForge/Services/ChallengeService")
+    local pp = newPlayer(31, "Prem"); local dp = PDS.Load(pp)
+    pp.MembershipType = Enum.MembershipType.Premium
+    dp.LastDailyReset = 0; dp.EmberCoins = 0; dp.SpeedUps = 0
+    local r = CS.CheckResets(pp)
+    local pn = newPlayer(32, "Norm"); local dn = PDS.Load(pn)
+    dn.LastDailyReset = 0; dn.EmberCoins = 0; dn.SpeedUps = 0
+    CS.CheckResets(pn)
+    expect(r.premium and dp.EmberCoins > dn.EmberCoins and dp.SpeedUps == 1 and dn.SpeedUps == 0, "Roblox Premium members get extra daily coins and a free Speed-Up")
 end
 
 print("== slots")

@@ -41,15 +41,16 @@ function ShopController._SetupShopGui()
 
     wireBtn("SpeedUpx1Btn",          "SpeedUp_x1")
     wireBtn("SpeedUpx10Btn",         "SpeedUp_x10")
-    wireBtn("StorageExpansionBtn",   "StorageExpansion")
     wireBtn("SlotBoostBtn",          "SlotBoost_7d")
     wireBtn("MaterialMagnetBtn",     "MaterialMagnet")
     wireBtn("EventCatalystBtn",      "EventCatalyst")
     wireBtn("StandardPassBtn",       "SeasonPass_Standard")
     wireBtn("PremiumPassBtn",        "SeasonPass_Premium")
 
-    -- Mining pads are Game Passes
-    for _, name in ipairs({ "PadCopperBtn", "PadIronBtn", "PadGoldBtn" }) do
+    -- Permanent unlocks are Game Passes
+    local storageBtn = shopGui:FindFirstChild("StorageExpansionBtn", true)
+    if storageBtn then storageBtn:SetAttribute("PassKey", "Storage24h") end
+    for _, name in ipairs({ "StorageExpansionBtn", "PadCopperBtn", "PadIronBtn", "PadGoldBtn" }) do
         local btn = shopGui:FindFirstChild(name, true)
         if btn and btn:IsA("TextButton") then
             btn.MouseButton1Click:Connect(function()
@@ -74,19 +75,23 @@ function ShopController._SetupShopGui()
     end
 end
 
--- Buy a pad game pass (permanent). Roblox shows its own confirmation and receipt.
+-- Buy a game pass (permanent). Roblox shows its own confirmation and receipt.
 function ShopController._PromptPass(key)
     local pass = key and ProductData.GamePasses[key]
+    local HUD = require(script.Parent.HUDController)
     if not pass or not ProductData.PassIsAvailable(key) then
-        require(script.Parent.HUDController).ShowNotification("Not available yet",
-            (pass and pass.displayName or tostring(key)) .. " isn't on sale yet.")
+        HUD.ShowNotification("Not available yet", (pass and pass.displayName or tostring(key)) .. " isn't on sale yet.")
+        return
+    end
+    if ProductData.PassOwned(pass, ShopController._data) then
+        HUD.ShowNotification("You already own this", pass.displayName)
         return
     end
     local ok, err = pcall(function() MarketplaceService:PromptGamePassPurchase(LocalPlayer, pass.id) end)
     if not ok then warn("[ShopController] Pass prompt failed: " .. tostring(err)) end
 end
 
--- Show which pads are already yours (bought, or unlocked by level)
+-- Show what is already yours in the Shop (bought, or unlocked by level for pads)
 function ShopController.RefreshPads()
     if not shopGui then return end
     local PadData = require(game.ReplicatedStorage.Shared.Data.PadData)
@@ -94,26 +99,34 @@ function ShopController.RefreshPads()
     if fresh then ShopController._data = fresh end
     local data = ShopController._data
     if not data then return end
+    local function state(btn, owned, byLevel)
+        if not btn then return end
+        if owned then
+            btn.Text, btn.Active, btn.BackgroundColor3 = "Owned", false, Theme.Colors.Success
+        elseif byLevel then
+            btn.Text, btn.Active, btn.BackgroundColor3 = "Unlocked by level", false, Theme.Colors.PanelAlt
+        else
+            btn.Text, btn.Active = (btn:GetAttribute("Price") or "") .. " - Unlock", true
+        end
+    end
     for _, def in ipairs(PadData.Pads) do
-        local key = ProductData.PassForPad(def.id)
-        local btn = key and shopGui:FindFirstChild("Pad" .. def.id .. "Btn", true)
-        if btn then
-            if (data.UnlockedPads or {})[def.id] then
-                btn.Text = "Owned"
-                btn.Active = false
-                btn.BackgroundColor3 = Theme.Colors.Success
-            elseif (data.PlayerLevel or 1) >= (def.minLevel or 1) then
-                btn.Text = "Unlocked by level"
-                btn.Active = false
-                btn.BackgroundColor3 = Theme.Colors.PanelAlt
-            else
-                btn.Text = btn:GetAttribute("Price") .. " - Unlock"
-                btn.Active = true
-            end
+        local key, pass = ProductData.PassForPad(def.id)
+        if key then
+            state(shopGui:FindFirstChild("Pad" .. def.id .. "Btn", true), ProductData.PassOwned(pass, data),
+                (data.PlayerLevel or 1) >= (def.minLevel or 1))
+        end
+    end
+    local storage = shopGui:FindFirstChild("StorageExpansionBtn", true)
+    if storage then
+        if ProductData.PassOwned(ProductData.GamePasses.Storage24h, data) then
+            state(storage, true)
+        else
+            storage.Text, storage.Active = "299 R$", true
         end
     end
 end
 
+-- Buy a Developer Product (consumables, timed boosts, season passes)
 function ShopController._Prompt(productKey)
     local product = ProductData.Products[productKey]
     if not product or not ProductData.IsAvailable(productKey) then
@@ -121,9 +134,16 @@ function ShopController._Prompt(productKey)
             (product and product.displayName or productKey) .. " isn't on sale yet.")
         return
     end
-    local productId = product.id
+    -- Don't let someone pay twice for a season pass they already hold
+    local held = (ShopController._data and ShopController._data.SeasonPassTier) or 0
+    local wanted = (productKey == "SeasonPass_Premium" and SeasonData.PassTier.Premium)
+        or (productKey == "SeasonPass_Standard" and SeasonData.PassTier.Standard) or nil
+    if wanted and held >= wanted then
+        require(script.Parent.HUDController).ShowNotification("You already have this", product.displayName)
+        return
+    end
     local ok, err = pcall(function()
-        MarketplaceService:PromptProductPurchase(LocalPlayer, productId)
+        MarketplaceService:PromptProductPurchase(LocalPlayer, product.id)
     end)
     if not ok then
         warn("[ShopController] Prompt failed: " .. tostring(err))

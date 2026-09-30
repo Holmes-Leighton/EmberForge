@@ -19,6 +19,7 @@ local TutorialController     = require(script.Controllers.TutorialController)
 local GolemAnimator          = require(script.Controllers.GolemAnimator)
 local SoundController        = require(script.Controllers.SoundController)
 local BadgeController        = require(script.Controllers.BadgeController)
+local OfferController        = require(script.Controllers.OfferController)
 
 -- Fetch initial data from server
 -- The server may still be loading our save when we arrive: keep asking for a while
@@ -48,6 +49,7 @@ TutorialController.Init(playerData)
 GolemAnimator.Init()
 SoundController.Init()
 BadgeController.Init()
+OfferController.Init()
 
 -- ── Global event listeners ────────────────────────────────────────────────────
 

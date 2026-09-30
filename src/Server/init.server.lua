@@ -53,6 +53,16 @@ local function OnPlayerAdded(player)
 
     -- Calculate and apply offline production
     local gains, elapsed = IdleEngine.CalculateOfflineProduction(data)
+    local capSeconds = IdleEngine.StorageCapSeconds(data.StorageTier or 0)
+    if elapsed and elapsed > capSeconds and (data.StorageTier or 0) < 2 then
+        task.delay(8, function()
+            if player.Parent then
+                ShopService.Offer(player, "pass", "Storage24h", string.format(
+                    "You were away %d hours but your storage only holds %d. Hold up to 24?",
+                    math.floor(elapsed / 3600), math.floor(capSeconds / 3600)))
+            end
+        end)
+    end
     if elapsed and elapsed > 60 then
         -- Offline haul goes into the pending pool so the player collects it with the button
         for matId, qty in pairs(gains) do
@@ -77,6 +87,9 @@ local function OnPlayerAdded(player)
     local resets = ChallengeService.CheckResets(player)
     if resets.daily then
         RemoteEvents.DailyReward:FireClient(player, resets.coins or GameConfig.DAILY_COIN_REWARD)
+        if resets.premium then
+            RemoteEvents.Notify:FireClient(player, "Premium bonus", "+25% daily coins and a free Speed-Up. Thanks for being Premium!")
+        end
     end
 
     -- Check slot milestones

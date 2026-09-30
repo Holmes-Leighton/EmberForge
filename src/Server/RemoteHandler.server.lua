@@ -125,6 +125,9 @@ RemoteEvents.StartSmelt.OnServerEvent:Connect(function(player, materialId, quant
             RemoteEvents.SmeltQueued:FireClient(player, job)
         else
             RemoteEvents.SmeltQueued:FireClient(player, nil, err)
+            if err == "Smelt queue full" then
+                ShopService.Offer(player, "product", "SpeedUp_x1", "Smelter's full. Skip the wait with a Speed-Up?")
+            end
         end
     end)
 end)
@@ -217,6 +220,9 @@ RemoteEvents.DeployGolem.OnServerEvent:Connect(function(player, golemId, zoneId)
         if type(golemId) ~= "string" or type(zoneId) ~= "string" then return end
 
         local ok, err = GolemService.DeployGolem(player, golemId, zoneId)
+        if not ok and err == "No free deployment slots" then
+            ShopService.Offer(player, "product", "SlotBoost_7d", "All your deploy slots are busy. Add one for a week?")
+        end
         if ok then
             ChallengeService.TrackEvent(player, "GolemDeploy", { count = 1 })
             Analytics.Funnel(player, PlayerDataService.Get(player), "deploy", 3, "FirstGolemDeployed")

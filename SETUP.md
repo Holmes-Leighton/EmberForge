@@ -12,8 +12,8 @@ In Studio the game uses an in-memory save (a `[SafeDataStore]` warning appears) 
 |---|---|
 | Publish the place, then Game Settings → Security → **Enable Studio Access to API Services** | Studio |
 | Set **Max Players = 20** | Game Settings → Players |
-| Create three **Game Passes** (Monetization → Passes) named Copper Pad (149 R$), Iron Pad (299 R$), Gold Pad (599 R$) and paste their ids into `ProductData.GamePasses`. Players who own one get the pad forever; stepping onto a locked pad offers the purchase, and they are also listed in the Shop | Creator Dashboard → Monetization → Passes |
-| Create the **Developer Products** and paste each numeric id into `src/Shared/Data/ProductData.lua` (id = 0 means "not for sale yet"). | Creator Dashboard → Monetization |
+| Create these **Game Passes** (Monetization → Passes) and paste each id into `ProductData.GamePasses` (id 0 = not for sale): Copper Pad 149, Iron Pad 299, Gold Pad 599, Storage Expansion 299, and Forge Skins Basic 200 / Ember, Frost, Storm 300 / Void 400 (R$). They are permanent, restored on every server, and can't be bought twice | Creator Dashboard → Monetization → Passes |
+| Create the **Developer Products** (Speed-Ups, Slot Boost, Material Magnet, Event Catalyst, Season Passes) and paste each numeric id into `ProductData.Products` (id = 0 means "not for sale yet"). Season passes stay Developer Products because each season ends; the client refuses a second purchase of a tier already held | Creator Dashboard → Monetization |
 | Add admin UserIds (the place owner and Studio are admins automatically) | `GameConfig.ADMIN_USER_IDS` |
 | Add audio (your own or properly licensed; ids are 0 = silent) | `src/Shared/Data/AudioData.lua` |
 | Season dates are UTC timestamps for 2026 | `src/Shared/Data/SeasonData.lua` |

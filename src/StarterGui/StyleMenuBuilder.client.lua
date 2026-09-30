@@ -178,20 +178,20 @@ local function Reload()
     if tab == "Store" then
         Note("Cosmetics are visual only: they never change stats. Everything here is optional.", 30)
         local keys = {}
-        for key, p in pairs(ProductData.Products) do
+        for key, p in pairs(ProductData.GamePasses) do
             if p.cosmeticId then table.insert(keys, key) end
         end
         table.sort(keys)
         for _, key in ipairs(keys) do
-            local p = ProductData.Products[key]
+            local p = ProductData.GamePasses[key]
             local d = CosmeticData.Describe(p.cosmeticId)
-            local owned = false
-            for _, id in ipairs(data.OwnedCosmetics or {}) do if id == p.cosmeticId then owned = true end end
-            Row(p.displayName, d.label .. ": " .. CosmeticData.Blurb(p.cosmeticId) .. "  -  " .. p.robux .. " Robux", d.color,
-                owned and "Owned" or (ProductData.IsAvailable(key) and "Buy" or "Coming soon"),
+            local owned = ProductData.PassOwned(p, data)
+            Row(p.displayName, d.label .. ": " .. CosmeticData.Blurb(p.cosmeticId) .. "  -  " .. p.robux .. " Robux",
+                d.color,
+                owned and "Owned" or (ProductData.PassIsAvailable(key) and "Buy" or "Coming soon"),
                 owned and Theme.Colors.PanelAlt or Theme.Colors.Accent,
-                function() pcall(function() MarketplaceService:PromptProductPurchase(LocalPlayer, p.id) end) end,
-                not owned and ProductData.IsAvailable(key))
+                function() pcall(function() MarketplaceService:PromptGamePassPurchase(LocalPlayer, p.id) end) end,
+                not owned and ProductData.PassIsAvailable(key))
         end
         return
     end

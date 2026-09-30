@@ -275,6 +275,31 @@ do
     for _, t in ipairs(stack:GetChildren()) do if t.Name == "Toast" then t:Destroy() end end
 end
 
+print("== Contextual offers")
+do
+    local Offer = load("SPS/EmberForge/Controllers/OfferController")
+    local realDelay = task.delay
+    task.delay = function() end          -- the test environment runs delays at once; keep the card up
+    Offer.Show("pass", "Storage24h", "You were away 9 hours but storage holds 4.")
+    local og = gui("OfferGui")
+    local ocard = og and og:FindFirstChild("OfferCard")
+    expect(ocard ~= nil, "an offer card appears")
+    expect(ocard:FindFirstChild("OfferBuy").Text:find("299") ~= nil, "it shows the price")
+    expect(ocard:FindFirstChild("OfferReason").Text:find("away") ~= nil, "it says why")
+    click(ocard:FindFirstChild("OfferLater"))
+    expect(og:FindFirstChild("OfferCard") == nil, "Later dismisses it")
+    Offer.Show("product", "SlotBoost_7d", "All slots busy.")
+    expect(og:FindFirstChild("OfferCard"):FindFirstChild("OfferBuy").Text:find("149") ~= nil, "product offers work too")
+    click(og:FindFirstChild("OfferCard"):FindFirstChild("OfferLater"))
+    Offer.Show("pass", "NoSuchPass", "x")
+    expect(og:FindFirstChild("OfferCard") == nil, "unknown offers are ignored")
+    task.delay = realDelay
+    Snapshot.StorageTier = 2
+    ShopController.RefreshPads()
+    expect(gui("ShopMenu"):FindFirstChild("StorageExpansionBtn", true).Text == "Owned", "Shop shows the storage upgrade as owned")
+    Snapshot.StorageTier = 0
+end
+
 print("== Hotbar and guide")
 local hud = gui("HUD")
 local hotbar = hud:FindFirstChild("Hotbar")

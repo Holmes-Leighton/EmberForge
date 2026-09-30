@@ -71,6 +71,7 @@ local DEFINITIONS = {
     EquipCosmetic       = "event",   -- client → server (slot, id or nil)
     SetForgeAccess      = "event",   -- client → server (friendsOnly: boolean)
     GoToMyForge         = "event",   -- client → server
+    ShopOffer           = "event",   -- server → client: (kind, key, reason) a contextual purchase offer
 
     -- Season Pass
     ClaimSeasonReward   = "event",

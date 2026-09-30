@@ -31,11 +31,6 @@ end
 PRODUCT_HANDLERS.SpeedUp_x1  = function(player) return withData(player, function(d) d.SpeedUps = (d.SpeedUps or 0) + 1  end) end
 PRODUCT_HANDLERS.SpeedUp_x10 = function(player) return withData(player, function(d) d.SpeedUps = (d.SpeedUps or 0) + 10 end) end
 
--- ── Storage expansion: permanent 24h offline cap ──────────────────────────────
-PRODUCT_HANDLERS.StorageExpansion = function(player)
-    return withData(player, function(d) d.StorageTier = 2 end)
-end
-
 -- ── Temporary Golem slot boost (7 days) ───────────────────────────────────────
 PRODUCT_HANDLERS.SlotBoost_7d = function(player)
     return withData(player, function(d)
@@ -69,48 +64,46 @@ PRODUCT_HANDLERS.SeasonPass_Premium = function(player)
     return withData(player, function(d) d.SeasonPassTier = SeasonData.PassTier.Premium end)
 end
 
--- ── Cosmetics ─────────────────────────────────────────────────────────────────
-for key, product in pairs(ProductData.Products) do
-    if product.cosmeticId then
-        PRODUCT_HANDLERS[key] = function(player)
-            return withData(player, function(d)
-                d.OwnedCosmetics = d.OwnedCosmetics or {}
-                if not Utils.TableContains(d.OwnedCosmetics, product.cosmeticId) then
-                    table.insert(d.OwnedCosmetics, product.cosmeticId)
-                end
-            end)
+-- ── Game passes: permanent unlocks (pads, storage, forge skins) ───────────────
+local function ApplyPass(data, pass)
+    if pass.padId then
+        data.UnlockedPads = data.UnlockedPads or {}
+        data.UnlockedPads[pass.padId] = true
+    elseif pass.storageTier then
+        data.StorageTier = math.max(data.StorageTier or 0, pass.storageTier)
+    elseif pass.cosmeticId then
+        data.OwnedCosmetics = data.OwnedCosmetics or {}
+        if not Utils.TableContains(data.OwnedCosmetics, pass.cosmeticId) then
+            table.insert(data.OwnedCosmetics, pass.cosmeticId)
         end
     end
 end
 
--- ── Mining pads: permanent unlocks sold as Game Passes ───────────────────────
-local function GrantPad(player, padId, announce)
+-- Give a pass's reward once. Returns true only if something new was granted.
+function ShopService.GrantPass(player, key, announce)
+    local pass = ProductData.GamePasses[key]
     local data = PlayerDataService.Get(player)
-    if not data then return false end
-    data.UnlockedPads = data.UnlockedPads or {}
-    if data.UnlockedPads[padId] then return false end
-    data.UnlockedPads[padId] = true
+    if not pass or not data or ProductData.PassOwned(pass, data) then return false end
+    ApplyPass(data, pass)
     PlayerDataService.MarkDirty(player)
     if announce then
-        local _, pass = ProductData.PassForPad(padId)
-        RemoteEvents_Notify(player, "Pad unlocked!", (pass and pass.displayName or padId) .. " is yours forever.")
+        RemoteEvents_Notify(player, "Unlocked!", pass.displayName .. " is yours forever.")
         PlayerDataService.Save(player, true)
     end
     return true
 end
-ShopService.GrantPad = GrantPad
 
--- Ask Roblox which pad passes the player owns (covers passes bought on the game page or on another
--- server) and unlock them. `onlyPadId` limits the check to one pad. Returns true if anything unlocked.
-function ShopService.RefreshPadPasses(player, onlyPadId)
+-- Ask Roblox which passes the player owns (covers passes bought on the game page or on another
+-- server) and unlock them. `onlyKey` limits the check to one pass. True if anything unlocked.
+function ShopService.RefreshPasses(player, onlyKey)
     local any = false
-    for _, pass in pairs(ProductData.GamePasses) do
-        if pass.id ~= 0 and (not onlyPadId or pass.padId == onlyPadId) then
+    for key, pass in pairs(ProductData.GamePasses) do
+        if pass.id ~= 0 and (not onlyKey or key == onlyKey) then
             local data = PlayerDataService.Get(player)
             if not data then return any end
-            if not (data.UnlockedPads or {})[pass.padId] then
+            if not ProductData.PassOwned(pass, data) then
                 local ok, owns = pcall(function() return MarketplaceService:UserOwnsGamePassAsync(player.UserId, pass.id) end)
-                if ok and owns and GrantPad(player, pass.padId, false) then any = true end
+                if ok and owns and ShopService.GrantPass(player, key, false) then any = true end
             end
         end
     end
@@ -118,14 +111,42 @@ function ShopService.RefreshPadPasses(player, onlyPadId)
 end
 
 function ShopService.OnPlayerAdded(player)
-    task.spawn(function() ShopService.RefreshPadPasses(player) end)
+    task.spawn(function() ShopService.RefreshPasses(player) end)
 end
 
 if MarketplaceService.PromptGamePassPurchaseFinished then
     MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passId, wasPurchased)
         if not wasPurchased then return end
-        for _, pass in pairs(ProductData.GamePasses) do
-            if pass.id ~= 0 and pass.id == passId then GrantPad(player, pass.padId, true) end
+        for key, pass in pairs(ProductData.GamePasses) do
+            if pass.id ~= 0 and pass.id == passId then ShopService.GrantPass(player, key, true) end
+        end
+    end)
+end
+
+-- ── Contextual offers (the shop pops up when it's useful, like the big games do) ─
+-- kind = "pass" | "product". At most one offer every 3 minutes per player, and the same offer
+-- at most every 10 minutes. Never offers something that isn't on sale or is already owned.
+local lastAnyOffer, lastKeyOffer = {}, {}
+function ShopService.Offer(player, kind, key, reason)
+    local item = (kind == "pass" and ProductData.GamePasses[key]) or (kind == "product" and ProductData.Products[key]) or nil
+    if not item or item.id == 0 then return false end
+    local data = PlayerDataService.Get(player)
+    if not data then return false end
+    if kind == "pass" and ProductData.PassOwned(item, data) then return false end
+    local now, uid = os.clock(), player.UserId
+    if now - (lastAnyOffer[uid] or -1e9) < 180 then return false end
+    local k = uid .. ":" .. key
+    if now - (lastKeyOffer[k] or -1e9) < 600 then return false end
+    lastAnyOffer[uid], lastKeyOffer[k] = now, now
+    local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
+    if RemoteEvents.ShopOffer then RemoteEvents.ShopOffer:FireClient(player, kind, key, reason) end
+    return true
+end
+if Players.PlayerRemoving then
+    Players.PlayerRemoving:Connect(function(p)
+        lastAnyOffer[p.UserId] = nil
+        for k in pairs(lastKeyOffer) do
+            if k:sub(1, #tostring(p.UserId) + 1) == p.UserId .. ":" then lastKeyOffer[k] = nil end
         end
     end)
 end

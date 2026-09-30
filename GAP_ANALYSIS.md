@@ -53,6 +53,7 @@ challenges) · forge-milestone blueprints · tier unlock rules (3x T1 → T2, 2x
 | Analytics hooks, loading screen, audio framework | Done (audio silent until you add sounds) |
 | **Forge level advancements**: each Forge level adds permanent boosts (mining speed, carry capacity, luck, daily coins; +22% / +20% / +17% / +50% at level 10), shown in the Upgrades tab and the level-up banner. The forge plot was redesigned (courtyard, fence and gate, workshop that grows every level, vault building, Golem gallery, banners) and rebuilds itself when your Golems or gear change | Done (procedural, not yet seen in Studio) |
 | Only one main menu open at a time | Done |
+| **Robux model like Adopt Me / Grow a Garden**: permanent unlocks (pads, Storage, forge skins) are Game Passes, consumables/timed boosts are Developer Products, contextual offers (storage too small, no free slot, smelter full, locked pad), Premium bonus | Done in code; needs your pass/product ids |
 | **World: one enormous cavern hub with six tunnels to break-out zone caves; tiered, recognisable mining pads (plinth, giant multiplier, beam of light, gems)** | Done (procedural; never viewed in Studio) |
 | UX pass: chunky theme, bottom icon hotbar with hotkeys (F/B/M/Q/P), side icon column, pop-in windows, stacking toasts, "what next" arrow, press-E prompts on forge objects | Done (needs a Studio look; real icon art still needed) |
 | **Forge Supplier** (standard goods always in stock, daily limits, coin sink) and **notification badges** on the sidebar | Done |

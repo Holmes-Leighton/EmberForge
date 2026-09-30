@@ -71,6 +71,8 @@ local function StorageCapSeconds(storageTier)
     end
 end
 
+IdleEngine.StorageCapSeconds = StorageCapSeconds
+
 -- Returns a production summary for a single golem over `seconds` elapsed
 local function GolemProduction(golem, seconds, storageTier, playerData, stormBoost)
     if not golem.deployed or not golem.zoneId then return {} end

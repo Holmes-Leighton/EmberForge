@@ -218,7 +218,7 @@ local function Payout()
                 if os.clock() - (lastOffer[offerKey] or -1e9) > 30 then
                     lastOffer[offerKey] = os.clock()
                     task.spawn(function()
-                        if not require(script.Parent.ShopService).RefreshPadPasses(player, def.id) then
+                        if not require(script.Parent.ShopService).RefreshPasses(player, key) then
                             pcall(function() MarketplaceService:PromptGamePassPurchase(player, pass.id) end)
                         end
                     end)
