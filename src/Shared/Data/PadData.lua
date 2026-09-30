@@ -3,17 +3,21 @@
 local PadData = {}
 
 -- position is relative to the world origin (Y is the ground). Row 1 is right by spawn.
+-- The 1x / 3x / 9x / 25x / 100x ladder follows +1 Speed Keyboard Escape's treadmills (free,
+-- then 59 / 259 / 749 / 1,599 R$). Here a level also unlocks each pad for free.
 PadData.Pads = {
     { id = "Starter", displayName = "Starter Pad", multiplier = 1,   minLevel = 1,
-      color = Color3.fromRGB(200, 160, 110), x = 0,   z = -140 },
+      color = Color3.fromRGB(200, 160, 110), x = 0,    z = -140 },
     { id = "Copper",  displayName = "Copper Pad",  multiplier = 3,   minLevel = 5,
-      color = Color3.fromRGB(205, 127, 80),  x = -90, z = -185 },
-    { id = "Iron",    displayName = "Iron Pad",    multiplier = 5,   minLevel = 10,
-      color = Color3.fromRGB(160, 170, 185), x = -30, z = -185 },
-    { id = "Gold",    displayName = "Gold Pad",    multiplier = 10,  minLevel = 20,
-      color = Color3.fromRGB(255, 200, 60),  x = 30,  z = -185 },
-    { id = "Admin",   displayName = "Admin Pad",   multiplier = 100, adminOnly = true,
-      color = Color3.fromRGB(255, 60, 90),   x = 90,  z = -185 },
+      color = Color3.fromRGB(205, 127, 80),  x = -120, z = -190 },
+    { id = "Iron",    displayName = "Iron Pad",    multiplier = 9,   minLevel = 10,
+      color = Color3.fromRGB(160, 170, 185), x = -60,  z = -190 },
+    { id = "Gold",    displayName = "Gold Pad",    multiplier = 25,  minLevel = 20,
+      color = Color3.fromRGB(255, 200, 60),  x = 0,    z = -190 },
+    { id = "Legend",  displayName = "Legend Pad",  multiplier = 100, minLevel = 35,
+      color = Color3.fromRGB(255, 90, 200),  x = 60,   z = -190 },
+    { id = "Admin",   displayName = "Admin Pad",   multiplier = 250, adminOnly = true,
+      color = Color3.fromRGB(255, 60, 60),   x = 120,  z = -190 },
 }
 
 PadData.SIZE = Vector3.new(22, 1, 22)

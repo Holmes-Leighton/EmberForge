@@ -25,7 +25,7 @@ local HOW_TO_PLAY = table.concat({
     "2.  Press E at the Golem Anvil, pick a Golem you like, and forge it.",
     "3.  Open the 🔥 Forge menu and deploy it to a mining zone, then press ⛏ Collect Resources.",
     "4.  Craft more Golems from blueprints. Each new element unlocks a new mining zone.",
-    "5.  Level up to unlock stronger pads (3x, 5x, 10x). Finish 📋 Challenges, trade in the 🏪 Market, check 🏆 Leaders.",
+    "5.  Level up to unlock stronger pads (3x, 9x, 25x, 100x). Finish 📋 Challenges, trade in the 🏪 Market, check 🏆 Leaders.",
     "",
     "Tip: follow the roads to the six tunnels in the far wall: each leads to a mining cave. Visit other players' forges to trade.",
 }, "\n")

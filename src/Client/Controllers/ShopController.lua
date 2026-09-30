@@ -52,7 +52,7 @@ function ShopController._SetupShopGui()
     -- Permanent unlocks are Game Passes
     local storageBtn = shopGui:FindFirstChild("StorageExpansionBtn", true)
     if storageBtn then storageBtn:SetAttribute("PassKey", "Storage24h") end
-    for _, name in ipairs({ "StorageExpansionBtn", "PadCopperBtn", "PadIronBtn", "PadGoldBtn" }) do
+    for _, name in ipairs({ "StorageExpansionBtn", "PadCopperBtn", "PadIronBtn", "PadGoldBtn", "PadLegendBtn" }) do
         local btn = shopGui:FindFirstChild(name, true)
         if btn and btn:IsA("TextButton") then
             btn.MouseButton1Click:Connect(function()

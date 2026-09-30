@@ -46,7 +46,8 @@ local STYLE = {
     Copper  = { plinth = Enum.Material.CorrodedMetal,  beam = 36, sparkle = 10, posts = 4, gem = false },
     Iron    = { plinth = Enum.Material.DiamondPlate,   beam = 46, sparkle = 16, posts = 4, gem = true  },
     Gold    = { plinth = Enum.Material.Metal,          beam = 60, sparkle = 26, posts = 4, gem = true  },
-    Admin   = { plinth = Enum.Material.Neon,           beam = 90, sparkle = 40, posts = 4, gem = true  },
+    Legend  = { plinth = Enum.Material.Marble,         beam = 75, sparkle = 34, posts = 4, gem = true  },
+    Admin   = { plinth = Enum.Material.Neon,           beam = 100, sparkle = 44, posts = 4, gem = true  },
 }
 
 local function Block(parent, name, size, cf, color, material, extra)
@@ -285,7 +286,7 @@ function PadService.Init()
             print("[PadService] " .. player.Name .. " is an admin (Admin Pad unlocked)")
             task.delay(6, function()
                 if player.Parent then
-                    RemoteEvents.Notify:FireClient(player, "Admin mode", "You can use the 100x Admin Pad.")
+                    RemoteEvents.Notify:FireClient(player, "Admin mode", "You can use the 250x Admin Pad.")
                 end
             end)
         end

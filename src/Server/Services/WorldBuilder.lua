@@ -656,10 +656,10 @@ local function BuildPadPlaza(world)
     local plaza = Instance.new("Model")
     plaza.Name = "PadPlaza"
     plaza.Parent = world
-    Part({ Name = "PlazaFloor", Material = Enum.Material.Basalt, Color = Color3.fromRGB(38, 32, 34), Size = Vector3.new(250, 0.5, 108),
+    Part({ Name = "PlazaFloor", Material = Enum.Material.Basalt, Color = Color3.fromRGB(38, 32, 34), Size = Vector3.new(330, 0.5, 108),
         CFrame = CFrame.new(0, 0.25, -162) }, plaza)
     for _, dz in ipairs({ -54, 54 }) do
-        Part({ Name = "PlazaEdge", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 170, 60), Size = Vector3.new(250, 0.3, 1.2),
+        Part({ Name = "PlazaEdge", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 170, 60), Size = Vector3.new(330, 0.3, 1.2),
             CFrame = CFrame.new(0, 0.6, -162 + dz), CanCollide = false }, plaza)
     end
     -- gateway over the plaza entrance

@@ -12,8 +12,8 @@ In Studio the game uses an in-memory save (a `[SafeDataStore]` warning appears) 
 |---|---|
 | Publish the place, then Game Settings → Security → **Enable Studio Access to API Services** | Studio |
 | Set **Max Players = 20** | Game Settings → Players |
-| Create these **Game Passes** (Monetization → Passes) and paste each id into `ProductData.GamePasses` (id 0 = not for sale): Copper Pad 149, Iron Pad 299, Gold Pad 599, Offline Storage 299, and Forge Skins Basic 200 / Ember, Frost, Storm 300 / Void 400 (R$). They are permanent, restored on every server, and can't be bought twice | Creator Dashboard → Monetization → Passes |
-| Create the **Developer Products** (Speed-Ups, +5 Golem Slots pack (stackable, up to 30 extra), Slot Boost, Material Magnet, Event Catalyst, Season Passes) and paste each numeric id into `ProductData.Products` (id = 0 means "not for sale yet"). Season passes stay Developer Products because each season ends; the client refuses a second purchase of a tier already held | Creator Dashboard → Monetization |
+| Create these **Game Passes** (Monetization → Passes) and paste each id into `ProductData.GamePasses` (id 0 = not for sale): Copper Pad 59, Iron Pad 259, Gold Pad 749, Legend Pad 1,599, Offline Storage 299, and Forge Skins Basic 200 / Ember, Frost, Storm 300 / Void 400 (R$). They are permanent, restored on every server, and can't be bought twice | Creator Dashboard → Monetization → Passes |
+| Create the **Developer Products** (Speed-Ups, +5 Golem Slots pack (stackable, up to 15 extra), Slot Boost, Material Magnet, Event Catalyst, Season Passes) and paste each numeric id into `ProductData.Products` (id = 0 means "not for sale yet"). Season passes stay Developer Products because each season ends; the client refuses a second purchase of a tier already held | Creator Dashboard → Monetization |
 | Add admin UserIds (the place owner and Studio are admins automatically) | `GameConfig.ADMIN_USER_IDS` |
 | Add audio (your own or properly licensed; ids are 0 = silent) | `src/Shared/Data/AudioData.lua` |
 | Season dates are UTC timestamps for 2026 | `src/Shared/Data/SeasonData.lua` |

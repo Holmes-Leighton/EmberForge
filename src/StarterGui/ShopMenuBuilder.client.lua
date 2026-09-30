@@ -194,11 +194,12 @@ padGrid.BackgroundTransparency = 1
 padGrid.Parent = container
 
 local padItems = {
-    { name = "PadCopperBtn", key = "Pad_Copper", title = "Copper Pad", mult = "3x", sub = "or reach Level 5",  price = "149 R$", color = Color3.fromRGB(205, 127, 80)  },
-    { name = "PadIronBtn",   key = "Pad_Iron",   title = "Iron Pad",   mult = "5x", sub = "or reach Level 10", price = "299 R$", color = Color3.fromRGB(160, 170, 185) },
-    { name = "PadGoldBtn",   key = "Pad_Gold",   title = "Gold Pad",   mult = "10x", sub = "or reach Level 20", price = "599 R$", color = Color3.fromRGB(255, 200, 60) },
+    { name = "PadCopperBtn", key = "Pad_Copper", title = "Copper Pad", mult = "3x",   sub = "or reach Level 5",  price = "59 R$",   color = Color3.fromRGB(205, 127, 80)  },
+    { name = "PadIronBtn",   key = "Pad_Iron",   title = "Iron Pad",   mult = "9x",   sub = "or reach Level 10", price = "259 R$",  color = Color3.fromRGB(160, 170, 185) },
+    { name = "PadGoldBtn",   key = "Pad_Gold",   title = "Gold Pad",   mult = "25x",  sub = "or reach Level 20", price = "749 R$",  color = Color3.fromRGB(255, 200, 60)  },
+    { name = "PadLegendBtn", key = "Pad_Legend", title = "Legend Pad", mult = "100x", sub = "or reach Level 35", price = "1,599 R$", color = Color3.fromRGB(255, 90, 200) },
 }
-local padW = math.floor((740 - 16) / 3) - 6
+local padW = math.floor((740 - 16 - 3 * 8) / 4)
 for i, pad in ipairs(padItems) do
     local card = Instance.new("Frame")
     card.Name = pad.name .. "Card"
@@ -210,21 +211,22 @@ for i, pad in ipairs(padItems) do
     Theme.AddCorner(card, Theme.Corner.Medium)
     Theme.AddStroke(card, pad.color, 2, 0.3)
 
-    local big = Theme.Label(card, pad.mult, 30, pad.color, Enum.Font.GothamBlack, "Multiplier")
-    big.Size = UDim2.new(0, 70, 0, 40)
-    big.Position = UDim2.new(0, 10, 0, 6)
+    local big = Theme.Label(card, pad.mult, 26, pad.color, Enum.Font.GothamBlack, "Multiplier")
+    big.Size = UDim2.new(0, 84, 0, 34)
+    big.Position = UDim2.new(0, 10, 0, 4)
     big.TextXAlignment = Enum.TextXAlignment.Left
-    local t = Theme.Label(card, pad.title, Theme.TextSize.Heading, Theme.Colors.TextPrimary, Theme.Fonts.Heading)
-    t.Size = UDim2.new(1, -90, 0, 22)
-    t.Position = UDim2.new(0, 84, 0, 8)
+    local t = Theme.Label(card, pad.title, 13, Theme.Colors.TextPrimary, Theme.Fonts.Heading)
+    t.Size = UDim2.new(1, -16, 0, 16)
+    t.Position = UDim2.new(0, 10, 0, 38)
+    t.TextWrapped = false
     local sub = Theme.Label(card, pad.sub, Theme.TextSize.Small, Theme.Colors.TextSecondary, Theme.Fonts.Body, "Sub")
-    sub.Size = UDim2.new(1, -90, 0, 16)
-    sub.Position = UDim2.new(0, 84, 0, 30)
+    sub.Size = UDim2.new(1, -16, 0, 14)
+    sub.Position = UDim2.new(0, 10, 0, 54)
 
-    local buy = Theme.Button(card, pad.price .. " - Unlock", pad.color, Color3.fromRGB(30, 20, 12), pad.name)
-    buy.Size = UDim2.new(1, -16, 0, 28)
-    buy.Position = UDim2.new(0, 8, 1, -34)
-    buy.TextSize = 13
+    local buy = Theme.Button(card, pad.price, pad.color, Color3.fromRGB(30, 20, 12), pad.name)
+    buy.Size = UDim2.new(1, -16, 0, 24)
+    buy.Position = UDim2.new(0, 8, 1, -28)
+    buy.TextSize = 12
     buy:SetAttribute("PassKey", pad.key)
     buy:SetAttribute("Price", pad.price)
 end

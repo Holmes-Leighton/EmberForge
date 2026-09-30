@@ -117,7 +117,11 @@ do
     d3.PlayerLevel = 1; d3.UnlockedPads = {}
     expect(PadService.CanUse(p3, pad("Copper"), d3) == false, "a level 1 player can't use the Copper pad")
     local k1 = Product.PassForPad("Copper")
-    expect(k1 == "Pad_Copper" and Product.PassForPad("Starter") == nil and Product.PassForPad("Admin") == nil, "only Copper / Iron / Gold are for sale")
+    local ladder = {}
+    for _, def in ipairs(PadData.Pads) do table.insert(ladder, def.multiplier) end
+    expect(table.concat(ladder, ",") == "1,3,9,25,100,250", "pad multipliers follow the 1x / 3x / 9x / 25x / 100x ladder (+250x admin)")
+    expect(Product.PassForPad("Legend") == "Pad_Legend", "the 100x Legend pad is buyable")
+    expect(k1 == "Pad_Copper" and Product.PassForPad("Starter") == nil and Product.PassForPad("Admin") == nil, "only Copper / Iron / Gold / Legend are for sale")
     expect(not Product.PassIsAvailable("Pad_Copper"), "unconfigured passes (id 0) are not for sale")
 
     Product.GamePasses.Pad_Copper.id = 777

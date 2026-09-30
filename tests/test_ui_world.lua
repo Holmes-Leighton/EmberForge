@@ -157,7 +157,7 @@ local PadService = load("SSS/EmberForge/Services/PadService")
 PadService.Init()
 local pads = 0
 for _, c in ipairs(world:GetDescendants()) do if c.Name:find("^Pad_") then pads += 1 end end
-expect(pads == 5, "five mining pads (" .. pads .. ")")
+expect(pads == 6, "six mining pads (" .. pads .. ")")
 
 local beams = {}
 for _, d in ipairs(world:GetDescendants()) do
@@ -166,10 +166,10 @@ end
 table.sort(beams)
 local distinct = true
 for i = 2, #beams do if beams[i] <= beams[i - 1] then distinct = false end end
-expect(#beams == 5 and distinct, "each pad tier has a taller beam of light than the last")
+expect(#beams == 6 and distinct, "each pad tier has a taller beam of light than the last")
 local gems = 0
 for _, d in ipairs(world:GetDescendants()) do if d.Name == "PadGem" then gems += 1 end end
-expect(gems == 3, "Iron, Gold and Admin pads have spinning gems (" .. gems .. ")")
+expect(gems == 4, "Iron, Gold, Legend and Admin pads have spinning gems (" .. gems .. ")")
 
 local GolemVisuals = load("SSS/EmberForge/Services/GolemVisuals")
 GolemVisuals.Init()

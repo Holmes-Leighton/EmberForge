@@ -22,9 +22,9 @@ GameConfig.FORGE_SMELT_TIME_REDUCTION_MAX = 0.40  -- 40% reduction at max level
 
 -- Golem Slots
 GameConfig.BASE_GOLEM_SLOTS = 3
-GameConfig.MAX_GOLEM_SLOTS = 50           -- absolute ceiling (earned 12 + pass 3 + boost 1 + purchased slots)
+GameConfig.MAX_GOLEM_SLOTS = 31           -- absolute ceiling (earned 12 + pass 3 + boost 1 + purchased 15)
 GameConfig.SLOT_PACK_SIZE = 5             -- Golem slots per "Slot Pack" purchase (stackable)
-GameConfig.MAX_PURCHASED_SLOTS = 30       -- up to six packs
+GameConfig.MAX_PURCHASED_SLOTS = 15       -- up to three packs (Grow a Garden tops out at 8 equipped pets)
 
 -- Economy rates
 GameConfig.MATERIAL_DROP_RATES = {

@@ -24,9 +24,10 @@ ProductData.Products = {
 -- id = 0 means "not for sale yet". A pass unlocks its mining pad regardless of player level.
 ProductData.GamePasses = {
     -- Mining pads (unlock regardless of player level)
-    Pad_Copper = { id = 0, padId = "Copper", displayName = "Copper Pad (3x)", robux = 149 },
-    Pad_Iron   = { id = 0, padId = "Iron",   displayName = "Iron Pad (5x)",   robux = 299 },
-    Pad_Gold   = { id = 0, padId = "Gold",   displayName = "Gold Pad (10x)",  robux = 599 },
+    Pad_Copper = { id = 0, padId = "Copper", displayName = "Copper Pad (3x)", robux = 59 },
+    Pad_Iron   = { id = 0, padId = "Iron",   displayName = "Iron Pad (9x)",   robux = 259 },
+    Pad_Gold   = { id = 0, padId = "Gold",   displayName = "Gold Pad (25x)",  robux = 749 },
+    Pad_Legend = { id = 0, padId = "Legend", displayName = "Legend Pad (100x)", robux = 1599 },
 
     -- Offline storage: 24 hours instead of 8
     Storage24h = { id = 0, storageTier = 2, displayName = "Offline Storage (24h)", robux = 299 },

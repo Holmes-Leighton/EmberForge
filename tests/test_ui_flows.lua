@@ -252,10 +252,10 @@ print("== Shop: mining pad game passes")
 do
     local shop = gui("ShopMenu")
     local copper = shop:FindFirstChild("PadCopperBtn", true)
-    expect(copper ~= nil and shop:FindFirstChild("PadIronBtn", true) ~= nil and shop:FindFirstChild("PadGoldBtn", true) ~= nil, "shop lists the three buyable pads")
+    expect(copper ~= nil and shop:FindFirstChild("PadIronBtn", true) ~= nil and shop:FindFirstChild("PadGoldBtn", true) ~= nil and shop:FindFirstChild("PadLegendBtn", true) ~= nil, "shop lists the four buyable pads")
     Snapshot.PlayerLevel = 1; Snapshot.UnlockedPads = {}
     ShopController.RefreshPads()
-    expect(copper.Text:find("149") ~= nil, "locked pad shows its price (" .. copper.Text .. ")")
+    expect(copper.Text:find("59") ~= nil, "locked pad shows its price (" .. copper.Text .. ")")
     Snapshot.UnlockedPads = { Copper = true }
     ShopController.RefreshPads()
     expect(copper.Text == "Owned", "bought pad shows Owned")
@@ -297,8 +297,8 @@ do
     Snapshot.PurchasedSlots = 10
     ShopController.RefreshPads()
     local packBtn = gui("ShopMenu"):FindFirstChild("SlotPackBtn", true)
-    expect(packBtn ~= nil and packBtn.Text:find("10/30") ~= nil, "slot pack button shows how many extra slots are bought (" .. tostring(packBtn and packBtn.Text) .. ")")
-    Snapshot.PurchasedSlots = 30
+    expect(packBtn ~= nil and packBtn.Text:find("10/15") ~= nil, "slot pack button shows how many extra slots are bought (" .. tostring(packBtn and packBtn.Text) .. ")")
+    Snapshot.PurchasedSlots = 15
     ShopController.RefreshPads()
     expect(packBtn.Text:find("Maxed") ~= nil, "slot pack button shows Maxed at the limit")
     Snapshot.PurchasedSlots = 0
