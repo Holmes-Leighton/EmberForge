@@ -661,6 +661,10 @@ function ForgeController._BuildDeployPanel()
                     end
                 end
             end
+            -- special Golems have no home zone: they mine in any zone you have unlocked
+            if not zoneId and GolemData.IsSpecial(g.element) then
+                zoneId = MiningZoneData.GetUnlocked(data)[1]
+            end
             local zoneData = zoneId and MiningZoneData.Get(zoneId)
             local deploy = Theme.Button(card,
                 zoneId and "Deploy ▶" or "No zone",

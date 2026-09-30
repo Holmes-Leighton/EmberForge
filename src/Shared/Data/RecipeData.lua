@@ -203,6 +203,49 @@ RecipeData.Blueprints = {
         },
     },
 
+    -- ── Special Golems (GolemData.Specials): each has its own skill ──────────
+    -- Patchwork and Woven arrive with your Forge level; the rest are found by mining (rare blueprint drops).
+    BP_Patchwork_T2 = {
+        id = "BP_Patchwork_T2", element = "Patchwork", tier = 2,
+        source = RecipeData.Source.ForgeMilestone, forgeLevelRequired = 3,
+        materialsRequired = { { id = "RefinedOre", qty = 30 }, { id = "ElementalIngot", qty = 10 } },
+    },
+    BP_Woven_T2 = {
+        id = "BP_Woven_T2", element = "Woven", tier = 2,
+        source = RecipeData.Source.ForgeMilestone, forgeLevelRequired = 4,
+        materialsRequired = { { id = "RefinedOre", qty = 30 }, { id = "CrystalFragment", qty = 10 } },
+    },
+    BP_Coral_T3 = {
+        id = "BP_Coral_T3", element = "Coral", tier = 3,
+        source = RecipeData.Source.RareDrop, forgeLevelRequired = 5,
+        materialsRequired = { { id = "ElementalIngot", qty = 80 }, { id = "CrystalFragment", qty = 30 }, { id = "EternalIce", qty = 5 } },
+    },
+    BP_Clockwork_T3 = {
+        id = "BP_Clockwork_T3", element = "Clockwork", tier = 3,
+        source = RecipeData.Source.RareDrop, forgeLevelRequired = 5,
+        materialsRequired = { { id = "ElementalIngot", qty = 80 }, { id = "ThunderShard", qty = 20 } },
+    },
+    BP_Alchemist_T3 = {
+        id = "BP_Alchemist_T3", element = "Alchemist", tier = 3,
+        source = RecipeData.Source.RareDrop, forgeLevelRequired = 6,
+        materialsRequired = { { id = "ElementalIngot", qty = 80 }, { id = "ShadowDust", qty = 30 }, { id = "EmberDust", qty = 20 } },
+    },
+    BP_Gargoyle_T3 = {
+        id = "BP_Gargoyle_T3", element = "Gargoyle", tier = 3,
+        source = RecipeData.Source.RareDrop, forgeLevelRequired = 6,
+        materialsRequired = { { id = "ElementalIngot", qty = 80 }, { id = "AncientBedrock", qty = 10 } },
+    },
+    BP_StormJar_T4 = {
+        id = "BP_StormJar_T4", element = "StormJar", tier = 4,
+        source = RecipeData.Source.RareDrop, forgeLevelRequired = 8,
+        materialsRequired = { { id = "PureIngot", qty = 200 }, { id = "EssenceShard", qty = 100 }, { id = "ThunderShard", qty = 30 } },
+    },
+    BP_Dragonbone_T4 = {
+        id = "BP_Dragonbone_T4", element = "Dragonbone", tier = 4,
+        source = RecipeData.Source.RareDrop, forgeLevelRequired = 8,
+        materialsRequired = { { id = "PureIngot", qty = 200 }, { id = "EssenceShard", qty = 100 }, { id = "MoltenCore", qty = 20 } },
+    },
+
     -- ── Tier 5 (seasonal exclusives) ───────────────────────────────────────
     BP_Season1_MagmaTitan = {
         id = "BP_Season1_MagmaTitan", element = "Ember", tier = 3,

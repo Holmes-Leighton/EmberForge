@@ -63,7 +63,7 @@ filterRow.Parent = container
 Theme.AddPadding(filterRow, 3, 3, 3, 0)
 Theme.AddListLayout(filterRow, Enum.FillDirection.Horizontal, 6)
 
-local elementFilters = { "All", "Ember", "Stone", "Frost", "Storm", "Void" }
+local elementFilters = { "All", "Ember", "Stone", "Frost", "Storm", "Void", "Special" }
 local activeFilter = "All"
 local filterBtns = {}
 
@@ -74,7 +74,7 @@ for _, elem in ipairs(elementFilters) do
     local fb = Theme.Button(filterRow, elem,
         elem == "All" and Theme.Colors.Accent or Theme.Colors.PanelAlt,
         elem == "All" and Color3.fromRGB(255,255,255) or elemColor, elem .. "Filter")
-    fb.Size = UDim2.new(0, 72, 0, 28)
+    fb.Size = UDim2.new(0, 64, 0, 28)
     fb.TextSize = 11
     filterBtns[elem] = fb
 end
@@ -129,13 +129,17 @@ local GolemData = require(game.ReplicatedStorage.Shared.Data.GolemData)
 
     local shown = 0
     for _, golem in ipairs(golems) do
-        if activeFilter ~= "All" and golem.element ~= activeFilter then continue end
+        if activeFilter == "Special" then
+            if not GolemData.IsSpecial(golem.element) then continue end
+        elseif activeFilter ~= "All" and golem.element ~= activeFilter then
+            continue
+        end
         if mode == "deploy"  and golem.deployed then continue end
         if mode == "recall"  and not golem.deployed then continue end
         if mode == "fuse"    and golem.deployed then continue end
 
         shown = shown + 1
-        local elemColor = ELEMENT_COLORS[golem.element] or Theme.Colors.TextSecondary
+        local elemColor = ELEMENT_COLORS[golem.element] or Theme.Colors[golem.element] or Theme.Colors.TextSecondary
         local tierDef   = GolemData.Tiers[golem.tier]
         local stats     = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus, golem.quality, golem.variant)
 

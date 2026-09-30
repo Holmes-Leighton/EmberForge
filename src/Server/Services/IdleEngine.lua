@@ -38,10 +38,48 @@ local function StormBoost(playerData)
     return math.min(0.25, 0.03 * sum)
 end
 
+-- ── Special Golem skills (GolemData.Specials) ────────────────────────────────
+-- Aura skills come from the deployed crew; self skills are read per Golem. All of them are read from
+-- GolemData.Specials[element].skill.params so the numbers shown to the player and the numbers used here
+-- can never drift apart.
+local function SkillParams(element)
+    local def = GolemData.Specials[element]
+    return def and def.skill.params or nil
+end
+
+-- { luck = +luck for everyone, shelter = durability wear saved on everyone else, blueprint = blueprint-find multiplier }
+local function CrewAuras(playerData)
+    local coral, jar, bone = 0, 0, 0
+    for _, g in ipairs(playerData.Golems or {}) do
+        if g.deployed then
+            if g.element == "Coral" then coral += 1
+            elseif g.element == "StormJar" then jar += 1
+            elseif g.element == "Dragonbone" then bone += 1 end
+        end
+    end
+    local cp, jp, bp = SkillParams("Coral"), SkillParams("StormJar"), SkillParams("Dragonbone")
+    return {
+        luck      = math.min(cp.luckCap, cp.luckPer * coral),
+        shelter   = math.min(jp.shelterCap, jp.shelterPer * jar),
+        blueprint = 1 + math.min(bp.blueprintCap, bp.blueprintPer * bone),
+    }
+end
+IdleEngine.CrewAuras = CrewAuras
+
+-- How fast this Golem wears out: 1 = normal. Patchwork lasts longer, Clockwork wears faster, and every
+-- Storm in a Jar on the crew shelters everyone except other Jars.
+local function DrainFactor(golem, auras)
+    local p = SkillParams(golem.element)
+    local f = (p and p.drain) or 1
+    if golem.element ~= "StormJar" then f *= (1 - auras.shelter) end
+    return f
+end
+
 -- Rare blueprint discovery (spec 4.3: "Golem rare mining drops", Tier 2-4).
 -- `produced` is how many resources were just mined; luck raises the odds. Returns the id or nil.
-local function RollBlueprintDrop(playerData, produced, luck)
-    local chance = (produced / 100) * 0.001 * (1 + (luck or 0) * 3)
+-- `bpMult` multiplies the odds (Dragonbone's Hoarder's Instinct).
+local function RollBlueprintDrop(playerData, produced, luck, bpMult)
+    local chance = (produced / 100) * 0.001 * (1 + (luck or 0) * 3) * (bpMult or 1)
     if math.random() >= chance then return nil end
 
     local RecipeData = require(game.ReplicatedStorage.Shared.Data.RecipeData)
@@ -74,14 +112,17 @@ end
 IdleEngine.StorageCapSeconds = StorageCapSeconds
 
 -- Returns a production summary for a single golem over `seconds` elapsed
-local function GolemProduction(golem, seconds, storageTier, playerData, stormBoost)
+local function GolemProduction(golem, seconds, storageTier, playerData, stormBoost, auras)
     if not golem.deployed or not golem.zoneId then return {} end
+    auras = auras or CrewAuras(playerData)
+    local skill = SkillParams(golem.element)
 
     -- Durability: drain time, clamp at 0, produce nothing when broken
     local durability = golem._durabilitySeconds
     if durability ~= nil then
-        local active = math.min(seconds, math.max(0, durability))
-        golem._durabilitySeconds = math.max(0, durability - seconds)
+        local drain = DrainFactor(golem, auras)
+        local active = math.min(seconds, math.max(0, durability) / drain)
+        golem._durabilitySeconds = math.max(0, durability - seconds * drain)
         if active <= 0 then return {} end  -- fully broken
         seconds = active
     end
@@ -93,7 +134,11 @@ local function GolemProduction(golem, seconds, storageTier, playerData, stormBoo
     local mb = MasteryBonuses(playerData, golem.element)
     local fp = ForgeData.TotalPerks(playerData.ForgeLevel or 1)
     local miningRate = stats.miningRate * (1 + mb.miningRateBonus + mb.allStatsBonus + fp.mining)
-    local luck       = stats.luck       * (1 + mb.luckBonus       + mb.allStatsBonus + fp.luck)
+    local luck       = stats.luck       * (1 + mb.luckBonus       + mb.allStatsBonus + fp.luck) + auras.luck
+    -- self skills: Clockwork's Overclock, Gargoyle's Night Watch (this is the offline path)
+    if skill then
+        miningRate *= (skill.rate or 1) * (skill.offlineRate or 1)
+    end
 
     -- Clamp time to storage cap
     local capSeconds = StorageCapSeconds(storageTier)
@@ -102,6 +147,8 @@ local function GolemProduction(golem, seconds, storageTier, playerData, stormBoo
     local efficiency = stats.efficiency * (golem.element ~= "Storm" and (1 + (stormBoost or 0)) or 1)
     local rawRate = miningRate * efficiency
     local produced = math.floor(rawRate * (effectiveSeconds / 3600))
+    -- Woven's Net Haul: its doubled hauls, as the average over a long absence
+    if skill and skill.doubleChance then produced = math.floor(produced * (1 + skill.doubleChance)) end
     local carryCapped = math.min(produced, math.floor(stats.carryCapacity * (1 + fp.carry)))
 
     return {
@@ -110,6 +157,8 @@ local function GolemProduction(golem, seconds, storageTier, playerData, stormBoo
         zoneId    = golem.zoneId,
         produced  = carryCapped,
         luck      = luck,
+        transmute = skill and skill.chance or 0,          -- Alchemist
+        transmuteLuck = skill and skill.luckMult or 1,
     }
 end
 
@@ -137,9 +186,10 @@ function IdleEngine.CalculateOfflineProduction(playerData)
     eventMult = eventMult * require(script.Parent.LiveOpsService).GetMultiplier("drops")
 
     local stormBoost = StormBoost(playerData)
+    local auras = CrewAuras(playerData)
     for _, golem in ipairs(playerData.Golems or {}) do
         if golem.deployed then
-            local production = GolemProduction(golem, elapsed, storageTier, playerData, stormBoost)
+            local production = GolemProduction(golem, elapsed, storageTier, playerData, stormBoost, auras)
             if production.produced and production.produced > 0 then
                 -- Sample drop types based on zone drop table and luck
                 local MiningZoneData = require(game.ReplicatedStorage.Shared.Data.MiningZoneData)
@@ -149,7 +199,12 @@ function IdleEngine.CalculateOfflineProduction(playerData)
                 local remaining = math.floor(production.produced * eventMult)
                 while remaining > 0 do
                     local batch = math.min(remaining, 10)
-                    local materialId = MiningZoneData.SampleDrop(production.zoneId, luckMult)
+                    -- Alchemist's Transmutation: some batches are brewed into something rarer
+                    local batchLuck = luckMult
+                    if production.transmute > 0 and math.random() < production.transmute then
+                        batchLuck = luckMult * production.transmuteLuck
+                    end
+                    local materialId = MiningZoneData.SampleDrop(production.zoneId, batchLuck)
                     if materialId then
                         gains[materialId] = (gains[materialId] or 0) + batch
                     end
@@ -157,7 +212,7 @@ function IdleEngine.CalculateOfflineProduction(playerData)
                 end
 
                 -- Rare blueprint discovery
-                local found = RollBlueprintDrop(playerData, production.produced, production.luck)
+                local found = RollBlueprintDrop(playerData, production.produced, production.luck, auras.blueprint)
                 if found then gains["__blueprint:" .. found] = 1 end
             end
         end
@@ -190,12 +245,14 @@ function IdleEngine.TickOnlineProduction(playerData, deltaSeconds)
     eventMult = eventMult * require(script.Parent.LiveOpsService).GetMultiplier("drops")
 
     local stormBoost = StormBoost(playerData)
+    local auras = CrewAuras(playerData)
     local fp = ForgeData.TotalPerks(playerData.ForgeLevel or 1)
     for _, golem in ipairs(playerData.Golems or {}) do
         if golem.deployed and golem.zoneId then
+            local skill = SkillParams(golem.element)
             -- Drain durability; skip production when broken
             if golem._durabilitySeconds ~= nil then
-                golem._durabilitySeconds = math.max(0, golem._durabilitySeconds - deltaSeconds)
+                golem._durabilitySeconds = math.max(0, golem._durabilitySeconds - deltaSeconds * DrainFactor(golem, auras))
                 if golem._durabilitySeconds <= 0 then
                     continue  -- broken golem produces nothing
                 end
@@ -208,9 +265,11 @@ function IdleEngine.TickOnlineProduction(playerData, deltaSeconds)
             if stats and carried < carryCap then
                 local mb     = MasteryBonuses(playerData, golem.element)
                 local mRate  = stats.miningRate * (1 + mb.miningRateBonus + mb.allStatsBonus + fp.mining)
-                local luckM  = stats.luck       * (1 + mb.luckBonus       + mb.allStatsBonus + fp.luck)
+                local luckM  = stats.luck       * (1 + mb.luckBonus       + mb.allStatsBonus + fp.luck) + auras.luck
                 local efficiency = stats.efficiency * (golem.element ~= "Storm" and (1 + stormBoost) or 1)
                 local rate   = mRate * efficiency
+                -- self skills: Clockwork's Overclock, Gargoyle's Night Watch (slower while you play)
+                if skill then rate *= (skill.rate or 1) * (skill.onlineRate or 1) end
                 local speed  = GameConfig.ONLINE_PRODUCTION_SPEED or 1
                 golem._accumulatedResources = (golem._accumulatedResources or 0) + rate * (deltaSeconds * speed / 3600)
 
@@ -220,14 +279,18 @@ function IdleEngine.TickOnlineProduction(playerData, deltaSeconds)
                     local actual = math.min(toCommit, carryCap - carried)
                     if actual > 0 then
                         local luckMult = 1 + (luckM * 3)
+                        -- Alchemist's Transmutation: sometimes a haul is brewed into something rarer
+                        if skill and skill.chance and math.random() < skill.chance then luckMult *= skill.luckMult end
                         local materialId = MiningZoneData.SampleDrop(golem.zoneId, luckMult)
                         if materialId then
                             local amount = math.floor(actual * eventMult)
+                            -- Woven's Net Haul: sometimes a haul comes back doubled
+                            if skill and skill.doubleChance and math.random() < skill.doubleChance then amount *= 2 end
                             gains[materialId] = (gains[materialId] or 0) + amount
                             byElement[golem.element] = (byElement[golem.element] or 0) + amount
                             golem._carriedResources = carried + actual
 
-                            local found = RollBlueprintDrop(playerData, actual, luckM)
+                            local found = RollBlueprintDrop(playerData, actual, luckM, auras.blueprint)
                             if found then gains["__blueprint:" .. found] = 1 end
                         end
                     end

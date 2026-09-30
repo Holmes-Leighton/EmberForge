@@ -46,6 +46,19 @@ GolemSkinData.Skins = {
                          blurb = "The first Golem: white marble and living gold" },
 }
 
+-- Looks for the special Golem types (GolemData.Specials), keyed by their element id. Used when no
+-- skin cosmetic is equipped. Extra detail kinds: stitches | rope | coral | gears | vials | wings | jar | skull
+GolemSkinData.Specials = {
+    Patchwork  = { color = Color3.fromRGB(176, 142, 118), material = Enum.Material.Fabric,    accent = Color3.fromRGB(255, 226, 120), detail = "stitches" },
+    Woven      = { color = Color3.fromRGB(196, 156, 104), material = Enum.Material.Fabric,    accent = Color3.fromRGB(255, 220, 150), detail = "rope" },
+    Coral      = { color = Color3.fromRGB(240, 128, 136), material = Enum.Material.Sandstone, accent = Color3.fromRGB(90, 235, 225),  detail = "coral" },
+    Clockwork  = { color = Color3.fromRGB(200, 152, 72),  material = Enum.Material.Metal,     accent = Color3.fromRGB(255, 205, 100), detail = "gears" },
+    Alchemist  = { color = Color3.fromRGB(120, 190, 160), material = Enum.Material.Glass,     accent = Color3.fromRGB(130, 255, 130), detail = "vials", transparency = 0.2 },
+    Gargoyle   = { color = Color3.fromRGB(104, 108, 120), material = Enum.Material.Slate,     accent = Color3.fromRGB(255, 100, 70),  detail = "wings" },
+    StormJar   = { color = Color3.fromRGB(150, 172, 214), material = Enum.Material.Glass,     accent = Color3.fromRGB(200, 170, 255), detail = "jar", transparency = 0.3 },
+    Dragonbone = { color = Color3.fromRGB(228, 218, 192), material = Enum.Material.Limestone, accent = Color3.fromRGB(255, 120, 60),  detail = "skull" },
+}
+
 -- Returns the skin look and its name for a cosmetic id, or nil when the id isn't a known skin.
 function GolemSkinData.Find(id)
     local name = tostring(id or ""):match("^GolemSkin_(.+)$")

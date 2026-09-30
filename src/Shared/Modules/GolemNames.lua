@@ -17,10 +17,14 @@ function GolemNames.Describe(golem)
     local tierDef = GolemData.Tiers[golem.tier or 1]
     local variantDef = golem.variant and GolemData.Variants[golem.variant]
     local rarity = GolemNames.Rarity(golem)
-    local base = string.format("%s %s", tostring(golem.element), tierDef and tierDef.name or "Golem")
+    local special = GolemData.Specials[golem.element]
+    -- a special Golem is just "<Name> Golem" (its tier shows as rarity); elements get "<Element> <Tier name>"
+    local label = special and special.displayName or tostring(golem.element)
+    local base = special and (label .. " Golem") or string.format("%s %s", label, tierDef and tierDef.name or "Golem")
     return {
+        skill      = special and special.skill or nil,
         name       = (variantDef and (variantDef.label .. " ") or "") .. base,
-        shortName  = (variantDef and (variantDef.label .. " ") or "") .. tostring(golem.element) .. " Golem",
+        shortName  = (variantDef and (variantDef.label .. " ") or "") .. label .. " Golem",
         tierName   = tierDef and tierDef.name or "Golem",
         rarity     = rarity,
         rarityColor = GolemNames.RarityColor(rarity),

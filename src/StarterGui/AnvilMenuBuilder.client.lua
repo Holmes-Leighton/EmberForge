@@ -236,12 +236,14 @@ local function RenderDetail()
     local craftable = CraftableCount(bp)
     local lock      = LockReason(bp)
 
-    nameLbl.Text = bp.isEventGolem and string.format("%s Golem (Event)", bp.element) or string.format("%s Golem", bp.element)
+    local elemName = elemDef and elemDef.displayName or bp.element
+    nameLbl.Text = bp.isEventGolem and string.format("%s Golem (Event)", elemName) or string.format("%s Golem", elemName)
     nameLbl.TextColor3 = Theme.Colors[bp.element] or Theme.Colors.AccentBright
     local rarityName = GolemData.RarityForTier(bp.tier)
     subLbl.Text = string.format("Tier %d  -  %s  -  %s", bp.tier, tierDef and tierDef.name or "", rarityName)
     subLbl.TextColor3 = Theme.Colors[rarityName] or Theme.Colors.TextSecondary
-    descLbl.Text = elemDef and elemDef.description or ""
+    descLbl.Text = (elemDef and elemDef.description or "")
+        .. ((elemDef and elemDef.skill) and ("\n✦ " .. elemDef.skill.name .. ": " .. elemDef.skill.text) or "")
     local zones = ZonesFor(bp.element)
     zoneLbl.Text = #zones > 0 and ("Unlocks mining zone: " .. table.concat(zones, ", ")) or ""
 
@@ -317,7 +319,8 @@ local function RenderList()
         bar.Parent = row
         Theme.AddCorner(bar, UDim.new(0, 3))
 
-        local nameL = Theme.Label(row, bp.element .. " Golem", Theme.TextSize.Heading,
+        local rowElem = GolemData.Elements[bp.element]
+        local nameL = Theme.Label(row, (rowElem and rowElem.displayName or bp.element) .. " Golem", Theme.TextSize.Heading,
             selected and Theme.Colors.AccentBright or Theme.Colors.TextPrimary, Theme.Fonts.Heading)
         nameL.Position = UDim2.new(0, 20, 0, 6)
         nameL.Size = UDim2.new(1, -110, 0, 22)

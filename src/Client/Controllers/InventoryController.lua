@@ -238,7 +238,7 @@ local ELEMENT_COLORS = {
 
 function InventoryController._CreateGolemCard(golem, yOff)
     local stats = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus, golem.quality, golem.variant)
-    local elemColor = ELEMENT_COLORS[golem.element] or Color3.fromRGB(150, 150, 150)
+    local elemColor = ELEMENT_COLORS[golem.element] or GolemNames.Describe(golem).elementColor or Color3.fromRGB(150, 150, 150)
 
     local card = Instance.new("Frame")
     card.Name = golem.id
@@ -295,6 +295,22 @@ function InventoryController._CreateGolemCard(golem, yOff)
         statsLbl.TextSize = 11
         statsLbl.TextXAlignment = Enum.TextXAlignment.Left
         statsLbl.Parent = card
+    end
+
+    -- A special Golem's unique skill
+    if desc.skill then
+        local skillLbl = Instance.new("TextLabel")
+        skillLbl.Size = UDim2.new(1, -100, 0, 28)
+        skillLbl.Position = UDim2.new(0, 8, 0, 60)
+        skillLbl.BackgroundTransparency = 1
+        skillLbl.Text = "✦ " .. desc.skill.name .. ": " .. desc.skill.text
+        skillLbl.TextColor3 = Color3.fromRGB(255, 214, 120)
+        skillLbl.Font = Enum.Font.GothamMedium
+        skillLbl.TextSize = 11
+        skillLbl.TextWrapped = true
+        skillLbl.TextXAlignment = Enum.TextXAlignment.Left
+        skillLbl.TextYAlignment = Enum.TextYAlignment.Top
+        skillLbl.Parent = card
     end
 
     -- Return button (if deployed)

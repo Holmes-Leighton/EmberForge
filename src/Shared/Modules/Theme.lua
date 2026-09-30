@@ -27,6 +27,15 @@ Theme.Colors = {
     Frost   = Color3.fromRGB(100, 170, 230),
     Storm   = Color3.fromRGB(140, 100, 220),
     Void    = Color3.fromRGB(100, 60, 160),
+    -- Special Golems (GolemData.Specials)
+    Patchwork  = Color3.fromRGB(200, 150, 120),
+    Woven      = Color3.fromRGB(200, 160, 100),
+    Coral      = Color3.fromRGB(240, 120, 130),
+    Clockwork  = Color3.fromRGB(200, 150, 70),
+    Alchemist  = Color3.fromRGB(110, 210, 140),
+    Gargoyle   = Color3.fromRGB(130, 136, 150),
+    StormJar   = Color3.fromRGB(170, 150, 240),
+    Dragonbone = Color3.fromRGB(225, 215, 185),
 
     -- Rarity colours
     Common    = Color3.fromRGB(180, 180, 180),

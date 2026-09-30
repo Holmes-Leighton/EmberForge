@@ -149,7 +149,8 @@ function GolemModel.Build(element, tier, options)
     local color = Theme.Colors[element] or Color3.fromRGB(150, 150, 150)
     local elementColor = color
     local skinColor
-    local skinLook = options.skin and GolemSkinData.Find(options.skin)
+    -- an equipped skin wins; otherwise a special Golem wears its own look
+    local skinLook = (options.skin and GolemSkinData.Find(options.skin)) or GolemSkinData.Specials[element]
     if skinLook then
         -- a material skin replaces the element's surface, colour and glow (GolemSkinData)
         look = { material = skinLook.material, accent = skinLook.accent, accentMaterial = Enum.Material.Neon,
@@ -336,6 +337,121 @@ function GolemModel.Build(element, tier, options)
                     local a = i / 5 * math.pi * 2
                     ap("Shard", Vector3.new(0.7, 1.4, 0.7), acc, Enum.Material.Neon,
                         Vector3.new(T.X + math.cos(a) * (A.hx + 2.2), T.Y + (i % 3 - 1) * A.hy * 0.8, T.Z + math.sin(a) * (A.hz + 2.2)), CFrame.Angles(i, i * 0.6, 0), 0.2)
+                end
+            elseif kind == "stitches" then              -- patchwork: mismatched patches held on with thread
+                local thread = Color3.fromRGB(70, 48, 38)
+                local patches = { Color3.fromRGB(205, 95, 95), Color3.fromRGB(95, 145, 205), Color3.fromRGB(235, 205, 95) }
+                for i, c in ipairs(patches) do
+                    ap("Patch", Vector3.new(A.hx * 0.7, A.hy * 0.5, 0.25), c, Enum.Material.Fabric,
+                        Vector3.new(T.X + (i - 2) * A.hx * 0.75, T.Y + (i % 2 == 0 and -1 or 1) * A.hy * 0.25, front - 0.1))
+                    for _, rot in ipairs({ 0.785, -0.785 }) do
+                        ap("Stitch", Vector3.new(A.hx * 0.6, 0.12, 0.12), thread, Enum.Material.Fabric,
+                            Vector3.new(T.X + (i - 2) * A.hx * 0.75, T.Y + (i % 2 == 0 and -1 or 1) * A.hy * 0.25, front - 0.28), CFrame.Angles(0, 0, rot))
+                    end
+                end
+                ap("Patch", Vector3.new(A.hhx * 0.9, A.hhy * 0.8, 0.25), Color3.fromRGB(150, 205, 150), Enum.Material.Fabric,
+                    Vector3.new(H.X + A.hhx * 0.45, H.Y + A.hhy * 0.55, H.Z - A.hhz - 0.05))
+            elseif kind == "rope" then                  -- coils of rope wrapped round the body, with knots
+                local rope = Color3.fromRGB(170, 128, 80)
+                for i = 0, 3 do
+                    ap("Coil", Vector3.new(A.hx * 2.15, 0.6, A.hz * 2.15), rope, Enum.Material.Fabric,
+                        Vector3.new(T.X, T.Y + A.hy * (0.75 - i * 0.5), T.Z))
+                end
+                for i = 0, 1 do
+                    local k = ap("Knot", Vector3.new(1.3, 1.3, 1.3), Color3.fromRGB(150, 110, 66), Enum.Material.Fabric,
+                        Vector3.new(T.X + (i == 0 and -1 or 1) * A.hx * 0.45, T.Y + A.hy * (0.5 - i * 1.0), front - 0.3))
+                    k.Shape = Enum.PartType.Ball
+                end
+                ap("HeadCoil", Vector3.new(A.hhx * 2.1, 0.5, A.hhz * 2.1), rope, Enum.Material.Fabric, Vector3.new(H.X, H.Y + A.hhy * 0.7, H.Z))
+            elseif kind == "coral" then                 -- branching coral on the back and shoulders, a shell on the head
+                local tips = { Color3.fromRGB(255, 140, 160), Color3.fromRGB(255, 170, 110), Color3.fromRGB(250, 100, 140) }
+                for i = -2, 2 do
+                    local h = 2.8 - math.abs(i) * 0.35
+                    local x = T.X + i * A.hx * 0.42
+                    local y = T.Y + A.hy + h * 0.4
+                    ap("CoralBranch", Vector3.new(0.6, h, 0.6), Color3.fromRGB(240, 120, 130), Enum.Material.Sandstone,
+                        Vector3.new(x, y, T.Z + A.hz * 0.3), CFrame.Angles(0.1, 0, -i * 0.22))
+                    local tip = ap("CoralTip", Vector3.new(1.3, 1.3, 1.3), tips[(i + 2) % 3 + 1], Enum.Material.SmoothPlastic,
+                        Vector3.new(x - i * 0.25, y + h * 0.5, T.Z + A.hz * 0.3))
+                    tip.Shape = Enum.PartType.Ball
+                end
+                local shell = ap("Shell", Vector3.new(A.hhx * 1.5, 0.9, A.hhz * 1.2), Color3.fromRGB(255, 226, 205), Enum.Material.Marble,
+                    Vector3.new(H.X, H.Y + A.hhy + 0.2, H.Z), CFrame.Angles(-0.25, 0, 0))
+                shell.Shape = Enum.PartType.Ball
+            elseif kind == "gears" then                 -- brass cogs on the chest and a wind-up key on the back
+                local dark = Color3.fromRGB(150, 108, 48)
+                local face = CFrame.Angles(0, math.pi / 2, 0)            -- cylinders lie along X; turn them to face forward
+                local big = ap("Cog", Vector3.new(0.5, A.hx * 1.3, A.hx * 1.3), dark, Enum.Material.Metal,
+                    Vector3.new(T.X - A.hx * 0.25, T.Y + A.hy * 0.1, front - 0.2), face)
+                big.Shape = Enum.PartType.Cylinder
+                for i = 0, 7 do
+                    local a = i / 8 * math.pi * 2
+                    ap("Tooth", Vector3.new(0.5, 0.5, 0.5), dark, Enum.Material.Metal,
+                        Vector3.new(T.X - A.hx * 0.25 + math.cos(a) * A.hx * 0.68, T.Y + A.hy * 0.1 + math.sin(a) * A.hx * 0.68, front - 0.2))
+                end
+                local small = ap("Cog", Vector3.new(0.5, A.hx * 0.7, A.hx * 0.7), Color3.fromRGB(215, 172, 84), Enum.Material.Metal,
+                    Vector3.new(T.X + A.hx * 0.5, T.Y - A.hy * 0.3, front - 0.2), face)
+                small.Shape = Enum.PartType.Cylinder
+                ap("KeyStem", Vector3.new(0.6, A.hy * 0.7, 0.6), Color3.fromRGB(215, 172, 84), Enum.Material.Metal, Vector3.new(T.X, T.Y + A.hy * 0.3, T.Z + A.hz + 0.6))
+                ap("KeyHandle", Vector3.new(A.hx * 1.0, 0.7, 0.7), Color3.fromRGB(215, 172, 84), Enum.Material.Metal, Vector3.new(T.X, T.Y + A.hy * 0.7, T.Z + A.hz + 0.6))
+            elseif kind == "vials" then                 -- glass vials of bubbling brew on the back and belt
+                local brews = { Color3.fromRGB(120, 255, 120), Color3.fromRGB(200, 120, 255), Color3.fromRGB(255, 180, 70) }
+                for i = -1, 1 do
+                    local tube = ap("Vial", Vector3.new(A.hy * 0.9, 1.2, 1.2), Color3.fromRGB(200, 240, 255), Enum.Material.Glass,
+                        Vector3.new(T.X + i * A.hx * 0.6, T.Y + A.hy * 0.1, T.Z + A.hz + 0.8), CFrame.Angles(0, 0, math.pi / 2), 0.5)
+                    tube.Shape = Enum.PartType.Cylinder
+                    local liquid = ap("Brew", Vector3.new(A.hy * 0.55, 0.8, 0.8), brews[i + 2], Enum.Material.Neon,
+                        Vector3.new(T.X + i * A.hx * 0.6, T.Y - A.hy * 0.1, T.Z + A.hz + 0.8), CFrame.Angles(0, 0, math.pi / 2), 0.15)
+                    liquid.Shape = Enum.PartType.Cylinder
+                end
+                local belt = ap("BeltVial", Vector3.new(1.4, 1.4, 1.4), Color3.fromRGB(130, 255, 130), Enum.Material.Neon,
+                    Vector3.new(T.X - A.hx * 0.6, T.Y - A.hy * 0.65, front - 0.3), nil, 0.2)
+                belt.Shape = Enum.PartType.Ball
+                local bubbles = Instance.new("ParticleEmitter")
+                bubbles.Color = ColorSequence.new(acc); bubbles.Rate = 5; bubbles.Lifetime = NumberRange.new(1.2, 2)
+                bubbles.Speed = NumberRange.new(2, 4); bubbles.EmissionDirection = Enum.NormalId.Top
+                bubbles.Size = NumberSequence.new(0.4, 0.1); bubbles.Transparency = NumberSequence.new(0.3, 1); bubbles.LightEmission = 0.6
+                bubbles.Parent = root
+            elseif kind == "wings" then                 -- stone wings and little horns
+                local stone = Color3.fromRGB(86, 90, 102)
+                for _, side in ipairs({ -1, 1 }) do
+                    for i = 0, 2 do
+                        ap("Wing", Vector3.new(0.6, A.hy * (1.5 - i * 0.3), A.hx * 0.6), stone, Enum.Material.Slate,
+                            Vector3.new(T.X + side * (A.hx * 0.7 + i * A.hx * 0.45), T.Y + A.hy * (0.5 - i * 0.15), T.Z + A.hz + 0.7),
+                            CFrame.Angles(0, side * (0.5 + i * 0.25), -side * (0.25 + i * 0.12)))
+                    end
+                    ap("Horn", Vector3.new(0.6, 1.6, 0.6), Color3.fromRGB(60, 62, 72), Enum.Material.Slate,
+                        Vector3.new(H.X + side * A.hhx * 0.6, H.Y + A.hhy + 0.6, H.Z), CFrame.Angles(0, 0, -side * 0.4))
+                end
+            elseif kind == "jar" then                   -- a glass jar with a cork, full of storm cloud and sparks
+                local dome = ap("Jar", Vector3.new(A.hhx * 3.0, A.hhy * 3.0, A.hhz * 3.0), Color3.fromRGB(200, 225, 255), Enum.Material.Glass,
+                    Vector3.new(H.X, H.Y, H.Z), nil, 0.72)
+                dome.Shape = Enum.PartType.Ball
+                ap("Cork", Vector3.new(A.hhx * 1.2, 0.9, A.hhz * 1.2), Color3.fromRGB(150, 108, 66), Enum.Material.Wood,
+                    Vector3.new(H.X, H.Y + A.hhy * 1.5 + 0.4, H.Z))
+                for i = 1, 3 do
+                    local a = i * 2.1
+                    local cloud = ap("Cloud", Vector3.new(1.6, 1.0, 1.6), Color3.fromRGB(235, 235, 255), Enum.Material.Neon,
+                        Vector3.new(H.X + math.cos(a) * A.hhx * 0.9, H.Y + math.sin(a * 1.3) * A.hhy * 0.8, H.Z + math.sin(a) * A.hhz * 0.9), nil, 0.6)
+                    cloud.Shape = Enum.PartType.Ball
+                end
+                local sparks = Instance.new("ParticleEmitter")
+                sparks.Color = ColorSequence.new(acc); sparks.Rate = 8; sparks.Lifetime = NumberRange.new(0.2, 0.4)
+                sparks.Speed = NumberRange.new(3, 7); sparks.SpreadAngle = Vector2.new(180, 180); sparks.LightEmission = 1
+                sparks.Size = NumberSequence.new(0.5, 0); sparks.Parent = root
+            elseif kind == "skull" then                 -- swept-back dragon horns, a brow plate and a spine ridge
+                local bone = Color3.fromRGB(248, 242, 222)
+                for _, side in ipairs({ -1, 1 }) do
+                    for i = 1, 3 do
+                        ap("DragonHorn", Vector3.new(0.9 - i * 0.22, 1.5, 0.9 - i * 0.22), bone, Enum.Material.Limestone,
+                            Vector3.new(H.X + side * (A.hhx * 0.6 + i * 0.35), H.Y + A.hhy + 0.2 + i * 1.0, H.Z + i * 0.45),
+                            CFrame.Angles(0.35 * i, 0, -side * 0.25 * i))
+                    end
+                end
+                ap("Brow", Vector3.new(A.hhx * 2.2, 0.55, 0.6), bone, Enum.Material.Limestone, Vector3.new(H.X, H.Y + A.hhy * 0.4, H.Z - A.hhz - 0.1))
+                for i = 0, 4 do
+                    ap("Fin", Vector3.new(0.5, 1.8 - i * 0.2, 1.3), bone, Enum.Material.Limestone,
+                        Vector3.new(T.X, T.Y + A.hy * (0.85 - i * 0.42), T.Z + A.hz + 0.4), CFrame.Angles(0.25, 0, 0))
                 end
             elseif kind == "trim" then                  -- shining trim: belt, head band, chest lines
                 ap("Belt", Vector3.new(A.hx * 2.1, 0.45, A.hz * 2.1), acc, Enum.Material.Neon, Vector3.new(T.X, T.Y - A.hy * 0.6, T.Z), nil, 0.1)

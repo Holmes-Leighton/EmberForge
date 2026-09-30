@@ -136,6 +136,83 @@ GolemData.ElementMultipliers = {
     All   = { MiningRate = 1.10, CarryCapacity = 1.10, Efficiency = 1.10, Luck = 1.10 },   -- multi-element event Golems
 }
 
+-- ── Special Golems ────────────────────────────────────────────────────────────
+-- Extra Golem types, each with its own look and one unique passive SKILL. They are element-style
+-- entries (so crafting, names, stats, colours and the picker all just work) flagged `special = true`.
+-- They mine in any zone you have unlocked. `skill.params` is what IdleEngine reads; `skill.text` is
+-- what the player sees, so keep the two in step.
+--   tier   the tier its blueprint crafts at (rarity follows the tier)
+--   mult   stat multipliers, like ElementMultipliers
+GolemData.SpecialOrder = { "Patchwork", "Woven", "Coral", "Clockwork", "Alchemist", "Gargoyle", "StormJar", "Dragonbone" }
+
+GolemData.Specials = {
+    Patchwork = {
+        displayName = "Patchwork", tier = 2, statBias = "Durability",
+        description = "A cheerful stitched-together Golem that just keeps going.",
+        skill = { name = "Sturdy Stitching", text = "Wears out 60% slower, so it works far longer between repairs.", params = { drain = 0.4 } },
+        mult = { MiningRate = 0.90, CarryCapacity = 1.05, Efficiency = 1.00, Luck = 1.00 },
+    },
+    Woven = {
+        displayName = "Woven", tier = 2, statBias = "Bonus hauls",
+        description = "Knotted rope and reeds that snag extras from the rock.",
+        skill = { name = "Net Haul", text = "20% of its hauls come back doubled.", params = { doubleChance = 0.20 } },
+        mult = { MiningRate = 0.95, CarryCapacity = 1.10, Efficiency = 1.00, Luck = 1.05 },
+    },
+    Coral = {
+        displayName = "Coral", tier = 3, statBias = "Luck aura",
+        description = "A living reef that hums with the sea.",
+        skill = { name = "Reef Bounty", text = "Every Coral Golem you deploy gives all your Golems +5% luck (up to +20%).",
+            params = { luckPer = 0.05, luckCap = 0.20 } },
+        mult = { MiningRate = 0.95, CarryCapacity = 1.15, Efficiency = 1.00, Luck = 1.20 },
+    },
+    Clockwork = {
+        displayName = "Clockwork", tier = 3, statBias = "Speed",
+        description = "Brass gears and a wind-up key: fast, precise, and a little reckless.",
+        skill = { name = "Overclock", text = "+25% mining speed, but it wears out 25% faster.", params = { rate = 1.25, drain = 1.25 } },
+        mult = { MiningRate = 1.10, CarryCapacity = 0.90, Efficiency = 1.10, Luck = 0.90 },
+    },
+    Alchemist = {
+        displayName = "Alchemist", tier = 3, statBias = "Rare finds",
+        description = "Bubbling vials and strange brews.",
+        skill = { name = "Transmutation", text = "10% of its hauls are brewed into something rarer.", params = { chance = 0.10, luckMult = 3 } },
+        mult = { MiningRate = 0.90, CarryCapacity = 0.90, Efficiency = 1.10, Luck = 1.40 },
+    },
+    Gargoyle = {
+        displayName = "Gargoyle", tier = 3, statBias = "Offline mining",
+        description = "A winged stone guardian that sleeps by day and works by night.",
+        skill = { name = "Night Watch", text = "Works 60% harder while you are offline, but 10% slower while you play.",
+            params = { offlineRate = 1.6, onlineRate = 0.9 } },
+        mult = { MiningRate = 1.00, CarryCapacity = 1.25, Efficiency = 1.00, Luck = 1.00 },
+    },
+    StormJar = {
+        displayName = "Storm in a Jar", tier = 4, statBias = "Team protection",
+        description = "A thunderstorm trapped in a glass shell.",
+        skill = { name = "Shelter from the Storm", text = "Every Jar you deploy slows wear on your other Golems by 10% (up to 30%).",
+            params = { shelterPer = 0.10, shelterCap = 0.30 } },
+        mult = { MiningRate = 1.00, CarryCapacity = 1.00, Efficiency = 1.15, Luck = 1.10 },
+    },
+    Dragonbone = {
+        displayName = "Dragonbone", tier = 4, statBias = "Blueprint finds",
+        description = "The skeleton of something enormous, still guarding its hoard.",
+        skill = { name = "Hoarder's Instinct", text = "Each Dragonbone you deploy doubles your chance to discover new blueprints (up to 3x).",
+            params = { blueprintPer = 1.0, blueprintCap = 2.0 } },
+        mult = { MiningRate = 1.25, CarryCapacity = 1.10, Efficiency = 1.00, Luck = 1.15 },
+    },
+}
+
+for id, def in pairs(GolemData.Specials) do
+    GolemData.Elements[id] = {
+        id = id, displayName = def.displayName, special = true, tier = def.tier,
+        primaryMaterial = nil, biome = "Any zone", statBias = def.statBias,
+        description = def.description, skill = def.skill,
+    }
+    GolemData.ElementMultipliers[id] = def.mult
+end
+
+function GolemData.IsSpecial(element)
+    return GolemData.Specials[element] ~= nil
+end
+
 -- ── Rarity & variants (Adopt Me style) ─────────────────────────────────────────
 -- Rarity is fixed by the blueprint's tier - never a dice roll (the spec's core promise) - and gives
 -- every Golem an instantly readable "how special is this?" label.
