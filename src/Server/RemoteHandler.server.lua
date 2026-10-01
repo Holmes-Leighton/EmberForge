@@ -530,11 +530,22 @@ end)
 
 RemoteEvents.ManageGuild.OnServerEvent:Connect(function(player, action, userId)
     SafeCall(player, function()
-        if (action ~= "kick" and action ~= "promote") or (type(userId) ~= "string" and type(userId) ~= "number") then return end
+        if (action ~= "kick" and action ~= "promote" and action ~= "officer" and action ~= "demote") or (type(userId) ~= "string" and type(userId) ~= "number") then return end
         local GuildService = require(script.Parent.Services.GuildService)
         local ok, err
-        if action == "kick" then ok, err = GuildService.Kick(player, userId) else ok, err = GuildService.Promote(player, userId) end
-        RemoteEvents.GuildResult:FireClient(player, action, ok == true, ok and (action == "kick" and "Member removed." or "Leadership handed over.") or err)
+        if action == "kick" then ok, err = GuildService.Kick(player, userId)
+        elseif action == "promote" then ok, err = GuildService.Promote(player, userId)
+        else ok, err = GuildService.SetOfficer(player, userId, action == "officer") end
+        local done = { kick = "Member removed.", promote = "Leadership handed over.", officer = "Officer appointed.", demote = "Officer role removed." }
+        RemoteEvents.GuildResult:FireClient(player, action, ok == true, ok and done[action] or err)
+    end)
+end)
+
+RemoteEvents.SetGuildBanner.OnServerEvent:Connect(function(player, colorId, emblemId)
+    SafeCall(player, function()
+        if type(colorId) ~= "string" or type(emblemId) ~= "string" then return end
+        local ok, err = require(script.Parent.Services.GuildService).SetBanner(player, colorId, emblemId)
+        RemoteEvents.GuildResult:FireClient(player, "banner", ok == true, ok and "Banner updated." or err)
     end)
 end)
 

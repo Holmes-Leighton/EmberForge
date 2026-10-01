@@ -144,7 +144,13 @@ local function Note(text, height, color)
     return l
 end
 
-local function Row(name, sub, color, buttonText, buttonColor, onClick, enabled, height, b2Text, b2Color, b2Click)
+-- the guild banner as text: its emblem letter, and its colour (the banner colour replaces `fallback`)
+local function BannerTag(banner, fallback)
+    if type(banner) ~= "table" then return "", fallback end
+    return "[" .. (GuildData.BannerEmblems[banner.emblem] or "?") .. "] ", GuildData.BannerColors[banner.color] or fallback
+end
+
+local function Row(name, sub, color, buttonText, buttonColor, onClick, enabled, height, b2Text, b2Color, b2Click, b3Text, b3Color, b3Click)
     local row = Instance.new("Frame")
     row.Size = UDim2.new(1, -8, 0, height or 50)
     row.BackgroundColor3 = Theme.Colors.Panel
@@ -184,6 +190,16 @@ local function Row(name, sub, color, buttonText, buttonColor, onClick, enabled, 
         b2.Size = UDim2.new(0, 110, 0, 32)
         b2.TextSize = 13
         b2.MouseButton1Click:Connect(function() if b2Click then b2Click() end end)
+    end
+    if b3Text then      -- and a third (the leader's officer tool)
+        n.Size = UDim2.new(1, -390, 0, 22)
+        s.Size = UDim2.new(1, -390, 0, (height or 50) - 28)
+        local b3 = Theme.Button(row, b3Text, b3Color, Color3.fromRGB(255, 255, 255))
+        b3.AnchorPoint = Vector2.new(1, 0.5)
+        b3.Position = UDim2.new(1, -246, 0.5, 0)
+        b3.Size = UDim2.new(0, 110, 0, 32)
+        b3.TextSize = 13
+        b3.MouseButton1Click:Connect(function() if b3Click then b3Click() end end)
     end
     return row
 end
@@ -253,8 +269,9 @@ local function Reload_()
             .. table.concat(pl, "\n"), 100)
         if #(info.top or {}) == 0 then Note("No guild has mined anything this week yet. Be the first!", 30) return end
         for _, g in ipairs(info.top) do
-            Row(string.format("#%d  %s", g.rank, g.name), string.format("%s mined this week   -   %d members", Utils.FormatNumber(g.weekly), g.members),
-                g.rank == 1 and Theme.Colors.Legendary or g.rank <= 3 and Theme.Colors.Epic or Theme.Colors.Info, nil, nil, nil, nil, 50)
+            local tag, tagColor = BannerTag(g.banner, g.rank == 1 and Theme.Colors.Legendary or g.rank <= 3 and Theme.Colors.Epic or Theme.Colors.Info)
+            Row(string.format("#%d  %s%s", g.rank, tag, g.name), string.format("%s mined this week   -   %d members", Utils.FormatNumber(g.weekly), g.members),
+                tagColor, nil, nil, nil, nil, 50)
         end
         return
     end
@@ -301,11 +318,26 @@ local function Reload_()
         Note("You're not in a guild yet. Open the Find / Create tab to join one or found your own.", 40)
         return
     end
-    Row(mine.name, string.format("%d / %d members   -   %s mined all-time", mine.memberCount, mine.maxMembers, Utils.FormatNumber(mine.total)),
-        Theme.Colors.Gold, "Leave", Theme.Colors.Danger, function() RemoteEvents.LeaveGuild:FireServer() end, true, 56)
+    local myTag, myColor = BannerTag(mine.banner, Theme.Colors.Gold)
+    Row(myTag .. mine.name, string.format("%d / %d members   -   %s mined all-time", mine.memberCount, mine.maxMembers, Utils.FormatNumber(mine.total)),
+        myColor, "Leave", Theme.Colors.Danger, function() RemoteEvents.LeaveGuild:FireServer() end, true, 56)
     local nextLine = mine.nextLevelTotal and string.format("Next level at %s mined together.", Utils.FormatNumber(mine.nextLevelTotal)) or "Maximum level!"
     Row(string.format("Guild Level %d", mine.level), string.format("Every member gets +%d%% mining speed. %s", math.floor(mine.levelBonus * 100 + 0.5), nextLine),
         Theme.Colors.Epic, "Guild Hall", Theme.Colors.Success, function() RemoteEvents.GoToGuildHall:FireServer() gui.Enabled = false end, true, 54)
+    if mine.isLeader then       -- the banner: each press moves to the next colour or emblem
+        local function nextOf(order, current)
+            for i, id in ipairs(order) do if id == current then return order[i % #order + 1] end end
+            return order[1]
+        end
+        local b = mine.banner or {}
+        Row("Guild banner", "Pick a colour and an emblem. They show beside your guild's name.", myColor,
+            "Emblem", Theme.Colors.PanelAlt, function()
+                RemoteEvents.SetGuildBanner:FireServer(b.color or GuildData.BannerColorOrder[1], nextOf(GuildData.BannerEmblemOrder, b.emblem))
+            end, true, 50,
+            "Colour", Theme.Colors.PanelAlt, function()
+                RemoteEvents.SetGuildBanner:FireServer(nextOf(GuildData.BannerColorOrder, b.color), b.emblem or GuildData.BannerEmblemOrder[1])
+            end)
+    end
     local inviteRow = Instance.new("Frame")
     inviteRow.Size = UDim2.new(1, -8, 0, 46)
     inviteRow.BackgroundColor3 = Theme.Colors.Panel
@@ -354,12 +386,15 @@ local function Reload_()
     end
     Note("Members (this week)", 24, Theme.Colors.AccentBright)
     for _, m in ipairs(mine.members) do
-        local label = m.name .. (m.leader and "  (leader)" or "")
+        local label = m.name .. (m.leader and "  (leader)" or (m.officer and "  (officer)" or ""))
         local sub = Utils.FormatNumber(m.weekly) .. " mined this week"
-        local color = m.leader and Theme.Colors.Gold or Theme.Colors.Info
-        if mine.isLeader and not m.leader then       -- the leader can remove a member or hand over the guild
+        local color = m.leader and Theme.Colors.Gold or (m.officer and Theme.Colors.Accent or Theme.Colors.Info)
+        if mine.isLeader and not m.leader then       -- the leader can remove a member, appoint or dismiss an officer, or hand over the guild
             Row(label, sub, color, "Remove", Theme.Colors.Danger, function() RemoteEvents.ManageGuild:FireServer("kick", m.userId) end, true, 44,
-                "Make leader", Theme.Colors.Accent, function() RemoteEvents.ManageGuild:FireServer("promote", m.userId) end)
+                "Make leader", Theme.Colors.Accent, function() RemoteEvents.ManageGuild:FireServer("promote", m.userId) end,
+                m.officer and "Demote" or "Make officer", Theme.Colors.PanelAlt, function() RemoteEvents.ManageGuild:FireServer(m.officer and "demote" or "officer", m.userId) end)
+        elseif mine.isOfficer and not m.leader and not m.officer then       -- an officer can remove plain members
+            Row(label, sub, color, "Remove", Theme.Colors.Danger, function() RemoteEvents.ManageGuild:FireServer("kick", m.userId) end, true, 44)
         else
             Row(label, sub, color, nil, nil, nil, nil, 44)
         end

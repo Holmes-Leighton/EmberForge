@@ -8,6 +8,17 @@ GuildData.NAME_MIN = 3
 GuildData.NAME_MAX = 20
 GuildData.CREATE_COST = 500          -- Ember Coins: keeps throwaway guilds from being spammed
 GuildData.WEEK_SECONDS = 7 * 86400
+GuildData.MAX_OFFICERS = 3           -- the leader may appoint this many officers (they can remove plain members)
+
+-- Banner: the leader picks one colour and one emblem (ids stored on the guild; the client draws them)
+GuildData.BannerColors = {
+    Ember  = Color3.fromRGB(220, 80, 40),  Frost = Color3.fromRGB(100, 170, 230), Storm = Color3.fromRGB(160, 120, 240),
+    Forest = Color3.fromRGB(80, 170, 100), Gold  = Color3.fromRGB(240, 190, 60),  Void  = Color3.fromRGB(110, 60, 170),
+    Rose   = Color3.fromRGB(230, 110, 160), Steel = Color3.fromRGB(150, 160, 175),
+}
+GuildData.BannerColorOrder = { "Ember", "Frost", "Storm", "Forest", "Gold", "Void", "Rose", "Steel" }
+GuildData.BannerEmblems = { Anvil = "A", Flame = "F", Crown = "C", Pick = "P", Gem = "G", Skull = "S", Star = "*", Bolt = "Z" }
+GuildData.BannerEmblemOrder = { "Anvil", "Flame", "Crown", "Pick", "Gem", "Skull", "Star", "Bolt" }
 
 -- The weekly Guild Challenge: everyone's mining adds up toward one target that grows with the guild.
 GuildData.CHALLENGE_BASE = 20000

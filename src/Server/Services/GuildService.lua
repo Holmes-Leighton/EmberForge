@@ -70,7 +70,10 @@ local function Snapshot(guild, userId)
     Rollover(guild)
     local members = {}
     for uid, m in pairs(guild.members) do
-        table.insert(members, { userId = uid, name = m.name, weekly = m.weekly or 0, leader = tostring(guild.leader) == uid })
+        local isLeader = tostring(guild.leader) == uid
+        table.insert(members, { userId = uid, name = m.name, weekly = m.weekly or 0, leader = isLeader,
+            officer = not isLeader and (guild.officers or {})[uid] == true,
+            role = isLeader and "leader" or ((guild.officers or {})[uid] and "officer" or "member") })
     end
     table.sort(members, function(a, b) return a.weekly > b.weekly end)
     local count = #members
@@ -84,6 +87,8 @@ local function Snapshot(guild, userId)
             and guild.claimed[tostring(userId)] ~= true,
         claimed = guild.claimed[tostring(userId)] == true,
         isLeader = tostring(guild.leader) == tostring(userId),
+        isOfficer = (guild.officers or {})[tostring(userId)] == true,
+        banner = guild.banner,
         reward = GuildData.REWARD, minContribution = GuildData.MIN_CONTRIBUTION,
         level = GuildData.LevelOf(guild.total or 0), levelBonus = GuildData.LevelBonus(GuildData.LevelOf(guild.total or 0)),
         nextLevelTotal = select(2, GuildData.NextLevel(guild.total or 0)),
@@ -182,6 +187,7 @@ function GuildService.Leave(player)
         guildStore:UpdateAsync(GuildKey(id), function(guild)
             if type(guild) ~= "table" then return nil end
             guild.members[tostring(player.UserId)] = nil
+            if guild.officers then guild.officers[tostring(player.UserId)] = nil end
             if next(guild.members) == nil then
                 disbandName = guild.name
                 return nil                                   -- (the record is removed below)
@@ -192,6 +198,7 @@ function GuildService.Leave(player)
                     if not bestAt or (m.joinedAt or 0) < bestAt then bestId, bestAt = uid, m.joinedAt or 0 end
                 end
                 guild.leader = tonumber(bestId) or bestId
+                if guild.officers then guild.officers[bestId] = nil end
             end
             return guild
         end)
@@ -219,9 +226,15 @@ function GuildService.Kick(leader, targetUserId)
     local ok = pcall(function()
         guildStore:UpdateAsync(GuildKey(data.GuildId), function(guild)
             if type(guild) ~= "table" then err = "Your guild no longer exists" return nil end
-            if tostring(guild.leader) ~= tostring(leader.UserId) then err = "Only the guild leader can do that" return nil end
+            local actor = tostring(leader.UserId)
+            local isLeader = tostring(guild.leader) == actor
+            local isOfficer = (guild.officers or {})[actor] == true
+            if not isLeader and not isOfficer then err = "Only the guild leader or an officer can do that" return nil end
             if not guild.members[target] then err = "That player isn't in your guild" return nil end
+            if tostring(guild.leader) == target then err = "You can't remove the leader" return nil end
+            if not isLeader and (guild.officers or {})[target] then err = "Only the leader can remove an officer" return nil end
             guild.members[target] = nil
+            if guild.officers then guild.officers[target] = nil end
             kicked = true
             return guild
         end)
@@ -253,12 +266,59 @@ function GuildService.Promote(leader, targetUserId)
             if tostring(guild.leader) ~= tostring(leader.UserId) then err = "Only the guild leader can do that" return nil end
             if not guild.members[target] then err = "That player isn't in your guild" return nil end
             guild.leader = tonumber(target) or target
+            if guild.officers then guild.officers[target] = nil end      -- the new leader outranks an officer
             done = true
             return guild
         end)
     end)
     if not ok then return false, "Guilds are unavailable right now. Try again in a minute." end
     if not done then return false, err or "Couldn't change the leader" end
+    return true
+end
+
+-- Leader only: make a member an officer (they can remove plain members) or take it away again
+function GuildService.SetOfficer(leader, targetUserId, on)
+    local data = PlayerDataService.Get(leader)
+    if not data or not data.GuildId then return false, "You are not in a guild" end
+    local target = tostring(targetUserId)
+    if target == tostring(leader.UserId) then return false, "You already lead this guild" end
+    local err, done
+    local ok = pcall(function()
+        guildStore:UpdateAsync(GuildKey(data.GuildId), function(guild)
+            if type(guild) ~= "table" then err = "Your guild no longer exists" return nil end
+            if tostring(guild.leader) ~= tostring(leader.UserId) then err = "Only the guild leader can do that" return nil end
+            if not guild.members[target] then err = "That player isn't in your guild" return nil end
+            guild.officers = guild.officers or {}
+            local count = 0
+            for _ in pairs(guild.officers) do count += 1 end
+            if on and not guild.officers[target] and count >= GuildData.MAX_OFFICERS then err = "A guild can have at most " .. GuildData.MAX_OFFICERS .. " officers" return nil end
+            guild.officers[target] = on and true or nil
+            done = true
+            return guild
+        end)
+    end)
+    if not ok then return false, "Guilds are unavailable right now. Try again in a minute." end
+    if not done then return false, err or "Couldn't change that role" end
+    return true
+end
+
+-- Leader only: the guild banner (a colour and an emblem from GuildData), shown on the guild screen and the leaderboard
+function GuildService.SetBanner(leader, colorId, emblemId)
+    local data = PlayerDataService.Get(leader)
+    if not data or not data.GuildId then return false, "You are not in a guild" end
+    if not GuildData.BannerColors[colorId] or not GuildData.BannerEmblems[emblemId] then return false, "Pick a colour and an emblem" end
+    local err, done
+    local ok = pcall(function()
+        guildStore:UpdateAsync(GuildKey(data.GuildId), function(guild)
+            if type(guild) ~= "table" then err = "Your guild no longer exists" return nil end
+            if tostring(guild.leader) ~= tostring(leader.UserId) then err = "Only the guild leader can do that" return nil end
+            guild.banner = { color = colorId, emblem = emblemId }
+            done = true
+            return guild
+        end)
+    end)
+    if not ok then return false, "Guilds are unavailable right now. Try again in a minute." end
+    if not done then return false, err or "Couldn't change the banner" end
     return true
 end
 
@@ -526,7 +586,7 @@ function GuildService.Top(count)
     for rank, entry in ipairs(page) do
         local guild = LoadGuild(entry.key)
         if guild then
-            table.insert(out, { rank = rank, name = guild.name, weekly = entry.value, members = CountMembers(guild) })
+            table.insert(out, { rank = rank, name = guild.name, weekly = entry.value, members = CountMembers(guild), banner = guild.banner })
         end
     end
     return out
