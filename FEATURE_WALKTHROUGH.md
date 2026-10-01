@@ -81,3 +81,5 @@ Still open from the walkthrough:
 - World labels (pad names, anvil, "Open to everyone") stack on top of each other near the anvil.
 - Several toasts at once cover the right-hand sidebar.
 - The Royal Egg rows read "Coming soon" until their product ids exist.
+
+Found and fixed in the second play-test round: offline storage upgrades (8h Vault, 24h Robux pass) did nothing, because every Golem tier fills its carry capacity in 2.9 hours; the offline carry limit now scales with the storage tier (base x1, 8h x2, 24h x6). Covered by tests/test_offline.lua. Also verified live: fusion to Elite and Supreme (+25% / +60% stats), achievements and titles, Season claims, deploy slot limit, Supplier, smelting and Speed-Ups.

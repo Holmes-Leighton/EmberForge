@@ -159,7 +159,11 @@ local function GolemProduction(golem, seconds, storageTier, playerData, stormBoo
     local produced = math.floor(rawRate * (effectiveSeconds / 3600))
     -- Woven's Net Haul: its doubled hauls, as the average over a long absence
     if skill and skill.doubleChance then produced = math.floor(produced * (1 + skill.doubleChance)) end
-    local carryCapped = math.min(produced, math.floor(stats.carryCapacity * (1 + fp.carry) * (1 + auras.carry)))
+    -- A Golem can only hold so much (carry capacity). Offline storage is what lets it keep working while you are away,
+    -- so the limit grows with the storage tier: base storage is the Golem's own capacity, 8h storage holds twice that,
+    -- 24h storage six times (without this the upgrades would change nothing, as every Golem fills up in under 3 hours)
+    local storageScale = capSeconds / (GameConfig.OFFLINE_STORAGE_BASE_HOURS * 3600)
+    local carryCapped = math.min(produced, math.floor(stats.carryCapacity * (1 + fp.carry) * (1 + auras.carry) * storageScale))
 
     return {
         golemId   = golem.id,
