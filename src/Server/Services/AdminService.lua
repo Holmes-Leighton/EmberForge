@@ -60,6 +60,21 @@ function AdminService.Init(LiveOps, Notify)
     local function hook(player)
         player.Chatted:Connect(function(msg) handle(player, msg) end)
     end
+    -- Studio-only test hook (never exists in a published game): ServerStorage.StudioGrant:Fire(player, "blueprint"|"material"|"forgelevel", id, qty)
+    if RunService:IsStudio() then
+        local PlayerDataService = require(script.Parent.PlayerDataService)
+        local bindable = Instance.new("BindableEvent")
+        bindable.Name = "StudioGrant"
+        bindable.Parent = game:GetService("ServerStorage")
+        bindable.Event:Connect(function(player, kind, id, qty)
+            local data = PlayerDataService.Get(player)
+            if not data then return end
+            if kind == "blueprint" and not table.find(data.Blueprints, id) then table.insert(data.Blueprints, id)
+            elseif kind == "material" then data.Inventory[id] = (data.Inventory[id] or 0) + (qty or 1)
+            elseif kind == "forgelevel" then data.ForgeLevel = math.max(data.ForgeLevel or 1, tonumber(id) or 1) end
+            PlayerDataService.MarkDirty(player)
+        end)
+    end
     Players.PlayerAdded:Connect(hook)
     for _, p in ipairs(Players:GetPlayers()) do hook(p) end
 end
