@@ -111,10 +111,12 @@ for i, item in ipairs(convItems) do
     subLbl.Position = UDim2.new(0, 8, 0, 22)
     subLbl.TextYAlignment = Enum.TextYAlignment.Top
 
-    local buyBtn = Theme.Button(card, item.price, item.color, Color3.fromRGB(30, 20, 12), item.name)
+    local buyBtn = Theme.Button(card, item.price, item.color, Color3.fromRGB(255, 255, 255), item.name)
     buyBtn.Size = UDim2.new(1, -16, 0, 26)
     buyBtn.Position = UDim2.new(0, 8, 1, -30)
-    buyBtn.TextSize = 12
+    buyBtn.TextSize = 14
+    buyBtn.TextStrokeColor3 = Color3.fromRGB(30, 20, 12)         -- readable on every colour of button
+    buyBtn.TextStrokeTransparency = 0.45
 end
 
 -- ── Section: Season Passes ────────────────────────────────────────────────────
@@ -172,11 +174,9 @@ for i, pass in ipairs(passItems) do
     subLbl.Size = UDim2.new(1, -12, 0, 32)
     subLbl.Position = UDim2.new(0, 10, 0, 34)
 
-    for fi, feat in ipairs(pass.features) do
-        local fl = Theme.Label(card, "+ " .. feat, Theme.TextSize.Small, Theme.Colors.Success)
-        fl.Size = UDim2.new(1, -12, 0, 16)
-        fl.Position = UDim2.new(0, 10, 0, 68 + (fi - 1) * 18)
-    end
+    subLbl.Size = UDim2.new(1, -20, 0, 40)           -- (the description already lists what the pass includes)
+    subLbl.TextWrapped = true
+    subLbl.TextYAlignment = Enum.TextYAlignment.Top
 
     local buyBtn = Theme.Button(card, pass.price .. " — Buy", pass.color, Color3.fromRGB(255,255,255), pass.name)
     buyBtn.Size = UDim2.new(1, -16, 0, 30)
@@ -224,10 +224,12 @@ for i, pad in ipairs(padItems) do
     sub.Size = UDim2.new(1, -16, 0, 14)
     sub.Position = UDim2.new(0, 10, 0, 54)
 
-    local buy = Theme.Button(card, pad.price, pad.color, Color3.fromRGB(30, 20, 12), pad.name)
+    local buy = Theme.Button(card, pad.price, pad.color, Color3.fromRGB(255, 255, 255), pad.name)
     buy.Size = UDim2.new(1, -16, 0, 24)
     buy.Position = UDim2.new(0, 8, 1, -28)
-    buy.TextSize = 12
+    buy.TextSize = 13
+    buy.TextStrokeColor3 = Color3.fromRGB(30, 20, 12)
+    buy.TextStrokeTransparency = 0.45
     buy:SetAttribute("PassKey", pad.key)
     buy:SetAttribute("Price", pad.price)
 end

@@ -56,3 +56,28 @@ Status key: **Verified** = seen working in Studio; **Unit** = mock tests only; *
 5. Game icon and thumbnails must be set in Creator Hub (draft screenshots in `marketing/draft-screenshots/`).
 6. Guilds now have leader tools (remove member, hand over leadership), invites with an accept popup (same server only), filtered guild chat (last 30 messages, polled every 4s while open), a Guild Hall teleport and a guild level that gives members +2% mining per level (max +10%). Chat uses Roblox text filtering, which only runs on a published place, so test it there.
 7. Codes are not capped globally across servers (`maxUses` is not enforced); keep any limited code generous.
+
+## New-player walkthrough (played in Studio as a brand-new account)
+Path: welcome screen -> Starter Pad (about 15s for the first 10 ore and 5 coal) -> Golem Anvil -> Forge -> Deploy -> Collect.
+The tutorial completes in a couple of minutes and the Collect button, summary pop-up, Bag badge and "Claim your reward!" hint on Quests
+all point the player at the next step. Menus checked: Anvil, Forge, Bag, Quests, Market, Shop, Pets, Season, plus the earlier ones.
+
+Fixed during the walkthrough:
+- The Quests screen showed the progress from login, so finished challenges still read 0/1. It now re-reads the server every time it opens.
+- Tutorial tip box cut its hint off mid-sentence and sat on top of menu tabs and titles (now taller and below menus).
+- Raw ids shown to players: challenge toast ("weekly_discover_zone"), reward lists ("RefinedOre"), deploy toast ("EmberDepths"),
+  smelt toast, Season Pass rewards ("ChargedFlint x30"), "+1 BasicOre" pick-up text, "Best at: MiningRate".
+- Toasts cut off long messages (now two lines); pick-up text printed several lines on top of each other (now one block).
+- HUD: coins were shown with a lightning-bolt symbol (the same symbol as energy) and "M: Lv 1" was cryptic (now "400 Coins", "Mastery Lv 1").
+- Bag title collided with its subtitle; Shop price text was tiny and hard to read; Season Pass benefit lines ran under the Buy buttons.
+- Pets opened on an empty "My Pets" page for a new player (now opens on Eggs until you own a pet).
+- Welcome text no longer uses an emoji that renders as a broken glyph.
+
+Still open from the walkthrough:
+- The anvil's E prompt only appeared/worked once the anvil was in front of the camera; I could not tell whether that is the test harness or the game.
+  Worth checking on a real client, and consider a floating arrow to the anvil for step 2.
+- The Forge menu opens on Blueprints while tutorial step 3 says "deploy" (Deploy is the second tab). Crafting is also possible from both the world Anvil and the Forge.
+- The Anvil list has two entries both called "Storm Golem" (Tier 1 and Tier 4).
+- World labels (pad names, anvil, "Open to everyone") stack on top of each other near the anvil.
+- Several toasts at once cover the right-hand sidebar.
+- The Royal Egg rows read "Coming soon" until their product ids exist.

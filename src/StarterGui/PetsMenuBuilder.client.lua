@@ -395,7 +395,14 @@ for id, b in pairs(tabButtons) do
 end
 
 gui:GetPropertyChangedSignal("Enabled"):Connect(function()
-    if gui.Enabled then task.spawn(Reload) else table.clear(revealQueue) CloseReveal() end
+    if gui.Enabled then
+        task.spawn(function()
+            -- a player with no pets yet wants the egg shop, not an empty list
+            local ok, d = pcall(function() return RemoteEvents.GetPlayerData:InvokeServer() end)
+            if ok and type(d) == "table" and #(d.OwnedPets or {}) == 0 then tab = "Eggs" end
+            Reload()
+        end)
+    else table.clear(revealQueue) CloseReveal() end
 end)
 
 -- Paid random items are restricted in some regions: keep the Robux eggs hidden until Roblox says it's fine

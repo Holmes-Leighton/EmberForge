@@ -65,7 +65,9 @@ function CosmeticData.RewardText(reward)
         local d = CosmeticData.Describe(reward.id)
         return d.name .. " (" .. d.label .. ")"
     elseif reward.type == "material" then
-        return string.format("%s x%d", reward.id, reward.qty or 1)
+        local ok, MaterialData = pcall(function() return require(script.Parent.MaterialData) end)
+        local mat = ok and MaterialData.Get(reward.id)
+        return string.format("%s x%d", mat and mat.displayName or reward.id, reward.qty or 1)
     elseif reward.type == "coins" then
         return (reward.qty or 0) .. " Ember Coins"
     elseif reward.type == "speedup" then

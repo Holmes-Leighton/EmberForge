@@ -27,7 +27,7 @@ local HOW_TO_PLAY = table.concat({
     "3.  Open the 🔥 Forge menu and deploy it to a mining zone, then press ⛏ Collect Resources.",
     "4.  Craft more Golems from blueprints. Each new element unlocks a new mining zone.",
     "5.  Level up to unlock stronger pads (3x, 9x, 25x, 100x). Finish 📋 Challenges, trade in the 🏪 Market, check 🏆 Leaders.",
-    "6.  Hatch 🐾 Pets for small boosts, 🔨 Build mine carts and furnaces on your forge, join a 🛡 Guild, and collect a 🎁 Reward every day.",
+    "6.  Then explore: hatch Pets for small boosts, Build mine carts and furnaces on your forge, join a Guild, and collect your daily Rewards.",
     "7.  Every hour a bonus event runs for everyone (see the banner at the top). Watch for surges!",
     "",
     "Tip: follow the roads to the six tunnels in the far wall: each leads to a mining cave. Visit other players' forges to trade.",
@@ -42,7 +42,7 @@ local function Build()
     gui = Instance.new("ScreenGui")
     gui.Name = "TutorialGui"
     gui.ResetOnSpawn = false
-    gui.DisplayOrder = 30
+    gui.DisplayOrder = 8        -- below the menus (11) so the tip never covers a window's tabs or title
     gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     gui.Parent = PlayerGui
 
@@ -50,7 +50,7 @@ local function Build()
     tracker = Instance.new("Frame")
     tracker.Name = "Tracker"
     tracker.AnchorPoint = Vector2.new(0.5, 0)
-    tracker.Size = UDim2.new(0, 400, 0, 70)
+    tracker.Size = UDim2.new(0, 420, 0, 92)
     tracker.Position = UDim2.new(0.5, 0, 0, 62)       -- under the event banner
     tracker.BackgroundColor3 = Theme.Colors.Panel
     tracker.BackgroundTransparency = 0.05
@@ -69,7 +69,7 @@ local function Build()
 
     trackerHint = Theme.Label(tracker, "", 13, Theme.Colors.TextPrimary, Theme.Fonts.Body, "Hint")
     trackerHint.Position = UDim2.new(0, 12, 0, 30)
-    trackerHint.Size = UDim2.new(1, -24, 0, 36)
+    trackerHint.Size = UDim2.new(1, -24, 0, 54)       -- room for three lines, so no hint is cut off
     trackerHint.TextYAlignment = Enum.TextYAlignment.Top
 
     local skip = Theme.Button(tracker, "Skip", Theme.Colors.PanelAlt, Theme.Colors.TextSecondary, "Skip")

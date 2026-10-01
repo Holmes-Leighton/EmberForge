@@ -9,6 +9,9 @@ RemoteEvents.Load()
 
 -- Load controllers
 local HUDController          = require(script.Controllers.HUDController)
+local ChallengeData          = require(game.ReplicatedStorage.Shared.Data.ChallengeData)
+local MiningZoneData         = require(game.ReplicatedStorage.Shared.Data.MiningZoneData)
+local MaterialData           = require(game.ReplicatedStorage.Shared.Data.MaterialData)
 local ForgeController        = require(script.Controllers.ForgeController)
 local InventoryController    = require(script.Controllers.InventoryController)
 local ShopController         = require(script.Controllers.ShopController)
@@ -87,7 +90,8 @@ end)
 RemoteEvents.GolemDeployed.OnClientEvent:Connect(function(ok, golemId, zoneId, err)
     ForgeController.OnGolemDeployed(ok, golemId, zoneId, err)
     if ok then
-        HUDController.ShowNotification("Golem Deployed", "Mining in " .. zoneId)
+        local zone = MiningZoneData.Get(zoneId)
+        HUDController.ShowNotification("Golem Deployed", "Mining in " .. (zone and zone.displayName or tostring(zoneId)))
     else
         HUDController.ShowNotification("Can't deploy", tostring(err))
     end
@@ -106,7 +110,8 @@ end)
 
 RemoteEvents.SmeltCompleted.OnClientEvent:Connect(function(job)
     ForgeController.OnSmeltCompleted(job)
-    HUDController.ShowNotification("Smelt Complete!", job.outputId .. " x" .. job.outputQty)
+    local outMat = MaterialData.Get(job.outputId)
+    HUDController.ShowNotification("Smelt Complete!", (outMat and outMat.displayName or job.outputId) .. " x" .. job.outputQty)
 end)
 
 RemoteEvents.LevelUp.OnClientEvent:Connect(function(newLevel)
@@ -161,7 +166,8 @@ RemoteEvents.PurchaseResult.OnClientEvent:Connect(function(ok, payload, err)
 end)
 
 RemoteEvents.ChallengeCompleted.OnClientEvent:Connect(function(challengeId)
-    HUDController.ShowNotification("Challenge Complete!", challengeId)
+    local def = ChallengeData.Get(challengeId)
+    HUDController.ShowNotification("Challenge Complete!", def and def.displayName or challengeId)
     ChallengesController.OnChallengeCompleted(challengeId)
 end)
 

@@ -269,7 +269,7 @@ local function RenderDetail()
             string.format("Efficiency:  x%.2f", stats.efficiency),
             string.format("Luck:  %d%%", math.floor(stats.luck * 100 + 0.5)),
             string.format("Lasts:  %d hours", stats.durabilityHours or 0),
-            bias ~= "" and ("Best at:  " .. bias) or "",
+            bias ~= "" and ("Best at:  " .. tostring(bias):gsub("(%l)(%u)", "%1 %2"):lower()) or "",       -- "MiningRate" -> "mining rate"
         }, "\n")
     end
 

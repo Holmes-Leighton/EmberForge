@@ -133,7 +133,7 @@ function HUDController.Refresh(data)
 
     setLabel("PlayerLevelLabel", "Level " .. (data.PlayerLevel or 1))
     setLabel("ForgeLevelLabel",  "Forge " .. (data.ForgeLevel or 1))
-    setLabel("CoinsLabel",       Utils.FormatNumber(data.EmberCoins or 0) .. " ⚡")
+    setLabel("CoinsLabel",       Utils.FormatNumber(data.EmberCoins or 0) .. " Coins")
     -- Golems: deployed / usable slots, flagging any that have worn out
     local deployed, broken = 0, 0
     for _, g in ipairs(data.Golems or {}) do
@@ -179,7 +179,7 @@ function HUDController.Refresh(data)
         end
         return best
     end)() or 0
-    setLabel("MasteryLabel", "M: Lv " .. maxLevel)
+    setLabel("MasteryLabel", "Mastery Lv " .. maxLevel)
 
     -- Animate XP bar
     local xpBarBg = hudGui:FindFirstChild("XPBarBg", true)
@@ -234,14 +234,20 @@ end
 function HUDController.OnResourceUpdate(gains)
     if not hudGui then return end
     -- Animate +N resource counters floating up (visual only)
+    -- one label per update (a line per material, by display name) so several pickups never print on top of each other
+    local lines = {}
     for matId, qty in pairs(gains) do
-        if qty >= 1 then
-            HUDController._FloatText("+" .. Utils.FormatNumber(qty) .. " " .. matId)
+        if qty >= 1 and not tostring(matId):find("^__") then
+            local mat = MaterialData.Get(matId)
+            table.insert(lines, "+" .. Utils.FormatNumber(qty) .. " " .. (mat and mat.displayName or matId))
         end
     end
+    table.sort(lines)
+    if #lines > 0 then HUDController._FloatText(table.concat(lines, "\n"), #lines) end
 end
 
-function HUDController._FloatText(text)
+function HUDController._FloatText(text, lineCount)
+    lineCount = lineCount or 1
     -- Creates a brief floating text label on screen
     local screenGui = Instance.new("ScreenGui")
     screenGui.ResetOnSpawn = false
@@ -249,7 +255,7 @@ function HUDController._FloatText(text)
     screenGui.Parent = PlayerGui
 
     local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(0, 260, 0, 44)
+    lbl.Size = UDim2.new(0, 260, 0, 30 * lineCount)
     lbl.Position = UDim2.new(0.5, -130, 0.6, 0)
     lbl.BackgroundTransparency = 1
     lbl.Text = text
@@ -257,7 +263,7 @@ function HUDController._FloatText(text)
     lbl.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     lbl.TextStrokeTransparency = 0
     lbl.Font = Enum.Font.GothamBlack
-    lbl.TextSize = 26
+    lbl.TextSize = 22
     lbl.Parent = screenGui
 
     local tween = TweenService:Create(lbl,
@@ -329,7 +335,7 @@ function HUDController.ShowNotification(title, message)
     local toast = Instance.new("Frame")
     toast.Name = "Toast"
     toast.LayoutOrder = toastOrder
-    toast.Size = UDim2.new(1, 0, 0, 62)
+    toast.Size = UDim2.new(1, 0, 0, 76)           -- room for a two-line message
     toast.BackgroundColor3 = Theme.Colors.Panel
     toast.BorderSizePixel = 0
     toast:SetAttribute("Key", title .. "|" .. message)
@@ -357,7 +363,9 @@ function HUDController.ShowNotification(title, message)
     titleLbl.TextTruncate = Enum.TextTruncate.AtEnd
     local msgLbl = Theme.Label(toast, message, Theme.TextSize.Body, Theme.Colors.TextPrimary, Theme.Fonts.Body, "Message")
     msgLbl.Position = UDim2.new(0, 58, 0, 30)
-    msgLbl.Size = UDim2.new(1, -66, 0, 26)
+    msgLbl.Size = UDim2.new(1, -66, 0, 40)
+    msgLbl.TextWrapped = true
+    msgLbl.TextYAlignment = Enum.TextYAlignment.Top
     msgLbl.TextTruncate = Enum.TextTruncate.AtEnd
 
     -- Pop in

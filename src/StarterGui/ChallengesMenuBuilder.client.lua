@@ -5,6 +5,7 @@ local Players     = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Theme = require(game.ReplicatedStorage.Shared.Modules.Theme)
 local ScaleUI = require(game.ReplicatedStorage.Shared.Modules.ScaleUI)
+local MaterialData = require(game.ReplicatedStorage.Shared.Data.MaterialData)
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "ChallengesMenu"
@@ -166,7 +167,7 @@ local function BuildChallengeCard(scroll, challenge, progress, claimed, layoutOr
     -- Reward summary
     local rewards = challenge.rewards or {}
     local rewardParts = {}
-    if rewards.coins   then table.insert(rewardParts, rewards.coins .. " ⚡") end
+    if rewards.coins   then table.insert(rewardParts, rewards.coins .. " coins") end
     if rewards.xp      then table.insert(rewardParts, rewards.xp .. " XP") end
     if rewards.blueprints and #rewards.blueprints > 0 then
         table.insert(rewardParts, "Blueprint")
@@ -174,7 +175,8 @@ local function BuildChallengeCard(scroll, challenge, progress, claimed, layoutOr
     if rewards.title   then table.insert(rewardParts, "Title: " .. rewards.title) end
     if rewards.materials then
         for _, m in ipairs(rewards.materials) do
-            table.insert(rewardParts, m.qty .. "× " .. m.id)
+            local mat = MaterialData.Get(m.id)
+            table.insert(rewardParts, m.qty .. "× " .. (mat and mat.displayName or m.id))
         end
     end
 

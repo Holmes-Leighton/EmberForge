@@ -49,7 +49,25 @@ function ChallengesController.Init(data)
 
         ChallengesController.Refresh()
         ChallengesController._StartResetCountdowns()
+
+        -- The progress shown must be the server's, not the snapshot taken at login: re-read it every time the menu opens
+        challengesGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+            if challengesGui.Enabled then ChallengesController.SyncFromServer() end
+        end)
     end)
+end
+
+-- Pulls the player's current challenge progress from the server, updating the shared data table in place
+-- (other controllers hold the same table) and redrawing the cards.
+function ChallengesController.SyncFromServer()
+    if not playerData then return end
+    local ok, fresh = pcall(function() return RemoteEvents.GetPlayerData:InvokeServer() end)
+    if not ok or type(fresh) ~= "table" then return end
+    for _, key in ipairs({ "DailyChallenges", "WeeklyChallenges", "Achievements", "ClaimedAchievements", "_achievementProgress",
+        "LastDailyReset", "LastWeeklyReset" }) do
+        playerData[key] = fresh[key]
+    end
+    ChallengesController.Refresh()
 end
 
 -- ── Populate challenge cards ───────────────────────────────────────────────────
