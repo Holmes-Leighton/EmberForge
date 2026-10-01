@@ -163,7 +163,7 @@ local function BuildPad(world, def)
     local bb = Instance.new("BillboardGui")
     -- sized in studs (pads are 60 apart) so neighbouring signs never overlap at range
     bb.Size = UDim2.fromScale(44, 13)
-    bb.MaxDistance = 400
+    bb.MaxDistance = 90      -- (400 piled every pad sign onto the Anvil's labels)
     bb.Parent = anchor
     local title = Instance.new("TextLabel")
     title.Size = UDim2.new(1, 0, 0.55, 0)

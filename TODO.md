@@ -20,7 +20,7 @@
 - [ ] The anvil's E prompt only worked with the anvil in front of the camera: check on a real client; add a floating arrow for tutorial step 2.
 - [ ] Forge menu opens on Blueprints while tutorial step 3 says "deploy" (Deploy is the second tab).
 - [ ] Two "Storm Golem" entries in the Anvil list (Tier 1 and Tier 4): show the tier or a distinct name.
-- [ ] World labels (pad names, anvil, "Open to everyone") stack on each other near the anvil.
+- [x] World labels stacking near the anvil: pad signs now fade beyond 90 studs.
 - [ ] Several toasts at once cover the sidebar.
 - [ ] Ascension lives inside the Build menu: consider its own tile once players reach Forge Level 10; coin amounts show as "25.0K" (use 25K).
 - [ ] Balance pass with real play data: build prices, Ascension costs, ladder tiers, prize sizes, pad ore rates.
