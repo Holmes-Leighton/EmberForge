@@ -106,6 +106,7 @@ function BiomeArt.IceSpires(parent, pos, rng, scale)
     light.Color, light.Range, light.Brightness = GLOW, 18, 0.8
     light.Parent = m:FindFirstChild("Core")
     m.PrimaryPart = m:FindFirstChildWhichIsA("BasePart")
+    m.ModelStreamingMode = Enum.ModelStreamingMode.Atomic       -- streams in whole: the client animates a piece only once all of it has arrived
     m.Parent = parent
     return m
 end
@@ -143,6 +144,7 @@ function BiomeArt.FrozenFalls(parent, pos, rng, scale)
     light.Color, light.Range, light.Brightness = GLOW, 24, 0.9
     light.Parent = core
     m.PrimaryPart = core
+    m.ModelStreamingMode = Enum.ModelStreamingMode.Atomic       -- streams in whole: the client animates a piece only once all of it has arrived
     m.Parent = parent
     return m
 end
@@ -170,6 +172,7 @@ function BiomeArt.SnowPine(parent, pos, rng, scale)
         CFrame = base * CFrame.new(0, y + 1.4 * scale, 0) * CFrame.Angles(0.8, 0.8, 0) })
     m.PrimaryPart = m:FindFirstChild("Trunk")
     Animate(m, "sway", rng:NextNumber(0.6, 1.1), 0.025, rng:NextNumber(0, 6))
+    m.ModelStreamingMode = Enum.ModelStreamingMode.Atomic       -- streams in whole: the client animates a piece only once all of it has arrived
     m.Parent = parent
     return m
 end
@@ -196,6 +199,7 @@ function BiomeArt.IceCrystals(parent, pos, rng, scale)
     light.Color, light.Range, light.Brightness = Color3.fromRGB(120, 235, 255), 20, 1.4
     light.Parent = first
     m.PrimaryPart = first
+    m.ModelStreamingMode = Enum.ModelStreamingMode.Atomic       -- streams in whole: the client animates a piece only once all of it has arrived
     m.Parent = parent
     return m
 end
@@ -220,6 +224,7 @@ function BiomeArt.FloatingShard(parent, pos, rng, scale)
     light.Parent = core
     m.PrimaryPart = core
     Animate(m, "bobspin", rng:NextNumber(0.5, 0.9), 1.2 * scale, rng:NextNumber(0, 6))
+    m.ModelStreamingMode = Enum.ModelStreamingMode.Atomic       -- streams in whole: the client animates a piece only once all of it has arrived
     m.Parent = parent
     return m
 end
@@ -239,6 +244,7 @@ function BiomeArt.SnowBoulder(parent, pos, rng, scale)
             1.1 * scale, rng:NextNumber(3, 5.5) * scale, ICE)
     end
     m.PrimaryPart = m:FindFirstChild("Rock")
+    m.ModelStreamingMode = Enum.ModelStreamingMode.Atomic       -- streams in whole: the client animates a piece only once all of it has arrived
     m.Parent = parent
     return m
 end

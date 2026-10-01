@@ -117,8 +117,17 @@ local function Step()
         if not inst.Parent then
             scenery[inst] = nil
         else
-            local pos = s.base.Position
-            if (pos - camPos).Magnitude < NEAR * 1.6 then
+            -- the rest pose is read the first time the piece is really here (with StreamingEnabled a Model can be tagged before its parts arrive,
+            -- and a pose read too early would be the world origin)
+            if not s.base then
+                if inst:IsA("Model") then
+                    if inst.PrimaryPart and inst.PrimaryPart:IsDescendantOf(inst) then s.base = inst:GetPivot() end
+                else
+                    s.base = inst.CFrame
+                end
+            end
+            local pos = s.base and s.base.Position
+            if pos and (pos - camPos).Magnitude < NEAR * 1.6 then
                 local a = t * s.speed + s.phase
                 if s.kind == "bob" then
                     inst:PivotTo(s.base * CFrame.new(0, math.sin(a) * s.amp, 0))
@@ -236,7 +245,7 @@ function GolemAnimator.Init()
         if not (inst:IsA("BasePart") or inst:IsA("Model")) then return end
         local kind = inst:GetAttribute("AnimKind")
         if not kind then return end
-        scenery[inst] = { base = inst:GetPivot(), kind = kind, speed = inst:GetAttribute("AnimSpeed") or 1, amp = inst:GetAttribute("AnimAmp") or 0.5,
+        scenery[inst] = { base = nil, kind = kind, speed = inst:GetAttribute("AnimSpeed") or 1, amp = inst:GetAttribute("AnimAmp") or 0.5,
             phase = inst:GetAttribute("AnimPhase") or 0 }
     end
     for _, i in ipairs(CollectionService:GetTagged("EFAnim")) do AddScenery(i) end
