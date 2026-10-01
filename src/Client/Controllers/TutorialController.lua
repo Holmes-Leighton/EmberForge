@@ -153,8 +153,26 @@ local function Advance(fromStep)
 end
 
 -- ── Init ──────────────────────────────────────────────────────────────────────
+local MENU_NAMES = { "InventoryMenu", "ForgeMenu", "MarketMenu", "TradeMenu", "ShopMenu", "SeasonMenu", "ChallengesMenu", "StyleMenu",
+    "LeaderboardMenu", "AnvilMenu", "PetsMenu", "GuildMenu", "BuildMenu", "RewardsMenu" }
+
 function TutorialController.Init(playerData)
     Build()
+
+    -- The tip hides while any menu is open, so it never covers a window's tabs or title (menus draw at different layers)
+    task.spawn(function()
+        while true do
+            task.wait(0.2)
+            if active and tracker then
+                local open = false
+                for _, name in ipairs(MENU_NAMES) do
+                    local g = PlayerGui:FindFirstChild(name)
+                    if g and g:IsA("ScreenGui") and g.Enabled then open = true break end
+                end
+                tracker.Visible = not open and STEPS[stepIndex] ~= nil
+            end
+        end
+    end)
 
     -- Players who already own a Golem have done the basics: skip the tracker
     if playerData and playerData.Golems and #playerData.Golems > 0 then return end

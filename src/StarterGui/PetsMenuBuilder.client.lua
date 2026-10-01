@@ -373,10 +373,10 @@ local function Reload()
         local count = #g.pets
         local canMerge = count >= PetData.MERGE_COUNT and g.variant ~= "MegaNeon"
         local nextLabel = g.variant and PetData.Variants[g.variant] and PetData.Variants[g.variant].next
-        nextLabel = nextLabel and PetData.Variants[nextLabel].label or "Neon"
+        nextLabel = nextLabel and PetData.Variants[nextLabel].label or PetData.Variants.Neon.label      -- (the first merge makes an Elite)
         local sub = string.upper(g.def.rarity) .. "  -  " .. PetData.BoostText(sample)
         if g.variant ~= "MegaNeon" then
-            sub ..= string.format("   (merge %d -> %s)", PetData.MERGE_COUNT, nextLabel)
+            sub ..= string.format("   (merge %d to make 1 %s)", PetData.MERGE_COUNT, nextLabel)
         end
         Row(PetData.DisplayName(sample) .. (count > 1 and ("  x" .. count) or ""), sub, rc,
             isWorn and "Put away" or "Wear", isWorn and Theme.Colors.PanelAlt or Theme.Colors.Accent,
