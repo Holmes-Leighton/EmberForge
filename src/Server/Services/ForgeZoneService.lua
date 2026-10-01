@@ -431,11 +431,32 @@ function ForgeZoneService.RefreshQuarry(player)
         local ok, piece = pcall(BuildQuarryPiece, placed.id, placed, centre)
         if ok and piece then piece.Parent = model else warn("[Quarry] could not draw " .. tostring(placed.id) .. ": " .. tostring(piece)) end
     end
+    -- sign over the Core: whose Quarry it is and how far along (visible to visitors)
+    local anchor = Instance.new("Part")
+    anchor.Name, anchor.Size, anchor.Transparency, anchor.Anchored, anchor.CanCollide = "QuarrySignAnchor", Vector3.new(1, 1, 1), 1, true, false
+    anchor.CFrame = CFrame.new(centre.X, 17, centre.Z)
+    anchor.Parent = model
+    local gui = Instance.new("BillboardGui")
+    gui.Name, gui.Size, gui.MaxDistance = "QuarrySign", UDim2.new(0, 300, 0, 60), 140
+    gui.Parent = anchor
+    local top = Instance.new("TextLabel")
+    top.Size, top.BackgroundTransparency, top.TextScaled, top.Font = UDim2.new(1, 0, 0.58, 0), 1, true, Enum.Font.GothamBold
+    top.TextColor3, top.TextStrokeTransparency = Color3.fromRGB(150, 210, 255), 0.4
+    top.Text = (player.DisplayName or player.Name) .. "'s Quarry"
+    top.Parent = gui
+    local sub = Instance.new("TextLabel")
+    sub.Position, sub.Size, sub.BackgroundTransparency, sub.TextScaled, sub.Font = UDim2.new(0, 0, 0.58, 0), UDim2.new(1, 0, 0.42, 0), 1, true, Enum.Font.Gotham
+    sub.TextColor3, sub.TextStrokeTransparency = Color3.fromRGB(235, 235, 235), 0.5
+    local nodes = 0
+    for _, p in ipairs(q.placed) do local d = QuarryData.Pieces[p.id] if d and d.kind == "node" then nodes += 1 end end
+    sub.Text = string.format("Core Level %d   -   %d nodes   -   %d crew", q.level or 1, nodes, #(q.crew or {}))
+    sub.Parent = gui
     model.Parent = zonesFolder
     entry.quarry = model
     local assets = game.ReplicatedStorage:FindFirstChild("QuarryAssets")
     local parts = { tostring(assets and assets:GetAttribute("Version") or 0) }
     for _, p in ipairs(q.placed) do table.insert(parts, string.format("%s@%d,%d,%d", p.id, p.x, p.z, p.rot or 0)) end
+    table.insert(parts, "L" .. (q.level or 1) .. "C" .. #(q.crew or {}))
     entry.quarrySignature = table.concat(parts, ";")
 end
 
@@ -445,6 +466,7 @@ local function QuarrySignature(data)
     local assets = game.ReplicatedStorage:FindFirstChild("QuarryAssets")
     local parts = { tostring(assets and assets:GetAttribute("Version") or 0) }
     for _, p in ipairs(q.placed) do table.insert(parts, string.format("%s@%d,%d,%d", p.id, p.x, p.z, p.rot or 0)) end
+    table.insert(parts, "L" .. (q.level or 1) .. "C" .. #(q.crew or {}))
     return table.concat(parts, ";")
 end
 

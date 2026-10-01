@@ -33,6 +33,7 @@
 - [x] ~~Player-built mining zones~~ built as the **Quarry** (Forge Level 6, 15,000 coins): 11 pieces, adjacency recipes, 5 exclusive materials, Core upgrades, animated by QuarryAnimator.
 - [x] ~~Upload the QuarryPack~~ done (89170227615937)
 - [x] Quarry crew: idle Golems can work the Quarry (+8% per tier, up to 4 Golems, +100% cap).
-- [ ] Quarry follow-ups: a Quarry sign and visitor view, Storm node mesh still renders pinkish-peach (the generator ignores yellow): swap for a better one, recolour in code if the generator allows.
+- [x] Quarry sign over the Core (owner, core level, nodes, crew).
+- [ ] Quarry follow-ups: visitor view, Storm node mesh still renders pinkish-peach (the generator ignores yellow): swap for a better one, recolour in code if the generator allows.
 
 - [x] Idle animations: pets (look about, stretch, shake, hop) and Golems (look, flex, stomp, inspect pickaxe) pick random moves with rests between (IdleMoves).
