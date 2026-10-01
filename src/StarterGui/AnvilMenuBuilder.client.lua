@@ -11,6 +11,7 @@ local Theme          = require(game.ReplicatedStorage.Shared.Modules.Theme)
 local RemoteEvents   = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local GolemModel     = require(game.ReplicatedStorage.Shared.Modules.GolemModel)
 local ScaleUI        = require(game.ReplicatedStorage.Shared.Modules.ScaleUI)
+local Portrait       = require(game.ReplicatedStorage.Shared.Modules.Portrait)
 local CraftRules     = require(game.ReplicatedStorage.Shared.Modules.CraftRules)
 local GolemData      = require(game.ReplicatedStorage.Shared.Data.GolemData)
 local RecipeData     = require(game.ReplicatedStorage.Shared.Data.RecipeData)
@@ -328,13 +329,16 @@ local function RenderList()
         local rowElem = GolemData.Elements[bp.element]
         local nameL = Theme.Label(row, (rowElem and rowElem.displayName or bp.element) .. " Golem", Theme.TextSize.Heading,
             selected and Theme.Colors.AccentBright or Theme.Colors.TextPrimary, Theme.Fonts.Heading)
-        nameL.Position = UDim2.new(0, 20, 0, 6)
-        nameL.Size = UDim2.new(1, -110, 0, 22)
+        local face = Portrait.Golem(row, { element = bp.element, tier = bp.tier }, 42)
+        face.Position = UDim2.new(0, 18, 0.5, -21)
+        bar.Visible = false
+        nameL.Position = UDim2.new(0, 68, 0, 6)
+        nameL.Size = UDim2.new(1, -160, 0, 22)
         local rarityName = GolemData.RarityForTier(bp.tier)
         local tierL = Theme.Label(row, "Tier " .. bp.tier .. "  -  " .. rarityName, Theme.TextSize.Small,
             Theme.Colors[rarityName] or Theme.Colors.TextSecondary)
-        tierL.Position = UDim2.new(0, 20, 0, 30)
-        tierL.Size = UDim2.new(1, -110, 0, 18)
+        tierL.Position = UDim2.new(0, 68, 0, 30)
+        tierL.Size = UDim2.new(1, -160, 0, 18)
 
         local lock = LockReason(bp)
         local badge = Instance.new("TextLabel")

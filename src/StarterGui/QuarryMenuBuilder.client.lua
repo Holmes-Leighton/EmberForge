@@ -106,7 +106,8 @@ local function Note(text, height, color)
     l.TextWrapped = true
     return l
 end
-local function Row(name, sub, color, buttons, height)
+local Portrait = require(game.ReplicatedStorage.Shared.Modules.Portrait)
+local function Row(name, sub, color, buttons, height, golem)
     local row = Instance.new("Frame")
     row.Size = UDim2.new(1, -8, 0, height or 58)
     row.BackgroundColor3 = Theme.Colors.Panel
@@ -121,11 +122,19 @@ local function Row(name, sub, color, buttons, height)
     swatch.Parent = row
     Theme.AddCorner(swatch, UDim.new(0, 3))
     local reserve = 140 * math.max(1, #buttons) + 20
+    local textX = 22
+    if golem then
+        swatch.Visible = false
+        local face = Portrait.Golem(row, golem, 42)
+        face.Position = UDim2.new(0, 8, 0.5, -21)
+        textX = 58
+        reserve += 36
+    end
     local n = Theme.Label(row, name, Theme.TextSize.Heading, Theme.Colors.TextPrimary, Theme.Fonts.Heading)
-    n.Position = UDim2.new(0, 22, 0, 4)
+    n.Position = UDim2.new(0, textX, 0, 4)
     n.Size = UDim2.new(1, -reserve, 0, 22)
     local s = Theme.Label(row, sub, Theme.TextSize.Small, Theme.Colors.TextSecondary, Theme.Fonts.Body)
-    s.Position = UDim2.new(0, 22, 0, 26)
+    s.Position = UDim2.new(0, textX, 0, 26)
     s.Size = UDim2.new(1, -reserve, 0, (height or 58) - 28)
     s.TextWrapped = true
     s.TextYAlignment = Enum.TextYAlignment.Top
@@ -193,7 +202,7 @@ local function Reload()
             #info.crew, info.crewSlots, math.floor((info.crewBoost - 1) * 100 + 0.5)), 40, Theme.Colors.AccentBright)
         for _, g in ipairs(info.crew) do
             Row(Name(g), string.format("Tier %d, working in the Quarry", g.tier), Theme.Colors.Success,
-                { { text = "Call back", color = Theme.Colors.PanelAlt, onClick = function() RemoteEvents.QuarryAction:FireServer("crewremove", g.id) end } }, 44)
+                { { text = "Call back", color = Theme.Colors.PanelAlt, onClick = function() RemoteEvents.QuarryAction:FireServer("crewremove", g.id) end } }, 56, g)
         end
         if #info.crew < info.crewSlots then
             local shown = 0
@@ -202,7 +211,7 @@ local function Reload()
                 if shown >= 4 then break end
                 shown += 1
                 Row(Name(g), string.format("Tier %d, idle: +%d%% if it works here", g.tier, math.floor(QuarryData.CREW_PER_TIER * (g.tier or 1) * (QuarryData.CREW_VARIANT[g.variant] or 1) * 100 + 0.5)),
-                    Theme.Colors.Info, { { text = "Send to work", color = Theme.Colors.Accent, onClick = function() RemoteEvents.QuarryAction:FireServer("crewadd", g.id) end } }, 44)
+                    Theme.Colors.Info, { { text = "Send to work", color = Theme.Colors.Accent, onClick = function() RemoteEvents.QuarryAction:FireServer("crewadd", g.id) end } }, 56, g)
             end
             if shown == 0 then Note("You have no idle Golems. Recall one from its zone in the Forge menu, or craft another.", 30, Theme.Colors.TextDim) end
         end

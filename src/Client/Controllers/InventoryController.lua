@@ -7,6 +7,7 @@ local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 local RemoteEvents   = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local MaterialData   = require(game.ReplicatedStorage.Shared.Data.MaterialData)
 local GolemData      = require(game.ReplicatedStorage.Shared.Data.GolemData)
+local Portrait       = require(game.ReplicatedStorage.Shared.Modules.Portrait)
 local Utils          = require(game.ReplicatedStorage.Shared.Modules.Utils)
 local GolemNames     = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
 
@@ -286,8 +287,8 @@ function InventoryController._CreateGolemCard(golem, yOff)
             stats.efficiency * 100
         )
         local statsLbl = Instance.new("TextLabel")
-        statsLbl.Size = UDim2.new(1, -8, 0, 30)
-        statsLbl.Position = UDim2.new(0, 8, 0, 30)
+        statsLbl.Size = UDim2.new(1, -74, 0, 30)
+        statsLbl.Position = UDim2.new(0, 70, 0, 30)
         statsLbl.BackgroundTransparency = 1
         statsLbl.Text = statsText
         statsLbl.TextColor3 = Color3.fromRGB(180, 175, 170)
@@ -300,8 +301,8 @@ function InventoryController._CreateGolemCard(golem, yOff)
     -- A special Golem's unique skill
     if desc.skill then
         local skillLbl = Instance.new("TextLabel")
-        skillLbl.Size = UDim2.new(1, -100, 0, 28)
-        skillLbl.Position = UDim2.new(0, 8, 0, 60)
+        skillLbl.Size = UDim2.new(1, -170, 0, 28)
+        skillLbl.Position = UDim2.new(0, 70, 0, 60)
         skillLbl.BackgroundTransparency = 1
         skillLbl.Text = "✦ " .. desc.skill.name .. ": " .. desc.skill.text
         skillLbl.TextColor3 = Color3.fromRGB(255, 214, 120)
@@ -312,6 +313,9 @@ function InventoryController._CreateGolemCard(golem, yOff)
         skillLbl.TextYAlignment = Enum.TextYAlignment.Top
         skillLbl.Parent = card
     end
+
+    local face = Portrait.Golem(card, golem, 56)
+    face.Position = UDim2.new(0, 8, 0, 33)
 
     -- Return button (if deployed)
     if golem.deployed then
