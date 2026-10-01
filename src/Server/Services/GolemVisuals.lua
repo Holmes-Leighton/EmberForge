@@ -56,7 +56,7 @@ local function Build(golem, ownerName, equipped)
 
     local desc = GolemNames.Describe(golem)
     local head = model:FindFirstChild("Head", true)
-    if not head and model:GetAttribute("RigMode") then
+    if not head then
         -- uploaded model without a Head part: an invisible marker where the head would be, so the name tag has something to sit on
         head = Instance.new("Part")
         head.Name = "Head"
@@ -69,17 +69,31 @@ local function Build(golem, ownerName, equipped)
         head.Parent = model
     end
     if head then
+        -- three lines: whose Golem it is (always first and easy to read), what it is, and its rarity
         local tag = Instance.new("BillboardGui")
-        tag.Size = UDim2.new(0, 220, 0, 46)
-        tag.StudsOffset = Vector3.new(0, 4.5, 0)
-        tag.MaxDistance = 120
+        tag.Name = "OwnerTag"
+        tag.Size = UDim2.new(0, 250, 0, 70)
+        tag.StudsOffset = Vector3.new(0, 4.8, 0)
+        tag.MaxDistance = 170
         tag.Adornee = head
         tag.Parent = head
 
+        local owner = Instance.new("TextLabel")
+        owner.Name = "Owner"
+        owner.Size = UDim2.new(1, 0, 0.38, 0)
+        owner.BackgroundTransparency = 1
+        owner.Text = tostring(ownerName) .. "'s"
+        owner.TextColor3 = Color3.fromRGB(255, 255, 255)
+        owner.Font = Enum.Font.GothamBlack
+        owner.TextScaled = true
+        owner.TextStrokeTransparency = 0.2
+        owner.Parent = tag
+
         local name = Instance.new("TextLabel")
-        name.Size = UDim2.new(1, 0, 0.55, 0)
+        name.Position = UDim2.new(0, 0, 0.38, 0)
+        name.Size = UDim2.new(1, 0, 0.34, 0)
         name.BackgroundTransparency = 1
-        name.Text = string.format("%s's %s", ownerName, desc.shortName)
+        name.Text = desc.shortName
         name.TextColor3 = desc.rarityColor
         name.Font = Enum.Font.GothamBold
         name.TextScaled = true
@@ -87,8 +101,8 @@ local function Build(golem, ownerName, equipped)
         name.Parent = tag
 
         local rarity = Instance.new("TextLabel")
-        rarity.Position = UDim2.new(0, 0, 0.55, 0)
-        rarity.Size = UDim2.new(1, 0, 0.45, 0)
+        rarity.Position = UDim2.new(0, 0, 0.72, 0)
+        rarity.Size = UDim2.new(1, 0, 0.28, 0)
         rarity.BackgroundTransparency = 1
         rarity.Text = desc.rarity .. (desc.variantLabel and ("  -  " .. desc.variantLabel) or "")
         rarity.TextColor3 = Color3.fromRGB(235, 235, 235)
