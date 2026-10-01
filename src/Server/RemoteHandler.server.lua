@@ -53,8 +53,17 @@ local function SafeCall(player, fn)
     end
 end
 
+local FeatureGates = require(game.ReplicatedStorage.Shared.Data.FeatureGates)
+
 local function Tell(player, title, message)
     if player and player.Parent then RemoteEvents.Notify:FireClient(player, title, message) end
+end
+
+-- A feature the player has not unlocked yet (see FeatureGates): tell them why and refuse
+local function Gate(player, feature)
+    local ok, reason = FeatureGates.Check(feature, PlayerDataService.Get(player))
+    if not ok then Tell(player, "Not yet", reason) end
+    return ok
 end
 
 -- ── CollectResources ──────────────────────────────────────────────────────────
@@ -261,6 +270,7 @@ local lastTradeRequest = {}      -- requester userId -> os.clock()
 
 RemoteEvents.InitiateTrade.OnServerEvent:Connect(function(player, targetUserId)
     SafeCall(player, function()
+        if not Gate(player, "Trades") then return end
         if type(targetUserId) ~= "number" then return end
         local target = Players:GetPlayerByUserId(targetUserId)
         if not target then
@@ -292,6 +302,7 @@ end)
 
 RemoteEvents.RespondTradeRequest.OnServerEvent:Connect(function(player, accept)
     SafeCall(player, function()
+        if not Gate(player, "Trades") then return end
         local req = tradeRequests[player.UserId]
         tradeRequests[player.UserId] = nil
         if not req or req.expires < os.clock() then Tell(player, "Trade", "That trade request has expired.") return end
@@ -460,6 +471,7 @@ end)
 -- ── Guilds ────────────────────────────────────────────────────────────────────
 RemoteEvents.CreateGuild.OnServerEvent:Connect(function(player, name)
     SafeCall(player, function()
+        if not Gate(player, "Guild") then return end
         if type(name) ~= "string" or #name > 100 then return end
         local guild, err = require(script.Parent.Services.GuildService).Create(player, name)
         RemoteEvents.GuildResult:FireClient(player, "create", guild ~= nil, guild and ("Founded " .. guild.name .. "!") or err)
@@ -468,6 +480,7 @@ end)
 
 RemoteEvents.JoinGuild.OnServerEvent:Connect(function(player, name)
     SafeCall(player, function()
+        if not Gate(player, "Guild") then return end
         if type(name) ~= "string" or #name > 100 then return end
         local guild, err = require(script.Parent.Services.GuildService).Join(player, name)
         RemoteEvents.GuildResult:FireClient(player, "join", guild ~= nil, guild and ("Joined " .. guild.name .. "!") or err)
@@ -501,6 +514,7 @@ end)
 
 RemoteEvents.InviteToGuild.OnServerEvent:Connect(function(player, name)
     SafeCall(player, function()
+        if not Gate(player, "Guild") then return end
         if type(name) ~= "string" or #name > 60 then return end
         local ok, err = require(script.Parent.Services.GuildService).Invite(player, name)
         RemoteEvents.GuildResult:FireClient(player, "invite", ok == true, ok and "Invite sent!" or err)
@@ -509,6 +523,7 @@ end)
 
 RemoteEvents.RespondGuildInvite.OnServerEvent:Connect(function(player, accept)
     SafeCall(player, function()
+        if not Gate(player, "Guild") then return end
         local result, err = require(script.Parent.Services.GuildService).RespondInvite(player, accept == true)
         if accept == true then
             RemoteEvents.GuildResult:FireClient(player, "join", type(result) == "table", type(result) == "table" and ("Joined " .. result.name .. "!") or err)
@@ -555,6 +570,7 @@ end
 -- ── Quarry ───────────────────────────────────────────────────────────────────
 RemoteEvents.QuarryAction.OnServerEvent:Connect(function(player, action, arg)
     SafeCall(player, function()
+        if not Gate(player, "Quarry") then return end
         local QS = require(script.Parent.Services.QuarryService)
         local ok, result, msg
         if action == "found" then
@@ -671,6 +687,7 @@ end
 -- no way to place anywhere the server hasn't checked.
 RemoteEvents.BuildAction.OnServerEvent:Connect(function(player, action, arg)
     SafeCall(player, function()
+        if not Gate(player, "Build") then return end
         local FB = require(script.Parent.Services.ForgeBuildService)
         local ok, result, msg
         if action == "buy" and type(arg) == "string" then
@@ -722,6 +739,7 @@ end
 -- ── Pets ──────────────────────────────────────────────────────────────────────
 RemoteEvents.HatchPet.OnServerEvent:Connect(function(player, eggId)
     SafeCall(player, function()
+        if not Gate(player, "Pets") then return end
         if type(eggId) ~= "string" then return end
         local PetService = require(script.Parent.Services.PetService)
         local pet, err = PetService.Hatch(player, eggId)
@@ -735,6 +753,7 @@ end)
 
 RemoteEvents.EquipPet.OnServerEvent:Connect(function(player, petId, on)
     SafeCall(player, function()
+        if not Gate(player, "Pets") then return end
         if type(petId) ~= "string" then return end
         local ok, err = require(script.Parent.Services.PetService).Equip(player, petId, on == true)
         if not ok then Tell(player, "Can't do that", tostring(err)) end
@@ -743,6 +762,7 @@ end)
 
 RemoteEvents.MergePets.OnServerEvent:Connect(function(player, petType, variant)
     SafeCall(player, function()
+        if not Gate(player, "Pets") then return end
         if type(petType) ~= "string" or (variant ~= nil and type(variant) ~= "string") then return end
         local pet, err = require(script.Parent.Services.PetService).Merge(player, petType, variant)
         RemoteEvents.PetsMerged:FireClient(player, pet ~= nil, pet or err)

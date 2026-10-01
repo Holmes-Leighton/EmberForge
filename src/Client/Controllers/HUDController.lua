@@ -151,6 +151,7 @@ function HUDController.Refresh(data)
     end
 
     require(script.Parent.BadgeController).Update(data)
+    require(script.Parent.GateController).Update(data)
 
     -- Smelter: how many jobs and when the next one finishes
     local jobs = data.SmeltQueue or {}

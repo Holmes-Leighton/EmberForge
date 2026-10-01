@@ -229,7 +229,10 @@ local function MakeTile(parent, nav, size)
     Theme.AddPadding(badge, 0, 6, 0, 6)
     Theme.AddStroke(badge, Color3.fromRGB(255, 255, 255), 2)
 
-    btn.MouseButton1Click:Connect(function() OpenNav(nav) end)
+    btn.MouseButton1Click:Connect(function()
+        if btn:GetAttribute("GateReason") then return end       -- locked: GateController explains why
+        OpenNav(nav)
+    end)
     return btn
 end
 
