@@ -24,7 +24,7 @@ local card = Instance.new("Frame")
 card.Name = "Card"
 card.AnchorPoint = Vector2.new(0.5, 0)
 card.Position = UDim2.new(0.5, 0, 0, 80)
-card.Size = UDim2.new(0, 420, 0, 192)
+card.Size = UDim2.new(0, 420, 0, 184)
 card.BackgroundColor3 = Theme.Colors.Panel
 card.BorderSizePixel = 0
 card.Parent = gui
@@ -34,7 +34,7 @@ ScaleUI.ApplyHud(card)
 
 local header = Theme.Label(card, "Trade request", Theme.TextSize.Heading, Theme.Colors.Success, Theme.Fonts.Heading, "Header")
 header.Position = UDim2.new(0, 16, 0, 8)
-header.Size = UDim2.new(1, -32, 0, 22)
+header.Size = UDim2.new(1, -140, 0, 22)
 
 local avatar = Instance.new("ImageLabel")
 avatar.Name = "Avatar"
@@ -58,20 +58,11 @@ detailLbl.Size = UDim2.new(1, -126, 0, 40)
 detailLbl.TextWrapped = true
 detailLbl.TextYAlignment = Enum.TextYAlignment.Top
 
-local timerBar = Instance.new("Frame")
-timerBar.Name = "Timer"
-timerBar.Position = UDim2.new(0, 16, 0, 128)       -- the separator: 16px sides, 16px above the buttons
-timerBar.Size = UDim2.new(1, -32, 0, 4)
-timerBar.BackgroundColor3 = Theme.Colors.PanelAlt
-timerBar.BorderSizePixel = 0
-timerBar.Parent = card
-Theme.AddCorner(timerBar, UDim.new(0, 2))
-local timerFill = Instance.new("Frame")
-timerFill.Size = UDim2.new(1, 0, 1, 0)
-timerFill.BackgroundColor3 = Theme.Colors.Success
-timerFill.BorderSizePixel = 0
-timerFill.Parent = timerBar
-Theme.AddCorner(timerFill, UDim.new(0, 2))
+local timerLbl = Theme.Label(card, "", Theme.TextSize.Small, Theme.Colors.TextSecondary, Theme.Fonts.Body, "Countdown")
+timerLbl.AnchorPoint = Vector2.new(1, 0)
+timerLbl.Position = UDim2.new(1, -16, 0, 10)
+timerLbl.Size = UDim2.new(0, 90, 0, 20)
+timerLbl.TextXAlignment = Enum.TextXAlignment.Right
 
 local acceptBtn = Theme.Button(card, "Accept", Theme.Colors.Success, Color3.fromRGB(255, 255, 255), "Accept")
 acceptBtn.Size = UDim2.new(0.5, -22, 0, 28)             -- 16px left, 12px between the buttons, 16px right
@@ -97,7 +88,7 @@ declineBtn.MouseButton1Click:Connect(function() Close() RemoteEvents.RespondTrad
 RunService.Heartbeat:Connect(function()
     if not gui.Enabled then return end
     local left = expiresAt - os.clock()
-    timerFill.Size = UDim2.new(math.clamp(left / totalSeconds, 0, 1), 0, 1, 0)
+    timerLbl.Text = string.format("closes in %ds", math.max(0, math.ceil(left)))
     if left <= 0 then Close() end
 end)
 
@@ -105,7 +96,7 @@ RemoteEvents.TradeRequest.OnClientEvent:Connect(function(fromName, fromUserId, i
     info = type(info) == "table" and info or {}
     token += 1
     local mine = token
-    header.Text = "Trade request  -  wants to trade with you"
+    header.Text = "Wants to trade with you"
     nameLbl.Text = tostring(fromName)
     userLbl.Text = info.username and ("@" .. info.username) or ""
     local bits = { string.format("Forge Level %d", info.forgeLevel or 1), string.format("Player Level %d", info.playerLevel or 1) }
