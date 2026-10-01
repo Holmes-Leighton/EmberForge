@@ -36,6 +36,32 @@ expect(LiveOps.GetMultiplier("xp") == 1, "events cleared")
 local okL, r = Admin.Action(boss, "lookup", { target = 2 }, LiveOps)
 expect(okL and r.userId == 2 and type(r.log) == "table" and type(r.reports) == "table", "lookup returns log and reports")
 
+print("== moderation")
+local kicked
+local rs0 = game:GetService("RunService"); local studio0 = rs0.IsStudio
+rs0.IsStudio = function() return false end      -- outside Studio only listed admins are admins
+GC.ADMIN_USER_IDS = { 1 }
+local oldAge = GC.TRADE_MIN_ACCOUNT_AGE_DAYS; GC.TRADE_MIN_ACCOUNT_AGE_DAYS = 0
+kid.Kick = function(_, why) kicked = why end
+expect(not Admin.Action(boss, "mute", { target = "Boss", hours = 1 }, LiveOps), "can't mute yourself")
+expect(Admin.Action(boss, "mute", { target = "Kid", hours = 1, reason = "spam" }, LiveOps) and Admin.IsMuted(kid), "mute applies")
+expect(Trading.AgeGate(kid) ~= nil, "a muted player can't trade")
+local Guild = load("SSS/EmberForge/Services/GuildService")
+kd.GuildId = "g1"
+local sent, why = Guild.SendChat(kid, "hello")
+expect(not sent and why == "You are muted", "a muted player can't use guild chat")
+Admin.Action(boss, "unmute", { target = "Kid" }, LiveOps)
+expect(not Admin.IsMuted(kid), "unmute clears it")
+expect(Admin.Action(boss, "ban", { target = "Kid", hours = 2, reason = "scam" }, LiveOps) and kicked and kicked:find("scam"), "ban kicks them with the reason")
+kicked = nil
+expect(Admin.CheckJoin(kid) == true and kicked ~= nil, "a banned player is kicked on join")
+Admin.Action(boss, "unban", { target = "Kid" }, LiveOps)
+kicked = nil
+expect(Admin.CheckJoin(kid) == false and kicked == nil, "unbanned players can join")
+expect(not Admin.Action(boss, "ban", { target = "Kid", hours = 99999 }, LiveOps), "silly ban length refused")
+expect(not Admin.Action(kid, "kick", { target = "Boss" }, LiveOps), "a non-admin can do nothing")
+rs0.IsStudio = studio0; GC.ADMIN_USER_IDS = {}; GC.TRADE_MIN_ACCOUNT_AGE_DAYS = oldAge
+
 print("== account age gate")
 local rs = game:GetService("RunService")
 local oldStudio = rs.IsStudio

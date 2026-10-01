@@ -219,6 +219,7 @@ local lastReport = {}        -- "reporter>target" -> time
 
 -- Brand-new Roblox accounts can't trade or use the Market (Studio and players without an AccountAge are not limited)
 function TradingService.AgeGate(player)
+    if require(script.Parent.AdminService).IsMuted(player) then return "You are muted, so you can't trade or use the Market right now." end
     local need = GameConfig.TRADE_MIN_ACCOUNT_AGE_DAYS or 0
     local age = player.AccountAge
     if need > 0 and type(age) == "number" and age < need and not game:GetService("RunService"):IsStudio() then

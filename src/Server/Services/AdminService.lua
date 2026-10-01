@@ -69,13 +69,110 @@ local function WholeNumber(n, max)
     return n and n == n and n >= 1 and n <= max and math.floor(n) == n and n or nil
 end
 
+-- ── Moderation: kick, ban, mute ───────────────────────────────────────────────
+-- Bans and mutes live in a DataStore of their own, so they hold across servers and rejoins (checked when a player joins). A mute stops guild
+-- chat, trade requests and Market use; it is mirrored on the player as the attribute EFMutedUntil (unix time) for the server they are in.
+local modStore
+local function ModStore()
+    modStore = modStore or require(script.Parent.SafeDataStore).GetDataStore("EmberForge_Moderation_v1")
+    return modStore
+end
+
+local function DurationText(untilT)
+    if not untilT or untilT == 0 then return "permanently" end
+    return string.format("until %s UTC", os.date("!%Y-%m-%d %H:%M", untilT))
+end
+
+function AdminService.IsMuted(player)
+    local untilT = player:GetAttribute("EFMutedUntil")
+    return type(untilT) == "number" and (untilT == 0 or untilT > os.time())
+end
+
+-- Called when a player joins: kicks them if banned, restores a mute. Returns true if they were kicked.
+function AdminService.CheckJoin(player)
+    local ok, rec = pcall(function() return ModStore():GetAsync("u_" .. player.UserId) end)
+    if not ok or type(rec) ~= "table" then return false end
+    local ban = rec.ban
+    if ban and (ban.untilT == 0 or ban.untilT > os.time()) then
+        player:Kick(string.format("You are banned %s. Reason: %s", DurationText(ban.untilT), tostring(ban.reason ~= "" and ban.reason or "none given")))
+        return true
+    end
+    local mute = rec.mute
+    if mute and (mute.untilT == 0 or mute.untilT > os.time()) then player:SetAttribute("EFMutedUntil", mute.untilT) end
+    return false
+end
+
+local function EditRecord(userId, edit)
+    return pcall(function()
+        ModStore():UpdateAsync("u_" .. userId, function(old)
+            local rec = type(old) == "table" and old or {}
+            edit(rec)
+            return rec
+        end)
+    end)
+end
+
+-- a player's id from a name, an id or a player in this server (offline names are looked up through Roblox)
+local function ResolveUserId(who)
+    local id = tonumber(who)
+    if id then return id end
+    local p = FindPlayer(who)
+    if p then return p.UserId end
+    if type(who) == "string" and who ~= "" then
+        local ok, uid = pcall(function() return Players:GetUserIdFromNameAsync(who) end)
+        if ok then return uid end
+    end
+    return nil
+end
+
+local function ModerationAction(admin, action, args)
+    local reason = type(args.reason) == "string" and args.reason:sub(1, 120) or ""
+    local hours = tonumber(args.hours) or 0
+    if hours < 0 or hours > 24 * 365 then return false, "Hours: 0 (permanent) to 8760" end
+    local untilT = hours > 0 and os.time() + math.floor(hours * 3600) or 0
+    local userId = ResolveUserId(args.target)
+    if not userId then return false, "No such player" end
+    if userId == admin.UserId then return false, "Not yourself" end
+    local online = Players:GetPlayerByUserId(userId)
+    if online and AdminService.IsAdmin(online) then return false, "That player is an admin" end
+
+    if action == "kick" then
+        if not online then return false, "Player not in this server" end
+        online:Kick("You were removed from the game." .. (reason ~= "" and (" Reason: " .. reason) or ""))
+        Audit(admin, action, { target = userId, reason = reason })
+        return true, "Kicked " .. online.Name
+    elseif action == "ban" then
+        local ok = EditRecord(userId, function(rec) rec.ban = { untilT = untilT, reason = reason, by = admin.UserId, t = os.time() } end)
+        if not ok then return false, "Couldn't save the ban, try again" end
+        if online then online:Kick(string.format("You are banned %s. Reason: %s", DurationText(untilT), reason ~= "" and reason or "none given")) end
+        Audit(admin, action, { target = userId, hours = hours, reason = reason })
+        return true, string.format("Banned %d %s", userId, DurationText(untilT))
+    elseif action == "unban" then
+        local ok = EditRecord(userId, function(rec) rec.ban = nil end)
+        Audit(admin, action, { target = userId })
+        return ok, ok and ("Unbanned " .. userId) or "Couldn't save, try again"
+    elseif action == "mute" then
+        local ok = EditRecord(userId, function(rec) rec.mute = { untilT = untilT, reason = reason, by = admin.UserId, t = os.time() } end)
+        if not ok then return false, "Couldn't save the mute, try again" end
+        if online then online:SetAttribute("EFMutedUntil", untilT) end
+        Audit(admin, action, { target = userId, hours = hours, reason = reason })
+        return true, string.format("Muted %d %s", userId, DurationText(untilT))
+    end
+    local ok = EditRecord(userId, function(rec) rec.mute = nil end)      -- unmute
+    if online then online:SetAttribute("EFMutedUntil", nil) end
+    Audit(admin, action, { target = userId })
+    return ok, ok and ("Unmuted " .. userId) or "Couldn't save, try again"
+end
+
 -- Returns ok (boolean), message or data
 function AdminService.Action(admin, action, args, LiveOps)
     if not AdminService.IsAdmin(admin) then return false, "Not allowed" end
     if type(args) ~= "table" then args = {} end
     local PlayerDataService = require(script.Parent.PlayerDataService)
 
-    if action == "grantCoins" or action == "grantMaterial" then
+    if action == "kick" or action == "ban" or action == "unban" or action == "mute" or action == "unmute" then
+        return ModerationAction(admin, action, args)
+    elseif action == "grantCoins" or action == "grantMaterial" then
         local target = FindPlayer(args.target)
         if not target then return false, "Player not in this server" end
         local data = PlayerDataService.Get(target)

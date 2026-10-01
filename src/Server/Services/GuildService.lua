@@ -332,6 +332,7 @@ end
 function GuildService.SendChat(player, raw)
     local data = PlayerDataService.Get(player)
     if not data or not data.GuildId then return false, "You are not in a guild" end
+    if require(script.Parent.AdminService).IsMuted(player) then return false, "You are muted" end
     if type(raw) ~= "string" then return false, "Say something first" end
     local text = raw:gsub("[%c]", " "):gsub("^%s+", ""):gsub("%s+$", "")
     if #text == 0 then return false, "Say something first" end

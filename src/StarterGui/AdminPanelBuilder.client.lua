@@ -145,6 +145,21 @@ Row({ { "xp / drops", 80, "xp" }, { "Multiplier", 70, "2" }, { "Hours", 50, "2" 
 Heading("Announce to this server")
 Row({ { "Message (140 characters)", 300 } }, { { "Send", ORANGE, function(b) Run("announce", { text = b[1].Text }) end, 70 } })
 
+Heading("Moderation (reason shown to the player; hours 0 = permanent)")
+local function modRow(label, colour, action, hasHours)
+    local fields = { { "Player name or id", 130 }, { "Reason", 150 } }
+    if hasHours then table.insert(fields, { "Hours", 50, "0" }) end
+    Row(fields, { { label, colour, function(b)
+        Run(action, { target = tonumber(b[1].Text) or b[1].Text, reason = b[2].Text, hours = b[3] and b[3].Text or 0 })
+    end, 60 } })
+end
+modRow("Kick", ORANGE, "kick", false)
+modRow("Ban", RED, "ban", true)
+modRow("Mute", ORANGE, "mute", true)
+Row({ { "Player name or id", 130 } }, {
+    { "Unban", GREEN, function(b) Run("unban", { target = tonumber(b[1].Text) or b[1].Text }) end, 60 },
+    { "Unmute", GREEN, function(b) Run("unmute", { target = tonumber(b[1].Text) or b[1].Text }) end, 60 } })
+
 Heading("Player lookup: trade log, reports, admin actions")
 Row({ { "Player name or id", 220 } }, { { "Look up", BLUE, function(b) Run("lookup", { target = tonumber(b[1].Text) or b[1].Text }, ShowLookup) end, 90 } })
 

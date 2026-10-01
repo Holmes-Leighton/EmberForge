@@ -61,6 +61,9 @@ local function OnPlayerAdded(player)
     player.CharacterAdded:Connect(function(character) task.spawn(StripMoodAnimation, character) end)
     if player.Character then task.spawn(StripMoodAnimation, player.Character) end
 
+    -- Banned players are removed before anything loads; a mute is restored
+    if AdminService.CheckJoin(player) then return end
+
     -- Load data
     local data = PlayerDataService.Load(player)
     if not data then
