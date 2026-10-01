@@ -80,7 +80,7 @@ local function Rock(parent, cf, size, snowCap)
 end
 
 -- ── Real meshes (when the zone's art pack is loaded) ──────────────────────────
--- Each piece first tries a generated mesh from ServerStorage.BiomeAssets.<Zone> (loaded by GolemAssetLoader from the uploaded pack in AssetData.GlacialPack)
+-- Each piece first tries a generated mesh from ServerStorage.BiomeAssets.<Zone> (loaded by GolemAssetLoader from the asset ids in AssetData.BiomeMeshes)
 -- and only builds itself from parts when there is none.
 -- A mesh arrives about 2 studs across, so it is scaled to a target height (or width) and stood on the ground (or centred, for floating pieces).
 local ServerStorage = game:GetService("ServerStorage")

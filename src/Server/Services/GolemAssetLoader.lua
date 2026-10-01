@@ -277,23 +277,11 @@ local function LoadQuarryPack(packId, folder)
     log(string.format("Quarry Pack (asset %d): %d piece(s) loaded", packId, found))
     pending -= 1
 end
--- Zone scenery meshes: one pack per zone -> ServerStorage.BiomeAssets.<Zone>, loaded from the uploaded asset id. Rebuilds that zone's art once it is in.
--- (A pack that has only been generated in Studio and not uploaded cannot be used: its meshes exist only in the Studio session, and players would see
--- grey placeholder blocks. With no id, the zone keeps its pieces built from parts.)
-local function LoadBiomePack(zoneKey, packId)
-    if packId <= 0 then return end
+-- Zone and hub scenery meshes: AssetData.BiomeMeshes lists one published Model asset per piece. Each is loaded into ServerStorage.BiomeAssets.<Zone>.<Piece>
+-- and BiomeArt rebuilds that zone's art once they are in (pieces that fail to load simply stay part-built).
+local function LoadBiomeMeshes(zoneKey, pieces)
+    if next(pieces) == nil then return end
     pending += 1
-    local root
-    local ok, result = pcall(function() return InsertService:LoadAsset(packId) end)
-    if ok and result then
-        root = result:FindFirstChildWhichIsA("Model") or result
-    else
-        warn(string.format("[GolemAssets] %s scenery pack (asset %d) FAILED to load: %s. The zone uses pieces built from parts.", zoneKey, packId, tostring(result)))
-    end
-    if not root then
-        pending -= 1
-        return
-    end
     local ServerStorage = game:GetService("ServerStorage")
     local biomes = ServerStorage.FindFirstChild and ServerStorage:FindFirstChild("BiomeAssets")
     if not biomes then
@@ -306,17 +294,27 @@ local function LoadBiomePack(zoneKey, packId)
     zone = Instance.new("Folder")
     zone.Name = zoneKey
     zone.Parent = biomes
-    local found = 0
-    for _, d in ipairs(root:GetChildren()) do
-        if d:IsA("Model") then
-            Sanitise(d)
-            if CountParts(d) > 0 then
-                d.Parent = zone
-                found += 1
+    local total, finished, found = 0, 0, 0
+    for pieceName, assetId in pairs(pieces) do
+        total += 1
+        task.spawn(function()
+            local ok, result = pcall(function() return InsertService:LoadAsset(assetId) end)
+            if ok and result then
+                local model = result:FindFirstChildWhichIsA("Model") or result
+                Sanitise(model)
+                if CountParts(model) > 0 then
+                    model.Name = pieceName
+                    model.Parent = zone
+                    found += 1
+                end
+            else
+                warn(string.format("[GolemAssets] %s.%s (asset %d) FAILED to load: %s. That piece stays built from parts.", zoneKey, pieceName, assetId, tostring(result)))
             end
-        end
+            finished += 1
+        end)
     end
-    log(string.format("%s scenery pack: %d piece(s) loaded", zoneKey, found))
+    while finished < total do task.wait(0.1) end
+    log(string.format("%s scenery meshes: %d of %d loaded", zoneKey, found, total))
     if found > 0 then
         local okArt, art = pcall(function() return require(script.Parent.BiomeArt) end)
         if okArt then art.Refresh(zoneKey) end
@@ -380,10 +378,8 @@ function GolemAssetLoader.Init()
     end
     local quarryPackId = AssetData.QuarryPack and AssetData.QuarryPack.assetId or 0
     if quarryPackId > 0 then task.spawn(LoadQuarryPack, quarryPackId, quarryFolder) end
-    task.spawn(LoadBiomePack, "GlacialPeaks", AssetData.GlacialPack and AssetData.GlacialPack.assetId or 0)
-    task.spawn(LoadBiomePack, "World", AssetData.WorldPack and AssetData.WorldPack.assetId or 0)
-    for zoneKey, pack in pairs(AssetData.ZonePacks or {}) do
-        task.spawn(LoadBiomePack, zoneKey, pack.assetId or 0)
+    for zoneKey, pieces in pairs(AssetData.BiomeMeshes or {}) do
+        task.spawn(LoadBiomeMeshes, zoneKey, pieces)
     end
     local buildFolder = ReplicatedStorage:FindFirstChild("BuildAssets")
     if not buildFolder then

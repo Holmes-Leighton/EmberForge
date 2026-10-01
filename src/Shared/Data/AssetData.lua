@@ -78,19 +78,37 @@ AssetData.CrownPack = { assetId = 133428041942823 }
 -- named after ForgeBuildData items (MineCart, Hearth ...), each a model of mesh parts.
 -- The Quarry's nodes and buildings: one Model whose children are named after QuarryData pieces (EmberNode, DrillRig ...).
 AssetData.QuarryPack = { assetId = 89170227615937 }
--- Mining-zone scenery meshes, one pack per zone (a Model whose children are named after the pieces BiomeArt places: IceSpires, FrozenFalls, SnowPine,
--- IceCrystals, FloatingShard, SnowBoulder, PadCrystals). 0 = not uploaded yet: the zone then uses pieces built from parts. The pack must be UPLOADED (in
--- Studio: right-click the Model > Save to Roblox) and its id pasted here; generated meshes that are only in the Studio session do not show up in play.
-AssetData.GlacialPack = { assetId = 0 }
--- Hub scenery: a Model with a child named GolemAnvil (the big golden Anvil at the start). Same rule: upload it and paste the id.
-AssetData.WorldPack = { assetId = 0 }
--- The other five zones: each pack is a Model with the seven pieces PadPiece, Spires, WallPiece, Flora, GlowCluster, Boulder, FloatingPiece. 0 = not uploaded.
-AssetData.ZonePacks = {
-    EmberDepths     = { assetId = 0 },
-    GraniteCaverns  = { assetId = 0 },
-    StormriftCliffs = { assetId = 0 },
-    TheHollow       = { assetId = 0 },
-    TheDeepForge    = { assetId = 0 },
+-- Mining-zone and hub scenery meshes, one asset id per piece (each is a generated mesh published as a Model asset; GolemAssetLoader loads them into
+-- ServerStorage.BiomeAssets.<Zone> and BiomeArt places them). A zone with no ids, or a piece that fails to load, falls back to pieces built from parts.
+-- Every zone but Glacial Peaks uses the same seven piece names; Glacial Peaks keeps the names BiomeArt's Glacial builder uses.
+AssetData.BiomeMeshes = {
+    GlacialPeaks = {
+        PadCrystals = 101967249752492, IceSpires = 139671736216015, FrozenFalls = 116246960530806, SnowPine = 87740268281257,
+        IceCrystals = 123799570185346, SnowBoulder = 99023961205039, FloatingShard = 135106810772880,
+    },
+    EmberDepths = {
+        PadPiece = 126719407630672, Spires = 97622011353183, WallPiece = 102589271885312, Flora = 97426858110519,
+        GlowCluster = 84269256282626, Boulder = 87420004016439, FloatingPiece = 97030806946694,
+    },
+    GraniteCaverns = {
+        PadPiece = 139020023032175, Spires = 124693675588375, WallPiece = 79324610365947, Flora = 80756903063205,
+        GlowCluster = 136738324471908, Boulder = 121886701973052, FloatingPiece = 90111970855177,
+    },
+    StormriftCliffs = {
+        PadPiece = 118528448462482, Spires = 101502350446283, WallPiece = 96328250388913, Flora = 73381690984639,
+        GlowCluster = 115616990397536, Boulder = 135159275139763, FloatingPiece = 122024514985676,
+    },
+    TheHollow = {
+        PadPiece = 96955122592402, Spires = 96873549161640, WallPiece = 82350914320986, Flora = 73497287373743,
+        GlowCluster = 127513625520155, Boulder = 115265764760469, FloatingPiece = 125255941958654,
+    },
+    TheDeepForge = {
+        PadPiece = 105684285295980, Spires = 118297309685650, WallPiece = 98049151652092, Flora = 104053299856574,
+        GlowCluster = 83918826188549, Boulder = 71900023894219, FloatingPiece = 106569186177475,
+    },
+    World = {
+        -- GolemAnvil = <id>   (the big golden Anvil at the start; its parts are named anvil / chains / stone platform)
+    },
 }
 AssetData.BuildPack = { assetId = 108557283111622 }
 
