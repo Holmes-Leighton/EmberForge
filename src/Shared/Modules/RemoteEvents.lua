@@ -47,6 +47,7 @@ local DEFINITIONS = {
     BlockTrader         = "event",      -- client → server (userId, on): stop trade requests from / to that player
     ReportTrader        = "event",      -- client → server (userId, reason "scam" | "abuse" | "other")
     AdminTradeLog       = "function",   -- admin only: a player's permanent trade / market log
+    AdminAction         = "function",   -- admin only: (action, args) -> ok, message or data; see AdminService.Action
     BuyFromSupplier     = "event",   -- client → server (itemId, quantity)
     GetSupplierStock    = "function",
     MarkCosmeticsSeen   = "event",   -- client → server: opened the Style menu

@@ -390,7 +390,16 @@ local function BuildQuarryPiece(id, placed, centre)
     local piece
     if template then
         piece = template:Clone()
-        for _, d in ipairs(piece:GetDescendants()) do if d:IsA("BasePart") then d.Anchored, d.CanCollide = true, false end end
+        for _, d in ipairs(piece:GetDescendants()) do
+            if d:IsA("BasePart") then
+                d.Anchored, d.CanCollide = true, false
+                if def.recolour and def.color then
+                    -- the generated mesh's texture comes out the wrong hue (Storm node: pinkish-peach), so paint it in code instead
+                    if d:IsA("MeshPart") then d.TextureID = "" end
+                    d.Color, d.Material = def.color, Enum.Material.Neon
+                end
+            end
+        end
         local _, size = piece:GetBoundingBox()
         local grow = def.kind == "node" and QuarryData.NodeStageAt(placed, os.time()).scale or 1        -- Budding nodes are small, Prime ones big
         if size.Y > 0.01 then piece:ScaleTo(piece:GetScale() * def.height * QUARRY_SCALE * grow / size.Y) end

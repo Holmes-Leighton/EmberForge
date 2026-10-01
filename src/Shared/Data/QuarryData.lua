@@ -25,7 +25,7 @@ QuarryData.Pieces = {
     Core         = { name = "Quarry Core",   kind = "core",   height = 7,  max = 1, blurb = "The heart of your Quarry. Upgrade it with Quarry materials." },
     EmberNode    = { name = "Ember Crystal Node",  kind = "node", element = "Ember", makes = "IgniteOre",      rate = 90, height = 6, price = 4000,  max = 6, color = Color3.fromRGB(255, 110, 50) },
     FrostNode    = { name = "Frost Crystal Node",  kind = "node", element = "Frost", makes = "GlacialCrystal", rate = 90, height = 6, price = 4000,  max = 6, color = Color3.fromRGB(120, 200, 255) },
-    StormNode    = { name = "Storm Crystal Node",  kind = "node", element = "Storm", makes = "ChargedFlint",   rate = 90, height = 6, price = 4000,  max = 6, color = Color3.fromRGB(255, 230, 90) },
+    StormNode    = { name = "Storm Crystal Node",  kind = "node", element = "Storm", makes = "ChargedFlint",   rate = 90, height = 6, price = 4000,  max = 6, color = Color3.fromRGB(255, 230, 90), recolour = true },   -- recolour: the generated mesh renders pinkish-peach, so its texture is dropped and it is painted in `color`
     VoidNode     = { name = "Void Geode",          kind = "node", element = "Void",  makes = "ShadowDust",     rate = 60, height = 5, price = 7000,  max = 4, color = Color3.fromRGB(150, 80, 220) },
     StoneNode    = { name = "Granite Vein",        kind = "node", element = "Stone", makes = "GraniteShard",   rate = 90, height = 5, price = 3000,  max = 6, color = Color3.fromRGB(160, 160, 170) },
     CoolingPool  = { name = "Cooling Pool",  kind = "helper", height = 3, price = 6000,  max = 2, blurb = "Next to an Ember node: it makes Tempered Ember." },

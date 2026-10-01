@@ -43,7 +43,8 @@ Recommendation: not yet. Six mining zones, the Quarry and pets already give plen
 - [x] ~~Upload the QuarryPack~~ done (89170227615937)
 - [x] Quarry crew: idle Golems can work the Quarry (+8% per tier, up to 4 Golems, +100% cap).
 - [x] Quarry sign over the Core (owner, core level, nodes, crew).
-- [ ] Quarry follow-ups: visitor view, Storm node mesh still renders pinkish-peach (the generator ignores yellow): swap for a better one, recolour in code if the generator allows.
+- [x] Storm node mesh pinkish-peach: now painted in code (texture dropped, yellow Neon) via `recolour = true` in QuarryData. Check how it looks in Studio.
+- [ ] Quarry follow-ups: visitor view.
 
 - [x] Idle animations: pets (look about, stretch, shake, hop) and Golems (look, flex, stomp, inspect pickaxe) pick random moves with rests between (IdleMoves).
 
@@ -55,7 +56,9 @@ Recommendation: not yet. Six mining zones, the Quarry and pets already give plen
 - [x] Place-based labels: Build says "At your forge" until you stand on your forge; My Forge says "You're home"; blueprint badges show the short reason ("Forge Lv 4").
 - [ ] Locks on the remaining in-menu options (Elite Forge tab etc.) if any need requirements.
 - [x] Trading safety: permanent audit log (trades + market, admin readable), 5s confirm lock after any change, give-for-nothing / lopsided warnings, block a player from the request popup, report from the trade window.
-- [ ] Trading safety, still open: an admin review screen for reports/logs (today only the AdminTradeLog remote), minimum account age for trading, tuning of the lopsided-value numbers with real play.
+- [x] Admin panel (Admin button, admins only): gift coins/materials, start/clear events, announce, player lookup (trade log, reports, admin actions); all admin actions are logged. Minimum account age to trade/use the Market (`TRADE_MIN_ACCOUNT_AGE_DAYS`, 7).
+- [ ] Trading safety, still open: tuning of the lopsided-value numbers with real play.
+- [ ] Admin panel extras: gift pets/Golems, kick/ban/mute, server-wide events across all servers with an instant push (MessagingService), view a player's inventory, economy dashboard.
 - [ ] More 3D icons: toasts, trade window and quest rewards still use plain text/emoji.
 
 ## Running the tests

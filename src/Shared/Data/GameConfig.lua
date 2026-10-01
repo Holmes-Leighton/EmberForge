@@ -58,6 +58,7 @@ GameConfig.REMOTE_RATE_LIMIT = 10  -- max requests per second per player
 -- Trading
 GameConfig.MAX_TRADE_ITEMS_PER_SIDE = 8
 GameConfig.MARKET_LISTING_FEE_PERCENT = 0.05  -- 5% listing fee in Ember Coins
+GameConfig.TRADE_MIN_ACCOUNT_AGE_DAYS = 7     -- Roblox accounts younger than this can't trade or use the Market (0 = no limit; stops throwaway scam accounts)
 
 -- Ember Coins (in-game currency)
 GameConfig.DAILY_COIN_REWARD = 100

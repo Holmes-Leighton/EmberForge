@@ -20,6 +20,7 @@ In Studio the game uses an in-memory save (a `[SafeDataStore]` warning appears) 
 | Season dates are UTC timestamps for 2026 | `src/Shared/Data/SeasonData.lua` |
 
 ## 3. Live operations (no update needed)
+Admins also see a red **Admin** button (top left) that opens the admin panel: gifts, events, announcements, player lookup.
 In-game, admins can type in chat:
 - `/event xp 2 24` double XP for 24 hours · `/event drops 3 12` triple resource drops for 12 hours
 - `/event list` · `/event clear`

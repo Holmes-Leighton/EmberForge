@@ -217,6 +217,16 @@ local MAX_BLOCKED = 100
 local REPORT_COOLDOWN = 60
 local lastReport = {}        -- "reporter>target" -> time
 
+-- Brand-new Roblox accounts can't trade or use the Market (Studio and players without an AccountAge are not limited)
+function TradingService.AgeGate(player)
+    local need = GameConfig.TRADE_MIN_ACCOUNT_AGE_DAYS or 0
+    local age = player.AccountAge
+    if need > 0 and type(age) == "number" and age < need and not game:GetService("RunService"):IsStudio() then
+        return string.format("Your Roblox account must be %d days old to trade (yours is %d).", need, age)
+    end
+    return nil
+end
+
 function TradingService.IsBlocked(a, b)
     local da, db = PlayerDataService.Get(a), PlayerDataService.Get(b)
     if da and (da.BlockedTraders or {})[tostring(b.UserId)] then return true end
@@ -273,6 +283,9 @@ end
 function TradingService.InitiateTrade(offererPlayer, targetPlayer)
     if not offererPlayer or not targetPlayer then return nil, "Player not found" end
     if offererPlayer == targetPlayer then return nil, "You can't trade with yourself" end
+    local young = TradingService.AgeGate(offererPlayer)
+    if young then return nil, young end
+    if TradingService.AgeGate(targetPlayer) then return nil, targetPlayer.DisplayName .. " can't trade yet (new account)" end
     if tradeOfUser[offererPlayer.UserId] then return nil, "You are already in a trade" end
     if tradeOfUser[targetPlayer.UserId] then return nil, targetPlayer.DisplayName .. " is already in a trade" end
     if not PlayerDataService.Get(targetPlayer) then return nil, "That player isn't ready" end
@@ -553,6 +566,8 @@ end
 function TradingService.ListOnMarket(player, rawItem, priceCoins)
     local data = PlayerDataService.Get(player)
     if not data then return nil, "No player data" end
+    local young = TradingService.AgeGate(player)
+    if young then return nil, young end
 
     if not PositiveInt(priceCoins, MAX_PRICE) then return nil, "Price must be a whole number of coins" end
     if CountListings(player.UserId) >= MAX_LISTINGS_PER_USER then
@@ -633,6 +648,8 @@ function TradingService.BuyFromMarket(player, listingId)
     if type(listingId) ~= "string" then return false, "Bad listing" end
     local data = PlayerDataService.Get(player)
     if not data then return false, "No player data" end
+    local young = TradingService.AgeGate(player)
+    if young then return false, young end
 
     local cached = marketListings[listingId]
     if not cached then return false, "Listing not found" end
