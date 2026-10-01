@@ -86,9 +86,9 @@ local function BuildStarterStation(world)
     local glow = Instance.new("PointLight")
     glow.Color = Color3.fromRGB(255, 140, 50); glow.Range = 24; glow.Parent = anvil
     Sign(world, "Golem Anvil", "Press E to choose a Golem to forge",
-        Vector3.new(0, 24, -100), Color3.fromRGB(255, 170, 60), 70)         -- high enough to clear the big golden anvil
+        Vector3.new(0, 30, -100), Color3.fromRGB(255, 170, 60), 80)         -- high enough to clear the big golden anvil
     local top = world:FindFirstChild("AnvilTop")
-    require(script.Parent.BiomeArt).Anvil(world, anvil, top, 0, -100, 18)   -- swaps in the golden mesh when its pack is loaded
+    require(script.Parent.BiomeArt).Anvil(world, anvil, top, 0, -100, 24)   -- swaps in the golden mesh when its pack is loaded
 
     -- The menu itself is client-side: AnvilMenuBuilder opens when this prompt fires
     local prompt = AddPrompt(anvil, "Use Anvil", "Golem Anvil", 0)

@@ -454,7 +454,7 @@ end
 -- The starter station's anvil: a large golden mesh when its pack is loaded (the "World" pack's GolemAnvil), otherwise the plain block from WorldBuilder.
 -- The mesh's own colours come out pale and orange, so the golden parts (named anvil / chains in the model) are made plain polished gold metal here;
 -- the stone platform keeps its own texture. `rec.part` is WorldBuilder's anvil block: it stays as the invisible collision and the E prompt's anchor.
-local GOLD = Color3.fromRGB(255, 188, 35)
+local GOLD = Color3.fromRGB(175, 130, 20)       -- darker than it looks: the hub's warm lights brighten it into gold
 local anvilRec
 
 local function BuildAnvil()
@@ -475,7 +475,7 @@ local function BuildAnvil()
                 d.Reflectance = 0
             else                                            -- the anvil itself, its chains, or a single-piece mesh: real shiny gold
                 pcall(function() d.TextureID = "" end)      -- the painted texture comes out peach-orange, so plain polished gold is used instead
-                d.Color, d.Material, d.Reflectance = GOLD, Enum.Material.Metal, 0.25
+                d.Color, d.Material, d.Reflectance = GOLD, Enum.Material.Metal, 0.2
             end
         end
     end
@@ -489,7 +489,7 @@ local function BuildAnvil()
     embers.Speed, embers.LightEmission, embers.Size = NumberRange.new(2, 5), 1, NumberSequence.new(0.4, 0)
     embers.EmissionDirection, embers.Acceleration = Enum.NormalId.Top, Vector3.new(0, 3, 0)
     embers.Parent = art.PrimaryPart
-    GlowLight(art, Color3.fromRGB(255, 190, 80), 40, 1.6, 0)
+    GlowLight(art, Color3.fromRGB(255, 190, 80), 36, 0.7, 0)
     rec.art = art
     rec.height = size.Y
 end
