@@ -6,6 +6,7 @@ local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
 local RemoteEvents  = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local GolemData     = require(game.ReplicatedStorage.Shared.Data.GolemData)
+local Portrait      = require(game.ReplicatedStorage.Shared.Modules.Portrait)
 local RecipeData    = require(game.ReplicatedStorage.Shared.Data.RecipeData)
 local ForgeData     = require(game.ReplicatedStorage.Shared.Data.ForgeData)
 local Utils         = require(game.ReplicatedStorage.Shared.Modules.Utils)
@@ -612,15 +613,17 @@ function ForgeController._BuildDeployPanel()
         local color = desc.elementColor
         local title = Theme.Label(card, string.format("%s   [%s]", desc.name, desc.rarity),
             Theme.TextSize.Body, desc.rarityColor, Theme.Fonts.Heading)
-        title.Size = UDim2.new(0.6, 0, 0, 22)
-        title.Position = UDim2.new(0, 10, 0, 6)
+        title.Size = UDim2.new(0.5, 0, 0, 22)
+        title.Position = UDim2.new(0, 60, 0, 6)
+        local face = Portrait.Golem(card, g, 42)
+        face.Position = UDim2.new(0, 8, 0.5, -21)
 
         local zone = g.zoneId and MiningZoneData.Get(g.zoneId)
         local status = Theme.Label(card,
             g.deployed and ("⚡ Mining in " .. (zone and zone.displayName or tostring(g.zoneId))) or "💤 Idle",
             Theme.TextSize.Small, g.deployed and Theme.Colors.Success or Theme.Colors.TextSecondary)
-        status.Size = UDim2.new(0.6, 0, 0, 18)
-        status.Position = UDim2.new(0, 10, 0, 30)
+        status.Size = UDim2.new(0.5, 0, 0, 18)
+        status.Position = UDim2.new(0, 60, 0, 30)
 
         -- Durability bar (Golems wear out while mining; repairing costs 20% of the craft materials)
         local maxDur = g._maxDurabilitySeconds or (GolemData.Tiers[g.tier] and GolemData.Tiers[g.tier].durabilityHours * 3600) or 1
@@ -628,8 +631,8 @@ function ForgeController._BuildDeployPanel()
         local frac = math.clamp(dur / maxDur, 0, 1)
         local broken = dur <= 0
         local barBg = Instance.new("Frame")
-        barBg.Size = UDim2.new(0.5, 0, 0, 5)
-        barBg.Position = UDim2.new(0, 10, 1, -9)
+        barBg.Size = UDim2.new(0.4, 0, 0, 5)
+        barBg.Position = UDim2.new(0, 60, 1, -9)
         barBg.BackgroundColor3 = Theme.Colors.Background
         barBg.BorderSizePixel = 0
         barBg.Parent = card

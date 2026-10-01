@@ -5,6 +5,7 @@ local Players     = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Theme = require(game.ReplicatedStorage.Shared.Modules.Theme)
 local ScaleUI = require(game.ReplicatedStorage.Shared.Modules.ScaleUI)
+local Portrait = require(game.ReplicatedStorage.Shared.Modules.Portrait)
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "GolemPickerDialog"
@@ -155,11 +156,15 @@ local GolemData = require(game.ReplicatedStorage.Shared.Data.GolemData)
 
         -- Tier badge
         local tierBadge = Instance.new("Frame")
-        tierBadge.Size = UDim2.new(0, 28, 0, 28)
-        tierBadge.Position = UDim2.new(0, 10, 0.5, -14)
+        tierBadge.Size = UDim2.new(0, 28, 0, 20)
+        tierBadge.Position = UDim2.new(0, 56, 0.5, 14)
         tierBadge.BackgroundColor3 = elemColor
         tierBadge.BorderSizePixel = 0
+        tierBadge.ZIndex = 3
         tierBadge.Parent = card
+        local face = Portrait.Golem(card, golem, 54)
+        face.Position = UDim2.new(0, 10, 0.5, -27)
+        tierBadge.Position = UDim2.new(0, 8, 1, -22)
         Theme.AddCorner(tierBadge, Theme.Corner.Small)
         local tierLbl = Theme.Label(tierBadge, "T" .. golem.tier, 12, Color3.fromRGB(255,255,255), Theme.Fonts.Heading)
         tierLbl.Size = UDim2.new(1, 0, 1, 0)
@@ -170,14 +175,14 @@ local GolemData = require(game.ReplicatedStorage.Shared.Data.GolemData)
             GolemNames.Describe(golem).name .. "  [" .. GolemNames.Describe(golem).rarity .. "]",
             Theme.TextSize.Heading, GolemNames.Describe(golem).rarityColor, Theme.Fonts.Heading)
         nameLbl.Size = UDim2.new(0.55, 0, 0, 22)
-        nameLbl.Position = UDim2.new(0, 48, 0, 6)
+        nameLbl.Position = UDim2.new(0, 72, 0, 6)
 
         -- Status
         local statusText = golem.deployed and ("⚡ Mining: " .. (golem.zoneId or "?")) or "● Idle"
         local statusColor = golem.deployed and Theme.Colors.Success or Theme.Colors.TextDim
         local statusLbl = Theme.Label(card, statusText, Theme.TextSize.Small, statusColor)
         statusLbl.Size = UDim2.new(0.5, 0, 0, 16)
-        statusLbl.Position = UDim2.new(0, 48, 0, 28)
+        statusLbl.Position = UDim2.new(0, 72, 0, 28)
 
         -- Stats
         if stats then
@@ -188,14 +193,14 @@ local GolemData = require(game.ReplicatedStorage.Shared.Data.GolemData)
                     stats.luck * 100),
                 Theme.TextSize.Small, Theme.Colors.TextSecondary, Theme.Fonts.Mono)
             statsLbl.Size = UDim2.new(0.55, 0, 0, 16)
-            statsLbl.Position = UDim2.new(0, 48, 0, 48)
+            statsLbl.Position = UDim2.new(0, 72, 0, 48)
         end
 
         -- Fusion bonus indicator
         if golem.fusionBonus then
             local fusedLbl = Theme.Label(card, "Fused", Theme.TextSize.Small, Theme.Colors.Legendary)
             fusedLbl.Size = UDim2.new(0, 60, 0, 16)
-            fusedLbl.Position = UDim2.new(0, 48, 0, 60)
+            fusedLbl.Position = UDim2.new(0, 72, 0, 60)
         end
 
         -- Select button

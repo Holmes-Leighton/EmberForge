@@ -162,6 +162,22 @@ local function Row(name, sub, color, buttonText, buttonColor, onClick, enabled, 
     return row
 end
 
+local Portrait = require(game.ReplicatedStorage.Shared.Modules.Portrait)
+
+-- Puts the pet's face at the left of a row (replacing the colour stripe) and moves the text across
+local function AddPortrait(row, pet)
+    if not row then return end
+    local size = math.min(52, row.AbsoluteSize.Y > 0 and row.AbsoluteSize.Y - 12 or 52, 52)
+    local stripe = row:FindFirstChildWhichIsA("Frame")
+    if stripe and stripe.Size.X.Offset == 6 then stripe.Visible = false end
+    local vp = Portrait.Pet(row, pet, 52)
+    vp.AnchorPoint = Vector2.new(0, 0.5)
+    vp.Position = UDim2.new(0, 8, 0.5, 0)
+    for _, c in ipairs(row:GetChildren()) do
+        if c:IsA("TextLabel") then c.Position = c.Position + UDim2.new(0, 52, 0, 0) c.Size = c.Size + UDim2.new(0, -52, 0, 0) end
+    end
+end
+
 local RARITY_ORDER = { Legendary = 1, Epic = 2, Rare = 3, Uncommon = 4, Common = 5 }
 
 -- a short message strip along the bottom (e.g. "You need 150 coins")
@@ -329,6 +345,25 @@ local function Reload()
                 local d = PetData.Get(o.type)
                 table.insert(parts, d.displayName .. " " .. PetData.FormatOdds(o.chance))
             end
+            -- faces of everything that can hatch, rarest first, each with its chance
+            local strip = Instance.new("Frame")
+            strip.Size = UDim2.new(1, -8, 0, 0)
+            strip.AutomaticSize = Enum.AutomaticSize.Y
+            strip.BackgroundTransparency = 1
+            strip.Parent = content
+            local layout = Instance.new("UIGridLayout")
+            layout.CellSize, layout.CellPadding, layout.SortOrder = UDim2.new(0, 46, 0, 64), UDim2.new(0, 6, 0, 4), Enum.SortOrder.LayoutOrder
+            layout.Parent = strip
+            for i, o in ipairs(odds) do
+                local cell = Instance.new("Frame")
+                cell.BackgroundTransparency, cell.LayoutOrder = 1, i
+                cell.Parent = strip
+                local pv = Portrait.Pet(cell, { type = o.type, grown = 8 * 3600 }, 42)
+                pv.Position = UDim2.new(0, 2, 0, 0)
+                local pct = Theme.Label(cell, (PetData.FormatOdds(o.chance):gsub(" %(.*", "")), 10, Theme.Colors.TextSecondary, Theme.Fonts.Body)
+                pct.Position, pct.Size = UDim2.new(0, 0, 0, 46), UDim2.new(1, 0, 0, 14)
+                pct.TextXAlignment = Enum.TextXAlignment.Center
+            end
             Note("Odds: " .. table.concat(parts, "  |  "), 66)
         end
         return
@@ -383,7 +418,7 @@ local function Reload()
         if g.variant ~= "MegaNeon" then
             sub ..= string.format("   (merge %d to make 1 %s)", PetData.MERGE_COUNT, nextLabel)
         end
-        Row(stage.id .. " " .. PetData.DisplayName(sample) .. (count > 1 and ("  x" .. count) or ""), sub, rc,
+        local petRow = Row(stage.id .. " " .. PetData.DisplayName(sample) .. (count > 1 and ("  x" .. count) or ""), sub, rc,
             isWorn and "Put away" or "Wear", isWorn and Theme.Colors.PanelAlt or Theme.Colors.Accent,
             function()
                 local id = isWorn and g.wornIds[1] or g.pets[1].id
@@ -392,6 +427,7 @@ local function Reload()
             end, true, 64, rc, (RARITY_ORDER[g.def.rarity] or 5) <= 3 and ((RARITY_ORDER[g.def.rarity] == 1) and 3 or 2) or nil,
             canMerge and { text = "Merge " .. PetData.MERGE_COUNT, color = Theme.Colors.Success,
                 onClick = function() RemoteEvents.MergePets:FireServer(g.type, g.variant) end } or nil)
+        AddPortrait(petRow, sample)
     end
 end
 
