@@ -170,10 +170,7 @@ Row({ { "Player name or id", 130 } }, {
 Heading("Inspect a player in this server (coins, levels, items)")
 Row({ { "Player name or id", 220 } }, { { "Inspect", BLUE, function(b)
     Run("inspect", { target = tonumber(b[1].Text) or b[1].Text }, function(r)
-        Say(string.format("%s (%d), account %d days old
-%s
-%s", r.name, r.userId, r.accountAge or 0, r.summary, table.concat(r.lines, "
-")))
+        Say(string.format("%s (%d), account %d days old\n%s\n%s", r.name, r.userId, r.accountAge or 0, r.summary, table.concat(r.lines, "\n")))
     end)
 end, 90 } })
 
