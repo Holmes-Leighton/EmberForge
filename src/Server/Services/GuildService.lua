@@ -14,6 +14,7 @@ local GuildService = {}
 
 local guildStore = SafeDataStore.GetDataStore("EF_Guilds_v1")
 local nameStore  = SafeDataStore.GetDataStore("EF_GuildNames_v1")
+local chatStore  = SafeDataStore.GetDataStore("EF_GuildChat_v1")
 
 local pending = {}          -- userId -> resources mined since the last flush
 local lastJoinTry = {}      -- userId -> os.clock() of the last create/join attempt (spam guard)
@@ -84,6 +85,8 @@ local function Snapshot(guild, userId)
         claimed = guild.claimed[tostring(userId)] == true,
         isLeader = tostring(guild.leader) == tostring(userId),
         reward = GuildData.REWARD, minContribution = GuildData.MIN_CONTRIBUTION,
+        level = GuildData.LevelOf(guild.total or 0), levelBonus = GuildData.LevelBonus(GuildData.LevelOf(guild.total or 0)),
+        nextLevelTotal = select(2, GuildData.NextLevel(guild.total or 0)),
     }
 end
 
@@ -133,6 +136,7 @@ function GuildService.Create(player, rawName)
         return nil, "Couldn't save the guild. Try again."
     end
     data.EmberCoins -= GuildData.CREATE_COST
+    data.GuildLevel = 0
     data.GuildId = id
     PlayerDataService.MarkDirty(player)
     return Snapshot(guild, player.UserId)
@@ -163,6 +167,7 @@ function GuildService.Join(player, rawName)
     if not ok then return nil, "Guilds are unavailable right now. Try again in a minute." end
     if type(result) ~= "table" then return nil, result or "Couldn't join that guild" end
     data.GuildId = id
+    data.GuildLevel = GuildData.LevelOf(result.total or 0)
     PlayerDataService.MarkDirty(player)
     return Snapshot(result, player.UserId)
 end
@@ -193,8 +198,10 @@ function GuildService.Leave(player)
         if disbandName then
             guildStore:RemoveAsync(GuildKey(id))
             nameStore:RemoveAsync(GuildData.NameKey(disbandName))
+            pcall(function() chatStore:RemoveAsync("c_" .. id) end)
         end
     end)
+    data.GuildLevel = 0
     data.GuildId = nil
     PlayerDataService.MarkDirty(player)
     return true
@@ -225,6 +232,7 @@ function GuildService.Kick(leader, targetUserId)
     local od = online and PlayerDataService.Get(online)
     if od then
         od.GuildId = nil
+        od.GuildLevel = 0
         pending[online.UserId] = nil
         PlayerDataService.MarkDirty(online)
         local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
@@ -254,6 +262,104 @@ function GuildService.Promote(leader, targetUserId)
     return true
 end
 
+-- ── Invites ───────────────────────────────────────────────────────────────────
+-- A member invites a player who is on the same server. The invite lives in memory for INVITE_SECONDS.
+local invites = {}               -- target userId -> { guildName, fromName, fromId, expires }
+local lastInvite = {}            -- inviter userId -> os.clock()
+
+local function FindOnline(name)
+    if type(name) ~= "string" then return nil end
+    local lower = name:lower()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p.Name:lower() == lower or (p.DisplayName or ""):lower() == lower then return p end
+    end
+    return nil
+end
+
+-- Returns true, or false + a reason
+function GuildService.Invite(inviter, targetName)
+    local data = PlayerDataService.Get(inviter)
+    if not data or not data.GuildId then return false, "Join or found a guild first" end
+    if os.clock() - (lastInvite[inviter.UserId] or -1e9) < GuildData.INVITE_GAP then return false, "Slow down a little" end
+    local target = FindOnline(targetName)
+    if not target then return false, "No player with that name is on this server" end
+    if target == inviter then return false, "You can't invite yourself" end
+    local td = PlayerDataService.Get(target)
+    if not td then return false, "That player isn't ready yet" end
+    if td.GuildId then return false, target.DisplayName .. " is already in a guild" end
+    local guild = LoadGuild(data.GuildId)
+    if not guild or not guild.members[tostring(inviter.UserId)] then return false, "Your guild no longer exists" end
+    if CountMembers(guild) >= GuildData.MAX_MEMBERS then return false, "Your guild is full" end
+    local existing = invites[target.UserId]
+    if existing and existing.expires > os.clock() then return false, target.DisplayName .. " already has an invite waiting" end
+
+    lastInvite[inviter.UserId] = os.clock()
+    invites[target.UserId] = { guildName = guild.name, fromName = inviter.DisplayName or inviter.Name, fromId = inviter.UserId,
+        expires = os.clock() + GuildData.INVITE_SECONDS }
+    local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
+    if RemoteEvents.GuildInvite then RemoteEvents.GuildInvite:FireClient(target, guild.name, inviter.DisplayName or inviter.Name, inviter.UserId) end
+    return true
+end
+
+-- The player answers their invite. Returns the guild snapshot on accept, true on decline, or nil + a reason.
+function GuildService.RespondInvite(player, accept)
+    local inv = invites[player.UserId]
+    invites[player.UserId] = nil
+    if not inv or inv.expires < os.clock() then return nil, "That invite has expired" end
+    if not accept then return true end
+    local saved = GuildService.ThrottleSeconds
+    GuildService.ThrottleSeconds = 0            -- accepting is not a spammy join attempt
+    local guild, err = GuildService.Join(player, inv.guildName)
+    GuildService.ThrottleSeconds = saved
+    return guild, err
+end
+
+-- ── Chat ──────────────────────────────────────────────────────────────────────
+-- Messages are filtered for everyone who can read them, then kept (the last CHAT_KEEP) in their own record.
+local lastChat = {}              -- userId -> os.clock()
+
+local function FilterText(player, text)
+    local ok, result = pcall(function()
+        local filtered = TextService:FilterStringAsync(text, player.UserId)
+        return filtered:GetNonChatStringForBroadcastAsync()
+    end)
+    if ok and type(result) == "string" then return result end
+    if ok == false and TextService.FilterStringAsync then return nil end
+    return text
+end
+
+-- Returns true, or false + a reason
+function GuildService.SendChat(player, raw)
+    local data = PlayerDataService.Get(player)
+    if not data or not data.GuildId then return false, "You are not in a guild" end
+    if type(raw) ~= "string" then return false, "Say something first" end
+    local text = raw:gsub("[%c]", " "):gsub("^%s+", ""):gsub("%s+$", "")
+    if #text == 0 then return false, "Say something first" end
+    if #text > GuildData.CHAT_MAX_LEN then text = text:sub(1, GuildData.CHAT_MAX_LEN) end
+    if os.clock() - (lastChat[player.UserId] or -1e9) < GuildData.CHAT_GAP then return false, "Slow down a little" end
+    lastChat[player.UserId] = os.clock()
+    local clean = FilterText(player, text)
+    if not clean then return false, "That message couldn't be sent" end
+    local id = data.GuildId
+    local ok = pcall(function()
+        chatStore:UpdateAsync("c_" .. id, function(old)
+            local list = type(old) == "table" and old or {}
+            table.insert(list, { name = player.DisplayName or player.Name, userId = player.UserId, text = clean, t = Now() })
+            while #list > GuildData.CHAT_KEEP do table.remove(list, 1) end
+            return list
+        end)
+    end)
+    if not ok then return false, "Chat is unavailable right now" end
+    return true
+end
+
+function GuildService.GetChat(player)
+    local data = PlayerDataService.Get(player)
+    if not data or not data.GuildId then return {} end
+    local ok, list = pcall(function() return chatStore:GetAsync("c_" .. data.GuildId) end)
+    return ok and type(list) == "table" and list or {}
+end
+
 -- ── Production and the weekly challenge ───────────────────────────────────────
 function GuildService.OnResourcesGained(player, amount)
     local data = PlayerDataService.Get(player)
@@ -267,7 +373,7 @@ function GuildService.Flush(player)
     if not amount or amount <= 0 or not data or not data.GuildId then return end
     pending[player.UserId] = nil
     local id = data.GuildId
-    local week, credited
+    local week, credited, total
     local ok = pcall(function()
         guildStore:UpdateAsync(GuildKey(id), function(guild)
             if type(guild) ~= "table" then return nil end
@@ -277,15 +383,17 @@ function GuildService.Flush(player)
             m.weekly = (m.weekly or 0) + amount
             guild.weekly = (guild.weekly or 0) + amount
             guild.total = (guild.total or 0) + amount
-            week, credited = guild.week, true
+            week, credited, total = guild.week, true, guild.total
             return guild
         end)
     end)
     if not ok then pending[player.UserId] = (pending[player.UserId] or 0) + amount return end   -- try again next flush
     if credited then
+        data.GuildLevel = GuildData.LevelOf(total or 0)
         pcall(function() WeeklyBoard(week):UpdateAsync(id, function(old) return (old or 0) + amount end) end)
     else
-        data.GuildId = nil                                   -- the guild is gone or we were removed from it
+        data.GuildLevel = 0
+        data.GuildId = nil                                  -- the guild is gone or we were removed from it
         PlayerDataService.MarkDirty(player)
     end
 end
@@ -396,10 +504,12 @@ function GuildService.GetMine(player)
     local guild = LoadGuild(data.GuildId)
     if not guild or not guild.members[tostring(player.UserId)] then
         data.GuildId = nil                                   -- disbanded, or removed
+        data.GuildLevel = 0
         PlayerDataService.MarkDirty(player)
         return nil
     end
     local snap = Snapshot(guild, player.UserId)
+    data.GuildLevel = snap.level
     snap.prize = PrizeStatus(guild, player.UserId)
     return snap
 end
@@ -434,6 +544,9 @@ function GuildService.OnPlayerLeave(player)
     GuildService.Flush(player)
     pending[player.UserId] = nil
     lastJoinTry[player.UserId] = nil
+    lastChat[player.UserId] = nil
+    lastInvite[player.UserId] = nil
+    invites[player.UserId] = nil
 end
 
 return GuildService

@@ -44,6 +44,7 @@ PlayerDataService.StartAutoSave()
 LeaderboardService.StartFlushLoop()
 GuildService.StartFlushLoop()
 LadderService.StartFlushLoop()
+require(script.Services.GuildHallService).Start(function(member) return GuildService.GetMine(member) end)
 
 -- ── Player join ───────────────────────────────────────────────────────────────
 -- Roblox's default character script loads a facial "mood" animation that Studio can't fetch for an

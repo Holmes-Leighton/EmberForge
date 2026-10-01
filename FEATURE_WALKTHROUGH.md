@@ -37,7 +37,8 @@ Status key: **Verified** = seen working in Studio; **Unit** = mock tests only; *
 |---|---|---|
 | Hourly event | Automatic every UTC hour: Ember/Stone/Frost/Storm/Void Hour (x2 that element), Lucky, Double XP, Bonanza; banner with countdown | Verified banner, Unit logic |
 | Surges | About a third of 3-hour windows get a 10-minute Meteor Shower / Rich Vein / Forge Frenzy, announced to everyone | Unit |
-| Guilds | Create (500 coins), join by name, weekly challenge, weekly top-10 battle prizes, leaderboard | Unit; live only the coin-short path |
+| Guilds | Create (500 coins), join by name or invite, chat, Guild Hall, guild level perk, weekly challenge, top-10 battle prizes, leaderboard | Verified live: create, chat, hall, invite popup; Unit: the rest |
+| Trade requests | A request popup (avatar, name, forge level, title) must be accepted before the trade window opens | Verified popup; Unit not possible (needs two players) |
 | Ascension | Forge Lv10, 25k x n^2 coins, 10 times; permanent bonuses, title, sign, leaderboard | Unit; menu verified |
 | Ranked ladder | 4-week seasons; mining earns points; tiers Bronze..Champion; top-100 and tier prizes claimed next season | Unit; menu verified |
 | Daily login streak | 7-day reward ladder granted on join; missing a day resets | Verified (day 1), Unit |
@@ -53,5 +54,5 @@ Status key: **Verified** = seen working in Studio; **Unit** = mock tests only; *
 3. Balance numbers (build prices, Ascension cost, ladder tiers, prize sizes) are first guesses and need real playtime data.
 4. The Primordial ("All") event Golem now has a body (EF_All in the GolemPack in Studio): it shows in game once the GolemPack is re-uploaded and its id swapped in AssetData.Pack. Rail Track is built from parts in code instead of a mesh.
 5. Game icon and thumbnails must be set in Creator Hub (draft screenshots in `marketing/draft-screenshots/`).
-6. Guild leaders can now remove members and hand over leadership. Still not built: a shared Guild Forge, invites, guild chat.
+6. Guilds now have leader tools (remove member, hand over leadership), invites with an accept popup (same server only), filtered guild chat (last 30 messages, polled every 4s while open), a Guild Hall teleport and a guild level that gives members +2% mining per level (max +10%). Chat uses Roblox text filtering, which only runs on a published place, so test it there.
 7. Codes are not capped globally across servers (`maxUses` is not enforced); keep any limited code generous.

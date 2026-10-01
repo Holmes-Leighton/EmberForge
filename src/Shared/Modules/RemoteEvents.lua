@@ -33,6 +33,8 @@ local DEFINITIONS = {
 
     -- Trading
     InitiateTrade       = "event",
+    TradeRequest        = "event",   -- server → client (someone wants to trade: fromName, fromUserId, info)
+    RespondTradeRequest = "event",   -- client → server (accept: boolean)
     TradeOffer          = "event",   -- server → client (a trade window opened: tradeId, err)
     AddTradeItem        = "event",   -- client → server (tradeId, item)
     RemoveTradeItem     = "event",   -- client → server (tradeId, index)
@@ -87,6 +89,12 @@ local DEFINITIONS = {
     LeaveGuild          = "event",
     ClaimGuildReward    = "event",
     ClaimGuildPrize     = "event",   -- last week's battle prize
+    InviteToGuild       = "event",   -- client → server (player name)
+    RespondGuildInvite  = "event",   -- client → server (accept: boolean)
+    GuildInvite         = "event",   -- server → client (guildName, fromName)
+    SendGuildChat       = "event",   -- client → server (text)
+    GetGuildChat        = "function", -- → list of { name, userId, text, t }
+    GoToGuildHall       = "event",
     ManageGuild         = "event",   -- client → server (action: "kick" | "promote", userId) - leader only
     GuildResult         = "event",   -- server → client (action, ok, message)
     GetGuildInfo        = "function", -- → { mine = snapshot or nil, top = {...} }

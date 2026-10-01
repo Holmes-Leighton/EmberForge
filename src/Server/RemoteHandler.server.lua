@@ -252,6 +252,12 @@ local function PushTradeView(tradeId)
     end
 end
 
+-- A trade starts as a request: the other player sees a popup (who is asking, with their avatar) and must accept.
+-- Only then is the trade created and its window opened for both of them.
+local TRADE_REQUEST_SECONDS = 60
+local tradeRequests = {}         -- target userId -> { fromId, expires }
+local lastTradeRequest = {}      -- requester userId -> os.clock()
+
 RemoteEvents.InitiateTrade.OnServerEvent:Connect(function(player, targetUserId)
     SafeCall(player, function()
         if type(targetUserId) ~= "number" then return end
@@ -260,14 +266,48 @@ RemoteEvents.InitiateTrade.OnServerEvent:Connect(function(player, targetUserId)
             Tell(player, "Trade", "That player isn't here any more.")
             return
         end
-        local tradeId, err = TradingService.InitiateTrade(player, target)
-        if not tradeId then
-            Tell(player, "Can't trade", tostring(err))
+        if target == player then Tell(player, "Can't trade", "You can't trade with yourself") return end
+        if TradingService.InTrade(player.UserId) then Tell(player, "Can't trade", "You are already in a trade") return end
+        if TradingService.InTrade(target.UserId) then Tell(player, "Can't trade", target.DisplayName .. " is already in a trade") return end
+        if os.clock() - (lastTradeRequest[player.UserId] or -1e9) < 5 then Tell(player, "Slow down", "Wait a few seconds between trade requests.") return end
+        local existing = tradeRequests[target.UserId]
+        if existing and existing.expires > os.clock() and existing.fromId ~= player.UserId then
+            Tell(player, "Can't trade", target.DisplayName .. " already has a trade request waiting.")
             return
         end
+        local td = PlayerDataService.Get(target)
+        local pd = PlayerDataService.Get(player)
+        if not td or not pd then Tell(player, "Can't trade", "That player isn't ready yet.") return end
+
+        lastTradeRequest[player.UserId] = os.clock()
+        tradeRequests[target.UserId] = { fromId = player.UserId, expires = os.clock() + TRADE_REQUEST_SECONDS }
+        RemoteEvents.TradeRequest:FireClient(target, player.DisplayName or player.Name, player.UserId, {
+            username = player.Name, forgeLevel = pd.ForgeLevel or 1, ascensions = pd.Ascensions or 0,
+            title = pd.Equipped and pd.Equipped.Title, playerLevel = pd.PlayerLevel or 1, seconds = TRADE_REQUEST_SECONDS,
+        })
+        Tell(player, "Trade request sent", "Waiting for " .. (target.DisplayName or target.Name) .. " to answer...")
+    end)
+end)
+
+RemoteEvents.RespondTradeRequest.OnServerEvent:Connect(function(player, accept)
+    SafeCall(player, function()
+        local req = tradeRequests[player.UserId]
+        tradeRequests[player.UserId] = nil
+        if not req or req.expires < os.clock() then Tell(player, "Trade", "That trade request has expired.") return end
+        local requester = Players:GetPlayerByUserId(req.fromId)
+        if not requester then Tell(player, "Trade", "That player left.") return end
+        if accept ~= true then
+            Tell(requester, "Trade declined", (player.DisplayName or player.Name) .. " declined your trade request.")
+            return
+        end
+        local tradeId, err = TradingService.InitiateTrade(requester, player)
+        if not tradeId then
+            Tell(player, "Can't trade", tostring(err))
+            Tell(requester, "Can't trade", tostring(err))
+            return
+        end
+        RemoteEvents.TradeOffer:FireClient(requester, tradeId, nil)
         RemoteEvents.TradeOffer:FireClient(player, tradeId, nil)
-        RemoteEvents.TradeOffer:FireClient(target, tradeId, nil)
-        Tell(target, "Trade request", player.DisplayName .. " wants to trade with you.")
         PushTradeView(tradeId)
     end)
 end)
@@ -455,6 +495,45 @@ RemoteEvents.ManageGuild.OnServerEvent:Connect(function(player, action, userId)
         local ok, err
         if action == "kick" then ok, err = GuildService.Kick(player, userId) else ok, err = GuildService.Promote(player, userId) end
         RemoteEvents.GuildResult:FireClient(player, action, ok == true, ok and (action == "kick" and "Member removed." or "Leadership handed over.") or err)
+    end)
+end)
+
+RemoteEvents.InviteToGuild.OnServerEvent:Connect(function(player, name)
+    SafeCall(player, function()
+        if type(name) ~= "string" or #name > 60 then return end
+        local ok, err = require(script.Parent.Services.GuildService).Invite(player, name)
+        RemoteEvents.GuildResult:FireClient(player, "invite", ok == true, ok and "Invite sent!" or err)
+    end)
+end)
+
+RemoteEvents.RespondGuildInvite.OnServerEvent:Connect(function(player, accept)
+    SafeCall(player, function()
+        local result, err = require(script.Parent.Services.GuildService).RespondInvite(player, accept == true)
+        if accept == true then
+            RemoteEvents.GuildResult:FireClient(player, "join", type(result) == "table", type(result) == "table" and ("Joined " .. result.name .. "!") or err)
+        end
+    end)
+end)
+
+RemoteEvents.SendGuildChat.OnServerEvent:Connect(function(player, text)
+    SafeCall(player, function()
+        if type(text) ~= "string" or #text > 400 then return end
+        local ok, err = require(script.Parent.Services.GuildService).SendChat(player, text)
+        if not ok then RemoteEvents.GuildResult:FireClient(player, "chat", false, err) end
+    end)
+end)
+
+RemoteEvents.GetGuildChat.OnServerInvoke = function(player)
+    return require(script.Parent.Services.GuildService).GetChat(player)
+end
+
+RemoteEvents.GoToGuildHall.OnServerEvent:Connect(function(player)
+    SafeCall(player, function()
+        local GuildService = require(script.Parent.Services.GuildService)
+        local snap = GuildService.GetMine(player)
+        if not snap then RemoteEvents.GuildResult:FireClient(player, "hall", false, "Join a guild first") return end
+        local ok, err = require(script.Parent.Services.GuildHallService).Teleport(player, snap)
+        if not ok then RemoteEvents.GuildResult:FireClient(player, "hall", false, err) end
     end)
 end)
 

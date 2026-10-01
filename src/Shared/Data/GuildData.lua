@@ -31,6 +31,42 @@ function GuildData.PrizeFor(rank)
     return nil
 end
 
+-- Guild level: everything the whole guild has ever mined. Each level gives every member a small permanent boost
+-- to mining speed while they are in the guild (so a bigger, more active guild is worth belonging to).
+GuildData.Levels = {
+    { level = 1, total = 50000 },
+    { level = 2, total = 250000 },
+    { level = 3, total = 1000000 },
+    { level = 4, total = 3000000 },
+    { level = 5, total = 10000000 },
+}
+GuildData.LEVEL_BONUS = 0.02            -- mining speed per guild level (so +10% at level 5)
+
+function GuildData.LevelOf(total)
+    local level = 0
+    for _, l in ipairs(GuildData.Levels) do
+        if (total or 0) >= l.total then level = l.level end
+    end
+    return level
+end
+
+-- The next level's target: level, total needed (nil at the top)
+function GuildData.NextLevel(total)
+    local nextL = GuildData.Levels[GuildData.LevelOf(total) + 1]
+    return nextL and nextL.level, nextL and nextL.total
+end
+
+function GuildData.LevelBonus(level)
+    return GuildData.LEVEL_BONUS * math.clamp(level or 0, 0, #GuildData.Levels)
+end
+
+-- Guild chat and invites
+GuildData.CHAT_KEEP = 30                -- messages kept per guild
+GuildData.CHAT_MAX_LEN = 120
+GuildData.CHAT_GAP = 1.5                -- seconds between a player's messages
+GuildData.INVITE_SECONDS = 120          -- how long an invite stays open
+GuildData.INVITE_GAP = 4                -- seconds between a player's invites
+
 function GuildData.WeekId(unixTime)
     return math.floor((unixTime or os.time()) / GuildData.WEEK_SECONDS)
 end

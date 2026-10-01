@@ -58,6 +58,7 @@ local function DefaultData()
         StorageTier     = 0,           -- 0=base, 1=upgraded, 2=premium
         EmberCoins      = GameConfig.STARTING_COINS,
         GuildId         = nil,
+        GuildLevel      = 0,           -- the guild's level (see GuildData.Levels); a mining bonus while you are a member
         Settings        = {},
         -- Forge
         SmeltQueue      = {},          -- persisted smelt jobs

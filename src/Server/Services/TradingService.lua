@@ -146,6 +146,11 @@ function TradingService.InitiateTrade(offererPlayer, targetPlayer)
     return tradeId
 end
 
+-- True while this player is in an open trade (so a trade request to them, or from them, makes no sense)
+function TradingService.InTrade(userId)
+    return tradeOfUser[userId] ~= nil
+end
+
 local function CloseTrade(tradeId)
     local trade = pendingTrades[tradeId]
     if not trade then return end

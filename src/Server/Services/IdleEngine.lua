@@ -7,6 +7,7 @@ local Utils        = require(game.ReplicatedStorage.Shared.Modules.Utils)
 local ForgeData    = require(game.ReplicatedStorage.Shared.Data.ForgeData)
 local PetData      = require(game.ReplicatedStorage.Shared.Data.PetData)
 local ForgeBuildData = require(game.ReplicatedStorage.Shared.Data.ForgeBuildData)
+local GuildData      = require(game.ReplicatedStorage.Shared.Data.GuildData)
 
 local IdleEngine = {}
 
@@ -66,7 +67,7 @@ local function CrewAuras(playerData)
         luck      = math.min(cp.luckCap, cp.luckPer * coral) + pets.luck + forge.luck,
         shelter   = math.min(jp.shelterCap, jp.shelterPer * jar),
         blueprint = (1 + math.min(bp.blueprintCap, bp.blueprintPer * bone)) * (1 + pets.bp),
-        rate      = pets.rate + forge.rate,      -- mining speed
+        rate      = pets.rate + forge.rate + (playerData.GuildId and GuildData.LevelBonus(playerData.GuildLevel) or 0),   -- mining speed
         carry     = pets.carry + forge.carry,    -- carry capacity
         eff       = pets.eff + forge.eff,        -- efficiency
         wear      = math.min(0.9, pets.wear + forge.wear),   -- durability wear saved
