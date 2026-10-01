@@ -208,7 +208,7 @@ local function Reload()
             local shown = 0
             table.sort(info.idleGolems, function(a, b) return (a.tier or 1) > (b.tier or 1) end)
             for _, g in ipairs(info.idleGolems) do
-                if shown >= 4 then break end
+                if shown >= 12 then Note(string.format("...and %d more idle Golems (best tiers shown first).", #info.idleGolems - 12), 24, Theme.Colors.TextDim) break end
                 shown += 1
                 Row(Name(g), string.format("Tier %d, idle: +%d%% if it works here", g.tier, math.floor(QuarryData.CREW_PER_TIER * (g.tier or 1) * (QuarryData.CREW_VARIANT[g.variant] or 1) * 100 + 0.5)),
                     Theme.Colors.Info, { { text = "Send to work", color = Theme.Colors.Accent, onClick = function() RemoteEvents.QuarryAction:FireServer("crewadd", g.id) end } }, 56, g)

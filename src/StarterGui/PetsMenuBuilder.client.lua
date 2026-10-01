@@ -386,7 +386,8 @@ local function Reload()
     for _, pet in ipairs(owned) do
         local def = PetData.Get(pet.type)
         if def then
-            local key = pet.type .. "|" .. (pet.variant or "") .. "|" .. PetData.StageOf(pet).id
+            -- worn pets get their own row, so "Put away" and "Wear" each act on exactly the pets in that row
+            local key = pet.type .. "|" .. (pet.variant or "") .. "|" .. PetData.StageOf(pet).id .. (worn[pet.id] and "|worn" or "")
             local g = groups[key]
             if not g then
                 g = { type = pet.type, variant = pet.variant, def = def, pets = {}, wornIds = {} }
@@ -401,7 +402,8 @@ local function Reload()
     table.sort(list, function(a, b)
         if a.def.rarity ~= b.def.rarity then return RARITY_ORDER[a.def.rarity] < RARITY_ORDER[b.def.rarity] end
         if a.type ~= b.type then return a.def.displayName < b.def.displayName end
-        return (VARIANT_ORDER[a.variant or ""] or 9) < (VARIANT_ORDER[b.variant or ""] or 9)
+        if a.variant ~= b.variant then return (VARIANT_ORDER[a.variant or ""] or 9) < (VARIANT_ORDER[b.variant or ""] or 9) end
+        return #a.wornIds > #b.wornIds                          -- worn first
     end)
     for _, g in ipairs(list) do
         local sample = g.pets[1]
@@ -418,7 +420,7 @@ local function Reload()
         if g.variant ~= "MegaNeon" then
             sub ..= string.format("   (merge %d to make 1 %s)", PetData.MERGE_COUNT, nextLabel)
         end
-        local petRow = Row(stage.id .. " " .. PetData.DisplayName(sample) .. (count > 1 and ("  x" .. count) or ""), sub, rc,
+        local petRow = Row(stage.id .. " " .. PetData.DisplayName(sample) .. (count > 1 and ("  x" .. count) or "") .. (isWorn and "  (worn)" or ""), sub, rc,
             isWorn and "Put away" or "Wear", isWorn and Theme.Colors.PanelAlt or Theme.Colors.Accent,
             function()
                 local id = isWorn and g.wornIds[1] or g.pets[1].id

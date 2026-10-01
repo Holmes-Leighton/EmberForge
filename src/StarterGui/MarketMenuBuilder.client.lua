@@ -436,9 +436,9 @@ local function BuildPickList()
     Clear(dScroll)
     pick = nil
     local rows = {}
-    local function AddRow(text, color, info)
+    local function AddRow(text, color, info, golem)
         local row = Instance.new("TextButton")
-        row.Size = UDim2.new(1, -6, 0, 40)
+        row.Size = UDim2.new(1, -6, 0, 46)
         row.BackgroundColor3 = Theme.Colors.Panel
         row.BorderSizePixel = 0
         row.Text = ""
@@ -447,9 +447,22 @@ local function BuildPickList()
         row.Parent = dScroll
         Theme.AddCorner(row, Theme.Corner.Small)
         local l = Theme.Label(row, text, Theme.TextSize.Body, color, Theme.Fonts.Heading)
-        l.Position = UDim2.new(0, 12, 0, 0)
-        l.Size = UDim2.new(1, -24, 1, 0)
+        l.Position = UDim2.new(0, 56, 0, 0)
+        l.Size = UDim2.new(1, -68, 1, 0)
         l.ZIndex = 13
+        if golem then
+            local face = Portrait.Golem(row, golem, 36)
+            face.Position, face.ZIndex = UDim2.new(0, 10, 0.5, -18), 13
+        else
+            local tile = Instance.new("Frame")
+            tile.Size, tile.Position, tile.ZIndex = UDim2.new(0, 36, 0, 36), UDim2.new(0, 10, 0.5, -18), 13
+            tile.BackgroundColor3, tile.BackgroundTransparency, tile.BorderSizePixel = color, 0.55, 0
+            tile.Parent = row
+            Theme.AddCorner(tile, Theme.Corner.Small)
+            MaterialIcon.Overlay(tile, info.id)
+            local mesh = tile:FindFirstChild("MaterialMesh")
+            if mesh then mesh.ZIndex = 14 end
+        end
         row.MouseButton1Click:Connect(function()
             for _, r in ipairs(rows) do r.BackgroundColor3 = Theme.Colors.Panel end
             row.BackgroundColor3 = Theme.Colors.PanelAlt
@@ -477,7 +490,7 @@ local function BuildPickList()
         for _, g in ipairs(data.Golems or {}) do
             if not g.deployed then
                 local d = GolemNames.Describe(g)
-                AddRow(string.format("%s   [%s]", d.name, d.rarity), d.rarityColor, { type = "golem", id = g.id, max = 1 })
+                AddRow(string.format("%s   [%s]", d.name, d.rarity), d.rarityColor, { type = "golem", id = g.id, max = 1 }, g)
             end
         end
     end

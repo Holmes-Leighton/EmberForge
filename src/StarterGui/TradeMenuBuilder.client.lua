@@ -10,6 +10,8 @@ local ScaleUI      = require(game.ReplicatedStorage.Shared.Modules.ScaleUI)
 local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local MaterialData = require(game.ReplicatedStorage.Shared.Data.MaterialData)
 local GolemNames   = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
+local Portrait     = require(game.ReplicatedStorage.Shared.Modules.Portrait)
+local MaterialIcon = require(game.ReplicatedStorage.Shared.Modules.MaterialIcon)
 
 RemoteEvents.Load()
 
@@ -160,9 +162,9 @@ local function ItemColor(it)
     return Theme.Colors[it.element or ""] or Theme.Colors.TextPrimary
 end
 
-local function Row(parent, text, color, height)
+local function Row(parent, text, color, height, item)
     local row = Instance.new("Frame")
-    row.Size = UDim2.new(1, -6, 0, height or 34)
+    row.Size = UDim2.new(1, -6, 0, item and 46 or (height or 34))
     row.BackgroundColor3 = Theme.Colors.PanelAlt
     row.BorderSizePixel = 0
     row.Parent = parent
@@ -172,6 +174,23 @@ local function Row(parent, text, color, height)
     lbl.Size = UDim2.new(1, -90, 1, 0)
     lbl.TextWrapped = false
     lbl.TextTruncate = Enum.TextTruncate.AtEnd
+    -- a picture of what it is: the material mesh, or the Golem's face
+    if item then
+        local pic
+        if item.type == "golem" then
+            pic = Portrait.Golem(row, item, 36)
+            pic.Position = UDim2.new(0, 6, 0.5, -18)
+        else
+            pic = Instance.new("Frame")
+            pic.Size, pic.Position = UDim2.new(0, 36, 0, 36), UDim2.new(0, 6, 0.5, -18)
+            pic.BackgroundColor3, pic.BackgroundTransparency, pic.BorderSizePixel = color or Theme.Colors.TextPrimary, 0.55, 0
+            pic.Parent = row
+            Theme.AddCorner(pic, Theme.Corner.Small)
+            MaterialIcon.Overlay(pic, item.id)
+        end
+        lbl.Position = UDim2.new(0, 50, 0, 0)
+        lbl.Size = UDim2.new(1, -130, 1, 0)
+    end
     return row
 end
 
@@ -211,7 +230,7 @@ local function RenderInventory()
     if not tradeId then return end
 
     for _, m in ipairs(AvailableMaterials()) do
-        local row = Row(invList, string.format("%s  (%d)", m.name, m.free), Theme.Colors[m.element or ""] or Theme.Colors.TextPrimary, 36)
+        local row = Row(invList, string.format("%s  (%d)", m.name, m.free), Theme.Colors[m.element or ""] or Theme.Colors.TextPrimary, 36, { type = "material", id = m.id })
         local box = Instance.new("TextBox")
         box.Size = UDim2.new(0, 56, 0, 24)
         box.Position = UDim2.new(1, -140, 0.5, -12)
@@ -238,7 +257,7 @@ local function RenderInventory()
 
     for _, g in ipairs(AvailableGolems()) do
         local d = GolemNames.Describe(g)
-        local row = Row(invList, string.format("%s  [%s]", d.name, d.rarity), d.rarityColor, 36)
+        local row = Row(invList, string.format("%s  [%s]", d.name, d.rarity), d.rarityColor, 36, { type = "golem", element = g.element, tier = g.tier, variant = g.variant })
         local add = Theme.Button(row, "Add", Theme.Colors.Accent, Color3.fromRGB(255, 255, 255))
         add.Size = UDim2.new(0, 60, 0, 24)
         add.Position = UDim2.new(1, -76, 0.5, -12)
@@ -272,7 +291,7 @@ local function Render()
 
     Clear(yourList)
     for i, it in ipairs(view.yourItems) do
-        local row = Row(yourList, ItemText(it), ItemColor(it))
+        local row = Row(yourList, ItemText(it), ItemColor(it), nil, it)
         local rm = Theme.Button(row, "Remove", Theme.Colors.PanelAlt, Theme.Colors.Danger)
         rm.Size = UDim2.new(0, 66, 0, 22)
         rm.Position = UDim2.new(1, -72, 0.5, -11)
@@ -285,7 +304,7 @@ local function Render()
     end
 
     Clear(theirList)
-    for _, it in ipairs(view.theirItems) do Row(theirList, ItemText(it), ItemColor(it)) end
+    for _, it in ipairs(view.theirItems) do Row(theirList, ItemText(it), ItemColor(it), nil, it) end
     if #view.theirItems == 0 then
         local e = Theme.Label(theirList, "Waiting for them to add items.", Theme.TextSize.Body, Theme.Colors.TextDim)
         e.Size = UDim2.new(1, -6, 0, 28)
