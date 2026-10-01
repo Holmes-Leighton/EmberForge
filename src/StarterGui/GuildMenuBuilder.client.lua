@@ -17,6 +17,7 @@ local tab = "Mine"
 local info                     -- { mine, top } from the server
 local typedName = ""
 local typedInvite = ""
+local typedDuel = ""
 local lastChatKey = ""
 
 -- ── Window ────────────────────────────────────────────────────────────────────
@@ -337,6 +338,61 @@ local function Reload_()
             "Colour", Theme.Colors.PanelAlt, function()
                 RemoteEvents.SetGuildBanner:FireServer(nextOf(GuildData.BannerColorOrder, b.color), b.emblem or GuildData.BannerEmblemOrder[1])
             end)
+    end
+    -- guild duel: challenge another guild for the week; the winner's contributors claim a prize next week
+    local duel = mine.duel
+    local cur, lastD = duel and duel.current, duel and duel.last
+    if lastD then
+        local text = string.format("Last week vs %s: %s mined %s to their %s. %s", lastD.rivalName, "you", Utils.FormatNumber(lastD.mine), Utils.FormatNumber(lastD.theirs),
+            lastD.won and (lastD.claimed and "You won and claimed the prize." or (lastD.canClaim and "You won! Your prize is ready." or "You won, but needed " .. mine.minContribution .. "+ resources to share in it.")) or "They won this one.")
+        Row("Guild duel result", text, lastD.won and Theme.Colors.Legendary or Theme.Colors.TextDim, lastD.won and (lastD.claimed and "Claimed" or "Claim") or nil,
+            lastD.canClaim and Theme.Colors.Success or Theme.Colors.PanelAlt, function() RemoteEvents.GuildDuel:FireServer("claim") end, lastD.canClaim, 64)
+    end
+    if cur then
+        if cur.incoming then
+            if mine.isLeader then
+                Row("Duel challenge", cur.rivalName .. " challenges your guild to a duel this week. Win it for " .. GuildData.DUEL_REWARD.coins .. " coins each.", Theme.Colors.Accent,
+                    "Accept", Theme.Colors.Success, function() RemoteEvents.GuildDuel:FireServer("accept") end, true, 54,
+                    "Decline", Theme.Colors.Danger, function() RemoteEvents.GuildDuel:FireServer("decline") end)
+            else
+                Row("Duel challenge", cur.rivalName .. " has challenged your guild. Your leader can accept it.", Theme.Colors.Accent, nil, nil, nil, nil, 44)
+            end
+        elseif not cur.accepted then
+            Row("Duel challenge sent", "Waiting for " .. cur.rivalName .. "'s leader to accept.", Theme.Colors.Info, nil, nil, nil, nil, 44)
+        else
+            Row("Guild duel vs " .. cur.rivalName, string.format("This week: you %s  -  them %s. The guild that mines more wins.", Utils.FormatNumber(cur.mine), Utils.FormatNumber(cur.theirs)),
+                cur.mine >= cur.theirs and Theme.Colors.Success or Theme.Colors.Danger, nil, nil, nil, nil, 54)
+        end
+    elseif mine.isLeader then
+        local duelRow = Instance.new("Frame")
+        duelRow.Size = UDim2.new(1, -8, 0, 46)
+        duelRow.BackgroundColor3 = Theme.Colors.Panel
+        duelRow.BorderSizePixel = 0
+        duelRow.Parent = content
+        Theme.AddCorner(duelRow, Theme.Corner.Small)
+        local duelBox = Instance.new("TextBox")
+        duelBox.Name = "DuelBox"
+        duelBox.PlaceholderText = "Challenge a guild to a weekly duel (its exact name)"
+        duelBox.Text = typedDuel
+        duelBox.ClearTextOnFocus = false
+        duelBox.TextColor3 = Theme.Colors.TextPrimary
+        duelBox.PlaceholderColor3 = Theme.Colors.TextDim
+        duelBox.BackgroundColor3 = Theme.Colors.PanelAlt
+        duelBox.BorderSizePixel = 0
+        duelBox.Font = Enum.Font.GothamMedium
+        duelBox.TextSize = 14
+        duelBox.TextXAlignment = Enum.TextXAlignment.Left
+        duelBox.Size = UDim2.new(1, -130, 0, 34)
+        duelBox.Position = UDim2.new(0, 8, 0, 6)
+        duelBox.Parent = duelRow
+        Theme.AddCorner(duelBox, Theme.Corner.Small)
+        duelBox:GetPropertyChangedSignal("Text"):Connect(function() typedDuel = duelBox.Text end)
+        local duelBtn = Theme.Button(duelRow, "Challenge", Theme.Colors.Accent, Color3.fromRGB(255, 255, 255), "DuelButton")
+        duelBtn.AnchorPoint = Vector2.new(1, 0.5)
+        duelBtn.Position = UDim2.new(1, -8, 0.5, 0)
+        duelBtn.Size = UDim2.new(0, 100, 0, 32)
+        duelBtn.TextSize = 13
+        duelBtn.MouseButton1Click:Connect(function() RemoteEvents.GuildDuel:FireServer("challenge", typedDuel) end)
     end
     local inviteRow = Instance.new("Frame")
     inviteRow.Size = UDim2.new(1, -8, 0, 46)

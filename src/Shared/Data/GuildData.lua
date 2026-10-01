@@ -8,6 +8,10 @@ GuildData.NAME_MIN = 3
 GuildData.NAME_MAX = 20
 GuildData.CREATE_COST = 500          -- Ember Coins: keeps throwaway guilds from being spammed
 GuildData.WEEK_SECONDS = 7 * 86400
+-- Guild duels: a leader challenges another guild for the week. The rival's leader accepts; whichever guild mines more that week wins
+-- (a tie is a win for both). Next week every member of the winner who added MIN_CONTRIBUTION or more claims the reward once.
+GuildData.DUEL_REWARD = { coins = 400, speedUps = 1 }
+
 GuildData.MAX_OFFICERS = 3           -- the leader may appoint this many officers (they can remove plain members)
 
 -- Banner: the leader picks one colour and one emblem (ids stored on the guild; the client draws them)

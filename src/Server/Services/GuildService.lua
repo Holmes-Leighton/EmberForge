@@ -322,6 +322,124 @@ function GuildService.SetBanner(leader, colorId, emblemId)
     return true
 end
 
+-- ── Guild duels ───────────────────────────────────────────────────────────────
+-- One record per guild per week ("d_<week>_<guildId>") holds the same duel on both sides. The leader of the challenged guild accepts it.
+local duelStore = SafeDataStore.GetDataStore("EF_GuildDuels_v1")
+local function DuelKey(week, id) return "d_" .. week .. "_" .. id end
+
+local function ReadDuel(week, id)
+    local ok, duel = pcall(function() return duelStore:GetAsync(DuelKey(week, id)) end)
+    return ok and type(duel) == "table" and duel or nil
+end
+
+local function WriteDuel(duel)
+    local ok = pcall(function()
+        duelStore:SetAsync(DuelKey(duel.week, duel.a), duel)
+        duelStore:SetAsync(DuelKey(duel.week, duel.b), duel)
+    end)
+    return ok
+end
+
+function GuildService.ChallengeGuild(leader, rawName)
+    local data = PlayerDataService.Get(leader)
+    if not data or not data.GuildId then return false, "You are not in a guild" end
+    local name, why = GuildData.CleanName(rawName)
+    if not name then return false, why end
+    local mine = LoadGuild(data.GuildId)
+    if not mine or tostring(mine.leader) ~= tostring(leader.UserId) then return false, "Only the guild leader can do that" end
+    local okGet, rivalId = pcall(function() return nameStore:GetAsync(GuildData.NameKey(name)) end)
+    if not okGet or not rivalId then return false, "No guild has that name" end
+    if rivalId == mine.id then return false, "You can't duel your own guild" end
+    local rival = LoadGuild(rivalId)
+    if not rival then return false, "That guild no longer exists" end
+    local week = GuildData.WeekId(Now())
+    if ReadDuel(week, mine.id) then return false, "Your guild already has a duel this week" end
+    if ReadDuel(week, rivalId) then return false, rival.name .. " already has a duel this week" end
+    local saved = WriteDuel({ week = week, a = mine.id, b = rivalId, aName = mine.name, bName = rival.name, accepted = false })
+    if not saved then return false, "Duels are unavailable right now. Try again in a minute." end
+    return true
+end
+
+-- The challenged guild's leader accepts or declines
+function GuildService.RespondDuel(leader, accept)
+    local data = PlayerDataService.Get(leader)
+    if not data or not data.GuildId then return false, "You are not in a guild" end
+    local mine = LoadGuild(data.GuildId)
+    if not mine or tostring(mine.leader) ~= tostring(leader.UserId) then return false, "Only the guild leader can do that" end
+    local week = GuildData.WeekId(Now())
+    local duel = ReadDuel(week, mine.id)
+    if not duel or duel.accepted or duel.b ~= mine.id then return false, "There is no challenge waiting for you" end
+    if accept then
+        duel.accepted = true
+        if not WriteDuel(duel) then return false, "Duels are unavailable right now. Try again in a minute." end
+    else
+        pcall(function()
+            duelStore:RemoveAsync(DuelKey(week, duel.a))
+            duelStore:RemoveAsync(DuelKey(week, duel.b))
+        end)
+    end
+    return true
+end
+
+-- What the guild screen shows: this week's duel (live scores) and last week's result
+local function DuelStatus(guild, userId)
+    local week = GuildData.WeekId(Now())
+    local out = {}
+    local function describe(duel, scoreOf)
+        local mineIsA = duel.a == guild.id
+        local rivalId = mineIsA and duel.b or duel.a
+        local rival = LoadGuild(rivalId)
+        if rival then Rollover(rival) end
+        return { rivalName = mineIsA and duel.bName or duel.aName, rivalId = rivalId, accepted = duel.accepted == true,
+                 incoming = duel.accepted ~= true and duel.b == guild.id, mine = scoreOf(guild), theirs = rival and scoreOf(rival) or 0 }, rival
+    end
+    local cur = ReadDuel(week, guild.id)
+    if cur then out.current = describe(cur, function(g) return g.weekly or 0 end) end
+    local old = ReadDuel(week - 1, guild.id)
+    if old and old.accepted then
+        local function lastScore(g) return g.last and g.last.week == week - 1 and g.last.weekly or 0 end
+        local info = describe(old, lastScore)
+        local m = guild.members[tostring(userId)]
+        info.won = info.mine >= info.theirs and info.mine > 0
+        info.claimed = m ~= nil and m.duelWeek == week - 1
+        info.canClaim = info.won and not info.claimed and m ~= nil and (m.lastWeekly or 0) >= GuildData.MIN_CONTRIBUTION
+        info.reward = GuildData.DUEL_REWARD
+        out.last = info
+    end
+    return next(out) and out or nil
+end
+
+function GuildService.ClaimDuel(player)
+    local data = PlayerDataService.Get(player)
+    if not data or not data.GuildId then return false, "You are not in a guild" end
+    local week = GuildData.WeekId(Now())
+    -- check eligibility first (it reads other guilds, which must not happen inside UpdateAsync), then mark it claimed atomically
+    local current = LoadGuild(data.GuildId)
+    if not current or not current.members[tostring(player.UserId)] then return false, "Your guild no longer exists" end
+    Rollover(current)
+    local status = DuelStatus(current, player.UserId)
+    if not status or not status.last or not status.last.canClaim then return false, "There is no duel prize for you to claim" end
+    local claimed, why
+    local ok = pcall(function()
+        guildStore:UpdateAsync(GuildKey(data.GuildId), function(guild)
+            if type(guild) ~= "table" or not guild.members[tostring(player.UserId)] then why = "Your guild no longer exists" return nil end
+            Rollover(guild)
+            local m = guild.members[tostring(player.UserId)]
+            if m.duelWeek == week - 1 then why = "You already claimed that" return nil end
+            m.duelWeek = week - 1
+            claimed = true
+            return guild
+        end)
+    end)
+    if not ok then return false, "Guilds are unavailable right now. Try again in a minute." end
+    if not claimed then return false, why or "Couldn't claim that" end
+    local r = GuildData.DUEL_REWARD
+    data.EmberCoins = (data.EmberCoins or 0) + r.coins
+    data.SpeedUps = (data.SpeedUps or 0) + (r.speedUps or 0)
+    PlayerDataService.MarkDirty(player)
+    return true, r
+end
+
 -- ── Invites ───────────────────────────────────────────────────────────────────
 -- A member invites a player who is on the same server. The invite lives in memory for INVITE_SECONDS.
 local invites = {}               -- target userId -> { guildName, fromName, fromId, expires }
@@ -572,6 +690,7 @@ function GuildService.GetMine(player)
     local snap = Snapshot(guild, player.UserId)
     data.GuildLevel = snap.level
     snap.prize = PrizeStatus(guild, player.UserId)
+    snap.duel = DuelStatus(guild, player.UserId)
     return snap
 end
 

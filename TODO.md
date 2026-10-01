@@ -37,7 +37,7 @@ Recommendation: not yet. Six mining zones, the Quarry and pets already give plen
 
 ## Features not built
 - [ ] Rail track meshes (the AI generator makes them too small; the piece is built from parts in code).
-- [ ] Guild extras beyond the current set: roles other than leader, guild banners, guild-vs-guild events.
+- [x] Guild extras: officers (up to 3, can remove plain members), leader-set banners (colour + emblem), weekly guild-vs-guild duels (challenge, accept, winner's contributors claim 400 coins + a Speed-Up next week).
 
 ## New feature ideas
 - [x] ~~Player-built mining zones~~ built as the **Quarry** (Forge Level 6, 15,000 coins): 11 pieces, adjacency recipes, 5 exclusive materials, Core upgrades, animated by QuarryAnimator.

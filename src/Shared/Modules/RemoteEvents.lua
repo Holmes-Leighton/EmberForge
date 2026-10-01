@@ -100,6 +100,7 @@ local DEFINITIONS = {
     GetGuildChat        = "function", -- → list of { name, userId, text, t }
     GoToGuildHall       = "event",
     ManageGuild         = "event",   -- client → server (action: "kick" | "promote" | "officer" | "demote", userId) - leader (officers may only kick plain members)
+    GuildDuel           = "event",   -- client → server (action: "challenge" (guild name) | "accept" | "decline" | "claim")
     SetGuildBanner      = "event",   -- client → server (colourId, emblemId) - leader only
     GuildResult         = "event",   -- server → client (action, ok, message)
     GetGuildInfo        = "function", -- → { mine = snapshot or nil, top = {...} }

@@ -541,6 +541,21 @@ RemoteEvents.ManageGuild.OnServerEvent:Connect(function(player, action, userId)
     end)
 end)
 
+RemoteEvents.GuildDuel.OnServerEvent:Connect(function(player, action, arg)
+    SafeCall(player, function()
+        local GuildService = require(script.Parent.Services.GuildService)
+        local ok, err
+        if action == "challenge" and type(arg) == "string" then ok, err = GuildService.ChallengeGuild(player, arg)
+        elseif action == "accept" or action == "decline" then ok, err = GuildService.RespondDuel(player, action == "accept")
+        elseif action == "claim" then
+            ok, err = GuildService.ClaimDuel(player)
+            if ok then err = string.format("Duel prize: %d coins + %d Speed-Up.", err.coins, err.speedUps or 0) end
+        else return end
+        local done = { challenge = "Challenge sent. Their leader has to accept it.", accept = "Duel accepted! Mine more than them this week.", decline = "Challenge declined." }
+        RemoteEvents.GuildResult:FireClient(player, "duel", ok == true, ok and (done[action] or err) or err)
+    end)
+end)
+
 RemoteEvents.SetGuildBanner.OnServerEvent:Connect(function(player, colorId, emblemId)
     SafeCall(player, function()
         if type(colorId) ~= "string" or type(emblemId) ~= "string" then return end
