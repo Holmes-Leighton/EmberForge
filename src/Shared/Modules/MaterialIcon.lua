@@ -33,8 +33,12 @@ RunService.Heartbeat:Connect(function(dt)
 end)
 
 function MaterialIcon.Template(materialId)
-    local folder = ReplicatedStorage:FindFirstChild("MaterialAssets")
-    return folder and folder:FindFirstChild(materialId) or nil
+    for _, name in ipairs({ "MaterialAssets", "IconAssets" }) do
+        local folder = ReplicatedStorage:FindFirstChild(name)
+        local found = folder and folder:FindFirstChild(materialId)
+        if found then return found end
+    end
+    return nil
 end
 
 local function Fill(vp, template)
@@ -65,8 +69,8 @@ function MaterialIcon.Make(parent, materialId, size)
     vp.Name = "MaterialMesh"
     vp.Size = UDim2.new(0, size or 32, 0, size or 32)
     vp.BackgroundTransparency = 1
-    vp.LightColor = Color3.fromRGB(255, 244, 230)
-    vp.Ambient = Color3.fromRGB(160, 150, 145)
+    vp.LightColor = Color3.fromRGB(255, 250, 240)
+    vp.Ambient = Color3.fromRGB(205, 198, 192)
     vp.Parent = parent
     Fill(vp, template)
     return vp

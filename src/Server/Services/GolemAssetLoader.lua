@@ -317,6 +317,14 @@ function GolemAssetLoader.Init()
     end
     materialFolder:SetAttribute("Version", 0)
     if AssetData.MaterialMeshes and next(AssetData.MaterialMeshes) then task.spawn(LoadMaterialMeshes, AssetData.MaterialMeshes, materialFolder) end
+    local iconFolder = ReplicatedStorage:FindFirstChild("IconAssets")
+    if not iconFolder then
+        iconFolder = Instance.new("Folder")
+        iconFolder.Name = "IconAssets"
+        iconFolder.Parent = ReplicatedStorage
+    end
+    iconFolder:SetAttribute("Version", 0)
+    if AssetData.NavIconMeshes and next(AssetData.NavIconMeshes) then task.spawn(LoadMaterialMeshes, AssetData.NavIconMeshes, iconFolder) end
     local quarryFolder = ReplicatedStorage:FindFirstChild("QuarryAssets")
     if not quarryFolder then
         quarryFolder = Instance.new("Folder")

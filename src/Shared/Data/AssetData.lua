@@ -80,6 +80,25 @@ AssetData.CrownPack = { assetId = 133428041942823 }
 AssetData.QuarryPack = { assetId = 89170227615937 }
 AssetData.BuildPack = { assetId = 108557283111622 }
 
+-- 3D spinning icons for the HUD buttons (HUDBuilder NAV names), loaded into ReplicatedStorage.IconAssets as Nav_<Name>.
+AssetData.NavIconMeshes = {
+    Nav_Forge = 121785137007817,
+    Nav_Bag = 117433505026316,
+    Nav_Market = 98005070809085,
+    Nav_Quests = 121776594255286,
+    Nav_Shop = 72202648087682,
+    Nav_Season = 120243851539190,
+    Nav_Style = 113654917456922,
+    Nav_Pets = 72851002005036,
+    Nav_Rewards = 119914608023855,
+    Nav_Trades = 109591411900091,
+    Nav_Quarry = 99475618905787,
+    Nav_Build = 99636508183014,
+    Nav_Guild = 124665514857100,
+    Nav_Home = 82414444283523,
+    Nav_Leaders = 114358582557981,
+}
+
 -- One generated mesh per material (MaterialData ids). Loaded by GolemAssetLoader into ReplicatedStorage.MaterialAssets;
 -- MaterialIcon draws them in the menus. A material without one keeps its lettered tile.
 AssetData.MaterialMeshes = {

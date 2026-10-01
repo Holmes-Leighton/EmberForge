@@ -5,6 +5,7 @@ local Players    = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Theme = require(game.ReplicatedStorage.Shared.Modules.Theme)
 local ScaleUI = require(game.ReplicatedStorage.Shared.Modules.ScaleUI)
+local MaterialIcon = require(game.ReplicatedStorage.Shared.Modules.MaterialIcon)
 
 -- ── Root ScreenGui ────────────────────────────────────────────────────────────
 local gui = Instance.new("ScreenGui")
@@ -108,22 +109,22 @@ smeltStatusLabel.Parent = mainFrame
 -- ── Navigation: big icon hotbar (bottom) + small icon column (right) ─────────
 local NAV = {
     -- primary: the things you do every session
-    { name = "ForgeButton",       icon = "🔥", label = "Forge",      key = "F", color = Color3.fromRGB(235, 110, 40),  targetGui = "ForgeMenu",       primary = true },
-    { name = "InventoryButton",   icon = "🎒", label = "Bag",        key = "B", color = Color3.fromRGB(190, 130, 70),  targetGui = "InventoryMenu",   primary = true },
-    { name = "MarketButton",      icon = "🏪", label = "Market",     key = "M", color = Color3.fromRGB(70, 180, 100),  targetGui = "MarketMenu",      primary = true },
-    { name = "ChallengesButton",  icon = "📋", label = "Quests",     key = "Q", color = Color3.fromRGB(80, 150, 230),  targetGui = "ChallengesMenu",  primary = true },
-    { name = "ShopButton",        icon = "💎", label = "Shop",       key = "P", color = Color3.fromRGB(160, 100, 230), targetGui = "ShopMenu",        primary = true },
+    { name = "ForgeButton",       mesh = "Forge", icon = "🔥", label = "Forge",      key = "F", color = Color3.fromRGB(235, 110, 40),  targetGui = "ForgeMenu",       primary = true },
+    { name = "InventoryButton",   mesh = "Bag", icon = "🎒", label = "Bag",        key = "B", color = Color3.fromRGB(190, 130, 70),  targetGui = "InventoryMenu",   primary = true },
+    { name = "MarketButton",      mesh = "Market", icon = "🏪", label = "Market",     key = "M", color = Color3.fromRGB(70, 180, 100),  targetGui = "MarketMenu",      primary = true },
+    { name = "ChallengesButton",  mesh = "Quests", icon = "📋", label = "Quests",     key = "Q", color = Color3.fromRGB(80, 150, 230),  targetGui = "ChallengesMenu",  primary = true },
+    { name = "ShopButton",        mesh = "Shop", icon = "💎", label = "Shop",       key = "P", color = Color3.fromRGB(160, 100, 230), targetGui = "ShopMenu",        primary = true },
     -- secondary
-    { name = "TradeButton",       icon = "🤝", label = "Trades",     color = Color3.fromRGB(70, 160, 170),  targetGui = "TradeMenu"       },
-    { name = "SeasonButton",      icon = "🌟", label = "Season",     color = Color3.fromRGB(230, 180, 50),  targetGui = "SeasonMenu"      },
-    { name = "StyleButton",       icon = "🎨", label = "Style",      color = Color3.fromRGB(220, 90, 150),  targetGui = "StyleMenu"       },
-    { name = "PetsButton",        icon = "🐾", label = "Pets",       color = Color3.fromRGB(110, 185, 100), targetGui = "PetsMenu"        },
-    { name = "RewardsButton",     icon = "🎁", label = "Rewards",    color = Color3.fromRGB(215, 100, 90),  targetGui = "RewardsMenu"     },
-    { name = "QuarryButton",      icon = "💎", label = "Quarry",     color = Color3.fromRGB(110, 150, 220), targetGui = "QuarryMenu"      },
-    { name = "BuildButton",      icon = "🔨", label = "Build",      color = Color3.fromRGB(200, 130, 60),  targetGui = "BuildMenu"       },
-    { name = "GuildButton",      icon = "🛡️", label = "Guild",      color = Color3.fromRGB(90, 130, 210),  targetGui = "GuildMenu"       },
-    { name = "HomeButton",        icon = "🏠", label = "My Forge",   color = Color3.fromRGB(120, 130, 150), action = "GoToMyForge"        },
-    { name = "LeaderboardBtn",    icon = "🏆", label = "Leaders",    color = Color3.fromRGB(200, 150, 60),  targetGui = "LeaderboardMenu" },
+    { name = "TradeButton",       mesh = "Trades", icon = "🤝", label = "Trades",     color = Color3.fromRGB(70, 160, 170),  targetGui = "TradeMenu"       },
+    { name = "SeasonButton",      mesh = "Season", icon = "🌟", label = "Season",     color = Color3.fromRGB(230, 180, 50),  targetGui = "SeasonMenu"      },
+    { name = "StyleButton",       mesh = "Style", icon = "🎨", label = "Style",      color = Color3.fromRGB(220, 90, 150),  targetGui = "StyleMenu"       },
+    { name = "PetsButton",        mesh = "Pets", icon = "🐾", label = "Pets",       color = Color3.fromRGB(110, 185, 100), targetGui = "PetsMenu"        },
+    { name = "RewardsButton",     mesh = "Rewards", icon = "🎁", label = "Rewards",    color = Color3.fromRGB(215, 100, 90),  targetGui = "RewardsMenu"     },
+    { name = "QuarryButton",      mesh = "Quarry", icon = "💎", label = "Quarry",     color = Color3.fromRGB(110, 150, 220), targetGui = "QuarryMenu"      },
+    { name = "BuildButton",      mesh = "Build", icon = "🔨", label = "Build",      color = Color3.fromRGB(200, 130, 60),  targetGui = "BuildMenu"       },
+    { name = "GuildButton",      mesh = "Guild", icon = "🛡️", label = "Guild",      color = Color3.fromRGB(90, 130, 210),  targetGui = "GuildMenu"       },
+    { name = "HomeButton",        mesh = "Home", icon = "🏠", label = "My Forge",   color = Color3.fromRGB(120, 130, 150), action = "GoToMyForge"        },
+    { name = "LeaderboardBtn",    mesh = "Leaders", icon = "🏆", label = "Leaders",    color = Color3.fromRGB(200, 150, 60),  targetGui = "LeaderboardMenu" },
 }
 
 local function OpenNav(nav)
@@ -158,6 +159,27 @@ local function MakeTile(parent, nav, size)
     icon.Font = Enum.Font.GothamBold
     icon.TextColor3 = Color3.fromRGB(255, 255, 255)
     icon.Parent = btn
+
+    -- the spinning 3D icon replaces the emoji once its mesh has loaded
+    local function ApplyMesh()
+        if btn:FindFirstChild("Mesh3D") then return true end
+        local vp = MaterialIcon.Make(btn, "Nav_" .. (nav.mesh or ""), 10)
+        if not vp then return false end
+        vp.Name = "Mesh3D"
+        vp.Size = UDim2.new(1, 0, 0, size * 0.68)
+        vp.Position = UDim2.new(0, 0, 0, size * 0.02)
+        icon.Text = ""
+        return true
+    end
+    if not ApplyMesh() then
+        local folder = game.ReplicatedStorage:FindFirstChild("IconAssets")
+        if folder then
+            local conn
+            conn = folder.ChildAdded:Connect(function()
+                task.defer(function() if ApplyMesh() then conn:Disconnect() end end)
+            end)
+        end
+    end
 
     local cap = Instance.new("TextLabel")
     cap.Name = "Caption"
