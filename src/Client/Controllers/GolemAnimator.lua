@@ -137,6 +137,12 @@ local function Step()
                     inst:PivotTo(s.base * CFrame.new(0, math.sin(a) * s.amp, 0) * CFrame.Angles(0, a * 0.6, 0))
                 elseif s.kind == "sway" then
                     inst:PivotTo(s.base * CFrame.Angles(math.sin(a) * s.amp, 0, math.cos(a * 0.8) * s.amp * 0.7))
+                elseif s.kind == "light" and inst:IsA("BasePart") then
+                    local light = inst:FindFirstChildWhichIsA("PointLight")
+                    if light then
+                        s.baseBrightness = s.baseBrightness or light.Brightness
+                        light.Brightness = s.baseBrightness * (1 + math.sin(a) * s.amp)
+                    end
                 elseif s.kind == "pulse" and inst:IsA("BasePart") then
                     inst.Transparency = 0.3 + math.sin(a) * s.amp
                     local light = inst:FindFirstChildWhichIsA("PointLight")

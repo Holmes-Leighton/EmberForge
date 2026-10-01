@@ -78,6 +78,10 @@ AssetData.CrownPack = { assetId = 133428041942823 }
 -- named after ForgeBuildData items (MineCart, Hearth ...), each a model of mesh parts.
 -- The Quarry's nodes and buildings: one Model whose children are named after QuarryData pieces (EmberNode, DrillRig ...).
 AssetData.QuarryPack = { assetId = 89170227615937 }
+-- Mining-zone scenery meshes, one pack per zone (a Model whose children are named after the pieces BiomeArt places: IceSpires, FrozenFalls, SnowPine,
+-- IceCrystals, FloatingShard, SnowBoulder, PadCrystals). 0 = not uploaded yet: the zone then uses pieces built from parts. The pack must be UPLOADED (in
+-- Studio: right-click the Model > Save to Roblox) and its id pasted here; generated meshes that are only in the Studio session do not show up in play.
+AssetData.GlacialPack = { assetId = 0 }
 AssetData.BuildPack = { assetId = 108557283111622 }
 
 -- 3D spinning icons for the HUD buttons (HUDBuilder NAV names), loaded into ReplicatedStorage.IconAssets as Nav_<Name>.

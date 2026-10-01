@@ -79,11 +79,59 @@ local function Rock(parent, cf, size, snowCap)
     end
 end
 
+-- ── Real meshes (when the zone's art pack is loaded) ──────────────────────────
+-- Each piece first tries a generated mesh from ServerStorage.BiomeAssets.<Zone> (loaded by GolemAssetLoader from the uploaded pack in AssetData.GlacialPack)
+-- and only builds itself from parts when there is none.
+-- A mesh arrives about 2 studs across, so it is scaled to a target height (or width) and stood on the ground (or centred, for floating pieces).
+local ServerStorage = game:GetService("ServerStorage")
+
+local function Template(zoneKey, name)
+    if not ServerStorage.FindFirstChild then return nil end          -- (the test environment's ServerStorage is a bare stub)
+    local root = ServerStorage:FindFirstChild("BiomeAssets")
+    local zone = root and root:FindFirstChild(zoneKey)
+    return zone and zone:FindFirstChild(name)
+end
+
+-- opts: height | width (target size), yaw (radians), float (pos is the centre, not the ground)
+local function MeshPiece(parent, zoneKey, name, pos, opts)
+    local template = Template(zoneKey, name)
+    if not template then return nil end
+    local m = template:Clone()
+    m.Name = name
+    for _, d in ipairs(m:GetDescendants()) do
+        if d:IsA("BasePart") then d.Anchored, d.CanCollide = true, false end
+    end
+    local ext = m:GetExtentsSize()
+    local factor = opts.height and (opts.height / math.max(ext.Y, 0.01)) or ((opts.width or 10) / math.max(math.max(ext.X, ext.Z), 0.01))
+    m:ScaleTo(m:GetScale() * factor)
+    m:PivotTo(m:GetPivot() * CFrame.Angles(0, opts.yaw or 0, 0))
+    local box, size = m:GetBoundingBox()
+    local centre = Vector3.new(pos.X, opts.float and pos.Y or (pos.Y + size.Y / 2), pos.Z)
+    m:PivotTo(m:GetPivot() + (centre - box.Position))
+    if not m.PrimaryPart then m.PrimaryPart = m:FindFirstChildWhichIsA("BasePart", true) end
+    m.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
+    m.Parent = parent
+    return m
+end
+
+-- A light that breathes (the client's "light" kind), held by a tiny invisible part at the top of a mesh piece
+local function GlowLight(m, colour, range, brightness, phase)
+    local box, size = m:GetBoundingBox()
+    local holder = P(m, { Name = "GlowAnchor", Size = Vector3.new(0.2, 0.2, 0.2), Transparency = 1, CFrame = CFrame.new(box.Position + Vector3.new(0, size.Y * 0.25, 0)) })
+    local light = Instance.new("PointLight")
+    light.Color, light.Range, light.Brightness = colour or GLOW, range or 20, brightness or 1.2
+    light.Parent = holder
+    Animate(holder, "light", 2, 0.4, phase or 0)
+    return holder
+end
+
 -- ── Pieces ────────────────────────────────────────────────────────────────────
 
 -- A cluster of tall crystals on a snowy rock base. `scale` multiplies every size.
 function BiomeArt.IceSpires(parent, pos, rng, scale)
     scale = scale or 1
+    local mesh = MeshPiece(parent, "GlacialPeaks", "IceSpires", pos, { height = rng:NextNumber(16, 24) * scale, yaw = rng:NextNumber(0, math.pi * 2) })
+    if mesh then return mesh end
     local m = Instance.new("Model")
     m.Name = "IceSpires"
     local base = CFrame.new(pos) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
@@ -114,6 +162,11 @@ end
 -- A frozen waterfall: a wall of layered blue ice streaming down into a frosty pool, icicles along the top. Faces +Z... `facing` is a yaw.
 function BiomeArt.FrozenFalls(parent, pos, rng, scale)
     scale = scale or 1
+    local mesh = MeshPiece(parent, "GlacialPeaks", "FrozenFalls", pos, { width = 22 * scale })        -- its front faces -Z, toward the pad
+    if mesh then
+        GlowLight(mesh, GLOW, 26, 0.9, rng:NextNumber(0, 6))
+        return mesh
+    end
     local m = Instance.new("Model")
     m.Name = "FrozenFalls"
     local base = CFrame.new(pos)                                       -- the fall faces -Z, toward the pad (the cave's back wall is at +Z)
@@ -152,6 +205,11 @@ end
 -- A snow-laden pine that sways a little
 function BiomeArt.SnowPine(parent, pos, rng, scale)
     scale = scale or rng:NextNumber(0.8, 1.4)
+    local mesh = MeshPiece(parent, "GlacialPeaks", "SnowPine", pos, { height = 13 * scale, yaw = rng:NextNumber(0, math.pi * 2) })
+    if mesh then
+        Animate(mesh, "sway", rng:NextNumber(0.6, 1.1), 0.025, rng:NextNumber(0, 6))
+        return mesh
+    end
     local m = Instance.new("Model")
     m.Name = "SnowPine"
     local base = CFrame.new(pos) * CFrame.Angles(0, rng:NextNumber(0, math.pi), 0)
@@ -180,6 +238,11 @@ end
 -- A low cluster of bright crystals that breathe with light
 function BiomeArt.IceCrystals(parent, pos, rng, scale)
     scale = scale or 1
+    local mesh = MeshPiece(parent, "GlacialPeaks", "IceCrystals", pos, { height = 7 * scale, yaw = rng:NextNumber(0, math.pi * 2) })
+    if mesh then
+        GlowLight(mesh, Color3.fromRGB(120, 235, 255), 20, 1.4, rng:NextNumber(0, 6))
+        return mesh
+    end
     local m = Instance.new("Model")
     m.Name = "IceCrystals"
     local base = CFrame.new(pos)
@@ -207,6 +270,17 @@ end
 -- A big floating shard that bobs and turns slowly, trailing sparkles
 function BiomeArt.FloatingShard(parent, pos, rng, scale)
     scale = scale or rng:NextNumber(0.8, 1.5)
+    local mesh = MeshPiece(parent, "GlacialPeaks", "FloatingShard", pos, { height = 9 * scale, yaw = rng:NextNumber(0, math.pi * 2), float = true })
+    if mesh then
+        local core = mesh.PrimaryPart
+        local sp = Instance.new("ParticleEmitter")
+        sp.Color, sp.Rate, sp.Lifetime, sp.Speed = ColorSequence.new(GLOW), 8, NumberRange.new(1.5, 2.5), NumberRange.new(0.3, 1)
+        sp.Size, sp.LightEmission, sp.EmissionDirection = NumberSequence.new(0.35, 0), 1, Enum.NormalId.Bottom
+        sp.Parent = core
+        GlowLight(mesh, GLOW, 16, 1, rng:NextNumber(0, 6))
+        Animate(mesh, "bobspin", rng:NextNumber(0.5, 0.9), 1.2 * scale, rng:NextNumber(0, 6))
+        return mesh
+    end
     local m = Instance.new("Model")
     m.Name = "FloatingShard"
     local w, h = 3.4 * scale, 8 * scale
@@ -232,6 +306,8 @@ end
 -- A fat snow-covered boulder with a few small ice spikes
 function BiomeArt.SnowBoulder(parent, pos, rng, scale)
     scale = scale or rng:NextNumber(0.8, 1.6)
+    local mesh = MeshPiece(parent, "GlacialPeaks", "SnowBoulder", pos, { height = 6 * scale, yaw = rng:NextNumber(0, math.pi * 2) })
+    if mesh then return mesh end
     local m = Instance.new("Model")
     m.Name = "SnowBoulder"
     local d = 8 * scale
@@ -267,19 +343,56 @@ local function Scatter(count, rMin, rMax, rng, place)
     end
 end
 
-function BiomeArt.GlacialPeaks(model, cx, cz, rng)
+-- The big centrepiece crystal on the pad (replaces the old neon blocks every zone starts with)
+function BiomeArt.PadCrystals(parent, pos, rng)
+    local mesh = MeshPiece(parent, "GlacialPeaks", "PadCrystals", pos, { height = 30, yaw = rng:NextNumber(0, math.pi * 2) })
+    if mesh then
+        GlowLight(mesh, Color3.fromRGB(140, 220, 255), 60, 1.8, 0)
+        return mesh
+    end
+    local m = BiomeArt.IceSpires(parent, pos, rng, 1.5)
+    local light = Instance.new("PointLight")
+    light.Color, light.Range, light.Brightness = GLOW, 60, 1.8
+    light.Parent = m:FindFirstChild("Core")
+    return m
+end
+
+local zoneRecords = {}      -- every zone built with this art, so it can be rebuilt when its mesh pack finishes loading
+
+local function BuildGlacial(rec)
+    local model, cx, cz = rec.model, rec.cx, rec.cz
+    if rec.group then rec.group:Destroy() end
+    for _, c in ipairs(model:GetChildren()) do          -- the generic neon crystals every zone starts with
+        if c.Name == "Crystal" then c:Destroy() end
+    end
+    local rng = Random.new(rec.seed)
     local group = Instance.new("Folder")
     group.Name = "GlacialArt"
     group.Parent = model
-    Scatter(7, 50, 66, rng, function(dx, dz) BiomeArt.IceSpires(group, Vector3.new(cx + dx, 0, cz + dz), rng, rng:NextNumber(0.85, 1.25)) end)
+    BiomeArt.PadCrystals(group, Vector3.new(cx, 0.4, cz), rng)
+    Scatter(7, 50, 66, rng, function(dx, dz) BiomeArt.IceSpires(group, Vector3.new(cx + dx, 0.2, cz + dz), rng, rng:NextNumber(0.85, 1.25)) end)
     for _, fx in ipairs({ -44, 0, 44 }) do                                   -- three frozen waterfalls along the back wall
-        BiomeArt.FrozenFalls(group, Vector3.new(cx + fx, 0, cz + 70), rng, 1)
+        BiomeArt.FrozenFalls(group, Vector3.new(cx + fx, 0.2, cz + 66), rng, 1)
     end
-    Scatter(16, 36, 68, rng, function(dx, dz) BiomeArt.SnowPine(group, Vector3.new(cx + dx, 0, cz + dz), rng) end)
-    Scatter(6, 34, 62, rng, function(dx, dz) BiomeArt.IceCrystals(group, Vector3.new(cx + dx, 0, cz + dz), rng, rng:NextNumber(0.9, 1.4)) end)
-    Scatter(9, 30, 66, rng, function(dx, dz) BiomeArt.SnowBoulder(group, Vector3.new(cx + dx, 0, cz + dz), rng) end)
+    Scatter(16, 36, 68, rng, function(dx, dz) BiomeArt.SnowPine(group, Vector3.new(cx + dx, 0.2, cz + dz), rng) end)
+    Scatter(6, 34, 62, rng, function(dx, dz) BiomeArt.IceCrystals(group, Vector3.new(cx + dx, 0.2, cz + dz), rng, rng:NextNumber(0.9, 1.4)) end)
+    Scatter(9, 30, 66, rng, function(dx, dz) BiomeArt.SnowBoulder(group, Vector3.new(cx + dx, 0.2, cz + dz), rng) end)
     Scatter(9, 14, 60, rng, function(dx, dz) BiomeArt.FloatingShard(group, Vector3.new(cx + dx, rng:NextNumber(14, 34), cz + dz), rng) end)
-    return group
+    rec.group = group
+end
+
+function BiomeArt.GlacialPeaks(model, cx, cz, rng)
+    local rec = { zone = "GlacialPeaks", model = model, cx = cx, cz = cz, seed = rng:NextInteger(1, 2 ^ 30) }
+    table.insert(zoneRecords, rec)
+    BuildGlacial(rec)
+    return rec.group
+end
+
+-- Called by GolemAssetLoader when a zone's mesh pack has loaded: rebuild that zone's art with the meshes
+function BiomeArt.Refresh(zoneKey)
+    for _, rec in ipairs(zoneRecords) do
+        if rec.zone == zoneKey and rec.model.Parent then BuildGlacial(rec) end
+    end
 end
 
 return BiomeArt
