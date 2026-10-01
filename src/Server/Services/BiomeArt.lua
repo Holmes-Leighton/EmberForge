@@ -475,6 +475,10 @@ local function BuildPadArt(rec)
     if rim then rim.Transparency = plain and 0.1 or 1 end
     if glow then glow.Transparency = plain and 0.35 or 1 end
     if rec.part then rec.part.Transparency = plain and 0 or 1 end       -- the stepping surface keeps working (and its painted multiplier) but the mesh is what you see
+    for _, c in ipairs(model:GetChildren()) do                         -- the old corner posts, arch and lantern orbs are hidden (the orbs' lights stay)
+        if c.Name == "PadPost" or c.Name == "PadArch" then c.Transparency = plain and 0 or 1 end
+        if c.Name == "PadLantern" then c.Transparency = plain and 0 or 1 end
+    end
     if art then
         art.Name = "PadArt"
         rec.art = art
@@ -610,24 +614,37 @@ local function BuildScatter(rec)
     group.Name = "HubScenery"
     group.Parent = rec.parent
     local rng = Random.new(2468)
-    local kinds = { { "RockCluster", 7, 10, 40 }, { "CrystalCluster", 8, 12, 24 }, { "OreCrates", 5, 8, 36 }, { "Stalagmite", 10, 22, 36 } }     -- name, height range, how many
+    local kinds = { { "RockCluster", 7, 12, 150 }, { "CrystalCluster", 8, 14, 90 }, { "OreCrates", 5, 8, 90 }, { "Stalagmite", 10, 24, 130 } }     -- name, height range, how many
+    -- Every part of the cavern floor that is not a road, a forge or quarry plot, the pad plaza or the spawn. Weighted by area so the scenery is even.
     local regions = {
-        { x1 = -420, x2 = 2050, z1 = 118, z2 = 168 },      -- the north strip, behind the quarry plots
-        { x1 = -420, x2 = 2050, z1 = -242, z2 = -226 },    -- the south strip
-        { x1 = -420, x2 = -190, z1 = -215, z2 = 110 },     -- the west end
+        { x1 = -420, x2 = 2050, z1 = 112, z2 = 172 },       -- the north strip, behind the quarry plots
+        { x1 = -420, x2 = 2050, z1 = -245, z2 = -226 },     -- the south edge
+        { x1 = -420, x2 = -150, z1 = -225, z2 = 110 },      -- the whole west end
+        { x1 = 175, x2 = 2050, z1 = -224, z2 = -110 },      -- south-east, behind the forge plots (clear of the pad plaza)
+        { x1 = -150, x2 = 150, z1 = -245, z2 = -222 },      -- the strip behind the pad plaza
     }
+    local areas, total = {}, 0
+    for i, r in ipairs(regions) do areas[i] = (r.x2 - r.x1) * (r.z2 - r.z1) total += areas[i] end
+    local function pickRegion()
+        local roll = rng:NextNumber(0, total)
+        for i, a in ipairs(areas) do
+            roll -= a
+            if roll <= 0 then return regions[i] end
+        end
+        return regions[1]
+    end
     for _, k in ipairs(kinds) do
         if Template("World", k[1]) then
             for _ = 1, k[4] do
-                local r = regions[rng:NextInteger(1, #regions)]
+                local r = pickRegion()
                 local pos = Vector3.new(rng:NextNumber(r.x1, r.x2), 0.2, rng:NextNumber(r.z1, r.z2))
                 local m = MeshPiece(group, "World", k[1], pos, { height = rng:NextNumber(k[2], k[3]), yaw = rng:NextNumber(0, math.pi * 2) })
-                if m and k[1] == "CrystalCluster" then GlowLight(m, Color3.fromRGB(255, 200, 110), 22, 0.9, rng:NextNumber(0, 6)) end
+                if m and k[1] == "CrystalCluster" and rng:NextNumber(0, 1) < 0.4 then GlowLight(m, Color3.fromRGB(255, 200, 110), 22, 0.9, rng:NextNumber(0, 6)) end
             end
         end
     end
     if Template("World", "Stalactite") then                                  -- stalactites hanging from the cavern roof (about 110 studs up) all along it
-        for _ = 1, 60 do
+        for _ = 1, 140 do
             local pos = Vector3.new(rng:NextNumber(-420, 2050), 108, rng:NextNumber(-245, 165))
             MeshPiece(group, "World", "Stalactite", pos, { height = rng:NextNumber(14, 30), yaw = rng:NextNumber(0, math.pi * 2), hang = true })
         end
