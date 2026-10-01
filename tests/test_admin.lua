@@ -36,6 +36,13 @@ expect(LiveOps.GetMultiplier("xp") == 1, "events cleared")
 local okL, r = Admin.Action(boss, "lookup", { target = 2 }, LiveOps)
 expect(okL and r.userId == 2 and type(r.log) == "table" and type(r.reports) == "table", "lookup returns log and reports")
 
+expect(Admin.Action(boss, "grantBlueprint", { target = "Kid", id = "BP_Storm_T3" }, LiveOps) and table.find(kd.Blueprints, "BP_Storm_T3"), "gift a blueprint")
+expect(not Admin.Action(boss, "grantBlueprint", { target = "Kid", id = "BP_Storm_T3" }, LiveOps), "no duplicate blueprint gift")
+expect(Admin.Action(boss, "grantCosmetic", { target = "Kid", id = "ForgeSkin_Molten" }, LiveOps) and table.find(kd.OwnedCosmetics, "ForgeSkin_Molten"), "gift a cosmetic")
+expect(not Admin.Action(boss, "grantCosmetic", { target = "Kid", id = "Banana_Split" }, LiveOps), "bad cosmetic type refused")
+local oki, info = Admin.Action(boss, "inspect", { target = "Kid" }, LiveOps)
+expect(oki and info.summary:find("coins") and #info.lines >= 3, "inspect shows a player's summary")
+
 print("== moderation")
 local kicked
 local rs0 = game:GetService("RunService"); local studio0 = rs0.IsStudio

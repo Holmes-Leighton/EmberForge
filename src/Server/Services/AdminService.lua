@@ -208,6 +208,51 @@ function AdminService.Action(admin, action, args, LiveOps)
         Audit(admin, action, { target = target.UserId, egg = args.id, qty = n })
         return true, string.format("Hatched %d x %s for %s", #pets, args.id, target.Name)
 
+    elseif action == "grantBlueprint" or action == "grantCosmetic" then
+        local target = FindPlayer(args.target)
+        if not target then return false, "Player not in this server" end
+        local data = PlayerDataService.Get(target)
+        if not data then return false, "Their data isn't loaded" end
+        if action == "grantBlueprint" then
+            local bp = type(args.id) == "string" and require(game.ReplicatedStorage.Shared.Data.RecipeData).Get(args.id)
+            if not bp then return false, "Unknown blueprint id" end
+            if not PlayerDataService.UnlockBlueprint(target, args.id) then return false, "They already have it" end
+            Audit(admin, action, { target = target.UserId, id = args.id })
+            return true, string.format("Gave %s the %s tier %d blueprint", target.Name, bp.element, bp.tier)
+        end
+        -- cosmetic ids look like "<Type>_<Name>" (CosmeticData): the type must be a real one
+        local CosmeticData = require(game.ReplicatedStorage.Shared.Data.CosmeticData)
+        local kind = type(args.id) == "string" and args.id:match("^(%a+)_[%w_]+$")
+        if not kind or not CosmeticData.Types[kind] then return false, "Cosmetic ids look like ForgeSkin_Molten, GolemAccessory_LavaCrown, TitleBadge_Veteran" end
+        data.OwnedCosmetics = data.OwnedCosmetics or {}
+        if table.find(data.OwnedCosmetics, args.id) then return false, "They already own it" end
+        table.insert(data.OwnedCosmetics, args.id)
+        PlayerDataService.MarkDirty(target)
+        Audit(admin, action, { target = target.UserId, id = args.id })
+        return true, string.format("Gave %s %s", target.Name, args.id)
+
+    elseif action == "inspect" then
+        local target = FindPlayer(args.target)
+        if not target then return false, "Player not in this server" end
+        local data = PlayerDataService.Get(target)
+        if not data then return false, "Their data isn't loaded" end
+        local mats, n = {}, 0
+        for id, qty in pairs(data.Inventory or {}) do if qty > 0 then n += 1 table.insert(mats, { id = id, qty = qty }) end end
+        table.sort(mats, function(a, b) return a.qty > b.qty end)
+        local top = {}
+        for i = 1, math.min(8, #mats) do top[i] = mats[i].id .. " x" .. mats[i].qty end
+        local deployed = 0
+        for _, g in ipairs(data.Golems or {}) do if g.deployed then deployed += 1 end end
+        return true, {
+            name = target.Name, userId = target.UserId, accountAge = target.AccountAge,
+            summary = string.format("Player Lv %d, Forge Lv %d, Ascensions %d, %d coins", data.PlayerLevel or 1, data.ForgeLevel or 1, data.Ascensions or 0, data.EmberCoins or 0),
+            lines = {
+                string.format("Golems: %d (%d deployed)   Pets: %d   Blueprints: %d   Cosmetics: %d", #(data.Golems or {}), deployed, #(data.OwnedPets or {}), #(data.Blueprints or {}), #(data.OwnedCosmetics or {})),
+                string.format("Materials: %d kinds. Most: %s", n, #top > 0 and table.concat(top, ", ") or "none"),
+                "Guild: " .. tostring(data.GuildId or "none"),
+                "Muted: " .. tostring(AdminService.IsMuted(target)),
+            } }
+
     elseif action == "grantPet" or action == "grantGolem" then
         local target = FindPlayer(args.target)
         if not target then return false, "Player not in this server" end

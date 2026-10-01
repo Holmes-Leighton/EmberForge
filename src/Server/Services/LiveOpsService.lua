@@ -20,6 +20,7 @@ LiveOpsService.HourlyEnabled = true      -- the automatic hourly event (EventSch
 local store = SafeDataStore.GetDataStore("EmberForge_LiveOps_v1")
 local KEY = "config"
 local REFRESH_SECONDS = 300
+local PUSH_TOPIC = "EmberForge_LiveOpsChanged"
 
 -- Only these numeric GameConfig values may be overridden remotely (bounds keep a typo from breaking the game)
 local ALLOWED = {
@@ -117,6 +118,8 @@ local function Save(edit)
         end)
     end)
     LiveOpsService.Refresh()
+    -- tell every other server to re-read the config now, instead of waiting for its 5-minute refresh
+    pcall(function() game:GetService("MessagingService"):PublishAsync(PUSH_TOPIC, game.JobId) end)
 end
 
 function LiveOpsService.AddEvent(kind, multiplier, hours, name)
@@ -158,6 +161,11 @@ end
 
 function LiveOpsService.Init()
     LiveOpsService.Refresh()
+    pcall(function()
+        game:GetService("MessagingService"):SubscribeAsync(PUSH_TOPIC, function(message)
+            if message.Data ~= game.JobId then LiveOpsService.Refresh() end
+        end)
+    end)
     task.spawn(function()
         while true do
             LiveOpsService.AnnounceSurge()

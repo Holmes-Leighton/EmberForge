@@ -136,7 +136,14 @@ Row({ { "Player name or id", 150 }, { "Blueprint (BP_Ember_T1)", 130 }, { "Elite
     Run("grantGolem", { target = tonumber(b[1].Text) or b[1].Text, id = b[2].Text, variant = v })
 end, 80 } })
 
-Heading("Events (all servers within ~5 minutes)")
+Row({ { "Player name or id", 150 }, { "Blueprint (BP_Storm_T3)", 130 } }, { { "Gift blueprint", GREEN, function(b)
+    Run("grantBlueprint", { target = tonumber(b[1].Text) or b[1].Text, id = b[2].Text })
+end, 100 } })
+Row({ { "Player name or id", 150 }, { "Cosmetic (ForgeSkin_Molten)", 150 } }, { { "Gift cosmetic", GREEN, function(b)
+    Run("grantCosmetic", { target = tonumber(b[1].Text) or b[1].Text, id = b[2].Text })
+end, 100 } })
+
+Heading("Events (every server picks them up within seconds)")
 Row({ { "xp / drops", 80, "xp" }, { "Multiplier", 70, "2" }, { "Hours", 50, "2" } }, {
     { "Start", ORANGE, function(b) Run("event", { kind = b[1].Text, multiplier = b[2].Text, hours = b[3].Text }) end, 50 },
     { "Clear", RED, function() Run("clearEvents", {}) end, 50 },
@@ -159,6 +166,16 @@ modRow("Mute", ORANGE, "mute", true)
 Row({ { "Player name or id", 130 } }, {
     { "Unban", GREEN, function(b) Run("unban", { target = tonumber(b[1].Text) or b[1].Text }) end, 60 },
     { "Unmute", GREEN, function(b) Run("unmute", { target = tonumber(b[1].Text) or b[1].Text }) end, 60 } })
+
+Heading("Inspect a player in this server (coins, levels, items)")
+Row({ { "Player name or id", 220 } }, { { "Inspect", BLUE, function(b)
+    Run("inspect", { target = tonumber(b[1].Text) or b[1].Text }, function(r)
+        Say(string.format("%s (%d), account %d days old
+%s
+%s", r.name, r.userId, r.accountAge or 0, r.summary, table.concat(r.lines, "
+")))
+    end)
+end, 90 } })
 
 Heading("Player lookup: trade log, reports, admin actions")
 Row({ { "Player name or id", 220 } }, { { "Look up", BLUE, function(b) Run("lookup", { target = tonumber(b[1].Text) or b[1].Text }, ShowLookup) end, 90 } })
