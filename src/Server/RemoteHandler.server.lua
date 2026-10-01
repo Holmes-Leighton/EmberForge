@@ -280,6 +280,7 @@ RemoteEvents.InitiateTrade.OnServerEvent:Connect(function(player, targetUserId)
         if target == player then Tell(player, "Can't trade", "You can't trade with yourself") return end
         if TradingService.InTrade(player.UserId) then Tell(player, "Can't trade", "You are already in a trade") return end
         if TradingService.InTrade(target.UserId) then Tell(player, "Can't trade", target.DisplayName .. " is already in a trade") return end
+        if TradingService.IsBlocked(player, target) then Tell(player, "Can't trade", "That player isn't available to trade.") return end
         if os.clock() - (lastTradeRequest[player.UserId] or -1e9) < 5 then Tell(player, "Slow down", "Wait a few seconds between trade requests.") return end
         local existing = tradeRequests[target.UserId]
         if existing and existing.expires > os.clock() and existing.fromId ~= player.UserId then
@@ -379,6 +380,21 @@ RemoteEvents.DeclineTrade.OnServerEvent:Connect(function(player, tradeId)
                 if p then RemoteEvents.TradeClosed:FireClient(p, tradeId, player.DisplayName .. " cancelled the trade") end
             end
         end
+    end)
+end)
+
+RemoteEvents.BlockTrader.OnServerEvent:Connect(function(player, userId, on)
+    SafeCall(player, function()
+        local ok, err = TradingService.SetBlocked(player, userId, on == true)
+        if ok then Tell(player, on == true and "Blocked" or "Unblocked", on == true and "They can no longer send you trade requests." or "They can trade with you again.")
+        else Tell(player, "Couldn't do that", tostring(err)) end
+    end)
+end)
+
+RemoteEvents.ReportTrader.OnServerEvent:Connect(function(player, userId, reason)
+    SafeCall(player, function()
+        local ok, err = TradingService.Report(player, userId, reason)
+        Tell(player, ok and "Report sent" or "Couldn't report", ok and "Thank you. We keep the trade log so it can be reviewed." or tostring(err))
     end)
 end)
 

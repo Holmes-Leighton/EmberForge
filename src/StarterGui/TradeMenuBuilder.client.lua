@@ -66,6 +66,11 @@ local titleLbl = Theme.Label(titleBar, "Trade", Theme.TextSize.Title, Theme.Colo
 titleLbl.Position = UDim2.new(0, 16, 0, 0)
 titleLbl.Size = UDim2.new(0.6, 0, 1, 0)
 
+local reportBtn = Theme.Button(titleBar, "Report", Theme.Colors.PanelAlt, Theme.Colors.Danger, "ReportButton")
+reportBtn.Size = UDim2.new(0, 80, 0, 32)
+reportBtn.Position = UDim2.new(1, -236, 0, 9)
+reportBtn.TextSize = 13
+reportBtn.Visible = false
 local historyBtn = Theme.Button(titleBar, "History", Theme.Colors.PanelAlt, Theme.Colors.AccentBright, "HistoryButton")
 historyBtn.Size = UDim2.new(0, 90, 0, 32)
 historyBtn.Position = UDim2.new(1, -146, 0, 9)
@@ -317,9 +322,11 @@ local function Render()
     historyBtn.Text = showingHistory and "Back" or "History"
     if not active then
         titleLbl.Text = "Trade"
+        reportBtn.Visible = false
         return
     end
 
+    reportBtn.Visible = true
     titleLbl.Text = "Trade with " .. tostring(view.partnerName)
     theirHdr.Text = tostring(view.partnerName) .. "'s offer"
 
@@ -416,6 +423,14 @@ local function RefreshData()
 end
 
 -- ── Buttons ───────────────────────────────────────────────────────────────────
+reportBtn.MouseButton1Click:Connect(function()
+    if view and view.partnerId then
+        RemoteEvents.ReportTrader:FireServer(view.partnerId, "scam")
+        reportBtn.Text = "Reported"
+        task.delay(3, function() reportBtn.Text = "Report" end)
+    end
+end)
+
 local function CloseWindow()
     gui.Enabled = false
 end

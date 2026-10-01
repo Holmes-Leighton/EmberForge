@@ -209,6 +209,66 @@ local function DescribeItems(items)
     return out
 end
 
+-- ── Blocking and reporting ────────────────────────────────────────────────────
+-- A blocked player can neither send you trade requests nor receive yours. Reports are kept in a DataStore of their own (with the
+-- reporter, the target and a reason) so they can be reviewed with the trade log.
+local reportStore = SafeDataStore.GetDataStore("EmberForge_TradeReports_v1")
+local MAX_BLOCKED = 100
+local REPORT_COOLDOWN = 60
+local lastReport = {}        -- "reporter>target" -> time
+
+function TradingService.IsBlocked(a, b)
+    local da, db = PlayerDataService.Get(a), PlayerDataService.Get(b)
+    if da and (da.BlockedTraders or {})[tostring(b.UserId)] then return true end
+    if db and (db.BlockedTraders or {})[tostring(a.UserId)] then return true end
+    return false
+end
+
+function TradingService.SetBlocked(player, targetUserId, on)
+    local data = PlayerDataService.Get(player)
+    if not data then return false, "No player data" end
+    if not PositiveInt(targetUserId, 1e15) or targetUserId == player.UserId then return false, "Bad player" end
+    data.BlockedTraders = data.BlockedTraders or {}
+    local key = tostring(targetUserId)
+    if on then
+        local n = 0 for _ in pairs(data.BlockedTraders) do n += 1 end
+        if n >= MAX_BLOCKED and not data.BlockedTraders[key] then return false, "Your block list is full" end
+        data.BlockedTraders[key] = true
+    else
+        data.BlockedTraders[key] = nil
+    end
+    PlayerDataService.MarkDirty(player)
+    return true
+end
+
+local REASONS = { scam = true, abuse = true, other = true }
+function TradingService.Report(player, targetUserId, reason)
+    if not PositiveInt(targetUserId, 1e15) or targetUserId == player.UserId then return false, "Bad player" end
+    reason = REASONS[reason] and reason or "other"
+    local key = tostring(player.UserId) .. ">" .. tostring(targetUserId)
+    local now = Utils.UnixTimestamp()
+    if now - (lastReport[key] or -1e9) < REPORT_COOLDOWN then return false, "You already reported them a moment ago." end
+    lastReport[key] = now
+    local entry = { t = now, reporter = player.UserId, reporterName = player.Name, target = targetUserId, reason = reason }
+    LogFor(player.UserId, { kind = "report", result = "sent", partnerId = targetUserId, note = reason })
+    task.spawn(function()
+        pcall(function()
+            reportStore:UpdateAsync("r_" .. tostring(targetUserId), function(old)
+                local list = type(old) == "table" and old or {}
+                table.insert(list, entry)
+                while #list > 100 do table.remove(list, 1) end
+                return list
+            end)
+        end)
+    end)
+    return true
+end
+
+function TradingService.GetReports(targetUserId)
+    local ok, list = pcall(function() return reportStore:GetAsync("r_" .. tostring(targetUserId)) end)
+    return ok and type(list) == "table" and list or {}
+end
+
 -- ── Direct Trading ────────────────────────────────────────────────────────────
 function TradingService.InitiateTrade(offererPlayer, targetPlayer)
     if not offererPlayer or not targetPlayer then return nil, "Player not found" end
@@ -216,6 +276,7 @@ function TradingService.InitiateTrade(offererPlayer, targetPlayer)
     if tradeOfUser[offererPlayer.UserId] then return nil, "You are already in a trade" end
     if tradeOfUser[targetPlayer.UserId] then return nil, targetPlayer.DisplayName .. " is already in a trade" end
     if not PlayerDataService.Get(targetPlayer) then return nil, "That player isn't ready" end
+    if TradingService.IsBlocked(offererPlayer, targetPlayer) then return nil, "That player isn't available to trade" end
 
     local tradeId = Utils.GenerateId()
     pendingTrades[tradeId] = {

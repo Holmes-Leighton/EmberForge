@@ -73,6 +73,13 @@ declineBtn.Size = UDim2.new(0.5, -22, 0, 28)
 declineBtn.Position = UDim2.new(0.5, 6, 1, -44)
 declineBtn.TextSize = 14
 
+local blockBtn = Theme.Button(card, "Block this player", Theme.Colors.Panel, Theme.Colors.TextDim, "Block")
+blockBtn.Size = UDim2.new(0, 130, 0, 14)
+blockBtn.Position = UDim2.new(0, 114, 0, 122)
+blockBtn.TextSize = 11
+blockBtn.BackgroundTransparency = 1
+local currentFrom
+
 local token = 0
 local expiresAt = 0
 local totalSeconds = 60
@@ -82,6 +89,11 @@ local function Close()
     gui.Enabled = false
 end
 
+blockBtn.MouseButton1Click:Connect(function()
+    if currentFrom then RemoteEvents.BlockTrader:FireServer(currentFrom, true) end
+    Close()
+    RemoteEvents.RespondTradeRequest:FireServer(false)
+end)
 acceptBtn.MouseButton1Click:Connect(function() Close() RemoteEvents.RespondTradeRequest:FireServer(true) end)
 declineBtn.MouseButton1Click:Connect(function() Close() RemoteEvents.RespondTradeRequest:FireServer(false) end)
 
@@ -97,6 +109,7 @@ RemoteEvents.TradeRequest.OnClientEvent:Connect(function(fromName, fromUserId, i
     token += 1
     local mine = token
     header.Text = "Wants to trade with you"
+    currentFrom = fromUserId
     nameLbl.Text = tostring(fromName)
     userLbl.Text = info.username and ("@" .. info.username) or ""
     local bits = { string.format("Forge Level %d", info.forgeLevel or 1), string.format("Player Level %d", info.playerLevel or 1) }

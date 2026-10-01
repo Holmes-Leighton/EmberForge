@@ -45,6 +45,7 @@ local function DefaultData()
         Achievements    = {},
         ClaimedAchievements = {},      -- achievementId → true once its reward is taken
         TradeHistory    = {},          -- last trades, newest first
+        BlockedTraders  = {},          -- userId (string) -> true: players who can't trade with you (see TradingService.SetBlocked)
         SeenCosmetics   = {},          -- cosmetics/titles the player has already looked at
         SupplierPurchases = { day = 0, bought = {} },
         Funnel          = {},          -- onboarding steps already logged to analytics
