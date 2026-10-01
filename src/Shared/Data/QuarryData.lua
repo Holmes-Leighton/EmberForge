@@ -53,6 +53,43 @@ function QuarryData.CrewMultiplier(crew)
     return 1 + math.min(bonus, QuarryData.CREW_CAP)
 end
 
+-- Nodes mature with age (wall-clock time since they were placed, so they also grow while you are away): a fresh node is a small
+-- "Budding" crystal, a day later it is "Mature", after three days "Prime". Older nodes mine more and look bigger.
+QuarryData.NodeStages = {
+    { id = "Budding", hours = 0,  mult = 1.0, scale = 0.8 },
+    { id = "Mature",  hours = 24, mult = 1.3, scale = 1.0 },
+    { id = "Prime",   hours = 72, mult = 1.6, scale = 1.2 },
+}
+QuarryData.LEGACY_NODE_AGE_HOURS = 24      -- nodes placed before maturity existed start out Mature
+QuarryData.OUTPUT_CAP = 3.0                -- maturity x drill x crew can never push a node past 3x its base rate
+
+-- The stage a node is in at time `t` (unix seconds). Returns stage, index, progress (0..1 to the next stage), hoursLeft (nil when Prime).
+-- A node with no `born` (a bare layout in a test, or not yet migrated) counts as a plain, full-size node.
+function QuarryData.NodeStageAt(p, t)
+    if not p or not p.born then return { id = "Mature", mult = 1.0, scale = 1.0 }, 2, 1, nil end
+    local age = (t - p.born) / 3600
+    local idx = 1
+    for i, s in ipairs(QuarryData.NodeStages) do if age >= s.hours then idx = i end end
+    local stage, nxt = QuarryData.NodeStages[idx], QuarryData.NodeStages[idx + 1]
+    if not nxt then return stage, idx, 1, nil end
+    return stage, idx, (age - stage.hours) / (nxt.hours - stage.hours), nxt.hours - age
+end
+
+-- The average output multiplier a node had over [t0, t1], so a long absence that crosses a stage is credited fairly
+function QuarryData.NodeMultOver(p, t0, t1)
+    if not p or not p.born then return 1 end
+    if t1 <= t0 then return (QuarryData.NodeStageAt(p, t0)).mult end
+    local total = 0
+    local stages = QuarryData.NodeStages
+    for i, s in ipairs(stages) do
+        local from = i == 1 and -math.huge or p.born + s.hours * 3600
+        local to = stages[i + 1] and p.born + stages[i + 1].hours * 3600 or math.huge
+        local a, b = math.max(t0, from), math.min(t1, to)
+        if b > a then total += (b - a) * s.mult end
+    end
+    return total / (t1 - t0)
+end
+
 QuarryData.EXCLUSIVE_RATE = 14      -- units/hour of an exclusive material from one linked node
 QuarryData.DRILL_BOOST    = 0.35
 QuarryData.BASE_STORAGE   = 600
@@ -86,7 +123,9 @@ function QuarryData.Capacity(placed, coreLevel)
 end
 
 -- What every node is making right now, given the layout: { { piece = p, material = id, rate = n, exclusive = bool } }
-function QuarryData.Production(placed)
+-- opts (all optional): { t0, t1 } = average maturity over that time span, { now } = maturity at that moment, { crew } = crew multiplier.
+function QuarryData.Production(placed, opts)
+    opts = opts or {}
     local nodes = {}
     for _, p in ipairs(placed) do
         local def = QuarryData.Pieces[p.id]
@@ -116,17 +155,22 @@ function QuarryData.Production(placed)
             material, exclusive = "Voidstone", true
         end
         local rate = exclusive and QuarryData.EXCLUSIVE_RATE or def.rate
+        local factor = 1
+        if opts.t0 and opts.t1 then factor = QuarryData.NodeMultOver(n, opts.t0, opts.t1)
+        elseif opts.now then factor = (QuarryData.NodeStageAt(n, opts.now)).mult end
         local drills = Near(placed, n, "DrillRig")
-        if #drills > 0 then rate *= (1 + QuarryData.DRILL_BOOST) end             -- drills do not stack: one is enough
+        if #drills > 0 then factor *= (1 + QuarryData.DRILL_BOOST) end             -- drills do not stack: one is enough
+        factor *= opts.crew or 1
+        rate *= math.min(factor, QuarryData.OUTPUT_CAP)
         table.insert(out, { piece = n, material = material, rate = rate, exclusive = exclusive })
     end
     return out
 end
 
 -- Mined per hour, by material: { Voidstone = 28, IgniteOre = 90, ... }
-function QuarryData.RatesPerHour(placed)
+function QuarryData.RatesPerHour(placed, opts)
     local rates = {}
-    for _, r in ipairs(QuarryData.Production(placed)) do rates[r.material] = (rates[r.material] or 0) + r.rate end
+    for _, r in ipairs(QuarryData.Production(placed, opts)) do rates[r.material] = (rates[r.material] or 0) + r.rate end
     return rates
 end
 

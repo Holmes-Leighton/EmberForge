@@ -45,7 +45,10 @@ local snap = QS.Snapshot(b)
 expect(snap.stored.TemperedEmber == QD.EXCLUSIVE_RATE, "an hour of Ember node + Cooling Pool = " .. QD.EXCLUSIVE_RATE .. " Tempered Ember (" .. tostring(snap.stored.TemperedEmber) .. ")")
 advance(36 * 3600)
 snap = QS.Snapshot(b)
-expect(snap.stored.TemperedEmber <= QD.EXCLUSIVE_RATE * (QD.MAX_OFFLINE_HOURS + 1) + 1, "mining stops after " .. QD.MAX_OFFLINE_HOURS .. " hours unattended (" .. tostring(snap.stored.TemperedEmber) .. ")")
+-- the node was a day old (Mature, x1.3) for the whole 12 credited hours, so: 14 from the first hour + 12 hours x 14 x 1.3
+expect(math.abs(snap.stored.TemperedEmber - (QD.EXCLUSIVE_RATE + QD.MAX_OFFLINE_HOURS * QD.EXCLUSIVE_RATE * 1.3)) <= 1,
+    "mining stops after " .. QD.MAX_OFFLINE_HOURS .. " hours unattended, at the node's matured rate (" .. tostring(snap.stored.TemperedEmber) .. ")")
+expect(snap.stored.TemperedEmber <= QD.EXCLUSIVE_RATE * 1.6 * (QD.MAX_OFFLINE_HOURS + 1), "and never more than a Prime node could make")
 local got = QS.Collect(b)
 expect(got and got.TemperedEmber and db.Inventory.TemperedEmber == got.TemperedEmber, "collecting moves it to your inventory")
 local none, eNone = QS.Collect(b)
@@ -119,5 +122,16 @@ dh.Golems[1].deployed = true                          -- deploying a crew Golem 
 expect(math.abs(QS.Snapshot(h).crewBoost - (1 + 0.08 * 1.6 + 0.16 + 0.08)) < 1e-9, "a deployed Golem stops counting")
 expect(QS.RemoveCrew(h, "g2") and not QS.RemoveCrew(h, "g2"), "calling a Golem back works once")
 expect(QD.CrewMultiplier({ { tier = 5 }, { tier = 5 }, { tier = 5 }, { tier = 5 } }) == 1 + QD.CREW_CAP, "the crew bonus is capped at +" .. QD.CREW_CAP * 100 .. "%")
+
+print("== nodes from before maturity")
+local old, dold = mk(30)
+QS.Found(old)
+QS.Place(old, "StoneNode", 10, 10)
+dold.Quarry.placed[2].born = nil                       -- an old save: no birth time
+advance(3600)
+local s0 = QS.Snapshot(old)
+local age = (os.time and 0 or 0)
+expect(dold.Quarry.placed[2].born ~= nil, "an old node is given a birth time the first time the Quarry is read")
+expect(s0.stored.GraniteShard ~= nil and s0.stored.GraniteShard >= 100, "and mines as a Mature node (x1.3 of 90 = 117, got " .. tostring(s0.stored.GraniteShard) .. ")")
 
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")

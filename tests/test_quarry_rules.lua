@@ -47,4 +47,28 @@ for _, lv in ipairs(QD.CoreLevels) do
     for m in pairs(lv.cost or {}) do expect(reachable[m] ~= nil, "Core level " .. lv.level .. " only needs Quarry materials (" .. m .. ")") end
 end
 
+print("== node maturity")
+local H = 3600
+local function node(age) return { id = "StoneNode", x = 10, z = 10, rot = 0, born = 1000000 - age * H } end
+local now = 1000000
+local function stageOf(age) return (QD.NodeStageAt(node(age), now)).id end
+expect(stageOf(0) == "Budding" and stageOf(23.9) == "Budding" and stageOf(24) == "Mature" and stageOf(71.9) == "Mature" and stageOf(72) == "Prime" and stageOf(500) == "Prime", "Budding, Mature after a day, Prime after three")
+local _, idx, prog, left = QD.NodeStageAt(node(12), now)
+expect(idx == 1 and math.abs(prog - 0.5) < 1e-9 and math.abs(left - 12) < 1e-9, "12 hours in is halfway to Mature")
+local _, _, _, leftPrime = QD.NodeStageAt(node(100), now)
+expect(leftPrime == nil, "a Prime node has nothing left to grow")
+expect(QD.NodeStageAt({ id = "StoneNode" }, now).mult == 1.0, "a node with no birth time counts as plain")
+local function rate(age) return QD.RatesPerHour({ node(age) }, { now = now }).GraniteShard end
+expect(math.abs(rate(1) - 90) < 1e-6 and math.abs(rate(30) - 117) < 1e-6 and math.abs(rate(80) - 144) < 1e-6, "output is x1.0 / x1.3 / x1.6 (" .. rate(1) .. ", " .. rate(30) .. ", " .. rate(80) .. ")")
+-- a long absence that crosses a stage is paid fairly: the average of what the node was doing
+local n = node(0)
+local avg = QD.NodeMultOver(n, now, now + 48 * H)             -- 24h Budding (x1.0) then 24h Mature (x1.3)
+expect(math.abs(avg - 1.15) < 1e-9, "48 hours across a stage change averages x1.15 (" .. avg .. ")")
+expect(math.abs(QD.NodeMultOver(n, now, now + 12 * H) - 1.0) < 1e-9, "a span inside one stage is that stage's multiplier")
+-- the cap
+local big = QD.RatesPerHour({ node(100), { id = "DrillRig", x = 14, z = 10, rot = 0 } }, { now = now, crew = 2.0 }).GraniteShard
+expect(math.abs(big - 90 * QD.OUTPUT_CAP) < 1e-6, "Prime x drill x full crew is capped at x" .. QD.OUTPUT_CAP .. " (" .. big .. ")")
+local nocrew = QD.RatesPerHour({ node(100), { id = "DrillRig", x = 14, z = 10, rot = 0 } }, { now = now }).GraniteShard
+expect(math.abs(nocrew - 90 * 1.6 * 1.35) < 1e-6, "below the cap everything multiplies")
+
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")

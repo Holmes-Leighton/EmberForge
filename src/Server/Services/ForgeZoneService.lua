@@ -392,11 +392,13 @@ local function BuildQuarryPiece(id, placed, centre)
         piece = template:Clone()
         for _, d in ipairs(piece:GetDescendants()) do if d:IsA("BasePart") then d.Anchored, d.CanCollide = true, false end end
         local _, size = piece:GetBoundingBox()
-        if size.Y > 0.01 then piece:ScaleTo(piece:GetScale() * def.height * QUARRY_SCALE / size.Y) end
+        local grow = def.kind == "node" and QuarryData.NodeStageAt(placed, os.time()).scale or 1        -- Budding nodes are small, Prime ones big
+        if size.Y > 0.01 then piece:ScaleTo(piece:GetScale() * def.height * QUARRY_SCALE * grow / size.Y) end
     else
         piece = Instance.new("Model")
         local block = Instance.new("Part")
-        block.Name, block.Size, block.Color = "Block", Vector3.new(def.height * 0.6, def.height, def.height * 0.6) * QUARRY_SCALE, def.color or Color3.fromRGB(150, 150, 160)
+        local grow = def.kind == "node" and QuarryData.NodeStageAt(placed, os.time()).scale or 1
+        block.Name, block.Size, block.Color = "Block", Vector3.new(def.height * 0.6, def.height, def.height * 0.6) * QUARRY_SCALE * grow, def.color or Color3.fromRGB(150, 150, 160)
         block.Material, block.Anchored, block.CanCollide = Enum.Material.Slate, true, false
         block.Parent = piece
         piece.PrimaryPart = block
@@ -455,7 +457,7 @@ function ForgeZoneService.RefreshQuarry(player)
     entry.quarry = model
     local assets = game.ReplicatedStorage:FindFirstChild("QuarryAssets")
     local parts = { tostring(assets and assets:GetAttribute("Version") or 0) }
-    for _, p in ipairs(q.placed) do table.insert(parts, string.format("%s@%d,%d,%d", p.id, p.x, p.z, p.rot or 0)) end
+    for _, p in ipairs(q.placed) do table.insert(parts, string.format("%s@%d,%d,%d,%d", p.id, p.x, p.z, p.rot or 0, select(2, QuarryData.NodeStageAt(p, os.time())))) end
     table.insert(parts, "L" .. (q.level or 1) .. "C" .. #(q.crew or {}))
     entry.quarrySignature = table.concat(parts, ";")
 end
@@ -465,7 +467,7 @@ local function QuarrySignature(data)
     if not q then return "none" end
     local assets = game.ReplicatedStorage:FindFirstChild("QuarryAssets")
     local parts = { tostring(assets and assets:GetAttribute("Version") or 0) }
-    for _, p in ipairs(q.placed) do table.insert(parts, string.format("%s@%d,%d,%d", p.id, p.x, p.z, p.rot or 0)) end
+    for _, p in ipairs(q.placed) do table.insert(parts, string.format("%s@%d,%d,%d,%d", p.id, p.x, p.z, p.rot or 0, select(2, QuarryData.NodeStageAt(p, os.time())))) end
     table.insert(parts, "L" .. (q.level or 1) .. "C" .. #(q.crew or {}))
     return table.concat(parts, ";")
 end

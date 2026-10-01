@@ -35,14 +35,20 @@ function QuarryService.Accrue(data)
     local q = Q(data)
     if not q then return end
     local now = Now()
+    -- nodes from before maturity existed start out Mature
+    for _, p in ipairs(q.placed) do
+        local d = QuarryData.Pieces[p.id]
+        if d and d.kind == "node" and not p.born then p.born = (q.last or now) - QuarryData.LEGACY_NODE_AGE_HOURS * 3600 end
+    end
     local hours = math.clamp((now - (q.last or now)) / 3600, 0, QuarryData.MAX_OFFLINE_HOURS)
     q.last = now
     if hours <= 0 then return end
     q.frac = q.frac or {}
     local room = QuarryData.Capacity(q.placed, q.level) - StoredTotal(q)
     local crewBoost = QuarryData.CrewMultiplier(CrewGolems(data, q))
-    for material, rate in pairs(QuarryData.RatesPerHour(q.placed)) do
-        local exact = rate * crewBoost * hours + (q.frac[material] or 0)
+    local rates = QuarryData.RatesPerHour(q.placed, { t0 = now - hours * 3600, t1 = now, crew = crewBoost })
+    for material, rate in pairs(rates) do
+        local exact = rate * hours + (q.frac[material] or 0)
         local whole = math.floor(exact)
         local take = math.max(0, math.min(whole, room))
         q.frac[material] = (take < whole) and 0 or (exact - whole)      -- a full silo wastes the overflow
@@ -71,7 +77,7 @@ function QuarryService.Snapshot(player)
     for _, g in ipairs(data.Golems or {}) do
         if not g.deployed and not table.find(q.crew or {}, g.id) then table.insert(info.idleGolems, { id = g.id, element = g.element, tier = g.tier, variant = g.variant }) end
     end
-    info.rates, info.nextLevel = QuarryData.RatesPerHour(q.placed), nextLv
+    info.rates, info.nextLevel = QuarryData.RatesPerHour(q.placed, { now = Now() }), nextLv
     info.owned = {}
     for id in pairs(QuarryData.Pieces) do info.owned[id] = Count(q.placed, id) end
     local inv = {}
@@ -118,7 +124,7 @@ function QuarryService.Place(player, id, x, z, rot)
     end
     rot = type(rot) == "number" and rot == rot and (math.floor(rot / 90 + 0.5) * 90) % 360 or 0
     data.EmberCoins -= def.price
-    table.insert(q.placed, { id = id, x = x, z = z, rot = rot })
+    table.insert(q.placed, { id = id, x = x, z = z, rot = rot, born = def.kind == "node" and Now() or nil })
     PlayerDataService.MarkDirty(player)
     return true
 end

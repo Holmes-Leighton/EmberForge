@@ -224,17 +224,24 @@ local function Reload()
             local own = info.owned[id] or 0
             local full = own >= def.max
             local afford = info.coins >= def.price
-            local detail = def.kind == "node" and ("Mines " .. Mat(def.makes) .. " (" .. def.rate .. "/hr)") or def.blurb
+            local detail = def.kind == "node" and ("Mines " .. Mat(def.makes) .. " (" .. def.rate .. "/hr). Grows Budding, then Mature (x1.3) after a day, then Prime (x1.6) after three.") or def.blurb
             Row(string.format("%s   (%d / %d)", def.name, own, def.max), detail, def.color or Theme.Colors.Info,
                 { { text = full and "Max built" or (Utils.FormatNumber(def.price) .. " coins"), color = (not full and afford) and Theme.Colors.Success or Theme.Colors.PanelAlt,
                     enabled = not full and afford, onClick = function() RemoteEvents.QuarryAction:FireServer("place", id) end } }, 58)
         end
     elseif tab == "Layout" then
-        Note(string.format("%d pieces built. Removing one refunds half its price.", #info.placed), 26)
+        Note(string.format("%d pieces built. Removing one refunds half its price (a replacement node starts small again).", #info.placed), 40)
         for i, p in ipairs(info.placed) do
             local def = QuarryData.Pieces[p.id]
             if def and p.id ~= "Core" then
-                Row(def.name, string.format("%d studs east, %d studs south of the Core", p.x, p.z), def.color or Theme.Colors.Info,
+                local where = string.format("%d studs east, %d studs south of the Core", p.x, p.z)
+                if def.kind == "node" then
+                    local stage, _, progress, hoursLeft = QuarryData.NodeStageAt(p, os.time())
+                    where = string.format("%s (x%.1f output)", stage.id, stage.mult)
+                        .. (hoursLeft and string.format("  -  %d%% to the next stage, %s to go", math.floor(progress * 100), Utils.FormatTime(hoursLeft * 3600)) or "  -  fully grown")
+                        .. "   -   " .. where
+                end
+                Row(def.name, where, def.color or Theme.Colors.Info,
                     { { text = "Remove", color = Theme.Colors.Danger, onClick = function() RemoteEvents.QuarryAction:FireServer("remove", i) end } }, 50)
             end
         end
