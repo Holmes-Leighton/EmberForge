@@ -53,6 +53,7 @@ local function Build(golem, ownerName, equipped)
     model:SetAttribute("Base", base)                             -- ground-level pose, used by the animator
     model:SetAttribute("Scale", scale)
     model:SetAttribute("Phase", math.random() * math.pi * 2)
+    model:SetAttribute("Element", golem.element)                -- the animator gives each element its own pace and dust
 
     local desc = GolemNames.Describe(golem)
     local head = model:FindFirstChild("Head", true)

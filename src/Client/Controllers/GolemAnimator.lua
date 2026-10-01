@@ -11,11 +11,22 @@
 local RunService = game:GetService("RunService")
 local CollectionService = game:GetService("CollectionService")
 local IdleMoves = require(game.ReplicatedStorage.Shared.Modules.IdleMoves)
+local GolemWalk = require(game.ReplicatedStorage.Shared.Modules.GolemWalk)
 
 local GolemAnimator = {}
 
 local NEAR = 170            -- studs: animate fully
 local SWING_SPEED = 4
+
+-- Each element works at its own pace (how fast the pick swings) and kicks up its own kind of dust when the pick lands
+local ELEMENT_FEEL = {
+    Ember = { tempo = 1.2,  dust = Color3.fromRGB(255, 150, 60) },
+    Stone = { tempo = 0.8,  dust = Color3.fromRGB(150, 140, 125) },
+    Frost = { tempo = 1.0,  dust = Color3.fromRGB(200, 235, 255) },
+    Storm = { tempo = 1.3,  dust = Color3.fromRGB(200, 170, 255) },
+    Void  = { tempo = 0.9,  dust = Color3.fromRGB(150, 90, 220) },
+}
+local DEFAULT_FEEL = { tempo = 1.0, dust = Color3.fromRGB(170, 150, 125) }
 
 local golems = {}           -- model -> { parts... }
 local spinners = {}         -- part -> { cf = original CFrame, speed = rad/s }  (forge gears)
@@ -74,6 +85,34 @@ local function Track(model)
         info.pickHead = Rest(base, model:FindFirstChild("PickHead", true))
         info.head = Rest(base, model:FindFirstChild("Head", true))
         info.rest = base:ToObjectSpace(model:GetPivot())
+        -- legs swing about the hip (the top of the leg) when the Golem walks; the one on the left of the body is side -1
+        info.legs = {}
+        for _, d in ipairs(model:GetDescendants()) do
+            if d:IsA("BasePart") and d.Name == "Leg" then
+                local rel = base:ToObjectSpace(d.CFrame)
+                table.insert(info.legs, { part = d, rel = rel, pivot = base:ToObjectSpace(d.CFrame * CFrame.new(0, d.Size.Y * 0.42, 0)), side = rel.X < 0 and -1 or 1 })
+            end
+        end
+        local feel = ELEMENT_FEEL[model:GetAttribute("Element")] or DEFAULT_FEEL
+        info.tempo = feel.tempo
+        info.walkState = GolemWalk.New(math.floor((model:GetAttribute("Phase") or 0) * 1000) + 11)
+        -- a puff of dust when the pick lands (the emitter sits on the pick head and is fired by the swing)
+        local tip = model:FindFirstChild("PickHead", true)
+        if tip and tip:IsA("BasePart") then
+            local dust = Instance.new("ParticleEmitter")
+            dust.Name = "StrikeDust"
+            dust.Enabled = false
+            dust.Color = ColorSequence.new(feel.dust)
+            dust.Lifetime = NumberRange.new(0.5, 0.9)
+            dust.Speed = NumberRange.new(4, 9)
+            dust.SpreadAngle = Vector2.new(70, 70)
+            dust.Size = NumberSequence.new(0.5, 1.4)
+            dust.Transparency = NumberSequence.new(0.2, 1)
+            dust.Acceleration = Vector3.new(0, -6, 0)
+            dust.EmissionDirection = Enum.NormalId.Top
+            dust.Parent = tip
+            info.dust = dust
+        end
         -- every few seconds a mining Golem stops to do one of four idle moves (look about, flex, stomp, inspect its pickaxe), in random order
         info.idle = IdleMoves.New("golem", math.floor((model:GetAttribute("Phase") or 0) * 1000) + 7, 6, 16)
     elseif info.mode == "Static" and base then
@@ -183,19 +222,41 @@ local function Step()
                         end
                     end
                 elseif info.mode == "Parts" then
-                    -- Rotate each arm about its own pivot (the shoulder). Positive angle raises the arm forward.
-                    local raise = 0.6 + math.sin(t * SWING_SPEED + phase) * 0.6
-                    -- idle move: whole-body motion plus an arm pose blended over the mining swing
-                    local move, mk = IdleMoves.Step(info.idle, t, true)
+                    -- A Golem mines at its spot, now and then walks a few steps to another (GolemWalk), and during a walk its legs swing, its body
+                    -- bobs and its arms swing in step; each pick strike leans the body in and puffs dust. Rotate each limb about its own pivot.
+                    local tempo = info.tempo or 1
+                    local ws = GolemWalk.Sample(info.walkState, t)
+                    local walking = ws.walking
+                    local aSwing = t * SWING_SPEED * tempo + phase
+                    local mining = 0.6 + math.sin(aSwing) * 0.6                  -- how far the pick arm is raised while mining
+                    local stride = math.sin(t * GolemWalk.STRIDE_RATE) * 0.4 * ws.env
+                    local raise = mining + (0.55 - mining) * ws.env                  -- while walking the pick arm hangs and swings a little
+                    -- idle move (only while standing and mining): whole-body motion plus an arm pose blended over the mining swing
+                    local move, mk = IdleMoves.Step(info.idle, t, not walking)
                     local ibob, ipitch, iroll, iyaw = IdleMoves.Body("golem", move, mk, t)
                     local w = move and math.sin(math.clamp(mk, 0, 1) * math.pi) or 0
                     w = math.min(1, w * 2.5)                                             -- quick in and out, holds in between
-                    local zL, zR, xL, xR = 0, 0, 0.2 - raise * 0.25, raise
+                    local zL, zR, xL, xR = 0, 0, 0.2 - raise * 0.25 + stride, raise - (walking and stride * 1.6 or 0)
                     if move == "flex" then zL, zR, xL, xR = -1.25 * w, 1.25 * w, xL + (0.4 - xL) * w, xR + (0.4 - xR) * w
                     elseif move == "stomp" or move == "look" then xL, xR = xL + (0.1 - xL) * w, xR + (0.1 - xR) * w
                     elseif move == "inspect" then xL, xR = xL + (0.1 - xL) * w, xR + (1.15 - xR) * w end
-                    local b = base * CFrame.new(0, ibob * scale, 0) * CFrame.Angles(ipitch, iyaw, iroll)
+                    -- lean into each strike (the pick is lowest when sin = -1) and kick up dust the moment it lands
+                    local lean = walking and 0 or -math.max(0, -math.sin(aSwing)) * 0.07
+                    if not walking then
+                        local strike = math.floor((aSwing + math.pi / 2) / (math.pi * 2))
+                        if info.lastStrike ~= nil and strike ~= info.lastStrike and info.dust then info.dust:Emit(7) end
+                        info.lastStrike = strike
+                    else
+                        info.lastStrike = nil
+                    end
+                    local b = base * CFrame.new(ws.x, (ibob + GolemWalk.Bob(ws, t)) * scale, ws.z) * CFrame.Angles(ipitch + lean, iyaw + ws.yaw, iroll)
                     if info.rest then model:PivotTo(b * info.rest) end
+                    if info.legs then
+                        for _, l in ipairs(info.legs) do
+                            local swing = GolemWalk.LegSwing(ws, t, l.side)
+                            l.part.CFrame = b * l.pivot * CFrame.Angles(swing, 0, 0) * l.pivot:Inverse() * l.rel
+                        end
+                    end
                     if info.head then
                         local h = info.head
                         local nod = (move == "inspect") and 0.35 * w or 0

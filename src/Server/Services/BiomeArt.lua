@@ -452,9 +452,9 @@ end
 
 -- ── The Golem Anvil ───────────────────────────────────────────────────────────
 -- The starter station's anvil: a large golden mesh when its pack is loaded (the "World" pack's GolemAnvil), otherwise the plain block from WorldBuilder.
--- The mesh's own colours come out pale and orange, so the golden parts (named anvil / chains in the model) are made plain polished gold metal here;
--- the stone platform keeps its own texture. `rec.part` is WorldBuilder's anvil block: it stays as the invisible collision and the E prompt's anchor.
-local GOLD = Color3.fromRGB(175, 130, 20)       -- darker than it looks: the hub's warm lights brighten it into gold
+-- The mesh's own colours come out peach-orange, so the golden parts (named anvil / chains in the model) get a yellow-green tint over their texture and
+-- a metal finish here; the stone platform keeps its own look. `rec.part` is WorldBuilder's anvil block: it stays as the invisible collision and the E prompt's anchor.
+local GOLD = Color3.fromRGB(215, 255, 85)         -- a yellow-green tint over the mesh's peach texture: it cancels the orange and leaves gold, texture kept
 local anvilRec
 
 local function BuildAnvil()
@@ -474,8 +474,7 @@ local function BuildAnvil()
             if n:find("platform") or n:find("stone") or n:find("base") then
                 d.Reflectance = 0
             else                                            -- the anvil itself, its chains, or a single-piece mesh: real shiny gold
-                pcall(function() d.TextureID = "" end)      -- the painted texture comes out peach-orange, so plain polished gold is used instead
-                d.Color, d.Material, d.Reflectance = GOLD, Enum.Material.Metal, 0.2
+                d.Color, d.Material, d.Reflectance = GOLD, Enum.Material.Metal, 0.12      -- the texture stays: its engraving and shading give the depth
             end
         end
     end

@@ -107,7 +107,7 @@ AssetData.BiomeMeshes = {
         GlowCluster = 83918826188549, Boulder = 71900023894219, FloatingPiece = 106569186177475,
     },
     World = {
-        GolemAnvil = 126881363062757,     -- the big golden Anvil at the start; its parts are named anvil / chains / stone platform
+        GolemAnvil = 120881231422580,     -- the big golden Anvil at the start; its parts are named anvil / chains / stone platform
     },
 }
 AssetData.BuildPack = { assetId = 108557283111622 }
