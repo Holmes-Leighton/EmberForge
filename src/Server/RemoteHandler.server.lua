@@ -344,7 +344,7 @@ RemoteEvents.AcceptTrade.OnServerEvent:Connect(function(player, tradeId)
     SafeCall(player, function()
         if type(tradeId) ~= "string" then return end
         local offerer, target = TradingService.GetPartners(tradeId)   -- grab before it may close
-        local ok, result = TradingService.ConfirmTrade(player, tradeId)
+        local ok, result, soft = TradingService.ConfirmTrade(player, tradeId)
 
         if ok and type(result) == "table" then
             -- Executed: reward both parties exactly once each
@@ -358,6 +358,9 @@ RemoteEvents.AcceptTrade.OnServerEvent:Connect(function(player, tradeId)
             end
         elseif ok then
             PushTradeView(tradeId)          -- waiting for the other side
+        elseif soft then
+            Tell(player, "Careful", tostring(result))      -- refused for now (offer just changed / warning): the trade stays open
+            PushTradeView(tradeId)
         else
             Tell(player, "Trade", tostring(result))
             for _, p in ipairs({ offerer, target }) do
@@ -378,6 +381,13 @@ RemoteEvents.DeclineTrade.OnServerEvent:Connect(function(player, tradeId)
         end
     end)
 end)
+
+-- Admins only: the permanent trade / market log of any player (newest first). Studio counts as admin.
+RemoteEvents.AdminTradeLog.OnServerInvoke = function(player, targetUserId, limit)
+    if not require(script.Parent.Services.AdminService).IsAdmin(player) then return {} end
+    if type(targetUserId) ~= "number" then return {} end
+    return TradingService.GetLog(targetUserId, type(limit) == "number" and math.min(limit, 200) or 50)
+end
 
 RemoteEvents.GetTradeHistory.OnServerInvoke = function(player)
     local data = PlayerDataService.Get(player)

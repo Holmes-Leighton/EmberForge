@@ -18,7 +18,11 @@ local MAX_ITEM_QTY          = 1000000
 local MAX_PRICE             = 1000000000
 local MAX_LISTINGS_PER_USER = 20
 local TRADE_REQUEST_TTL     = 300      -- seconds a trade window may stay open
-local MAX_HISTORY           = 20
+local MAX_HISTORY           = 50
+local CONFIRM_DELAY         = 5        -- seconds after ANY change to an offer before either side may confirm (stops last-second swaps)
+local LOPSIDED_RATIO        = 3        -- one side worth more than this many times the other triggers a warning
+local LOPSIDED_MIN          = 150      -- ...but only when the bigger side is worth at least this much (so tiny trades are not nagged)
+local MAX_LOG_ENTRIES       = 300      -- per player, in the permanent log
 
 -- Active direct trades: tradeId → session
 local pendingTrades = {}
@@ -29,6 +33,73 @@ local tradeOfUser   = {}   -- userId → tradeId (a player can only be in one tr
 local marketListings = {}  -- listingId → listing (local cache)
 local marketStore    = SafeDataStore.GetDataStore("EmberForge_Market_v1")
 local MARKET_KEY     = "listings_v2"
+
+-- ── Permanent audit log ───────────────────────────────────────────────────────
+-- Every trade (completed, cancelled or failed) and every Market listing, sale, purchase and cancellation is appended to BOTH
+-- players' logs in a DataStore of its own, apart from the save file: it keeps the last MAX_LOG_ENTRIES per player, records user ids (names
+-- can change) and the full detail of every item (pet growth, Golem tier, quantities), and cannot be edited from the game.
+-- Admins read it with TradingService.GetLog(userId) (the AdminTradeLog remote).
+local logStore = SafeDataStore.GetDataStore("EmberForge_TradeLog_v1")
+
+local function CompactItem(it)
+    return { type = it.type, id = it.id, qty = it.qty, name = it.name, petType = it.petType, variant = it.variant,
+             grown = it.grown, tier = it.tier, element = it.element, rarity = it.rarity }
+end
+local function CompactList(items)
+    local out = {}
+    for _, it in ipairs(items or {}) do table.insert(out, CompactItem(it)) end
+    return out
+end
+
+local function LogFor(userId, entry)
+    entry.t = entry.t or Utils.UnixTimestamp()
+    task.spawn(function()
+        pcall(function()
+            logStore:UpdateAsync("u_" .. tostring(userId), function(old)
+                local list = type(old) == "table" and old or {}
+                table.insert(list, entry)
+                while #list > MAX_LOG_ENTRIES do table.remove(list, 1) end
+                return list
+            end)
+        end)
+    end)
+end
+
+-- Newest entries first (at most `limit`)
+function TradingService.GetLog(userId, limit)
+    local ok, list = pcall(function() return logStore:GetAsync("u_" .. tostring(userId)) end)
+    local out = {}
+    if ok and type(list) == "table" then
+        for i = #list, math.max(1, #list - (limit or 50) + 1), -1 do table.insert(out, list[i]) end
+    end
+    return out
+end
+
+-- ── How much is something worth? (rough, only used to warn about lopsided trades) ──
+local MATERIAL_VALUE = { Common = 1, Uncommon = 4, Rare = 15, Epic = 60, Legendary = 250 }
+local PET_VALUE      = { Common = 20, Uncommon = 60, Rare = 200, Epic = 800, Legendary = 4000 }
+
+function TradingService.ValueOf(it)
+    if it.type == "material" then
+        local def = MaterialData.Get(it.id)
+        return (MATERIAL_VALUE[def and def.rarity or "Common"] or 1) * (it.qty or 1)
+    elseif it.type == "pet" then
+        local v = PET_VALUE[it.rarity or "Common"] or 20
+        v *= (it.variant == "MegaNeon" and 25) or (it.variant == "Neon" and 5) or 1
+        local stage = PetData.StageOf({ type = it.petType, grown = it.grown })
+        return v * (stage and stage.mult or 1)
+    elseif it.type == "golem" then
+        local v = 30 * 3 ^ ((it.tier or 1) - 1)
+        return v * (it.variant == "MegaNeon" and 12 or (it.variant == "Neon" and 4) or 1)
+    end
+    return 0
+end
+
+local function SideValue(items)
+    local total = 0
+    for _, it in ipairs(items or {}) do total += TradingService.ValueOf(it) end
+    return total
+end
 
 local function RefreshMarketCache()
     local ok, saved = pcall(function() return marketStore:GetAsync(MARKET_KEY) end)
@@ -156,6 +227,8 @@ function TradingService.InitiateTrade(offererPlayer, targetPlayer)
         offererConfirmed = false,
         targetConfirmed  = false,
         createdAt        = Utils.UnixTimestamp(),
+        lastChange       = Utils.UnixTimestamp(),   -- when either offer last changed (confirming is locked for CONFIRM_DELAY after it)
+        warned           = {},                      -- userId -> true once they have seen the lopsided-trade warning for the current offers
     }
     tradeOfUser[offererPlayer.UserId] = tradeId
     tradeOfUser[targetPlayer.UserId]  = tradeId
@@ -203,6 +276,7 @@ function TradingService.AddToOffer(player, tradeId, rawItem)
 
     table.insert(side, item)
     trade.offererConfirmed, trade.targetConfirmed = false, false   -- any change resets confirmations
+    trade.lastChange, trade.warned = Utils.UnixTimestamp(), {}
     return true
 end
 
@@ -213,14 +287,44 @@ function TradingService.RemoveFromOffer(player, tradeId, index)
     if not PositiveInt(index, #side) then return false, "Bad item" end
     table.remove(side, index)
     trade.offererConfirmed, trade.targetConfirmed = false, false
+    trade.lastChange, trade.warned = Utils.UnixTimestamp(), {}
     return true
 end
 
 -- Sets this player's confirmation. Executes the trade when both have confirmed.
 -- Returns ok, result   (result is the trade table when it has just executed)
+-- A warning for the player looking at this trade, or nil: they are giving something and getting nothing, or the swap is lopsided
+local function WarningFor(trade, userId)
+    local mine = userId == trade.offererId and trade.offererItems or trade.targetItems
+    local theirs = userId == trade.offererId and trade.targetItems or trade.offererItems
+    local give, get = SideValue(mine), SideValue(theirs)
+    if #mine > 0 and #theirs == 0 then return "You are giving items and getting nothing back." end
+    if give >= LOPSIDED_MIN and give > get * LOPSIDED_RATIO then
+        return "This looks lopsided: what you give is worth much more than what you get."
+    end
+    return nil
+end
+
+-- Seconds left before confirming is allowed again after the last change to an offer
+local function LockLeft(trade)
+    return math.max(0, CONFIRM_DELAY - (Utils.UnixTimestamp() - (trade.lastChange or 0)))
+end
+
+-- Returns ok, result, soft.  `soft` = refused for now but the trade stays open (the caller must not close it).
 function TradingService.ConfirmTrade(player, tradeId)
     local trade, err = GetTradeFor(player, tradeId)
     if not trade then return false, err end
+
+    if #trade.offererItems == 0 and #trade.targetItems == 0 then return false, "Add something to the trade first.", true end
+    local left = LockLeft(trade)
+    if left > 0 then
+        return false, string.format("The offer just changed: you can confirm in %d seconds. Check it carefully.", math.ceil(left)), true
+    end
+    local warning = WarningFor(trade, player.UserId)
+    if warning and not trade.warned[player.UserId] then
+        trade.warned[player.UserId] = true
+        return false, "WARNING: " .. warning .. " Press Confirm again only if you are sure.", true
+    end
 
     if player.UserId == trade.offererId then
         trade.offererConfirmed = true
@@ -248,6 +352,8 @@ function TradingService.GetTradeView(player, tradeId)
         theirItems   = isOfferer and trade.targetItems or trade.offererItems,
         youConfirmed = isOfferer and trade.offererConfirmed or trade.targetConfirmed,
         theyConfirmed = isOfferer and trade.targetConfirmed or trade.offererConfirmed,
+        lockSeconds  = LockLeft(trade),
+        warning      = WarningFor(trade, player.UserId),
     }
 end
 
@@ -288,8 +394,11 @@ function TradingService._ExecuteTrade(tradeId)
     local offOk, offWhy = revalidate(offData, trade.offererItems)
     local tarOk, tarWhy = revalidate(tarData, trade.targetItems)
     if not offOk or not tarOk then
+        local why = tostring(offWhy or tarWhy)
+        LogFor(trade.offererId, { kind = "trade", result = "failed", tradeId = tradeId, partnerId = trade.targetId, partnerName = target.DisplayName, gave = CompactList(trade.offererItems), got = CompactList(trade.targetItems), note = why })
+        LogFor(trade.targetId, { kind = "trade", result = "failed", tradeId = tradeId, partnerId = trade.offererId, partnerName = offerer.DisplayName, gave = CompactList(trade.targetItems), got = CompactList(trade.offererItems), note = why })
         CloseTrade(tradeId)
-        return false, "Trade cancelled: " .. tostring(offWhy or tarWhy)
+        return false, "Trade cancelled: " .. why
     end
 
     -- a full pet box cancels the trade rather than losing a pet
@@ -342,6 +451,8 @@ function TradingService._ExecuteTrade(tradeId)
     end
     record(offData, target, trade.offererItems, trade.targetItems)
     record(tarData, offerer, trade.targetItems, trade.offererItems)
+    LogFor(trade.offererId, { kind = "trade", result = "completed", tradeId = tradeId, partnerId = trade.targetId, partnerName = target.DisplayName, gave = CompactList(trade.offererItems), got = CompactList(trade.targetItems) })
+    LogFor(trade.targetId, { kind = "trade", result = "completed", tradeId = tradeId, partnerId = trade.offererId, partnerName = offerer.DisplayName, gave = CompactList(trade.targetItems), got = CompactList(trade.offererItems) })
 
     PlayerDataService.MarkDirty(offerer)
     PlayerDataService.MarkDirty(target)
@@ -360,6 +471,11 @@ function TradingService.CancelTrade(player, tradeId)
     local trade = type(tradeId) == "string" and pendingTrades[tradeId]
     if not trade then return false end
     if player.UserId ~= trade.offererId and player.UserId ~= trade.targetId then return false end
+    if #trade.offererItems > 0 or #trade.targetItems > 0 then            -- an empty window being closed is not worth a log line
+        local other = Players:GetPlayerByUserId(player.UserId == trade.offererId and trade.targetId or trade.offererId)
+        LogFor(trade.offererId, { kind = "trade", result = "cancelled", tradeId = tradeId, partnerId = trade.targetId, partnerName = other and other.DisplayName or "?", gave = CompactList(trade.offererItems), got = CompactList(trade.targetItems), note = "cancelled by " .. tostring(player.UserId) })
+        LogFor(trade.targetId, { kind = "trade", result = "cancelled", tradeId = tradeId, partnerId = trade.offererId, partnerName = player.DisplayName, gave = CompactList(trade.targetItems), got = CompactList(trade.offererItems), note = "cancelled by " .. tostring(player.UserId) })
+    end
     CloseTrade(tradeId)
     return true, trade
 end
@@ -430,6 +546,7 @@ function TradingService.ListOnMarket(player, rawItem, priceCoins)
         return nil, err
     end
     marketListings[listing.id] = listing
+    LogFor(player.UserId, { kind = "market", result = "listed", listingId = listing.id, price = priceCoins, gave = { CompactItem(item) } })
     PlayerDataService.Save(player, true)
     return listing, nil
 end
@@ -493,6 +610,11 @@ function TradingService.BuyFromMarket(player, listingId)
             string.format("%s sold for %d coins", listing.item.name or listing.item.id, net))
     end
 
+    LogFor(player.UserId, { kind = "market", result = "bought", listingId = listing.id, price = listing.priceCoins, partnerId = listing.sellerId, partnerName = listing.sellerName, got = { CompactItem(listing.item) } })
+    LogFor(listing.sellerId, { kind = "market", result = "sold", listingId = listing.id, price = listing.priceCoins, net = net, partnerId = player.UserId, partnerName = player.DisplayName, gave = { CompactItem(listing.item) } })
+    data.TradeHistory = data.TradeHistory or {}
+    table.insert(data.TradeHistory, 1, { time = Utils.UnixTimestamp(), partner = listing.sellerName, gave = { string.format("%d coins", listing.priceCoins) }, got = { listing.item.name or listing.item.id }, market = true })
+    while #data.TradeHistory > MAX_HISTORY do table.remove(data.TradeHistory) end
     PlayerDataService.MarkDirty(player)
     PlayerDataService.Save(player, true)
     return true, listing
@@ -539,6 +661,7 @@ function TradingService.CancelListing(player, listingId)
     if not listing then return false, err or "Listing not found" end
 
     DeliverListing(player, listing)
+    LogFor(player.UserId, { kind = "market", result = "withdrawn", listingId = listing.id, price = listing.priceCoins, got = { CompactItem(listing.item) } })
     PlayerDataService.MarkDirty(player)
     PlayerDataService.Save(player, true)
     return true

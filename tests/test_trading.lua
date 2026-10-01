@@ -84,17 +84,20 @@ ok, err = Trading.AddToOffer(alice, tid, { type = "material", id = "Coal", qty =
 expect(not ok, "same stack can't be offered twice beyond what's owned (" .. tostring(err) .. ")")
 ok, err = Trading.AddToOffer(bob, tid, { type = "material", id = "BasicOre", qty = 10 })
 expect(ok, "bob offers 10 ore")
+advance(6)
 ok, res = Trading.ConfirmTrade(alice, tid)
 expect(ok and res == "waiting", "alice confirms, waiting")
 Trading.AddToOffer(bob, tid, { type = "material", id = "BasicOre", qty = 5 })
 local view = Trading.GetTradeView(alice, tid)
 expect(view.youConfirmed == false and view.theyConfirmed == false, "editing an offer resets confirmations")
+advance(6)
 Trading.ConfirmTrade(alice, tid)
 ok, res = Trading.ConfirmTrade(bob, tid)
 expect(ok and type(res) == "table", "both confirmed -> executed")
 expect(da.Inventory.Coal == 40 and (db.Inventory.Coal or 0) == 60, "coal moved 60 alice->bob")
 expect(da.Inventory.BasicOre == 75 and db.Inventory.BasicOre == 25, "ore moved 15 bob->alice (bob had 40)")
-expect(#da.TradeHistory == 1 and #db.TradeHistory == 1, "history recorded for both")
+local function tradeLines(d) local n = 0 for _, h in ipairs(d.TradeHistory) do if not h.market then n += 1 end end return n end
+expect(tradeLines(da) == 1 and tradeLines(db) == 1, "history recorded for both")
 
 print("== pets can be traded and sold")
 for _, mine in ipairs(Trading.GetMyListings(alice)) do Trading.CancelListing(alice, mine.id) end
@@ -123,9 +126,72 @@ expect(ok, "an unworn pet can be offered")
 ok, err = Trading.AddToOffer(alice, tid, { type = "pet", id = "p2" })
 expect(not ok, "the same pet cannot be offered twice")
 Trading.AddToOffer(bob, tid, { type = "pet", id = "p1" })
+advance(6)
 Trading.ConfirmTrade(alice, tid)
 ok, res = Trading.ConfirmTrade(bob, tid)
 local function has(d, id) for _, p in ipairs(d.OwnedPets) do if p.id == id then return true end end return false end
 expect(ok and has(da, "p1") and has(db, "p2") and not has(da, "p2") and not has(db, "p1"), "pets swapped between the two players")
+
+
+print("== anti-scam: confirm lock, warnings, audit log")
+tid = Trading.InitiateTrade(alice, bob)
+da.Inventory.Coal = 500
+db.Inventory.Coal = 500
+Trading.AddToOffer(alice, tid, { type = "material", id = "Coal", qty = 10 })
+Trading.AddToOffer(bob, tid, { type = "material", id = "Coal", qty = 10 })
+ok, res, soft = Trading.ConfirmTrade(alice, tid)
+expect(not ok and soft == true and tostring(res):find("can confirm in"), "confirming right after a change is refused, and the trade stays open (" .. tostring(res) .. ")")
+expect(Trading.GetTradeView(alice, tid).lockSeconds > 0, "the view tells the client how long the lock lasts")
+advance(3)
+ok, res, soft = Trading.ConfirmTrade(alice, tid)
+expect(not ok and soft, "still locked after 3 seconds")
+-- a bait and switch: partner changes the offer just before alice presses confirm
+advance(6)
+Trading.AddToOffer(bob, tid, { type = "material", id = "Coal", qty = 1 })
+ok, res, soft = Trading.ConfirmTrade(alice, tid)
+expect(not ok and soft, "a last-second change locks confirming again")
+Trading.RemoveFromOffer(alice, tid, 1)
+Trading.RemoveFromOffer(bob, tid, 2)
+Trading.RemoveFromOffer(bob, tid, 1)
+ok, res, soft = Trading.ConfirmTrade(alice, tid)
+expect(not ok and soft and tostring(res):find("Add something"), "an empty trade cannot be confirmed")
+-- giving something for nothing needs a second, deliberate confirm
+Trading.AddToOffer(alice, tid, { type = "material", id = "Coal", qty = 10 })
+advance(6)
+local w = Trading.GetTradeView(alice, tid).warning
+expect(w and w:find("nothing"), "giving items for nothing is flagged in the view (" .. tostring(w) .. ")")
+ok, res, soft = Trading.ConfirmTrade(alice, tid)
+expect(not ok and soft and tostring(res):find("WARNING"), "the first confirm only shows the warning")
+ok, res = Trading.ConfirmTrade(alice, tid)
+expect(ok and res == "waiting", "the second confirm goes through")
+-- a lopsided swap: a Legendary pet for a few common materials
+Trading.CancelTrade(alice, tid)
+da.OwnedPets = { { id = "lp", type = "Dragonbone", grown = 30 * 3600 } }
+da.EquippedPets = {}
+tid = Trading.InitiateTrade(alice, bob)
+Trading.AddToOffer(alice, tid, { type = "pet", id = "lp" })
+Trading.AddToOffer(bob, tid, { type = "material", id = "Coal", qty = 2 })
+advance(6)
+ok, res, soft = Trading.ConfirmTrade(alice, tid)
+expect(not ok and soft and tostring(res):find("lopsided"), "an Epic pet for 2 coal is called lopsided (" .. tostring(res) .. ")")
+expect(Trading.GetTradeView(bob, tid).warning == nil, "the player getting the good side is not warned")
+Trading.CancelTrade(alice, tid)
+expect(Trading.ValueOf({ type = "pet", petType = "Ember", rarity = "Common", grown = 0 }) < Trading.ValueOf({ type = "pet", petType = "Ember", rarity = "Common", variant = "MegaNeon", grown = 30 * 3600 }), "a Supreme Elder is worth far more than a Baby")
+
+print("== the permanent log")
+local log = Trading.GetLog(alice.UserId, 100)
+local kinds = {}
+for _, e in ipairs(log) do kinds[e.kind .. ":" .. e.result] = (kinds[e.kind .. ":" .. e.result] or 0) + 1 end
+expect((kinds["trade:completed"] or 0) >= 2, "completed trades are logged (" .. tostring(kinds["trade:completed"]) .. ")")
+expect((kinds["trade:cancelled"] or 0) >= 1, "cancelled trades are logged")
+expect((kinds["market:listed"] or 0) >= 1 and (kinds["market:sold"] or 0) >= 1, "market listings and sales are logged")
+local first
+for _, e in ipairs(log) do if e.kind == "trade" and e.result == "completed" then first = e break end end
+expect(first and first.partnerId == bob.UserId and #first.gave >= 1 and first.gave[1].type ~= nil, "an entry records the partner's user id and the full item detail")
+local blog = Trading.GetLog(bob.UserId, 100)
+local seenByBob = false
+for _, e in ipairs(blog) do if e.kind == "trade" and e.result == "completed" and e.partnerId == alice.UserId then seenByBob = true end end
+expect(seenByBob, "the other player's log has the same trade")
+expect(#(da.TradeHistory or {}) <= 50, "the in-game history is capped at 50")
 
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")

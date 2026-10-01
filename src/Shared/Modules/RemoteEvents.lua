@@ -44,6 +44,7 @@ local DEFINITIONS = {
     DeclineTrade        = "event",   -- cancel the trade
     TradeCompleted      = "event",   -- server → client
     GetTradeHistory     = "function",
+    AdminTradeLog       = "function",   -- admin only: a player's permanent trade / market log
     BuyFromSupplier     = "event",   -- client → server (itemId, quantity)
     GetSupplierStock    = "function",
     MarkCosmeticsSeen   = "event",   -- client → server: opened the Style menu

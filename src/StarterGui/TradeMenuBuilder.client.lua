@@ -107,8 +107,10 @@ local theirStatus = Theme.Label(container, "", Theme.TextSize.Body, Theme.Colors
 theirStatus.Position = UDim2.new(0, 304, 0, 468)
 theirStatus.Size = UDim2.new(0, 270, 0, 22)
 
+local WARN_DEFAULT = "Check every item carefully. Confirming is final once both players have confirmed. Any change clears both confirmations and locks Confirm for a few seconds."
+local lockToken = 0
 local warn = Theme.Label(container,
-    "Check every item carefully. Confirming is final once both players have confirmed. Any change clears both confirmations.",
+    WARN_DEFAULT,
     Theme.TextSize.Small, Theme.Colors.TextDim, Theme.Fonts.Body, "ConfirmLabel")
 warn.Position = UDim2.new(0, 14, 0, 494)
 warn.Size = UDim2.new(0, 566, 0, 40)
@@ -347,10 +349,35 @@ local function Render()
     theirStatus.Text = view.theyConfirmed and (tostring(view.partnerName) .. ": CONFIRMED") or (tostring(view.partnerName) .. ": reviewing")
     theirStatus.TextColor3 = view.theyConfirmed and Theme.Colors.Success or Theme.Colors.TextSecondary
 
-    acceptBtn.Text = view.youConfirmed and "Waiting for them..." or "Confirm Trade"
-    acceptBtn.Active = not view.youConfirmed
-    acceptBtn.AutoButtonColor = not view.youConfirmed
-    acceptBtn.BackgroundColor3 = view.youConfirmed and Theme.Colors.PanelAlt or Theme.Colors.Success
+    -- the Confirm button is locked for a few seconds after ANY change to an offer, so nothing can be swapped under your finger
+    lockToken += 1
+    local myToken = lockToken
+    local lockEnd = os.clock() + (view.lockSeconds or 0)
+    local function paintConfirm()
+        local left = math.ceil(lockEnd - os.clock())
+        if view.youConfirmed then
+            acceptBtn.Text = "Waiting for them..."
+            acceptBtn.BackgroundColor3 = Theme.Colors.PanelAlt
+        elseif left > 0 then
+            acceptBtn.Text = string.format("Check the offer... %d", left)
+            acceptBtn.BackgroundColor3 = Theme.Colors.PanelAlt
+        else
+            acceptBtn.Text = view.warning and "Confirm anyway" or "Confirm Trade"
+            acceptBtn.BackgroundColor3 = view.warning and Theme.Colors.Danger or Theme.Colors.Success
+        end
+        acceptBtn.Active = not view.youConfirmed and left <= 0
+        acceptBtn.AutoButtonColor = acceptBtn.Active
+    end
+    paintConfirm()
+    if (view.lockSeconds or 0) > 0 and not view.youConfirmed then
+        task.spawn(function()
+            while lockToken == myToken and os.clock() < lockEnd do task.wait(0.25) paintConfirm() end
+            if lockToken == myToken then paintConfirm() end
+        end)
+    end
+    -- a warning about THIS trade (giving for nothing / lopsided) in red under the lists; otherwise the usual reminder
+    warn.Text = view.warning and ("WARNING: " .. view.warning .. " Confirming twice means you are sure.") or WARN_DEFAULT
+    warn.TextColor3 = view.warning and Theme.Colors.Danger or Theme.Colors.TextDim
 
     RenderInventory()
 end
@@ -369,7 +396,7 @@ local function RenderHistory()
         row.BorderSizePixel = 0
         row.Parent = historyScroll
         Theme.AddCorner(row, Theme.Corner.Small)
-        local head = Theme.Label(row, string.format("%s  -  with %s", os.date("%d %b %H:%M", h.time), tostring(h.partner)),
+        local head = Theme.Label(row, string.format("%s  -  %s %s", os.date("%d %b %H:%M", h.time), h.market and "Market:" or "with", tostring(h.partner)),
             Theme.TextSize.Body, Theme.Colors.AccentBright, Theme.Fonts.Heading)
         head.Position = UDim2.new(0, 10, 0, 4)
         head.Size = UDim2.new(1, -20, 0, 20)
