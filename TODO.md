@@ -25,6 +25,15 @@
 - [ ] Ascension lives inside the Build menu: consider its own tile once players reach Forge Level 10; coin amounts now show as "25K" (done).
 - [ ] Balance pass with real play data: build prices, Ascension costs, ladder tiers, prize sizes, pad ore rates.
 
+## Universes / worlds (idea, not started - revisit once the game has players)
+Recommendation: not yet. Six mining zones, the Quarry and pets already give plenty to do, and separate worlds would split a small player base.
+- [ ] Cheaper first step: make each existing mining zone a more distinct biome (Lava, Ice, Grass/Forest, Desert, Swamp ...) with its own look, ambience and
+      themed pets/Golem skins, so it feels like a new world without a new place.
+- [ ] Prestige worlds: Ascension (or a new "Rebirth") moves you into a second world with a different resource chain, earned rather than separate.
+- [ ] True separate worlds later: teleport hubs into extra places (each its own published place, shared player data through the same DataStore keys,
+      a world picker in the HUD, per-world leaderboards and events). Needs the game published first, and cross-place data/trading rules decided.
+- [ ] Per-world pets and eggs (a Lava Egg, an Ice Egg ...) fit the pet index: one more reason to collect.
+
 ## Features not built
 - [ ] Rail track meshes (the AI generator makes them too small; the piece is built from parts in code).
 - [ ] Guild extras beyond the current set: roles other than leader, guild banners, guild-vs-guild events.
