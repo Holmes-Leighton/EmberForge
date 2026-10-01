@@ -17,6 +17,7 @@ local stores = {
     GolemsCrafted  = SafeDataStore.GetOrderedDataStore("EF_LB_Golems_v1"),
     ForgeLevel     = SafeDataStore.GetOrderedDataStore("EF_LB_ForgeLevel_v1"),
     TradeCount     = SafeDataStore.GetOrderedDataStore("EF_LB_Trades_v1"),
+    Ascensions     = SafeDataStore.GetOrderedDataStore("EF_LB_Ascensions_v1"),
 }
 
 -- In-memory session counters — flushed to DataStore on leave and periodically
@@ -76,6 +77,9 @@ function LeaderboardService.Flush(player)
     pcall(function()
         stores.ForgeLevel:SetAsync(userId, data.ForgeLevel or 1)
     end)
+    if (data.Ascensions or 0) > 0 then
+        pcall(function() stores.Ascensions:SetAsync(userId, data.Ascensions) end)
+    end
 
     sessionStats[userId] = nil
 end

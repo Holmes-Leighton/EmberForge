@@ -13,6 +13,7 @@ local PlayerDataService = require(script.Parent.PlayerDataService)
 local ChallengeService  = require(script.Parent.ChallengeService)
 local ForgeBuilder      = require(script.Parent.ForgeBuilder)
 local ForgeData         = require(game.ReplicatedStorage.Shared.Data.ForgeData)
+local AscensionData     = require(game.ReplicatedStorage.Shared.Data.AscensionData)
 
 local ForgeZoneService = {}
 
@@ -217,7 +218,7 @@ end
 
 -- Everything that changes how the forge looks; the watcher rebuilds when this changes
 local function Signature(data)
-    local parts = { data.ForgeLevel or 1, data.StorageTier or 0, data.PlayerLevel or 1 }
+    local parts = { data.ForgeLevel or 1, data.StorageTier or 0, data.PlayerLevel or 1, "A" .. (data.Ascensions or 0) }
     for k, v in pairs(data.Equipped or {}) do table.insert(parts, k .. "=" .. tostring(v)) end
     table.sort(parts, function(a, b) return tostring(a) < tostring(b) end)
     for i, g in ipairs(IdleGolems(data)) do
@@ -250,7 +251,8 @@ function ForgeZoneService.Refresh(player)
     if sub then
         local title = data.Equipped and data.Equipped.Title
         local fd = ForgeData.Get(data.ForgeLevel or 1)
-        sub.Text = "Forge Level " .. (data.ForgeLevel or 1) .. (fd and ("  " .. fd.displayName) or "") .. (title and ("  -  " .. title) or "")
+        local asc = (data.Ascensions or 0) > 0 and ("  *" .. AscensionData.Title(data.Ascensions) .. "*") or ""
+        sub.Text = "Forge Level " .. (data.ForgeLevel or 1) .. asc .. (fd and ("  " .. fd.displayName) or "") .. (title and ("  -  " .. title) or "")
                    .. ((data.Settings and data.Settings.ForgeFriendsOnly) and "  (friends only)" or "")
     end
 end

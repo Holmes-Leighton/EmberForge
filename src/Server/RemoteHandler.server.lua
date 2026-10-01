@@ -491,6 +491,15 @@ RemoteEvents.BuildAction.OnServerEvent:Connect(function(player, action, arg)
         elseif action == "sell" and type(arg) == "string" then
             ok, result = FB.Sell(player, arg)
             msg = ok and string.format("Sold for %d coins.", result) or result
+        elseif action == "ascend" then
+            local AscensionService = require(script.Parent.Services.AscensionService)
+            local n, why = AscensionService.Ascend(player)
+            ok, result = n ~= nil, why
+            msg = n and ("You Ascended! Ascension " .. n .. " - a permanent bonus is yours.") or why
+            if n then
+                Analytics.Custom(player, "Ascended", n, {})
+                ForgeZoneService.Refresh(player)
+            end
         else
             return
         end
@@ -500,7 +509,9 @@ RemoteEvents.BuildAction.OnServerEvent:Connect(function(player, action, arg)
 end)
 
 RemoteEvents.GetBuildInfo.OnServerInvoke = function(player)
-    return require(script.Parent.Services.ForgeBuildService).Snapshot(player)
+    local snap = require(script.Parent.Services.ForgeBuildService).Snapshot(player)
+    if snap then snap.ascension = require(script.Parent.Services.AscensionService).Info(player) end
+    return snap
 end
 
 -- ── Pets ──────────────────────────────────────────────────────────────────────
@@ -651,7 +662,7 @@ RemoteEvents.GetMarketListings.OnServerInvoke = function(player, filterType, fil
 end
 
 RemoteEvents.GetLeaderboard.OnServerInvoke = function(player, category)
-    local validCategories = { ResourcesMined = true, GolemsCrafted = true, ForgeLevel = true, TradeCount = true }
+    local validCategories = { ResourcesMined = true, GolemsCrafted = true, ForgeLevel = true, TradeCount = true, Ascensions = true }
     if not validCategories[category] then return {} end
     return LeaderboardService.GetTopEntries(category, 20)
 end

@@ -174,10 +174,14 @@ function ForgeData.PerkAt(level)
 end
 
 -- Cumulative boosts at this level: { mining, carry, luck, coins } (0 = none)
-function ForgeData.TotalPerks(level)
+-- `ascensions` (optional) adds the permanent Ascension bonus (AscensionData) on top
+function ForgeData.TotalPerks(level, ascensions)
     local total = { mining = 0, carry = 0, luck = 0, coins = 0 }
     for l = 2, math.min(level or 1, #ForgeData.Levels) do
         for k, v in pairs(PERKS[l] or {}) do total[k] += v end
+    end
+    if ascensions and ascensions > 0 then
+        for k, v in pairs(require(script.Parent.AscensionData).Bonus(ascensions)) do total[k] += v end
     end
     return total
 end

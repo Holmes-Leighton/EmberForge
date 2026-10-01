@@ -140,7 +140,7 @@ local function GolemProduction(golem, seconds, storageTier, playerData, stormBoo
 
     -- Apply mastery bonuses
     local mb = MasteryBonuses(playerData, golem.element)
-    local fp = ForgeData.TotalPerks(playerData.ForgeLevel or 1)
+    local fp = ForgeData.TotalPerks(playerData.ForgeLevel or 1, playerData.Ascensions)
     local miningRate = stats.miningRate * (1 + mb.miningRateBonus + mb.allStatsBonus + fp.mining)
     local luck       = stats.luck       * (1 + mb.luckBonus       + mb.allStatsBonus + fp.luck) + auras.luck
     -- self skills: Clockwork's Overclock, Gargoyle's Night Watch (this is the offline path)
@@ -259,7 +259,7 @@ function IdleEngine.TickOnlineProduction(playerData, deltaSeconds)
 
     local stormBoost = StormBoost(playerData)
     local auras = CrewAuras(playerData)
-    local fp =ForgeData.TotalPerks(playerData.ForgeLevel or 1)
+    local fp =ForgeData.TotalPerks(playerData.ForgeLevel or 1, playerData.Ascensions)
     for _, golem in ipairs(playerData.Golems or {}) do
         if golem.deployed and golem.zoneId then
             local skill = SkillParams(golem.element)

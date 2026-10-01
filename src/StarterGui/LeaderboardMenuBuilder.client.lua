@@ -66,6 +66,7 @@ local CATEGORIES = {
     { id = "GolemsCrafted",  label = "🗿 Golems"    },
     { id = "ForgeLevel",     label = "🔥 Forge"     },
     { id = "TradeCount",     label = "🔄 Trades"    },
+    { id = "Ascensions",     label = "✦ Ascended"   },
 }
 
 local tabBtns      = {}
@@ -75,7 +76,7 @@ for _, cat in ipairs(CATEGORIES) do
     local btn = Theme.Button(tabRow, cat.label,
         cat.id == activeCategory and Theme.Colors.Accent or Theme.Colors.PanelAlt,
         Color3.fromRGB(255, 255, 255), cat.id .. "Tab")
-    btn.Size     = UDim2.new(0, 118, 0, 30)
+    btn.Size     = UDim2.new(1 / #CATEGORIES, -6, 0, 30)      -- the tabs share the row, however many there are
     btn.TextSize = 11
     tabBtns[cat.id] = btn
 end

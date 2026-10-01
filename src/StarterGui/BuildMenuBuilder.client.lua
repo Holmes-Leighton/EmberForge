@@ -9,6 +9,7 @@ local Theme          = require(game.ReplicatedStorage.Shared.Modules.Theme)
 local ScaleUI        = require(game.ReplicatedStorage.Shared.Modules.ScaleUI)
 local RemoteEvents   = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local ForgeBuildData = require(game.ReplicatedStorage.Shared.Data.ForgeBuildData)
+local AscensionData  = require(game.ReplicatedStorage.Shared.Data.AscensionData)
 local Utils          = require(game.ReplicatedStorage.Shared.Modules.Utils)
 
 RemoteEvents.Load()
@@ -22,6 +23,7 @@ local RARITY_COLOR = {
 }
 
 local STAT_NAMES = { rate = "mining speed", carry = "carry capacity", eff = "efficiency", wear = "less wear", luck = "luck" }
+local ForgeBuildStatNames = { mining = "mining speed", carry = "carry capacity", luck = "luck", coins = "daily coins" }
 
 -- ── Window ────────────────────────────────────────────────────────────────────
 local gui = Instance.new("ScreenGui")
@@ -83,7 +85,7 @@ Theme.AddCorner(tabCol, Theme.Corner.Medium)
 Theme.AddPadding(tabCol, 8, 8, 8, 8)
 Theme.AddListLayout(tabCol, Enum.FillDirection.Vertical, 6)
 local tabButtons = {}
-for _, t in ipairs({ { "Shop", "Shop" }, { "Mine", "My Pieces" }, { "Placed", "On My Forge" } }) do
+for _, t in ipairs({ { "Shop", "Shop" }, { "Mine", "My Pieces" }, { "Placed", "On My Forge" }, { "Ascend", "Ascension" } }) do
     local b = Theme.Button(tabCol, t[2], Theme.Colors.PanelAlt, Theme.Colors.TextSecondary, t[1] .. "Tab")
     b.Size = UDim2.new(1, 0, 0, 38)
     b.TextSize = 13
@@ -223,6 +225,34 @@ local function Reload()
             end
         end
         if not any then Note("Nothing waiting to be placed. Buy something in the Shop.", 30) end
+        return
+    end
+
+    if tab == "Ascend" then
+        local a = info.ascension
+        if not a then Note("Loading...", 30) return end
+        Note("Ascension is the endgame. At Forge Level " .. AscensionData.FORGE_LEVEL .. " you can spend coins to Ascend (up to "
+            .. AscensionData.MAX .. " times). Each Ascension is a permanent bonus and a title shown on your forge sign and the Ascended leaderboard. "
+            .. "Nothing is reset: you keep everything.", 84)
+        local function Bonus(b)
+            local bits = {}
+            for _, stat in ipairs({ "mining", "carry", "luck", "coins" }) do
+                if (b[stat] or 0) > 0 then table.insert(bits, string.format("+%d%% %s", math.floor(b[stat] * 100 + 0.5), ForgeBuildStatNames[stat])) end
+            end
+            return #bits > 0 and table.concat(bits, ", ") or "none yet"
+        end
+        Row(a.count > 0 and AscensionData.Title(a.count) or "Not yet Ascended", "Your permanent bonus: " .. Bonus(a.bonus),
+            Theme.Colors.Legendary, {}, 54)
+        if a.maxed then
+            Note("You have reached the highest Ascension. Congratulations!", 30, Theme.Colors.Success)
+        else
+            local ready = a.forgeLevel >= a.needLevel and a.coins >= a.nextCost
+            Row("Ascend to " .. AscensionData.Roman(a.count + 1),
+                string.format("Costs %s coins. Gives: %s.%s", Utils.FormatNumber(a.nextCost), Bonus(AscensionData.PER),
+                    a.forgeLevel < a.needLevel and string.format("  Needs Forge Level %d (you are %d).", a.needLevel, a.forgeLevel) or ""),
+                Theme.Colors.Gold, { { text = ready and "Ascend" or "Not ready", color = ready and Theme.Colors.Success or Theme.Colors.PanelAlt,
+                    enabled = ready, onClick = function() RemoteEvents.BuildAction:FireServer("ascend") end } }, 66)
+        end
         return
     end
 

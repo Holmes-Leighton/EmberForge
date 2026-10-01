@@ -71,7 +71,7 @@ function ChallengeService.CheckResets(player)
     if ShouldResetDaily(data) then
         data.DailyChallenges = PickDailyChallenges()
         data.LastDailyReset  = Utils.UnixTimestamp()
-        local bonus = ForgeData.TotalPerks(data.ForgeLevel or 1).coins
+        local bonus = ForgeData.TotalPerks(data.ForgeLevel or 1, data.Ascensions).coins
         -- Roblox Premium members get a little extra: +25% daily coins and a free Speed-Up
         local premium = player.MembershipType == Enum.MembershipType.Premium
         if premium then
