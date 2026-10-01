@@ -107,10 +107,37 @@ local function Step(dt)
                 pet.yaw = pet.yaw and (pet.yaw + ((yawTarget - pet.yaw + math.pi) % (2 * math.pi) - math.pi) * (1 - math.exp(-dt * 6))) or yawTarget
             end
 
-            local bob = (moving and not atHome) and math.abs(math.sin(t * 9 + pet.phase)) * 0.5 or math.sin(t * 2 + pet.phase) * 0.06
+            -- Movement animation. Every pet is one solid mesh (no legs to bend), so the life comes from the whole body:
+            --   walking: a hop on each step, leaning into the direction of travel, and a side-to-side waddle
+            --   standing: a slow breathing sway, looking about, and now and then a happy hop with a spin
+            local walking = moving and not atHome
+            local bob = walking and math.abs(math.sin(t * 9 + pet.phase)) * 0.5 or math.sin(t * 2 + pet.phase) * 0.06
+            local pitch, roll, spin = 0, 0, 0
+            if walking then
+                pitch = -0.16                                              -- nose down: leaning forward
+                roll = math.sin(t * 9 + pet.phase) * 0.13                  -- waddle in time with the hops
+            else
+                roll = math.sin(t * 1.4 + pet.phase) * 0.04                -- breathing sway
+                pitch = math.sin(t * 0.9 + pet.phase * 2) * 0.03
+                -- an idle pet looks around a little...
+                spin = math.sin(t * 0.55 + pet.phase) * 0.35
+                -- ...and every so often does a happy hop with a full spin
+                pet.nextHappy = pet.nextHappy or (t + 4 + math.random() * 8)
+                if not pet.happyAt and t >= pet.nextHappy then pet.happyAt = t end
+            end
+            if pet.happyAt then
+                local k = (t - pet.happyAt) / 0.7
+                if k >= 1 or walking then
+                    pet.happyAt, pet.nextHappy = nil, t + 6 + math.random() * 10
+                else
+                    bob += math.sin(k * math.pi) * 1.3                     -- up and back down
+                    spin += k * math.pi * 2                                -- one full turn
+                    pitch += math.sin(k * math.pi) * 0.25                  -- lean back at the top, like a cheer
+                end
+            end
             -- floating pets (sprites, ghosts) hover and drift a little higher than walkers bob
             local p = Vector3.new(pet.pos.X, pet.pos.Y + pet.feet + pet.hover + bob + (pet.hover > 0 and math.sin(t * 2.5 + pet.phase) * 0.15 or 0), pet.pos.Z)
-            pet.model:PivotTo(CFrame.new(p) * CFrame.Angles(0, pet.yaw or 0, 0))
+            pet.model:PivotTo(CFrame.new(p) * CFrame.Angles(0, (pet.yaw or 0) + spin, 0) * CFrame.Angles(pitch, 0, roll))
             if pet.tinted then
                 local c = Color3.fromHSV((t * 0.25 + pet.phase) % 1, 0.65, 1)
                 for _, part in ipairs(pet.tinted) do part.Color = c end
