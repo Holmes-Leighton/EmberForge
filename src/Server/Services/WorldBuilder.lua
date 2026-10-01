@@ -13,7 +13,7 @@ local WorldBuilder = {}
 local ZONE_LAYOUT = {   -- order matches the row of landmarks
     { id = "EmberDepths",     color = Color3.fromRGB(255, 110, 40),  ground = Color3.fromRGB(70, 32, 24),  groundMaterial = Enum.Material.Basalt },
     { id = "GraniteCaverns",  color = Color3.fromRGB(150, 140, 130), ground = Color3.fromRGB(95, 92, 88),  groundMaterial = Enum.Material.Slate  },
-    { id = "GlacialPeaks",    color = Color3.fromRGB(140, 210, 255), ground = Color3.fromRGB(225, 240, 250), groundMaterial = Enum.Material.Snow },
+    { id = "GlacialPeaks",    color = Color3.fromRGB(140, 210, 255), ground = Color3.fromRGB(176, 200, 222), groundMaterial = Enum.Material.Snow },
     { id = "StormriftCliffs", color = Color3.fromRGB(190, 160, 255), ground = Color3.fromRGB(58, 58, 74),  groundMaterial = Enum.Material.Rock   },
     { id = "TheHollow",       color = Color3.fromRGB(120, 60, 200),  ground = Color3.fromRGB(28, 20, 40),  groundMaterial = Enum.Material.Basalt },
     { id = "TheDeepForge",    color = Color3.fromRGB(255, 200, 60),  ground = Color3.fromRGB(60, 58, 62),  groundMaterial = Enum.Material.DiamondPlate },
@@ -331,6 +331,10 @@ CarveTerrain = function(terrain)
         terrain:SetMaterialColor(Enum.Material.Slate, Color3.fromRGB(66, 48, 44))
         terrain:SetMaterialColor(Enum.Material.Basalt, Color3.fromRGB(44, 32, 30))
         terrain:SetMaterialColor(Enum.Material.Limestone, Color3.fromRGB(128, 98, 78))
+        -- Glacial Peaks' ice and snow walls were glaring white under the zone's lights, so they are tinted a cooler, deeper blue
+        terrain:SetMaterialColor(Enum.Material.Glacier, Color3.fromRGB(104, 142, 176))
+        terrain:SetMaterialColor(Enum.Material.Ice, Color3.fromRGB(92, 140, 188))
+        terrain:SetMaterialColor(Enum.Material.Snow, Color3.fromRGB(176, 196, 214))
         terrain.WaterColor = Color3.fromRGB(40, 120, 128)
         terrain.WaterTransparency = 0.7
         terrain.WaterReflectance = 0.8

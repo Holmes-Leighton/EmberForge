@@ -164,7 +164,7 @@ function BiomeArt.FrozenFalls(parent, pos, rng, scale)
     scale = scale or 1
     local mesh = MeshPiece(parent, "GlacialPeaks", "FrozenFalls", pos, { width = 22 * scale })        -- its front faces -Z, toward the pad
     if mesh then
-        GlowLight(mesh, GLOW, 26, 0.9, rng:NextNumber(0, 6))
+        GlowLight(mesh, GLOW, 22, 0.45, rng:NextNumber(0, 6))
         return mesh
     end
     local m = Instance.new("Model")
@@ -240,7 +240,7 @@ function BiomeArt.IceCrystals(parent, pos, rng, scale)
     scale = scale or 1
     local mesh = MeshPiece(parent, "GlacialPeaks", "IceCrystals", pos, { height = 7 * scale, yaw = rng:NextNumber(0, math.pi * 2) })
     if mesh then
-        GlowLight(mesh, Color3.fromRGB(120, 235, 255), 20, 1.4, rng:NextNumber(0, 6))
+        GlowLight(mesh, Color3.fromRGB(120, 235, 255), 16, 0.7, rng:NextNumber(0, 6))
         return mesh
     end
     local m = Instance.new("Model")
@@ -347,7 +347,7 @@ end
 function BiomeArt.PadCrystals(parent, pos, rng)
     local mesh = MeshPiece(parent, "GlacialPeaks", "PadCrystals", pos, { height = 30, yaw = rng:NextNumber(0, math.pi * 2) })
     if mesh then
-        GlowLight(mesh, Color3.fromRGB(140, 220, 255), 60, 1.8, 0)
+        GlowLight(mesh, Color3.fromRGB(140, 220, 255), 44, 0.9, 0)
         return mesh
     end
     local m = BiomeArt.IceSpires(parent, pos, rng, 1.5)

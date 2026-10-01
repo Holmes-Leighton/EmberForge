@@ -88,15 +88,15 @@ AssetData.BiomeMeshes = {
     },
     EmberDepths = {
         PadPiece = 126719407630672, Spires = 97622011353183, WallPiece = 102589271885312, Flora = 97426858110519,
-        GlowCluster = 84269256282626, Boulder = 87420004016439, FloatingPiece = 97030806946694,
+        GlowCluster = 84269256282626, Boulder = 87420004016439, FloatingPiece = 117190593986583,
     },
     GraniteCaverns = {
         PadPiece = 139020023032175, Spires = 124693675588375, WallPiece = 79324610365947, Flora = 80756903063205,
-        GlowCluster = 136738324471908, Boulder = 121886701973052, FloatingPiece = 90111970855177,
+        GlowCluster = 136738324471908, Boulder = 93248726217435, FloatingPiece = 105950731666921,
     },
     StormriftCliffs = {
         PadPiece = 118528448462482, Spires = 101502350446283, WallPiece = 96328250388913, Flora = 73381690984639,
-        GlowCluster = 115616990397536, Boulder = 135159275139763, FloatingPiece = 122024514985676,
+        GlowCluster = 115616990397536, Boulder = 135159275139763, FloatingPiece = 133303526067750,
     },
     TheHollow = {
         PadPiece = 96955122592402, Spires = 96873549161640, WallPiece = 82350914320986, Flora = 73497287373743,
