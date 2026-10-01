@@ -18,4 +18,7 @@ expect(not FG.Check("PetMerge", { PlayerLevel = 3 }) and FG.Check("PetMerge", { 
 for id, def in pairs(FG.InMenu) do
     expect(def.level and def.level >= 2 and def.name, id .. " has a level and a name")
 end
+print("== Ascend tile")
+expect(not FG.Revealed("AscendButton", { ForgeLevel = 9 }) and FG.Revealed("AscendButton", { ForgeLevel = 10 }), "the Ascend tile appears at Forge Level 10")
+expect(FG.Revealed("ForgeButton", { ForgeLevel = 1 }), "other tiles are always shown")
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")

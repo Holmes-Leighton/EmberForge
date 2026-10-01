@@ -22,7 +22,7 @@
 - [x] ~~Two Storm Golem entries in the Anvil list~~ stronger tiers carry their tier name.
 - [x] World labels stacking near the anvil: pad signs now fade beyond 90 studs.
 - [x] ~~Several toasts at once cover the sidebar~~ the stack now sits left of the button column.
-- [ ] Ascension lives inside the Build menu: consider its own tile once players reach Forge Level 10; coin amounts now show as "25K" (done).
+- [x] Ascension tile: an Ascend button appears in the side column at Forge Level 10 and opens the Build menu on its Ascension tab. It uses the emoji icon until a 3D "Nav_Ascend" mesh is added to the nav icon pack.
 - [x] Balance pass (model-based, `tools/balance_model.py`): Ascension now 1.5k -> 47k (was 25k -> 2.5M, impossible), ladder tiers re-sized to Golem output, Quarry 10k, Molten Forge 30k, Throne 20k. Pads are capped top-ups so left alone.
 - [ ] Re-run the balance pass with real play data once players exist (the model's income and hours-per-day are assumptions).
 

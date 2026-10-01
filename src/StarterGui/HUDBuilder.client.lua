@@ -125,6 +125,8 @@ local NAV = {
     { name = "GuildButton",      mesh = "Guild", icon = "🛡️", label = "Guild",      color = Color3.fromRGB(90, 130, 210),  targetGui = "GuildMenu"       },
     { name = "HomeButton",        mesh = "Home", icon = "🏠", label = "My Forge",   color = Color3.fromRGB(120, 130, 150), action = "GoToMyForge"        },
     { name = "LeaderboardBtn",    mesh = "Leaders", icon = "🏆", label = "Leaders",    color = Color3.fromRGB(200, 150, 60),  targetGui = "LeaderboardMenu" },
+    -- appears at Forge Level 10 (FeatureGates.Reveal): opens the Build menu on its Ascension tab
+    { name = "AscendButton",      mesh = "Ascend", icon = "✨", label = "Ascend",     color = Color3.fromRGB(235, 190, 60),  targetGui = "BuildMenu", openTab = "Ascend", hidden = true },
 }
 
 local function OpenNav(nav)
@@ -137,6 +139,7 @@ local function OpenNav(nav)
     local pg = LocalPlayer:WaitForChild("PlayerGui")
     local target = pg:FindFirstChild(nav.targetGui)
     if target then
+        if nav.openTab and not target.Enabled then target:SetAttribute("OpenTab", nav.openTab) end
         target.Enabled = not target.Enabled
     else
         warn("[HUD] Menu not found in PlayerGui: " .. nav.targetGui)
@@ -298,6 +301,7 @@ for _, nav in ipairs(NAV) do
     else
         local btn = MakeTile(sidebar, nav, 56)
         btn.Position = UDim2.new(0, 8, 0, 8 + si * 64)
+        if nav.hidden then btn.Visible = false end
         si += 1
     end
 end

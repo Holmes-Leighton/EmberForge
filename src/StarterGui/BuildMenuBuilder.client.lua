@@ -279,7 +279,13 @@ for id, b in pairs(tabButtons) do
 end
 
 gui:GetPropertyChangedSignal("Enabled"):Connect(function()
-    if gui.Enabled then Say("") task.spawn(Reload) end
+    if gui.Enabled then
+        local wanted = gui:GetAttribute("OpenTab")          -- set by the HUD's Ascend tile
+        if wanted and tabButtons[wanted] then tab = wanted end
+        gui:SetAttribute("OpenTab", nil)
+        Say("")
+        task.spawn(Reload)
+    end
 end)
 
 RemoteEvents.BuildResult.OnClientEvent:Connect(function(action, ok, message)

@@ -110,6 +110,10 @@ local function Apply()
             if ok then Unlock(button) else Lock(button, label, reason) end
         end
     end
+    for name in pairs(FeatureGates.Reveal) do
+        local tile = hud:FindFirstChild(name, true)
+        if tile then tile.Visible = FeatureGates.Revealed(name, lastData) end
+    end
     for id, def in pairs(FeatureGates.InMenu) do
         local button = def.button and pg:FindFirstChild(def.button, true)
         if button and button:IsA("TextButton") then

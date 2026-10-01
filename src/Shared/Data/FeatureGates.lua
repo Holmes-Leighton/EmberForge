@@ -25,6 +25,18 @@ FeatureGates.InMenu = {
     PetMerge   = { name = "Pet merging", kind = "player", level = 6 },
 }
 
+-- HUD tiles that stay hidden until the player is far enough along (the opposite of a lock: nothing to show yet)
+FeatureGates.Reveal = {
+    AscendButton = { kind = "forge", level = 10 },       -- Ascension lives in the Build menu until Forge Level 10 (AscensionData.FORGE_LEVEL)
+}
+
+function FeatureGates.Revealed(buttonName, data)
+    local def = FeatureGates.Reveal[buttonName]
+    if not def then return true end
+    local have = def.kind == "forge" and ((data and data.ForgeLevel) or 1) or ((data and data.PlayerLevel) or 1)
+    return have >= def.level
+end
+
 -- Options that only work in a particular place. Checked after the level rules; `need` is a value of the player's "EFPlace" attribute
 -- (set by ForgeZoneService.PlaceOf). With no place known they stay open.
 FeatureGates.PlaceRules = {
