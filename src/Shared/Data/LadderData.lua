@@ -9,14 +9,15 @@ function LadderData.SeasonOf(now) return math.floor((now or os.time()) / LadderD
 
 function LadderData.SeasonEnds(now) return (LadderData.SeasonOf(now) + 1) * LadderData.SEASON_SECONDS end
 
--- Tiers by points, lowest first
+-- Tiers by points, lowest first. Sized to what a player mines in a 4-week season at about 1 hour a day online (tools/balance_model.py):
+-- a new player (3 Tier 1 Golems) lands in Silver, 3 Tier 2 in Gold, 4 Tier 3 in Platinum, 6 Tier 4 in Diamond, 8 Tier 5 in Champion.
 LadderData.Tiers = {
     { name = "Bronze",   points = 0,        color = Color3.fromRGB(190, 130, 80),  coins = 0    },
-    { name = "Silver",   points = 20000,    color = Color3.fromRGB(200, 205, 215), coins = 300  },
-    { name = "Gold",     points = 100000,   color = Color3.fromRGB(255, 205, 70),  coins = 800  },
-    { name = "Platinum", points = 400000,   color = Color3.fromRGB(120, 220, 230), coins = 1800 },
-    { name = "Diamond",  points = 1500000,  color = Color3.fromRGB(120, 170, 255), coins = 3500 },
-    { name = "Champion", points = 5000000,  color = Color3.fromRGB(255, 120, 200), coins = 6000 },
+    { name = "Silver",   points = 100000,   color = Color3.fromRGB(200, 205, 215), coins = 300  },
+    { name = "Gold",     points = 500000,   color = Color3.fromRGB(255, 205, 70),  coins = 800  },
+    { name = "Platinum", points = 2000000,  color = Color3.fromRGB(120, 220, 230), coins = 1800 },
+    { name = "Diamond",  points = 8000000,  color = Color3.fromRGB(120, 170, 255), coins = 3500 },
+    { name = "Champion", points = 30000000, color = Color3.fromRGB(255, 120, 200), coins = 6000 },
 }
 
 function LadderData.TierOf(points)

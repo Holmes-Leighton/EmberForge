@@ -23,7 +23,8 @@
 - [x] World labels stacking near the anvil: pad signs now fade beyond 90 studs.
 - [x] ~~Several toasts at once cover the sidebar~~ the stack now sits left of the button column.
 - [ ] Ascension lives inside the Build menu: consider its own tile once players reach Forge Level 10; coin amounts now show as "25K" (done).
-- [ ] Balance pass with real play data: build prices, Ascension costs, ladder tiers, prize sizes, pad ore rates.
+- [x] Balance pass (model-based, `tools/balance_model.py`): Ascension now 1.5k -> 47k (was 25k -> 2.5M, impossible), ladder tiers re-sized to Golem output, Quarry 10k, Molten Forge 30k, Throne 20k. Pads are capped top-ups so left alone.
+- [ ] Re-run the balance pass with real play data once players exist (the model's income and hours-per-day are assumptions).
 
 ## Universes / worlds (idea, not started - revisit once the game has players)
 Recommendation: not yet. Six mining zones, the Quarry and pets already give plenty to do, and separate worlds would split a small player base.

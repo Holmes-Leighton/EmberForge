@@ -24,7 +24,7 @@ ForgeBuildData.StockChance = { Common = 0.9, Uncommon = 0.6, Rare = 0.3, Epic = 
 ForgeBuildData.Items = {
     { id = "Hearth",      name = "Stone Hearth",     category = "fire",  rarity = "Common",   price = 600,   height = 4.5, maxOwned = 1, perk = { rate = 0.03 }, blurb = "A humble hearth. +3% mining speed", color = Color3.fromRGB(150, 120, 100) },
     { id = "IronFurnace", name = "Iron Furnace",     category = "fire",  rarity = "Uncommon", price = 6000,  height = 7,   maxOwned = 1, perk = { rate = 0.06 }, blurb = "Hotter and steadier. +6% mining speed", color = Color3.fromRGB(180, 180, 195) },
-    { id = "MoltenForge", name = "Molten Forge",     category = "fire",  rarity = "Rare",     price = 40000, height = 8,   maxOwned = 1, perk = { rate = 0.10 }, blurb = "Runs on lava. +10% mining speed", color = Color3.fromRGB(255, 140, 50) },
+    { id = "MoltenForge", name = "Molten Forge",     category = "fire",  rarity = "Rare",     price = 30000, height = 8,   maxOwned = 1, perk = { rate = 0.10 }, blurb = "Runs on lava. +10% mining speed", color = Color3.fromRGB(255, 140, 50) },
 
     { id = "MineCart",    name = "Mine Cart",        category = "tools", rarity = "Common",   price = 350,   height = 3.5, maxOwned = 3, perk = { carry = 0.03 }, blurb = "+3% carry capacity each", color = Color3.fromRGB(170, 120, 70) },
     { id = "OreCrates",   name = "Ore Crates",       category = "tools", rarity = "Common",   price = 450,   height = 3,   maxOwned = 3, perk = { carry = 0.03 }, blurb = "+3% carry capacity each", color = Color3.fromRGB(190, 150, 90) },
@@ -54,7 +54,7 @@ ForgeBuildData.Items = {
     { id = "Well",        name = "Stone Well",       category = "decor", rarity = "Uncommon", price = 1800,  height = 6,   maxOwned = 1, blurb = "Fresh water for the smiths", color = Color3.fromRGB(150, 150, 160) },
     { id = "DisplayStand", name = "Display Stand",   category = "decor", rarity = "Uncommon", price = 2200,  height = 4,   maxOwned = 3, blurb = "Show off a trophy", color = Color3.fromRGB(180, 200, 220) },
     { id = "Fountain",    name = "Anvil Fountain",   category = "decor", rarity = "Rare",     price = 7000,  height = 6,   maxOwned = 1, blurb = "A fountain fit for a forgemaster", color = Color3.fromRGB(230, 200, 100) },
-    { id = "Throne",      name = "Forgemaster's Throne", category = "decor", rarity = "Epic", price = 25000, height = 6,   maxOwned = 1, blurb = "Sit like a king of the forge", color = Color3.fromRGB(240, 200, 90) },
+    { id = "Throne",      name = "Forgemaster's Throne", category = "decor", rarity = "Epic", price = 20000, height = 6,   maxOwned = 1, blurb = "Sit like a king of the forge", color = Color3.fromRGB(240, 200, 90) },
     { id = "GemLamp",    name = "Gem Lamp",         category = "decor", rarity = "Uncommon", price = 900,   height = 5,   maxOwned = 4, blurb = "A glowing gemstone lamp", color = Color3.fromRGB(100, 170, 255) },
     { id = "TrophyStatue", name = "Trophy Statue",   category = "decor", rarity = "Rare",     price = 5000,  height = 8,   maxOwned = 1, blurb = "A hero of the forge", color = Color3.fromRGB(240, 200, 90) },
 }

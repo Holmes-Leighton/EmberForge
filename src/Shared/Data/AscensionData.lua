@@ -5,7 +5,7 @@ local AscensionData = {}
 
 AscensionData.MAX = 10
 AscensionData.FORGE_LEVEL = 10
-AscensionData.BASE_COST = 25000          -- coins; Ascension n costs BASE_COST * n^2 (25k, 100k, 225k ... 2.5M)
+AscensionData.BASE_COST = 1500           -- coins; Ascension n costs BASE_COST * n^1.5, rounded to 100 (1.5k, 4.2k, 7.8k ... 47.4k; all ten = 213k, about 10 months of daily play: see tools/balance_model.py)
 
 -- what each Ascension adds (so 10 Ascensions: +20% mining, +20% carry, +10% luck, +30% daily coins)
 AscensionData.PER = { mining = 0.02, carry = 0.02, luck = 0.01, coins = 0.03 }
@@ -15,7 +15,7 @@ local ROMAN = { "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X" }
 function AscensionData.Roman(n) return ROMAN[n] or tostring(n) end
 
 -- Cost of reaching Ascension `n` (the next one when you have n - 1)
-function AscensionData.Cost(n) return AscensionData.BASE_COST * n * n end
+function AscensionData.Cost(n) return math.floor(AscensionData.BASE_COST * n ^ 1.5 / 100 + 0.5) * 100 end
 
 function AscensionData.Title(n) return "Ascended " .. AscensionData.Roman(n) end
 

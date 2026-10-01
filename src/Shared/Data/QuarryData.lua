@@ -17,7 +17,7 @@ QuarryData.PLOT_HALF    = 26        -- the Quarry plot is the same size as the f
 QuarryData.CLEAR_HALF   = 4         -- keep the very middle free for the Core
 QuarryData.SPACING      = 3
 QuarryData.UNLOCK_FORGE_LEVEL = 6   -- the Quarry opens at Forge Level 6 (mid-game)
-QuarryData.CORE_COST    = 15000     -- coins to found it
+QuarryData.CORE_COST    = 10000     -- coins to found it
 QuarryData.PLOT_OFFSET_Z = 70       -- the Quarry plot sits this many studs behind (+Z) your forge plot
 
 -- Pieces. kind: core | node | helper.  rate = units mined per hour (before boosts).  height = studs shown at.

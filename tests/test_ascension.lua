@@ -14,7 +14,7 @@ local function mk(id, name, coins, level)
 end
 
 print("== the curve")
-expect(AD.Cost(1) == 25000 and AD.Cost(2) == 100000 and AD.Cost(10) == 2500000, "costs grow with the square of the Ascension")
+expect(AD.Cost(1) == 1500 and AD.Cost(2) == 4200 and AD.Cost(10) == 47400, "costs grow steadily (1.5k, 4.2k ... 47.4k)")
 local b10 = AD.Bonus(10)
 expect(math.abs(b10.mining - 0.20) < 1e-9 and math.abs(b10.luck - 0.10) < 1e-9 and math.abs(b10.coins - 0.30) < 1e-9, "ten Ascensions are +20% mining, +10% luck, +30% coins")
 expect(AD.Bonus(99).mining == b10.mining and AD.Bonus(-3).mining == 0, "bonuses are clamped to 0..10")
@@ -32,10 +32,10 @@ expect(db.EmberCoins == 100 and (db.Ascensions or 0) == 0, "a refused Ascension 
 print("== ascending")
 da.ForgeLevel = 10
 local first = AS.Ascend(a)
-expect(first == 1 and da.EmberCoins == 1000000 - 25000 and da.Ascensions == 1, "first Ascension costs 25,000")
+expect(first == 1 and da.EmberCoins == 1000000 - 1500 and da.Ascensions == 1, "first Ascension costs 1,500")
 expect(table.find(da.Titles, "Ascended I") ~= nil, "and grants the title")
 local second = AS.Ascend(a)
-expect(second == 2 and da.EmberCoins == 1000000 - 25000 - 100000, "second costs 100,000")
+expect(second == 2 and da.EmberCoins == 1000000 - 1500 - 4200, "second costs 4,200")
 da.EmberCoins = 1e9
 for i = 3, 10 do AS.Ascend(a) end
 expect(da.Ascensions == 10, "up to ten")
