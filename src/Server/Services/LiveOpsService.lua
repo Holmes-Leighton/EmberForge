@@ -119,7 +119,7 @@ local function Save(edit)
     end)
     LiveOpsService.Refresh()
     -- tell every other server to re-read the config now, instead of waiting for its 5-minute refresh
-    pcall(function() game:GetService("MessagingService"):PublishAsync(PUSH_TOPIC, game.JobId) end)
+    task.spawn(function() pcall(function() game:GetService("MessagingService"):PublishAsync(PUSH_TOPIC, game.JobId) end) end)
 end
 
 function LiveOpsService.AddEvent(kind, multiplier, hours, name)
@@ -161,9 +161,11 @@ end
 
 function LiveOpsService.Init()
     LiveOpsService.Refresh()
-    pcall(function()
-        game:GetService("MessagingService"):SubscribeAsync(PUSH_TOPIC, function(message)
-            if message.Data ~= game.JobId then LiveOpsService.Refresh() end
+    task.spawn(function()          -- (off the main thread: in an unpublished place this call can wait a long time and must not hold up start-up)
+        pcall(function()
+            game:GetService("MessagingService"):SubscribeAsync(PUSH_TOPIC, function(message)
+                if message.Data ~= game.JobId then LiveOpsService.Refresh() end
+            end)
         end)
     end)
     task.spawn(function()
