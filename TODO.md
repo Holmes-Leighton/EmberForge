@@ -52,7 +52,10 @@ Recommendation: not yet. Six mining zones, the Quarry and pets already give plen
 - [x] Pets can be traded and sold on the Market (Pets tab); duplicate pets can all be worn; pet Collection tab (index) with Elite/Supreme forms.
 - [x] Face portraits (pets, Golems) and spinning 3D mesh icons (26 materials, 15 HUD buttons) in the menus.
 - [x] Feature gates: Pets L2, Trades L3, Build L4, Guild L5, Quarry Forge 6 show a requirement label on the HUD button (table in FeatureGates.lua); server refuses the actions too.
-- [ ] Place-based labels ("Go to your forge" for Build) and locks on options inside menus (Elite Forge tab etc.).
+- [x] Place-based labels: Build says "At your forge" until you stand on your forge; My Forge says "You're home"; blueprint badges show the short reason ("Forge Lv 4").
+- [ ] Locks on the remaining in-menu options (Elite Forge tab etc.) if any need requirements.
+- [x] Trading safety: permanent audit log (trades + market, admin readable), 5s confirm lock after any change, give-for-nothing / lopsided warnings, block a player from the request popup, report from the trade window.
+- [ ] Trading safety, still open: an admin review screen for reports/logs (today only the AdminTradeLog remote), minimum account age for trading, tuning of the lopsided-value numbers with real play.
 - [ ] More 3D icons: toasts, trade window and quest rewards still use plain text/emoji.
 
 ## Running the tests
