@@ -12,11 +12,13 @@ local RunService = game:GetService("RunService")
 local CollectionService = game:GetService("CollectionService")
 local IdleMoves = require(game.ReplicatedStorage.Shared.Modules.IdleMoves)
 local GolemWalk = require(game.ReplicatedStorage.Shared.Modules.GolemWalk)
+local GolemMotion = require(game.ReplicatedStorage.Shared.Modules.GolemMotion)
 
 local GolemAnimator = {}
 
 local NEAR = 170            -- studs: animate fully
 local SWING_SPEED = 4
+local SWING_PERIOD = 1.9          -- seconds for one full mining swing at an element's normal pace (GolemMotion shapes it)
 
 -- Each element works at its own pace (how fast the pick swings) and kicks up its own kind of dust when the pick lands
 local ELEMENT_FEEL = {
@@ -222,15 +224,22 @@ local function Step()
                         end
                     end
                 elseif info.mode == "Parts" then
-                    -- A Golem mines at its spot, now and then walks a few steps to another (GolemWalk), and during a walk its legs swing, its body
-                    -- bobs and its arms swing in step; each pick strike leans the body in and puffs dust. Rotate each limb about its own pivot.
+                    -- A Golem mines at its spot (GolemMotion: wind-up, hold, strike, bounce, recover), now and then walks a few steps to another spot
+                    -- (GolemWalk), and moves like one body: the torso twists and leans into every strike, the head follows a beat behind, and on a walk
+                    -- the weight shifts, the hips sway and each foot lifts. Every limb turns about its own pivot.
                     local tempo = info.tempo or 1
                     local ws = GolemWalk.Sample(info.walkState, t)
                     local walking = ws.walking
-                    local aSwing = t * SWING_SPEED * tempo + phase
-                    local mining = 0.6 + math.sin(aSwing) * 0.6                  -- how far the pick arm is raised while mining
-                    local stride = math.sin(t * GolemWalk.STRIDE_RATE) * 0.4 * ws.env
-                    local raise = mining + (0.55 - mining) * ws.env                  -- while walking the pick arm hangs and swings a little
+                    local clock = t * tempo / SWING_PERIOD + phase / (math.pi * 2)
+                    local cycle = math.floor(clock)
+                    local u = clock - cycle
+                    local r = GolemMotion.Raise(u)                                    -- 0 = pick on the ground, 1 = overhead
+                    local drive = GolemMotion.Drive(u)                                -- -1 leaning back on the wind-up ... +1 driving forward at impact
+                    local headR = GolemMotion.Lagged(u, 0.06)                         -- the head and shoulders follow a beat behind the arm
+                    local rise = (r * 1.2)                                            -- the arm angle in radians while mining
+                    local stepT = t * GolemWalk.STRIDE_RATE
+                    local stride = math.sin(stepT) * 0.4 * ws.env
+                    local raise = rise + (0.55 - rise) * ws.env                      -- during a walk the pick arm hangs and swings a little
                     -- idle move (only while standing and mining): whole-body motion plus an arm pose blended over the mining swing
                     local move, mk = IdleMoves.Step(info.idle, t, not walking)
                     local ibob, ipitch, iroll, iyaw = IdleMoves.Body("golem", move, mk, t)
@@ -240,27 +249,37 @@ local function Step()
                     if move == "flex" then zL, zR, xL, xR = -1.25 * w, 1.25 * w, xL + (0.4 - xL) * w, xR + (0.4 - xR) * w
                     elseif move == "stomp" or move == "look" then xL, xR = xL + (0.1 - xL) * w, xR + (0.1 - xR) * w
                     elseif move == "inspect" then xL, xR = xL + (0.1 - xL) * w, xR + (1.15 - xR) * w end
-                    -- lean into each strike (the pick is lowest when sin = -1) and kick up dust the moment it lands
-                    local lean = walking and 0 or -math.max(0, -math.sin(aSwing)) * 0.07
+                    -- the whole body works with the arm: lean (negative pitch = forward) and twist into the strike, sway and shift weight on a walk
+                    local mine = 1 - ws.env
+                    local lean = -drive * 0.09 * mine - 0.05 * ws.env
+                    local twist = drive * 0.1 * mine + math.cos(stepT) * 0.06 * ws.env
+                    local roll = math.sin(stepT) * 0.05 * ws.env
+                    local settle = (r < 0.2 and (0.2 - r) * 0.5 or 0) * mine              -- the body sinks a little as the pick lands
+                    -- puff dust the moment the pick lands
                     if not walking then
-                        local strike = math.floor((aSwing + math.pi / 2) / (math.pi * 2))
-                        if info.lastStrike ~= nil and strike ~= info.lastStrike and info.dust then info.dust:Emit(7) end
+                        local strike = cycle + (u >= GolemMotion.IMPACT and 1 or 0)
+                        if info.lastStrike ~= nil and strike ~= info.lastStrike and info.dust then info.dust:Emit(8) end
                         info.lastStrike = strike
                     else
                         info.lastStrike = nil
                     end
-                    local b = base * CFrame.new(ws.x, (ibob + GolemWalk.Bob(ws, t)) * scale, ws.z) * CFrame.Angles(ipitch + lean, iyaw + ws.yaw, iroll)
+                    local b = base * CFrame.new(ws.x, (ibob + GolemWalk.Bob(ws, t) - settle) * scale, ws.z)
+                        * CFrame.Angles(ipitch + lean, iyaw + ws.yaw + twist, iroll + roll)
                     if info.rest then model:PivotTo(b * info.rest) end
                     if info.legs then
                         for _, l in ipairs(info.legs) do
                             local swing = GolemWalk.LegSwing(ws, t, l.side)
-                            l.part.CFrame = b * l.pivot * CFrame.Angles(swing, 0, 0) * l.pivot:Inverse() * l.rel
+                            local legPhase = stepT + (l.side == 1 and 0 or math.pi)
+                            local lift = walking and math.max(0, math.cos(legPhase)) * 0.3 * ws.env * scale or 0       -- the foot lifts as the leg swings forward
+                            l.part.CFrame = b * CFrame.new(0, lift, 0) * l.pivot * CFrame.Angles(swing, 0, 0) * l.pivot:Inverse() * l.rel
                         end
                     end
                     if info.head then
                         local h = info.head
                         local nod = (move == "inspect") and 0.35 * w or 0
-                        h.part.CFrame = b * h.pivot * CFrame.Angles(nod, (move == "look" and math.sin(mk * math.pi * 3) * 0.7 * w or 0) - iyaw * 0.0, 0) * h.pivot:Inverse() * h.rel
+                        nod = nod - (0.5 - headR) * 0.22 * mine                           -- a nod into each strike, a beat after the arm
+                        local look = (move == "look" and math.sin(mk * math.pi * 3) * 0.7 * w or 0) - twist * 0.6       -- eyes stay forward as the torso twists
+                        h.part.CFrame = b * h.pivot * CFrame.Angles(nod, look, 0) * h.pivot:Inverse() * h.rel
                     end
                     if info.armL then
                         local a = info.armL
