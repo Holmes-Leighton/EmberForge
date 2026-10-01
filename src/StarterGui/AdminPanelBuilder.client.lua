@@ -124,6 +124,18 @@ Row({ { "Player name or id", 150 }, { "Material id", 100 }, { "Qty", 50 } }, { {
     Run("grantMaterial", { target = tonumber(b[1].Text) or b[1].Text, id = b[2].Text, qty = b[3].Text })
 end, 50 } })
 
+Row({ { "Player name or id", 150 }, { "Egg id (Basic...)", 100 }, { "Qty", 50 } }, { { "Gift eggs", GREEN, function(b)
+    Run("grantEgg", { target = tonumber(b[1].Text) or b[1].Text, id = b[2].Text, qty = b[3].Text })
+end, 80 } })
+Row({ { "Player name or id", 150 }, { "Pet id (Ember...)", 100 }, { "Elite/Supreme", 80 } }, { { "Gift pet", GREEN, function(b)
+    local v = ({ elite = "Neon", supreme = "MegaNeon" })[b[3].Text:lower()] or b[3].Text
+    Run("grantPet", { target = tonumber(b[1].Text) or b[1].Text, id = b[2].Text, variant = v })
+end, 70 } })
+Row({ { "Player name or id", 150 }, { "Blueprint (BP_Ember_T1)", 130 }, { "Elite/Supreme", 80 } }, { { "Gift Golem", GREEN, function(b)
+    local v = ({ elite = "Neon", supreme = "MegaNeon" })[b[3].Text:lower()] or b[3].Text
+    Run("grantGolem", { target = tonumber(b[1].Text) or b[1].Text, id = b[2].Text, variant = v })
+end, 80 } })
+
 Heading("Events (all servers within ~5 minutes)")
 Row({ { "xp / drops", 80, "xp" }, { "Multiplier", 70, "2" }, { "Hours", 50, "2" } }, {
     { "Start", ORANGE, function(b) Run("event", { kind = b[1].Text, multiplier = b[2].Text, hours = b[3].Text }) end, 50 },

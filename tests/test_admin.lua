@@ -1,6 +1,7 @@
 QUIET = true
 local RemoteEvents = load("game/ReplicatedStorage/Shared/Modules/RemoteEvents")
 for _, n in ipairs({ "Notify" }) do RemoteEvents[n] = fireCounter() end
+RemoteEvents.PetHatched = fireCounter()
 local PDS = load("SSS/EmberForge/Services/PlayerDataService")
 local LiveOps = load("SSS/EmberForge/Services/LiveOpsService")
 local Admin = load("SSS/EmberForge/Services/AdminService")
@@ -19,6 +20,15 @@ expect(not Admin.Action(boss, "grantCoins", { target = "Nobody", amount = 5 }, L
 expect(not Admin.Action(boss, "grantMaterial", { target = "Kid", id = "NotAThing", qty = 1 }, LiveOps), "unknown material refused")
 expect(not Admin.Action(boss, "nonsense", {}, LiveOps), "unknown action refused")
 LiveOps.HourlyEnabled = false
+local pets0, golems0 = #(kd.OwnedPets or {}), #kd.Golems
+expect(Admin.Action(boss, "grantEgg", { target = "Kid", id = "Basic", qty = 3 }, LiveOps) and #kd.OwnedPets == pets0 + 3, "gift 3 eggs hatches 3 pets")
+expect(not Admin.Action(boss, "grantEgg", { target = "Kid", id = "Basic", qty = 50 }, LiveOps), "egg gift is capped")
+expect(not Admin.Action(boss, "grantEgg", { target = "Kid", id = "Nope", qty = 1 }, LiveOps), "unknown egg refused")
+expect(Admin.Action(boss, "grantPet", { target = "Kid", id = "Ember", variant = "Neon" }, LiveOps) and kd.OwnedPets[#kd.OwnedPets].variant == "Neon", "gift an Elite pet")
+expect(not Admin.Action(boss, "grantPet", { target = "Kid", id = "Ember", variant = "Godly" }, LiveOps), "bad variant refused")
+expect(Admin.Action(boss, "grantGolem", { target = "Kid", id = "BP_Ember_T1" }, LiveOps) and #kd.Golems == golems0 + 1, "gift a Golem")
+expect(kd.Golems[#kd.Golems].quality < 0.5, "gifted Golem has a normal quality bonus")
+expect(not Admin.Action(boss, "grantGolem", { target = "Kid", id = "BP_Nope" }, LiveOps), "unknown blueprint refused")
 expect(Admin.Action(boss, "event", { kind = "xp", multiplier = 2, hours = 2 }, LiveOps) and LiveOps.GetMultiplier("xp") == 2, "event starts")
 expect(not Admin.Action(boss, "event", { kind = "xp", multiplier = 50, hours = 2 }, LiveOps), "silly multiplier refused")
 Admin.Action(boss, "clearEvents", {}, LiveOps)

@@ -97,6 +97,55 @@ function AdminService.Action(admin, action, args, LiveOps)
         Audit(admin, action, { target = target.UserId, id = args.id, qty = n })
         return true, string.format("Gave %s %d x %s", target.Name, n, def.displayName or args.id)
 
+    elseif action == "grantEgg" then
+        local target = FindPlayer(args.target)
+        if not target then return false, "Player not in this server" end
+        local data = PlayerDataService.Get(target)
+        if not data then return false, "Their data isn't loaded" end
+        local PetData = require(game.ReplicatedStorage.Shared.Data.PetData)
+        if type(args.id) ~= "string" or not PetData.Eggs[args.id] then return false, "Unknown egg id" end
+        local n = WholeNumber(args.qty, 10)
+        if not n then return false, "Eggs: a whole number from 1 to 10" end
+        if #(data.OwnedPets or {}) + n > PetData.MAX_OWNED then return false, "Their pet box doesn't have room" end
+        local pets = require(script.Parent.PetService).HatchPaid(target, args.id, n)     -- hatches for free and plays the reveal for them
+        Audit(admin, action, { target = target.UserId, egg = args.id, qty = n })
+        return true, string.format("Hatched %d x %s for %s", #pets, args.id, target.Name)
+
+    elseif action == "grantPet" or action == "grantGolem" then
+        local target = FindPlayer(args.target)
+        if not target then return false, "Player not in this server" end
+        local data = PlayerDataService.Get(target)
+        if not data then return false, "Their data isn't loaded" end
+        local Utils = require(game.ReplicatedStorage.Shared.Modules.Utils)
+        local variant = args.variant
+        if variant == "" or variant == "none" then variant = nil end
+        if variant ~= nil and variant ~= "Neon" and variant ~= "MegaNeon" then return false, "Variant: blank, Neon or MegaNeon" end
+        if action == "grantPet" then
+            local PetData = require(game.ReplicatedStorage.Shared.Data.PetData)
+            if type(args.id) ~= "string" or not PetData.Get(args.id) then return false, "Unknown pet id" end
+            data.OwnedPets = data.OwnedPets or {}
+            if #data.OwnedPets >= PetData.MAX_OWNED then return false, "Their pet box is full" end
+            local pet = { id = Utils.GenerateId(), type = args.id, variant = variant, hatchedAt = Utils.UnixTimestamp(), grown = 0 }
+            table.insert(data.OwnedPets, pet)
+            PetData.NoteSeen(data, pet)
+            PlayerDataService.MarkDirty(target)
+            require(script.Parent.PetService).Sync(target)
+            Audit(admin, action, { target = target.UserId, id = args.id, variant = variant })
+            return true, string.format("Gave %s a %s", target.Name, PetData.DisplayName(pet))
+        end
+        local bp = type(args.id) == "string" and require(game.ReplicatedStorage.Shared.Data.RecipeData).Get(args.id)
+        if not bp then return false, "Unknown blueprint id" end
+        local GolemData = require(game.ReplicatedStorage.Shared.Data.GolemData)
+        local seconds = ((GolemData.Tiers[bp.tier] or {}).durabilityHours or 72) * 3600
+        table.insert(data.Golems, {
+            id = Utils.GenerateId(), blueprintId = args.id, element = bp.element, tier = bp.tier, skinId = "default", deployed = false,
+            variant = variant, quality = require(game.ReplicatedStorage.Shared.Modules.CraftRules).QualityFor(bp), rarity = GolemData.RarityForTier(bp.tier), _carriedResources = 0, _accumulatedResources = 0,
+            _durabilitySeconds = seconds, _maxDurabilitySeconds = seconds, craftedAt = Utils.UnixTimestamp(),
+        })
+        PlayerDataService.MarkDirty(target)
+        Audit(admin, action, { target = target.UserId, id = args.id, variant = variant })
+        return true, string.format("Gave %s a %s tier %d Golem", target.Name, bp.element, bp.tier)
+
     elseif action == "event" then
         local kind, multiplier, hours = args.kind, tonumber(args.multiplier), tonumber(args.hours)
         if kind ~= "xp" and kind ~= "drops" then return false, "Kind must be xp or drops" end
