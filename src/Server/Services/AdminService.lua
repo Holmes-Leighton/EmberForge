@@ -407,6 +407,11 @@ function AdminService.Init(LiveOps, Notify)
             elseif kind == "material" then data.Inventory[id] = (data.Inventory[id] or 0) + (qty or 1)
             elseif kind == "growpets" then require(script.Parent.PetService).Grow(player, qty or 0)      -- fast-forward worn time (seconds)
             elseif kind == "coins" then data.EmberCoins = (data.EmberCoins or 0) + (qty or 0)
+            elseif kind == "wear" then                                       -- set every Golem's durability to `qty` (0..1) of its maximum (tiredness test)
+                for _, g in ipairs(data.Golems or {}) do
+                    g._maxDurabilitySeconds = g._maxDurabilitySeconds or g._durabilitySeconds or 259200
+                    g._durabilitySeconds = g._maxDurabilitySeconds * math.clamp(qty or 0, 0, 1)
+                end
             elseif kind == "quarryage" and data.Quarry then                  -- age every Quarry node by `qty` hours (maturity test)
                 for _, p in ipairs(data.Quarry.placed or {}) do if p.born then p.born -= (qty or 0) * 3600 end end
             elseif kind == "playerlevel" then data.PlayerLevel = tonumber(id) or data.PlayerLevel

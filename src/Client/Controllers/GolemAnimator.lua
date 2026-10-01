@@ -13,6 +13,7 @@ local CollectionService = game:GetService("CollectionService")
 local IdleMoves = require(game.ReplicatedStorage.Shared.Modules.IdleMoves)
 local GolemWalk = require(game.ReplicatedStorage.Shared.Modules.GolemWalk)
 local GolemMotion = require(game.ReplicatedStorage.Shared.Modules.GolemMotion)
+local Players = game:GetService("Players")
 
 local GolemAnimator = {}
 
@@ -65,6 +66,61 @@ end
 local function Rest(base, p)
     if not p then return nil end
     return { part = p, rel = base:ToObjectSpace(p.CFrame), pivot = base:ToObjectSpace(p:GetPivot()) }
+end
+
+-- A small durability bar under the owner tag: green, amber, red. It shows on your own Golems always, and on other players' Golems only once they are
+-- nearly worn out (so visitors see why one is slumped). A worn-out Golem's bar says it needs repairing.
+local function MakeBar(model)
+    local head = model:FindFirstChild("Head", true)
+    if not head then return nil end
+    local gui = Instance.new("BillboardGui")
+    gui.Name = "DurabilityBar"
+    gui.Size = UDim2.new(0, 120, 0, 24)
+    gui.StudsOffset = Vector3.new(0, 4.8, 0)
+    gui.SizeOffset = Vector2.new(0, -2.6)                  -- just under the three-line owner tag
+    gui.MaxDistance = 90
+    gui.Adornee = head
+    gui.Parent = head
+    local back = Instance.new("Frame")
+    back.Name = "Back"
+    back.Size = UDim2.new(1, 0, 0, 10)
+    back.BackgroundColor3 = Color3.fromRGB(24, 18, 16)
+    back.BorderSizePixel = 0
+    back.Parent = gui
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 5)
+    corner.Parent = back
+    local fill = Instance.new("Frame")
+    fill.Name = "Fill"
+    fill.Position = UDim2.new(0, 2, 0, 2)
+    fill.Size = UDim2.new(1, -4, 1, -4)
+    fill.BorderSizePixel = 0
+    fill.Parent = back
+    local fillCorner = Instance.new("UICorner")
+    fillCorner.CornerRadius = UDim.new(0, 4)
+    fillCorner.Parent = fill
+    local note = Instance.new("TextLabel")
+    note.Name = "Note"
+    note.Position = UDim2.new(0, 0, 0, 11)
+    note.Size = UDim2.new(1, 0, 0, 13)
+    note.BackgroundTransparency = 1
+    note.Text = ""
+    note.TextColor3 = Color3.fromRGB(255, 120, 100)
+    note.TextStrokeTransparency = 0.3
+    note.Font = Enum.Font.GothamBold
+    note.TextSize = 12
+    note.Parent = gui
+    local function Refresh()
+        local f = model:GetAttribute("Durability") or 1
+        local mine = model:GetAttribute("OwnerUserId") == Players.LocalPlayer.UserId
+        gui.Enabled = mine or f <= GolemMotion.LOW
+        fill.Size = UDim2.new(math.max(0.02, f), -4, 1, -4)
+        fill.BackgroundColor3 = GolemMotion.BarColour(f)
+        note.Text = f <= 0 and "NEEDS REPAIR" or (f <= GolemMotion.LOW and "Tired" or "")
+    end
+    model:GetAttributeChangedSignal("Durability"):Connect(Refresh)
+    Refresh()
+    return gui
 end
 
 local function Track(model)
@@ -133,6 +189,12 @@ local function Track(model)
     for _, p in ipairs(model:GetDescendants()) do
         if p:IsA("BasePart") and p:GetAttribute("Tint") then table.insert(info.tinted, { part = p, base = p.Color }) end
     end
+    -- lights that dim as the Golem tires
+    info.lights = {}
+    for _, d in ipairs(model:GetDescendants()) do
+        if d:IsA("PointLight") then table.insert(info.lights, { light = d, base = d.Brightness }) end
+    end
+    info.bar = MakeBar(model)
     golems[model] = info
 end
 
@@ -228,20 +290,34 @@ local function Step()
                     -- (GolemWalk), and moves like one body: the torso twists and leans into every strike, the head follows a beat behind, and on a walk
                     -- the weight shifts, the hips sway and each foot lifts. Every limb turns about its own pivot.
                     local tempo = info.tempo or 1
+                    -- tiredness: slower swings, a sag, dimmer glow; at zero it stops where it stands and sits down
+                    local fx = GolemMotion.Fatigue(model:GetAttribute("Durability") or 1)
+                    for _, l in ipairs(info.lights or {}) do
+                        if l.light.Parent then l.light.Brightness = l.base * fx.glow end
+                    end
                     local ws = GolemWalk.Sample(info.walkState, t)
+                    if fx.stopped then
+                        info.frozen = info.frozen or { x = ws.x, z = ws.z, yaw = 0, walking = false, env = 0, stride = 0 }       -- stays exactly where it broke down
+                        ws = info.frozen
+                    else
+                        info.frozen = nil
+                    end
                     local walking = ws.walking
-                    local clock = t * tempo / SWING_PERIOD + phase / (math.pi * 2)
+                    local dtm = math.min(0.1, t - (info.lastT or t))
+                    info.lastT = t
+                    info.swingClock = (info.swingClock or (phase / (math.pi * 2))) + dtm * tempo * fx.tempo / SWING_PERIOD
+                    local clock = info.swingClock
                     local cycle = math.floor(clock)
                     local u = clock - cycle
                     local r = GolemMotion.Raise(u)                                    -- 0 = pick on the ground, 1 = overhead
                     local drive = GolemMotion.Drive(u)                                -- -1 leaning back on the wind-up ... +1 driving forward at impact
                     local headR = GolemMotion.Lagged(u, 0.06)                         -- the head and shoulders follow a beat behind the arm
-                    local rise = (r * 1.2)                                            -- the arm angle in radians while mining
+                    local rise = r * 1.2 * (1 - fx.slump * 0.55)                    -- the arm angle in radians while mining (a tired arm is raised less)
                     local stepT = t * GolemWalk.STRIDE_RATE
                     local stride = math.sin(stepT) * 0.4 * ws.env
                     local raise = rise + (0.55 - rise) * ws.env                      -- during a walk the pick arm hangs and swings a little
                     -- idle move (only while standing and mining): whole-body motion plus an arm pose blended over the mining swing
-                    local move, mk = IdleMoves.Step(info.idle, t, not walking)
+                    local move, mk = IdleMoves.Step(info.idle, t, not walking and not fx.stopped)
                     local ibob, ipitch, iroll, iyaw = IdleMoves.Body("golem", move, mk, t)
                     local w = move and math.sin(math.clamp(mk, 0, 1) * math.pi) or 0
                     w = math.min(1, w * 2.5)                                             -- quick in and out, holds in between
@@ -251,12 +327,12 @@ local function Step()
                     elseif move == "inspect" then xL, xR = xL + (0.1 - xL) * w, xR + (1.15 - xR) * w end
                     -- the whole body works with the arm: lean (negative pitch = forward) and twist into the strike, sway and shift weight on a walk
                     local mine = 1 - ws.env
-                    local lean = -drive * 0.09 * mine - 0.05 * ws.env
+                    local lean = -drive * 0.09 * mine - 0.05 * ws.env - fx.slump * (fx.stopped and 0.3 or 0.18)
                     local twist = drive * 0.1 * mine + math.cos(stepT) * 0.06 * ws.env
                     local roll = math.sin(stepT) * 0.05 * ws.env
-                    local settle = (r < 0.2 and (0.2 - r) * 0.5 or 0) * mine              -- the body sinks a little as the pick lands
+                    local settle = (r < 0.2 and (0.2 - r) * 0.5 or 0) * mine + fx.slump * (fx.stopped and 2.4 or 0.8)       -- sinks as the pick lands, and sags (sits, when broken)
                     -- puff dust the moment the pick lands
-                    if not walking then
+                    if not walking and not fx.stopped then
                         local strike = cycle + (u >= GolemMotion.IMPACT and 1 or 0)
                         if info.lastStrike ~= nil and strike ~= info.lastStrike and info.dust then info.dust:Emit(8) end
                         info.lastStrike = strike
@@ -268,7 +344,7 @@ local function Step()
                     if info.rest then model:PivotTo(b * info.rest) end
                     if info.legs then
                         for _, l in ipairs(info.legs) do
-                            local swing = GolemWalk.LegSwing(ws, t, l.side)
+                            local swing = fx.stopped and 1.2 or GolemWalk.LegSwing(ws, t, l.side)       -- a broken Golem sits with its legs out in front
                             local legPhase = stepT + (l.side == 1 and 0 or math.pi)
                             local lift = walking and math.max(0, math.cos(legPhase)) * 0.3 * ws.env * scale or 0       -- the foot lifts as the leg swings forward
                             l.part.CFrame = b * CFrame.new(0, lift, 0) * l.pivot * CFrame.Angles(swing, 0, 0) * l.pivot:Inverse() * l.rel
@@ -276,7 +352,7 @@ local function Step()
                     end
                     if info.head then
                         local h = info.head
-                        local nod = (move == "inspect") and 0.35 * w or 0
+                        local nod = ((move == "inspect") and 0.35 * w or 0) + fx.slump * 0.3
                         nod = nod - (0.5 - headR) * 0.22 * mine                           -- a nod into each strike, a beat after the arm
                         local look = (move == "look" and math.sin(mk * math.pi * 3) * 0.7 * w or 0) - twist * 0.6       -- eyes stay forward as the torso twists
                         h.part.CFrame = b * h.pivot * CFrame.Angles(nod, look, 0) * h.pivot:Inverse() * h.rel

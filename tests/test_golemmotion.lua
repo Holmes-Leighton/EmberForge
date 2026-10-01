@@ -36,4 +36,21 @@ expect(math.abs(GM.Lagged(0.5, 0.1) - GM.Raise(0.4)) < 1e-9, "the head follows a
 local backs, fwd = 9, -9
 for i = 0, 100 do local d = GM.Drive(i / 100) backs, fwd = math.min(backs, d), math.max(fwd, d) end
 expect(backs < -0.1 and fwd > 0.9 and fwd <= 1.0001, "body leans back on the wind-up and drives forward on the strike")
+print("== Golem tiredness")
+expect(GM.DurabilityOf({ _durabilitySeconds = 50, _maxDurabilitySeconds = 100 }) == 0.5, "durability is a share of the maximum")
+expect(GM.DurabilityOf({}) == 1 and GM.DurabilityOf({ _durabilitySeconds = -5, _maxDurabilitySeconds = 100 }) == 0, "no wear tracked is fresh; below zero clamps to broken")
+local fresh, mid, low, dead = GM.Fatigue(1), GM.Fatigue(0.5), GM.Fatigue(0.1), GM.Fatigue(0)
+expect(fresh.tempo == 1 and fresh.slump == 0 and fresh.glow == 1 and not fresh.stopped, "a fresh Golem is unaffected")
+expect(mid.tempo == 1 and mid.slump == 0, "half durability is still full speed")
+expect(low.tempo < 1 and low.tempo > 0.45 and low.slump > 0 and low.glow < 1, "a low Golem slows, sags and dims")
+expect(dead.stopped and dead.tempo == 0 and dead.slump == 1 and dead.glow == 0.25, "a broken Golem stops, slumps fully and dims")
+local prev = 1
+local mono = true
+for i = 100, 0, -1 do
+    local fx = GM.Fatigue(i / 100)
+    if fx.tempo > prev + 1e-9 then mono = false end
+    prev = fx.tempo
+end
+expect(mono, "it only ever gets slower as durability falls")
+expect(GM.BarColour(0.9) ~= GM.BarColour(0.4) and GM.BarColour(0.4) ~= GM.BarColour(0.1), "the bar goes green, then amber, then red")
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")

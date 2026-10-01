@@ -191,6 +191,18 @@ end
 
 -- ── Repair ───────────────────────────────────────────────────────────────────
 -- Costs 20% of the tier's material requirements; restores durability to max.
+-- What repairing a Golem costs: 20% of its tier's craft materials, rounded up (at least 1 of each)
+function GolemService.RepairCost(golem)
+    local tierData = GolemData.Tiers[golem.tier]
+    if not tierData then return nil end
+    local cost = {}
+    for _, req in ipairs(tierData.materialsRequired) do
+        table.insert(cost, { id = req.id, qty = math.max(1, math.ceil(req.qty * 0.20)) })
+    end
+    return cost
+end
+
+-- Repairs a Golem, whether it is resting in the Forge or standing at work in a mining zone (it keeps working afterwards)
 function GolemService.RepairGolem(player, golemId)
     local data = PlayerDataService.Get(player)
     if not data then return false, "No player data" end
@@ -200,16 +212,13 @@ function GolemService.RepairGolem(player, golemId)
         if g.id == golemId then targetGolem = g; break end
     end
     if not targetGolem then return false, "Golem not found" end
-    if targetGolem.deployed then return false, "Cannot repair a deployed golem" end
 
     local tierData = GolemData.Tiers[targetGolem.tier]
     if not tierData then return false, "Unknown tier" end
+    local maxDurability = targetGolem._maxDurabilitySeconds or tierData.durabilityHours * 3600
+    if (targetGolem._durabilitySeconds or maxDurability) >= maxDurability then return false, "It doesn't need repairing" end
 
-    -- Build repair cost at 20% of original craft cost (rounded up)
-    local repairCost = {}
-    for _, req in ipairs(tierData.materialsRequired) do
-        table.insert(repairCost, { id = req.id, qty = math.max(1, math.ceil(req.qty * 0.20)) })
-    end
+    local repairCost = GolemService.RepairCost(targetGolem)
 
     if not PlayerDataService.ConsumeMaterials(player, repairCost) then
         return false, "Insufficient materials"

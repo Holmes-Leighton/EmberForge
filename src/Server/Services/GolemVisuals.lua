@@ -8,6 +8,10 @@ local GolemModel        = require(game.ReplicatedStorage.Shared.Modules.GolemMod
 local GolemNames        = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 local WorldBuilder      = require(script.Parent.WorldBuilder)
+local GolemMotion       = require(game.ReplicatedStorage.Shared.Modules.GolemMotion)
+local GolemService      = require(script.Parent.GolemService)
+local RemoteEvents      = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
+local MaterialData      = require(game.ReplicatedStorage.Shared.Data.MaterialData)
 
 local GolemVisuals = {}
 
@@ -34,7 +38,17 @@ local function StyleKey(golem, equipped)
     return table.concat({ golem.variant or "", golem.zoneId or "", equipped.GolemAccessory or "", equipped.ParticleEffect or "", equipped.GolemSkin or "", GolemModel.AssetVersion() }, "|")
 end
 
-local function Build(golem, ownerName, equipped)
+-- "20 Basic Ore, 10 Coal" for the repair prompt
+local function CostText(golem)
+    local bits = {}
+    for _, req in ipairs(GolemService.RepairCost(golem) or {}) do
+        local def = MaterialData.Get(req.id)
+        table.insert(bits, string.format("%d %s", req.qty, def and def.displayName or req.id))
+    end
+    return table.concat(bits, ", ")
+end
+
+local function Build(golem, ownerName, equipped, owner)
     local center = WorldBuilder.GetZoneCenter(golem.zoneId)
     if not center then return nil end
 
@@ -54,6 +68,9 @@ local function Build(golem, ownerName, equipped)
     model:SetAttribute("Scale", scale)
     model:SetAttribute("Phase", math.random() * math.pi * 2)
     model:SetAttribute("Element", golem.element)                -- the animator gives each element its own pace and dust
+    model:SetAttribute("OwnerUserId", owner and owner.UserId or 0)     -- the client shows a durability bar on its owner's Golems
+    model:SetAttribute("Durability", GolemMotion.DurabilityOf(golem))  -- 1 fresh .. 0 broken: slows, slumps and dims the Golem, and fills the bar
+    model:SetAttribute("GolemId", golem.id)
 
     local desc = GolemNames.Describe(golem)
     local head = model:FindFirstChild("Head", true)
@@ -113,8 +130,36 @@ local function Build(golem, ownerName, equipped)
         rarity.Parent = tag
     end
 
+    -- Repair in place: stand next to a tired Golem and press E (only its owner can; it costs 20% of its craft materials). Shown once it is low.
+    local anchor = head or model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
+    local prompt
+    if anchor then
+        prompt = Instance.new("ProximityPrompt")
+        prompt.Name = "RepairPrompt"
+        prompt.ActionText = "Repair"
+        prompt.ObjectText = "Needs " .. CostText(golem)
+        prompt.HoldDuration = 0.4
+        prompt.MaxActivationDistance = 14
+        prompt.RequiresLineOfSight = false
+        prompt.Enabled = GolemMotion.DurabilityOf(golem) <= GolemMotion.LOW
+        prompt.Parent = anchor
+        local golemId = golem.id
+        prompt.Triggered:Connect(function(who)
+            if who ~= owner then
+                RemoteEvents.Notify:FireClient(who, "Not yours", "Only " .. tostring(ownerName) .. " can repair this Golem.")
+                return
+            end
+            local ok, err = GolemService.RepairGolem(who, golemId)
+            if ok then
+                RemoteEvents.Notify:FireClient(who, "Repaired!", "Your Golem is back to work.")
+            else
+                RemoteEvents.Notify:FireClient(who, "Can't repair yet", tostring(err))
+            end
+        end)
+    end
+
     model.Parent = folder
-    return { model = model, zoneId = golem.zoneId, slot = slot, style = StyleKey(golem, equipped) }
+    return { model = model, zoneId = golem.zoneId, slot = slot, style = StyleKey(golem, equipped), prompt = prompt, warned = 0 }
 end
 
 local function Remove(id)
@@ -135,7 +180,29 @@ local function Reconcile()
                 local equipped = (data and data.Equipped) or {}
                 local e = entries[g.id]
                 if e and e.style ~= StyleKey(g, equipped) then Remove(g.id) e = nil end
-                if not e then entries[g.id] = Build(g, player.DisplayName, equipped) end
+                if not e then
+                    e = Build(g, player.DisplayName, equipped, player)
+                    entries[g.id] = e
+                end
+                if e and e.model then                      -- keep the wear showing, and tell the owner when a Golem is getting tired or has stopped
+                    local f = GolemMotion.DurabilityOf(g)
+                    e.model:SetAttribute("Durability", f)
+                    if e.prompt then
+                        e.prompt.Enabled = f <= GolemMotion.LOW
+                        e.prompt.ObjectText = "Needs " .. CostText(g)
+                    end
+                    local level = f <= 0 and 2 or (f <= GolemMotion.LOW and 1 or 0)
+                    if level > (e.warned or 0) then
+                        local GolemNames = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
+                        local name = GolemNames.Describe(g).shortName
+                        if level == 2 then
+                            RemoteEvents.Notify:FireClient(player, "Golem stopped", string.format("Your %s has worn out and stopped mining. Stand by it and press E to repair it.", name))
+                        else
+                            RemoteEvents.Notify:FireClient(player, "Golem getting tired", string.format("Your %s is wearing down. Repair it soon (stand by it and press E).", name))
+                        end
+                    end
+                    e.warned = level
+                end
             end
         end
     end

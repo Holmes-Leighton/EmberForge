@@ -43,4 +43,34 @@ function GolemMotion.Drive(u)
     return math.clamp(0.55 - r, -0.45, 0.55) / 0.55
 end
 
+-- ── Tiredness ─────────────────────────────────────────────────────────────────
+-- A Golem wears down while it works. `f` is how much durability is left (1 = fresh, 0 = broken). Below LOW it starts to look and move tired; at 0 it sits down.
+GolemMotion.LOW = 0.25
+
+-- The share of durability left for a Golem record from the player's save (1 when it has no wear tracked)
+function GolemMotion.DurabilityOf(golem)
+    local d, max = golem._durabilitySeconds, golem._maxDurabilitySeconds
+    if type(d) ~= "number" or type(max) ~= "number" or max <= 0 then return 1 end
+    return math.clamp(d / max, 0, 1)
+end
+
+-- What tiredness does to a Golem's body. Returns a table:
+--   tempo   multiplier on how fast it swings (1 fresh, down to 0.45)
+--   slump   how far the body sags, 0..1 (0 until it is low, 1 when broken)
+--   glow    multiplier on its lights and glow (1 fresh, 0.25 broken)
+--   stopped true when it has broken down: it sits and does nothing
+function GolemMotion.Fatigue(f)
+    f = math.clamp(f or 1, 0, 1)
+    if f <= 0 then return { tempo = 0, slump = 1, glow = 0.25, stopped = true } end
+    local low = math.clamp(1 - f / GolemMotion.LOW, 0, 1)                -- 0 while comfortable, rising to 1 as it reaches zero
+    return { tempo = 1 - 0.55 * low, slump = low * 0.7, glow = 1 - 0.75 * low, stopped = false }
+end
+
+-- The colour of the durability bar: green, amber, red
+function GolemMotion.BarColour(f)
+    if f > 0.5 then return Color3.fromRGB(90, 210, 110) end
+    if f > GolemMotion.LOW then return Color3.fromRGB(240, 190, 60) end
+    return Color3.fromRGB(225, 70, 60)
+end
+
 return GolemMotion
