@@ -249,7 +249,7 @@ local function RenderDetail()
     subLbl.Text = string.format("Tier %d  -  %s  -  %s", bp.tier, tierDef and tierDef.name or "", rarityName)
     subLbl.TextColor3 = Theme.Colors[rarityName] or Theme.Colors.TextSecondary
     descLbl.Text = (elemDef and elemDef.description or "")
-        .. ((elemDef and elemDef.skill) and ("\n✦ " .. elemDef.skill.name .. ": " .. elemDef.skill.text) or "")
+        .. ((elemDef and elemDef.skill) and ("\nSkill - " .. elemDef.skill.name .. ": " .. elemDef.skill.text) or "")
     local zones = ZonesFor(bp.element)
     zoneLbl.Text = #zones > 0 and ("Unlocks mining zone: " .. table.concat(zones, ", ")) or ""
 

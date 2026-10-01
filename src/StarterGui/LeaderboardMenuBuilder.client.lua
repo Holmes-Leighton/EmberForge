@@ -24,6 +24,7 @@ container.BackgroundColor3  = Theme.Colors.Background
 container.BorderSizePixel   = 0
 container.Parent            = gui
 Theme.AddCorner(container, Theme.Corner.Large)
+require(game.ReplicatedStorage.Shared.Modules.ScaleUI).Apply(container, 540, 560)      -- centred and shrunk to fit any screen
 
 -- Title bar
 local titleBar = Instance.new("Frame")
@@ -39,7 +40,7 @@ tf.BackgroundColor3 = Theme.Colors.Panel
 tf.BorderSizePixel  = 0
 tf.Parent           = titleBar
 
-local titleLabel = Theme.Label(titleBar, "🏆  Leaderboards", Theme.TextSize.Heading,
+local titleLabel = Theme.Label(titleBar, "Leaderboards", Theme.TextSize.Heading,
     Theme.Colors.Gold, Theme.Fonts.Heading, "TitleLabel")
 titleLabel.Size             = UDim2.new(0.8, 0, 1, 0)
 titleLabel.Position         = UDim2.new(0, 14, 0, 0)
@@ -62,11 +63,11 @@ Theme.AddListLayout(tabRow, Enum.FillDirection.Horizontal, 6)
 Theme.AddPadding(tabRow, 0, 0, 0, 0)
 
 local CATEGORIES = {
-    { id = "ResourcesMined", label = "⛏ Resources" },
-    { id = "GolemsCrafted",  label = "🗿 Golems"    },
-    { id = "ForgeLevel",     label = "🔥 Forge"     },
-    { id = "TradeCount",     label = "🔄 Trades"    },
-    { id = "Ascensions",     label = "✦ Ascended"   },
+    { id = "ResourcesMined", label = "Resources" },
+    { id = "GolemsCrafted",  label = "Golems" },
+    { id = "ForgeLevel",     label = "Forge" },
+    { id = "TradeCount",     label = "Trades" },
+    { id = "Ascensions",     label = "Ascended" },
 }
 
 local tabBtns      = {}
@@ -95,7 +96,7 @@ listLayout.Parent        = scroll
 Theme.AddPadding(scroll, 4, 4, 4, 4)
 
 -- Refresh button
-local refreshBtn = Theme.Button(container, "↻  Refresh", Theme.Colors.Panel,
+local refreshBtn = Theme.Button(container, "Refresh", Theme.Colors.Panel,
     Theme.Colors.TextSecondary, "RefreshButton")
 refreshBtn.Size     = UDim2.new(0, 120, 0, 30)
 refreshBtn.Position = UDim2.new(1, -128, 1, -38)

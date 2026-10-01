@@ -212,7 +212,7 @@ function Theme.Scrim(parent, transparency)
     s.BackgroundColor3 = Theme.Colors.Scrim
     s.BackgroundTransparency = transparency or 0.5
     s.BorderSizePixel = 0
-    s.ZIndex = 5
+    s.ZIndex = 0              -- behind the window it dims (a higher layer would dim the window itself)
     s.Parent = parent
     return s
 end

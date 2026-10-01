@@ -22,6 +22,7 @@
 - [ ] Two "Storm Golem" entries in the Anvil list (Tier 1 and Tier 4): show the tier or a distinct name.
 - [ ] World labels (pad names, anvil, "Open to everyone") stack on each other near the anvil.
 - [ ] Several toasts at once cover the sidebar.
+- [ ] Ascension lives inside the Build menu: consider its own tile once players reach Forge Level 10; coin amounts show as "25.0K" (use 25K).
 - [ ] Balance pass with real play data: build prices, Ascension costs, ladder tiers, prize sizes, pad ore rates.
 
 ## Features not built

@@ -547,7 +547,8 @@ end)
 
 RemoteEvents.GetGuildInfo.OnServerInvoke = function(player)
     local GuildService = require(script.Parent.Services.GuildService)
-    return { mine = GuildService.GetMine(player), top = GuildService.Top(10) }
+    local pdata = PlayerDataService.Get(player)
+    return { mine = GuildService.GetMine(player), top = GuildService.Top(10), coins = pdata and pdata.EmberCoins or 0 }
 end
 
 -- ── Rewards: codes, ranked ladder, login streak ──────────────────────────────

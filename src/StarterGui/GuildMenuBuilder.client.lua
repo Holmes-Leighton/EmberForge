@@ -213,6 +213,7 @@ local Reload
 local function Reload_()
     local ok, fresh = pcall(function() return RemoteEvents.GetGuildInfo:InvokeServer() end)
     if ok and fresh then info = fresh end
+    if info and not info.mine and (tab == "Mine" or tab == "Chat") then tab = "Find" end      -- no guild yet: show how to join one
     for id, b in pairs(tabButtons) do
         local on = id == tab
         b.BackgroundColor3 = on and Theme.Colors.Accent or Theme.Colors.PanelAlt
