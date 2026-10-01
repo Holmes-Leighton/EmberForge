@@ -238,7 +238,19 @@ sidebar.BackgroundTransparency = 0.25
 sidebar.BorderSizePixel = 0
 sidebar.Parent = gui
 Theme.AddCorner(sidebar, UDim.new(0, 20))
-ScaleUI.ApplyHud(sidebar)
+do
+    -- like ApplyHud, but never taller than the screen (the column grows with every tile we add)
+    local scale = Instance.new("UIScale")
+    scale.Parent = sidebar
+    local function update()
+        local cam = workspace.CurrentCamera
+        local vy = cam and cam.ViewportSize.Y or 720
+        local fit = (vy - 36 - 16) / (nSecondary * 64 + 8)         -- 36 = Roblox top bar
+        scale.Scale = math.clamp(math.min(vy / 720, fit), 0.4, 1)
+    end
+    update()
+    if workspace.CurrentCamera then workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(update) end
+end
 
 -- On a short (landscape phone) screen the centred column runs into the jump button at the bottom right,
 -- so it sits at the top edge instead; on a tall screen it stays centred.

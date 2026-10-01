@@ -108,4 +108,27 @@ for id, bp in pairs(RD.Blueprints) do
 end
 expect(mat.EventCatalyst, "EventCatalyst is earnable through challenges")
 
+print("== forge builder, ascension and ladder are reachable")
+local FBD = load("game/ReplicatedStorage/Shared/Data/ForgeBuildData")
+local AD = load("game/ReplicatedStorage/Shared/Data/AscensionData")
+local LD = load("game/ReplicatedStorage/Shared/Data/LadderData")
+local ES = load("game/ReplicatedStorage/Shared/Data/EventScheduleData")
+local seenInShop = {}
+for h = 0, 2000 do
+    for _, id in ipairs(FBD.Stock(1800000000 + h * 300)) do seenInShop[id] = (seenInShop[id] or 0) + 1 end
+end
+local total = 0
+for _, it in ipairs(FBD.Items) do
+    expect((seenInShop[it.id] or 0) > 0, it.id .. " appears in the shop (" .. (seenInShop[it.id] or 0) .. "/2001 restocks)")
+    expect(FBD.BUY_PER_RESTOCK >= 1 and it.maxOwned >= 1, it.id .. " can be bought")
+    total += 1
+end
+expect(total >= 30, "the catalogue holds " .. total .. " pieces")
+expect(AD.FORGE_LEVEL <= maxForge, "Ascension's Forge level requirement (" .. AD.FORGE_LEVEL .. ") is reachable")
+local lastTier = LD.Tiers[#LD.Tiers]
+expect(lastTier.points > 0 and lastTier.points < 1e8, "the top ladder tier needs a reachable " .. lastTier.points .. " points")
+local surgeKinds = {}
+for _, s in ipairs(ES.Surges) do surgeKinds[s.kind] = true end
+expect(surgeKinds.drops and surgeKinds.luck and surgeKinds.xp, "surges cover drops, luck and XP")
+
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")

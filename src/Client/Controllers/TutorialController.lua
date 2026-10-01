@@ -8,6 +8,7 @@ local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
 local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local Theme        = require(game.ReplicatedStorage.Shared.Modules.Theme)
+local ScaleUI      = require(game.ReplicatedStorage.Shared.Modules.ScaleUI)
 
 local TutorialController = {}
 
@@ -26,6 +27,8 @@ local HOW_TO_PLAY = table.concat({
     "3.  Open the 🔥 Forge menu and deploy it to a mining zone, then press ⛏ Collect Resources.",
     "4.  Craft more Golems from blueprints. Each new element unlocks a new mining zone.",
     "5.  Level up to unlock stronger pads (3x, 9x, 25x, 100x). Finish 📋 Challenges, trade in the 🏪 Market, check 🏆 Leaders.",
+    "6.  Hatch 🐾 Pets for small boosts, 🔨 Build mine carts and furnaces on your forge, join a 🛡 Guild, and collect a 🎁 Reward every day.",
+    "7.  Every hour a bonus event runs for everyone (see the banner at the top). Watch for surges!",
     "",
     "Tip: follow the roads to the six tunnels in the far wall: each leads to a mining cave. Visit other players' forges to trade.",
 }, "\n")
@@ -48,7 +51,7 @@ local function Build()
     tracker.Name = "Tracker"
     tracker.AnchorPoint = Vector2.new(0.5, 0)
     tracker.Size = UDim2.new(0, 400, 0, 70)
-    tracker.Position = UDim2.new(0.5, 0, 0, 12)
+    tracker.Position = UDim2.new(0.5, 0, 0, 62)       -- under the event banner
     tracker.BackgroundColor3 = Theme.Colors.Panel
     tracker.BackgroundTransparency = 0.05
     tracker.BorderSizePixel = 0
@@ -98,7 +101,8 @@ local function Build()
 
     local box = Instance.new("Frame")
     box.AnchorPoint = Vector2.new(0.5, 0.5)
-    box.Size = UDim2.new(0, 560, 0, 400)
+    box.Size = UDim2.new(0, 560, 0, 460)
+    ScaleUI.Apply(box, 560, 460)
     box.Position = UDim2.new(0.5, 0, 0.5, 0)
     box.BackgroundColor3 = Theme.Colors.Background
     box.BorderSizePixel = 0
