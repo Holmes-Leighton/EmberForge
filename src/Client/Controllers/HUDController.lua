@@ -233,8 +233,75 @@ function StartBoostCountdowns(data)
 end
 
 -- ── Resource update (called on tick) ──────────────────────────────────────────
-function HUDController.OnResourceUpdate(gains)
+-- Pad pickups: every material pops out of your character in its own random direction (an arc up and out, then it drops a little and fades), in
+-- the material's rarity colour, like the loot bursts in other games. Several pickups at once never sit in a column.
+local popGui
+local activePops = 0
+local MAX_POPS = 16
+local popRandom = Random.new()
+
+function HUDController.PadPop(gains)
+    if not popGui or not popGui.Parent then
+        popGui = Instance.new("ScreenGui")
+        popGui.Name = "PadPops"
+        popGui.ResetOnSpawn = false
+        popGui.IgnoreGuiInset = true
+        popGui.DisplayOrder = 8
+        popGui.Parent = PlayerGui
+    end
+    local cam = workspace.CurrentCamera
+    local origin = Vector2.new(popGui.AbsoluteSize.X / 2, popGui.AbsoluteSize.Y * 0.55)
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if root and cam then
+        local v, onScreen = cam:WorldToViewportPoint(root.Position + Vector3.new(0, 2.5, 0))
+        if onScreen then origin = Vector2.new(v.X, v.Y) end
+    end
+    local ids = {}
+    for matId, qty in pairs(gains) do
+        if qty >= 1 and not tostring(matId):find("^__") then table.insert(ids, matId) end
+    end
+    table.sort(ids)
+    for _, matId in ipairs(ids) do
+        if activePops >= MAX_POPS then return end
+        local mat = MaterialData.Get(matId)
+        local lbl = Instance.new("TextLabel")
+        lbl.AnchorPoint = Vector2.new(0.5, 0.5)
+        lbl.Size = UDim2.new(0, 190, 0, 26)
+        lbl.Position = UDim2.new(0, origin.X + popRandom:NextNumber(-12, 12), 0, origin.Y + popRandom:NextNumber(-8, 8))
+        lbl.BackgroundTransparency = 1
+        lbl.Text = "+" .. Utils.FormatNumber(gains[matId]) .. " " .. (mat and mat.displayName or matId)
+        lbl.TextColor3 = (mat and Theme.Colors[mat.rarity]) or Color3.fromRGB(255, 220, 60)
+        lbl.TextStrokeColor3 = Color3.fromRGB(10, 6, 4)
+        lbl.TextStrokeTransparency = 0.15
+        lbl.Font = Enum.Font.GothamBlack
+        lbl.TextSize = popRandom:NextInteger(18, 24)
+        lbl.Rotation = popRandom:NextNumber(-8, 8)
+        lbl.Parent = popGui
+        activePops += 1
+        -- mostly up and out to either side, sometimes sideways or down-and-out: a random direction every time
+        local angle = popRandom:NextNumber(0, 1) < 0.8 and math.rad(popRandom:NextNumber(205, 335)) or math.rad(popRandom:NextNumber(0, 360))
+        local reach = popRandom:NextNumber(70, 190)
+        local peak = UDim2.new(0, origin.X + math.cos(angle) * reach, 0, origin.Y + math.sin(angle) * reach)
+        local fall = UDim2.new(0, origin.X + math.cos(angle) * reach * 1.15, 0, origin.Y + math.sin(angle) * reach + popRandom:NextNumber(18, 40))
+        local out = TweenService:Create(lbl, TweenInfo.new(0.42, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = peak })
+        local away = TweenService:Create(lbl, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+            { Position = fall, TextTransparency = 1, TextStrokeTransparency = 1 })
+        out.Completed:Connect(function() away:Play() end)
+        away.Completed:Connect(function()
+            activePops -= 1
+            lbl:Destroy()
+        end)
+        out:Play()
+    end
+end
+
+function HUDController.OnResourceUpdate(gains, elapsed)
     if not hudGui then return end
+    if elapsed == 0 then              -- a mining pad (0), as opposed to the Collect button (-1) or the coin refresh (nothing)
+        HUDController.PadPop(gains)
+        return
+    end
     -- Animate +N resource counters floating up (visual only)
     -- one label per update (a line per material, by display name) so several pickups never print on top of each other
     local lines = {}

@@ -62,8 +62,7 @@ require(script.Controllers.QuarryAnimator).Init()
 RemoteEvents.ResourcesCollected.OnClientEvent:Connect(function(gains, elapsed)
     InventoryController.OnResourcesCollected(gains)
     ForgeController.OnResourcesCollected(gains)
-    HUDController.OnResourceUpdate(gains)
-
+    HUDController.OnResourceUpdate(gains, elapsed)
 end)
 
 RemoteEvents.PendingUpdate.OnClientEvent:Connect(function(pending)

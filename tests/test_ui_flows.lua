@@ -340,6 +340,12 @@ local function toasts()
 end
 HUDController.ShowNotification("Golem Crafted!", "Ember Golem")
 expect(HUDController.MaterialInText("You collected 50 Basic Ore") == "BasicOre", "a toast about a material finds that material")
+print("== pad pickup pop-ups")
+HUDController.OnResourceUpdate({ BasicOre = 3, Coal = 1 }, 0)
+local pops = gui("PadPops")
+local popLabels = 0
+for _, c in ipairs(pops and pops:GetChildren() or {}) do if c.Text and c.Text:find("^%+") then popLabels += 1 end end
+expect(pops ~= nil and popLabels == 2, "a pad pickup pops one label per material (" .. tostring(popLabels) .. ")")
 expect(HUDController.MaterialInText("Ember Golem crafted") == nil, "a toast about something else finds none")
 HUDController.ShowNotification("Golem Crafted!", "Ember Golem")
 local n1, stack = toasts()
