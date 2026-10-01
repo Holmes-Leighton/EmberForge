@@ -71,6 +71,7 @@ function AdminService.Init(LiveOps, Notify)
             if not data then return end
             if kind == "blueprint" and not table.find(data.Blueprints, id) then table.insert(data.Blueprints, id)
             elseif kind == "material" then data.Inventory[id] = (data.Inventory[id] or 0) + (qty or 1)
+            elseif kind == "growpets" then require(script.Parent.PetService).Grow(player, qty or 0)      -- fast-forward worn time (seconds)
             elseif kind == "coins" then data.EmberCoins = (data.EmberCoins or 0) + (qty or 0)
             elseif kind == "forgelevel" then data.ForgeLevel = math.max(data.ForgeLevel or 1, tonumber(id) or 1) end
             PlayerDataService.MarkDirty(player)
