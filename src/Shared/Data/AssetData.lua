@@ -66,7 +66,7 @@ AssetData.Pack = { assetId = 130561025606346 }
 
 -- The same idea for pets (PetData): one Model whose children are named PET_<Type> (PET_Ember, PET_Coral ...).
 -- Each pet is shown at the size in PetData.Looks. Pets without a model show a mini Golem.
-AssetData.PetPack = { assetId = 0 }   -- TEMP: testing the rigged pack from ReplicatedStorage.PetAssets (old static pack: 94911546053505)
+AssetData.PetPack = { assetId = 136723892869054 }   -- segmented, animated pets (the old one-piece pack was 94911546053505)
 
 -- Crowns for Elite and Supreme Golems and pets: one unique crown design per type (Ember flames, Frost
 -- icicles, Clockwork gears ...), shared by that type's Golem and pet. One Model whose children are named
@@ -77,7 +77,7 @@ AssetData.CrownPack = { assetId = 133428041942823 }
 -- Forge buildings and props for the Forge Builder (mine cart, racks, furnaces ...): one Model whose children are
 -- named after ForgeBuildData items (MineCart, Hearth ...), each a model of mesh parts.
 -- The Quarry's nodes and buildings: one Model whose children are named after QuarryData pieces (EmberNode, DrillRig ...).
-AssetData.QuarryPack = { assetId = 0 }
+AssetData.QuarryPack = { assetId = 89170227615937 }
 AssetData.BuildPack = { assetId = 108557283111622 }
 
 local MODES = { Auto = true, Skinned = true, Parts = true, Static = true }
