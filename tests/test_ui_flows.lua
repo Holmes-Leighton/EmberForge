@@ -129,7 +129,16 @@ expect(anvil.Enabled == true, "pressing E at the anvil opens the menu")
 local list = anvil:FindFirstChild("GolemList", true)
 local rows = 0
 for _, c in ipairs(list:GetChildren()) do if c:IsA("GuiButton") then rows += 1 end end
-expect(rows == 6, "anvil lists all six blueprints (" .. rows .. ")")
+expect(rows == 33, "anvil lists every Golem, 6 owned plus the 27 still to find (" .. rows .. ")")
+local firstRow, lastRow
+for _, c in ipairs(list:GetChildren()) do
+    if c:IsA("GuiButton") and c.LayoutOrder == 1 then firstRow = c end
+    if c:IsA("GuiButton") and c.LayoutOrder == 33 then lastRow = c end
+end
+local function badgeText(row) for _, d in ipairs(row:GetChildren()) do if d:IsA("TextLabel") and (d.Text == "Find blueprint" or d.Text == "Event only" or d.Text:find("^x%d") or d.Text == "Need more") then return d.Text end end end
+expect(firstRow and badgeText(firstRow) ~= "Find blueprint", "owned Golems come first")
+local lastBadge = lastRow and badgeText(lastRow)
+expect(lastBadge == "Find blueprint" or lastBadge == "Event only", "undiscovered Golems come last, marked as still to find (" .. tostring(lastBadge) .. ")")
 local forgeBtn = anvil:FindFirstChild("ForgeButton", true)
 click(forgeBtn)
 expect(lastFired("CraftGolem") ~= nil, "Forge button sends a craft request")

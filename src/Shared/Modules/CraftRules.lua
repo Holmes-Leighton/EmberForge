@@ -105,8 +105,9 @@ function CraftRules.CraftableCount(data, bp)
     return n == math.huge and 0 or n
 end
 
--- Every blueprint the player could ever see in a craft list: owned ones + live event ones
-function CraftRules.ListBlueprints(data, availableEvents)
+-- Every blueprint the player could ever see in a craft list: owned ones + live event ones. With `includeUndiscovered` the whole catalogue is listed, so
+-- the Anvil can show the Golems still to be found (they are locked with "Blueprint not discovered yet" and a hint on how to get them).
+function CraftRules.ListBlueprints(data, availableEvents, includeUndiscovered)
     local list, seen = {}, {}
     for _, id in ipairs(data.Blueprints or {}) do
         local bp = RecipeData.Get(id)
@@ -116,7 +117,26 @@ function CraftRules.ListBlueprints(data, availableEvents)
         local bp = RecipeData.Get(id)
         if bp and not seen[id] then seen[id] = true table.insert(list, bp) end
     end
+    if includeUndiscovered then
+        for id, bp in pairs(RecipeData.Blueprints) do
+            if bp.element and not seen[id] then seen[id] = true table.insert(list, bp) end
+        end
+    end
     return list
+end
+
+-- A line telling the player where an undiscovered blueprint comes from
+function CraftRules.HowToFind(bp)
+    local src = bp and bp.source
+    local S = RecipeData.Source
+    if src == S.ForgeMilestone then
+        return bp.forgeLevelRequired and ("Found as you level your forge (Forge Level " .. bp.forgeLevelRequired .. ")") or "Found as you level your forge"
+    elseif src == S.Challenge then return "Reward for completing a challenge"
+    elseif src == S.RareDrop then return "A rare find while your Golems mine"
+    elseif src == S.SeasonalEvent then return "Appears during seasonal events"
+    elseif src == S.Trade then return "Trade for it with other players"
+    end
+    return nil
 end
 
 return CraftRules

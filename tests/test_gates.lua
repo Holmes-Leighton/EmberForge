@@ -21,4 +21,25 @@ end
 print("== Ascend tile")
 expect(not FG.Revealed("AscendButton", { ForgeLevel = 9 }) and FG.Revealed("AscendButton", { ForgeLevel = 10 }), "the Ascend tile appears at Forge Level 10")
 expect(FG.Revealed("ForgeButton", { ForgeLevel = 1 }), "other tiles are always shown")
+print("== Anvil lists every Golem")
+local CR = load("game/ReplicatedStorage/Shared/Modules/CraftRules")
+local RD = load("game/ReplicatedStorage/Shared/Data/RecipeData")
+local fresh = { Blueprints = { "BP_Ember_T1" }, ForgeLevel = 1, Inventory = {}, Golems = {} }
+local owned = CR.ListBlueprints(fresh, {})
+local everything = CR.ListBlueprints(fresh, {}, true)
+local total = 0
+for _, bp in pairs(RD.Blueprints) do if bp.element then total += 1 end end
+expect(#owned == 1, "by default only owned blueprints are listed (" .. #owned .. ")")
+expect(#everything == total and total > 5, "with the flag every Golem in the catalogue is listed (" .. #everything .. " of " .. total .. ")")
+local locked = 0
+for _, bp in ipairs(everything) do
+    local why = CR.GetLockReason(fresh, bp, {})
+    if bp.id ~= "BP_Ember_T1" then expect(why ~= nil, bp.id .. " is locked for a new player") end
+    if why and why:find("not discovered") then locked += 1 end
+end
+expect(locked > 0, "undiscovered ones say so (" .. locked .. ")")
+local found
+for _, bp in pairs(RD.Blueprints) do if bp.source == RD.Source.RareDrop then found = bp break end end
+expect(found and CR.HowToFind(found):find("rare"), "a rare-drop blueprint says where it comes from")
+expect(CR.HowToFind(RD.Get("BP_Ember_T1")) == nil, "a starting blueprint needs no hint")
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")

@@ -53,9 +53,17 @@ local function LockReason(bp)
     return CraftRules.GetLockReason(data, bp, EventSet())
 end
 
+-- Every Golem is listed: the ones you can use first, then the ones still to be found (greyed out, with a hint on how to get them)
+local function Undiscovered(bp)
+    local reason = LockReason(bp)
+    return reason ~= nil and (reason:find("not discovered") ~= nil or reason:find("Event Golem") ~= nil)
+end
+
 local function SortedBlueprints()
-    local list = CraftRules.ListBlueprints(data, EventSet())
+    local list = CraftRules.ListBlueprints(data, EventSet(), true)
     table.sort(list, function(a, b)
+        local ua, ub = Undiscovered(a), Undiscovered(b)
+        if ua ~= ub then return not ua end
         if a.tier ~= b.tier then return a.tier < b.tier end
         if a.element ~= b.element then return (ELEMENT_ORDER[a.element] or 9) < (ELEMENT_ORDER[b.element] or 9) end
         return a.id < b.id
@@ -256,7 +264,8 @@ local function RenderDetail()
     zoneLbl.Text = #zones > 0 and ("Unlocks mining zone: " .. table.concat(zones, ", ")) or ""
 
     if lock then
-        craftInfoLbl.Text = lock
+        local hint = Undiscovered(bp) and CraftRules.HowToFind(bp)
+        craftInfoLbl.Text = hint and (lock .. "\n" .. hint) or lock
         craftInfoLbl.TextColor3 = Theme.Colors.Danger
     else
         craftInfoLbl.Text = craftable > 0 and ("You can forge " .. craftable .. " right now") or "Not enough components yet"
@@ -350,6 +359,11 @@ local function RenderList()
         tierL.Size = UDim2.new(1, -160, 0, 18)
 
         local lock = LockReason(bp)
+        if Undiscovered(bp) then                                    -- not found yet: shown, but dimmed
+            nameL.TextColor3 = Theme.Colors.TextDim
+            tierL.TextColor3 = Theme.Colors.TextDim
+            pcall(function() face.ImageTransparency = 0.45 end)
+        end
         local badge = Instance.new("TextLabel")
         badge.Size = UDim2.new(0, 80, 0, 24)
         badge.Position = UDim2.new(1, -88, 0.5, -12)
