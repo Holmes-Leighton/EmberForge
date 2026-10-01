@@ -169,6 +169,39 @@ function PetData.FormatOdds(chance)
     return text
 end
 
+-- ── Collection ("pet index") ──────────────────────────────────────────────────
+-- data.PetsSeen remembers every pet (and Elite / Supreme form) the player has ever owned, even after trading it away.
+-- Keys are "Ember" for the plain pet and "Ember:Neon" / "Ember:MegaNeon" for its Elite / Supreme form.
+function PetData.SeenKey(petType, variant)
+    return variant and (petType .. ":" .. variant) or petType
+end
+
+function PetData.NoteSeen(data, pet)
+    if not data or not pet or not pet.type then return end
+    data.PetsSeen = data.PetsSeen or {}
+    data.PetsSeen[PetData.SeenKey(pet.type, pet.variant)] = true
+end
+
+-- Everything ever seen, including pets owned from before the index existed
+function PetData.SeenSet(data)
+    local seen = {}
+    for k in pairs(data and data.PetsSeen or {}) do seen[k] = true end
+    for _, pet in ipairs(data and data.OwnedPets or {}) do seen[PetData.SeenKey(pet.type, pet.variant)] = true end
+    return seen
+end
+
+-- Names of the eggs a pet can hatch from (for the "where to find it" hint)
+function PetData.EggsFor(petType)
+    local out = {}
+    for id, egg in pairs(PetData.Eggs) do
+        for _, e in ipairs(egg.pool or {}) do
+            if e.item == petType then table.insert(out, egg.displayName or id) break end
+        end
+    end
+    table.sort(out)
+    return out
+end
+
 -- The chance (0..1) of each pet in an egg, for the odds list in the UI
 function PetData.Odds(eggId)
     local egg = PetData.Eggs[eggId]

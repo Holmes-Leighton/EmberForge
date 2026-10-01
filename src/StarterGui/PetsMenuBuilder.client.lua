@@ -72,6 +72,7 @@ closeBtn.Position = UDim2.new(1, -44, 0, 7)
 closeBtn.MouseButton1Click:Connect(function() gui.Enabled = false end)
 
 local tabCol = Instance.new("Frame")
+tabCol.Name = "Tabs"
 tabCol.Position = UDim2.new(0, 8, 0, 58)
 tabCol.Size = UDim2.new(0, 150, 1, -66)
 tabCol.BackgroundColor3 = Theme.Colors.Panel
@@ -81,7 +82,7 @@ Theme.AddCorner(tabCol, Theme.Corner.Medium)
 Theme.AddPadding(tabCol, 8, 8, 8, 8)
 Theme.AddListLayout(tabCol, Enum.FillDirection.Vertical, 6)
 local tabButtons = {}
-for _, t in ipairs({ { "Pets", "My Pets" }, { "Eggs", "Eggs" } }) do
+for _, t in ipairs({ { "Pets", "My Pets" }, { "Eggs", "Eggs" }, { "Index", "Collection" } }) do
     local b = Theme.Button(tabCol, t[2], Theme.Colors.PanelAlt, Theme.Colors.TextSecondary, t[1] .. "Tab")
     b.Size = UDim2.new(1, 0, 0, 38)
     b.TextSize = 14
@@ -365,6 +366,48 @@ local function Reload()
                 pct.TextXAlignment = Enum.TextXAlignment.Center
             end
             Note("Odds: " .. table.concat(parts, "  |  "), 66)
+        end
+        return
+    end
+
+    -- Collection: every pet in the game; the ones you have never owned are a dark shape with a hint where to find them
+    if tab == "Index" then
+        local seen = PetData.SeenSet(data)
+        local all = {}
+        for id, def in pairs(PetData.Pets) do table.insert(all, { id = id, def = def }) end
+        table.sort(all, function(a, b)
+            if a.def.rarity ~= b.def.rarity then return RARITY_ORDER[a.def.rarity] < RARITY_ORDER[b.def.rarity] end
+            return a.def.displayName < b.def.displayName
+        end)
+        local found = 0
+        for _, e in ipairs(all) do if seen[e.id] then found += 1 end end
+        Note(string.format("Collected %d / %d pets. Merge four of a kind to unlock its Elite form, and four Elites for Supreme.", found, #all), 40)
+        for _, e in ipairs(all) do
+            local has = seen[e.id]
+            local rc = Theme.Colors[e.def.rarity] or Theme.Colors.Common
+            local forms = string.format("Plain %s   Elite %s   Supreme %s", has and "✓" or "-", seen[e.id .. ":Neon"] and "✓" or "-", seen[e.id .. ":MegaNeon"] and "✓" or "-")
+            local eggs = PetData.EggsFor(e.id)
+            local sub = has and (string.upper(e.def.rarity) .. "  -  " .. e.def.text .. "\n" .. forms)
+                or (string.upper(e.def.rarity) .. "  -  not found yet" .. (#eggs > 0 and ("\nHatches from: " .. table.concat(eggs, ", ")) or "\nFound another way"))
+            local row = Row(has and e.def.displayName or "???", sub, rc, nil, nil, nil, true, 64, has and rc or Theme.Colors.TextDim)
+            AddPortrait(row, { type = e.id, grown = 8 * 3600 })
+            if not has then
+                local cover = row:FindFirstChild("Portrait")
+                if cover then
+                    local shade = Instance.new("Frame")
+                    shade.Size = UDim2.new(1, 0, 1, 0)
+                    shade.BackgroundColor3 = Color3.fromRGB(12, 9, 8)
+                    shade.BackgroundTransparency = 0.08
+                    shade.BorderSizePixel = 0
+                    shade.ZIndex = 5
+                    shade.Parent = cover
+                    Theme.AddCorner(shade, UDim.new(0.5, 0))
+                    local q = Theme.Label(shade, "?", 24, Theme.Colors.TextDim, Theme.Fonts.Heading)
+                    q.Size = UDim2.new(1, 0, 1, 0)
+                    q.TextXAlignment = Enum.TextXAlignment.Center
+                    q.ZIndex = 6
+                end
+            end
         end
         return
     end

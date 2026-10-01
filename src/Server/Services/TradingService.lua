@@ -318,7 +318,9 @@ function TradingService._ExecuteTrade(tradeId)
                 for i = #fromData.OwnedPets, 1, -1 do
                     if fromData.OwnedPets[i].id == it.id then
                         toData.OwnedPets = toData.OwnedPets or {}
-                        table.insert(toData.OwnedPets, table.remove(fromData.OwnedPets, i))
+                        local moved = table.remove(fromData.OwnedPets, i)
+                        table.insert(toData.OwnedPets, moved)
+                        PetData.NoteSeen(toData, moved)
                         break
                     end
                 end
@@ -444,6 +446,7 @@ local function DeliverListing(player, listing)
         local data = PlayerDataService.Get(player)
         data.OwnedPets = data.OwnedPets or {}
         table.insert(data.OwnedPets, listing.pet)
+        PetData.NoteSeen(data, listing.pet)
         PlayerDataService.MarkDirty(player)
     end
 end

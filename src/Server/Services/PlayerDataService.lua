@@ -73,6 +73,7 @@ local function DefaultData()
         OwnedCosmetics    = {},
         OwnedPets         = {},          -- { id, type, hatchedAt } (see PetData)
         EquippedPets      = {},          -- pet ids being worn (up to PetData.SLOTS)
+        PetsSeen          = {},          -- the pet index: every pet form ever owned (see PetData.SeenKey)
         Ascensions        = 0,           -- see AscensionData
         ForgeBuild        = { owned = {}, placed = {}, bought = { slot = 0, counts = {} } },   -- see ForgeBuildService
         OwnedAccessories  = {},

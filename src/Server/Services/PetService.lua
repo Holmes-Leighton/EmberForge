@@ -43,6 +43,7 @@ function PetService.Hatch(player, eggId)
     data.EmberCoins -= egg.cost
     local pet = { id = Utils.GenerateId(), type = Utils.WeightedRandom(egg.pool), hatchedAt = Utils.UnixTimestamp(), grown = 0 }
     table.insert(data.OwnedPets, pet)
+    PetData.NoteSeen(data, pet)
     -- a first pet goes straight onto your side so the egg pays off at once
     data.EquippedPets = data.EquippedPets or {}
     if #data.EquippedPets < PetData.SLOTS then table.insert(data.EquippedPets, pet.id) end
@@ -64,6 +65,7 @@ function PetService.HatchPaid(player, eggId, count)
     for _ = 1, math.max(1, count or 1) do
         local pet = { id = Utils.GenerateId(), type = Utils.WeightedRandom(egg.pool), hatchedAt = Utils.UnixTimestamp(), grown = 0 }
         table.insert(data.OwnedPets, pet)
+        PetData.NoteSeen(data, pet)
         if #data.EquippedPets < PetData.SLOTS then table.insert(data.EquippedPets, pet.id) end
         table.insert(pets, pet)
         RemoteEvents.PetHatched:FireClient(player, true, pet)
@@ -135,6 +137,7 @@ function PetService.Merge(player, petType, variant)
 
     local merged = { id = Utils.GenerateId(), type = petType, variant = nextId, hatchedAt = Utils.UnixTimestamp(), grown = PetData.MERGED_START_HOURS * 3600 }
     table.insert(data.OwnedPets, merged)
+    PetData.NoteSeen(data, merged)
     if wasWorn and #data.EquippedPets < PetData.SLOTS then table.insert(data.EquippedPets, merged.id) end
     PlayerDataService.MarkDirty(player)
     PetService.Sync(player)

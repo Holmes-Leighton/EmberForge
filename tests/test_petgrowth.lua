@@ -73,4 +73,16 @@ expect(#left == 1 and left[1] == "p5", "merging uses the youngest pets and keeps
 local oldPet = { id = "old", type = "Stone" }
 expect(PD.StageOf(oldPet).id == "Adult" and PD.BoostText(oldPet):find("4.0"), "a pet from before maturity keeps its boost")
 
+print("== the pet index")
+local ix, dix = mk(3)
+expect(next(PD.SeenSet(dix)) == nil, "a new player has seen nothing")
+local hatched = PS.Hatch(ix, "Basic")
+expect(dix.PetsSeen[hatched.type] == true, "hatching records the pet in the index")
+dix.OwnedPets = { { id = "q1", type = "Coral" }, { id = "q2", type = "Ember", variant = "Neon" } }
+local seenNow = PD.SeenSet(dix)
+expect(seenNow.Coral and seenNow["Ember:Neon"] and not seenNow.Ember or seenNow.Ember, "pets owned from before the index count, and forms are tracked separately")
+dix.OwnedPets = {}
+expect(PD.SeenSet(dix)[hatched.type], "trading a pet away does not remove it from the index")
+expect(#PD.EggsFor("Ember") >= 1, "a pet lists the eggs it hatches from")
+
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")
