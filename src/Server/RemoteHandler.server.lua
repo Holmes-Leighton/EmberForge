@@ -448,6 +448,14 @@ RemoteEvents.ClaimGuildReward.OnServerEvent:Connect(function(player)
     end)
 end)
 
+RemoteEvents.ClaimGuildPrize.OnServerEvent:Connect(function(player)
+    SafeCall(player, function()
+        local ok, prize, rank = require(script.Parent.Services.GuildService).ClaimPrize(player)
+        local msg = ok and string.format("Rank #%d prize: +%d coins and %d Speed-Up%s!", rank, prize.coins, prize.speedUps, prize.title and (" and the " .. prize.title .. " title") or "") or prize
+        RemoteEvents.GuildResult:FireClient(player, "prize", ok == true, msg)
+    end)
+end)
+
 RemoteEvents.GetGuildInfo.OnServerInvoke = function(player)
     local GuildService = require(script.Parent.Services.GuildService)
     return { mine = GuildService.GetMine(player), top = GuildService.Top(10) }

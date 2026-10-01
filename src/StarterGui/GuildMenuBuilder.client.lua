@@ -179,7 +179,12 @@ local function Reload_()
     local mine = info.mine
 
     if tab == "Top" then
-        Note("This week's top guilds, ranked by everything their members mined together. Resets every week.", 40)
+        local pl = {}
+        for _, p in ipairs(GuildData.Prizes) do
+            table.insert(pl, string.format("%s: %d coins + %d Speed-Up%s", p.label, p.coins, p.speedUps, p.title and (" + " .. p.title .. " title") or ""))
+        end
+        Note("This week's top guilds, ranked by everything their members mined together. When the week ends, the top 10 win prizes that every contributing member can claim:\n"
+            .. table.concat(pl, "\n"), 100)
         if #(info.top or {}) == 0 then Note("No guild has mined anything this week yet. Be the first!", 30) return end
         for _, g in ipairs(info.top) do
             Row(string.format("#%d  %s", g.rank, g.name), string.format("%s mined this week   -   %d members", Utils.FormatNumber(g.weekly), g.members),
@@ -240,6 +245,14 @@ local function Reload_()
         Row("Challenge complete!", mine.claimed and "You claimed this week's reward." or (mine.canClaim and "Your reward is ready." or ("Add " .. mine.minContribution .. "+ resources to share in it next time.")),
             Theme.Colors.Success, mine.claimed and "Claimed" or "Claim", mine.canClaim and Theme.Colors.Success or Theme.Colors.PanelAlt,
             function() RemoteEvents.ClaimGuildReward:FireServer() end, mine.canClaim, 54)
+    end
+    local pz = mine.prize
+    if pz then
+        Row(string.format("Last week: your guild finished #%d!", pz.rank),
+            string.format("Prize: %d coins + %d Speed-Up%s. %s", pz.prize.coins, pz.prize.speedUps, pz.prize.title and (" + the " .. pz.prize.title .. " title") or "",
+                pz.claimed and "You claimed it." or (pz.canClaim and "Your prize is ready." or ("You needed " .. mine.minContribution .. "+ resources last week."))),
+            Theme.Colors.Legendary, pz.claimed and "Claimed" or "Claim", pz.canClaim and Theme.Colors.Success or Theme.Colors.PanelAlt,
+            function() RemoteEvents.ClaimGuildPrize:FireServer() end, pz.canClaim, 64)
     end
     Note("Members (this week)", 24, Theme.Colors.AccentBright)
     for _, m in ipairs(mine.members) do

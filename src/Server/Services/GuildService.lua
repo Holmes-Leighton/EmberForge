@@ -38,10 +38,16 @@ end
 local function Rollover(guild)
     local week = GuildData.WeekId(Now())
     if guild.week ~= week then
+        -- keep last week's numbers for the battle prize, but only if it really was last week
+        local wasLast = guild.week == week - 1
+        guild.last = wasLast and { week = guild.week, weekly = guild.weekly or 0 } or nil
         guild.week = week
         guild.weekly = 0
         guild.claimed = {}
-        for _, m in pairs(guild.members) do m.weekly = 0 end
+        for _, m in pairs(guild.members) do
+            m.lastWeekly = wasLast and (m.weekly or 0) or 0
+            m.weekly = 0
+        end
     end
     return guild
 end
@@ -257,6 +263,77 @@ function GuildService.ClaimReward(player)
     return true, GuildData.REWARD
 end
 
+-- ── Battle prizes ─────────────────────────────────────────────────────────────
+-- Where a guild finished on last week's leaderboard (nil if it wasn't in the top 50)
+local function LastWeekRank(guildId)
+    local lastWeek = GuildData.WeekId(Now()) - 1
+    local ok, pages = pcall(function() return WeeklyBoard(lastWeek):GetSortedAsync(false, 50) end)
+    if not ok or not pages then return nil end
+    local okPage, page = pcall(function() return pages:GetCurrentPageAsync() end)
+    if not okPage or not page then return nil end
+    for rank, entry in ipairs(page) do
+        if entry.key == guildId then return rank end
+    end
+    return nil
+end
+
+-- What this member may claim for last week: { rank, prize, canClaim, claimed } or nil when there is nothing
+local function PrizeStatus(guild, userId)
+    Rollover(guild)
+    local lastWeek = GuildData.WeekId(Now()) - 1
+    local m = guild.members[tostring(userId)]
+    if not m or not guild.last or guild.last.week ~= lastWeek then return nil end
+    local rank = LastWeekRank(guild.id)
+    local prize = GuildData.PrizeFor(rank)
+    if not prize then return nil end
+    local claimed = m.prizeWeek == lastWeek
+    return {
+        rank = rank, prize = prize, claimed = claimed,
+        canClaim = not claimed and (m.lastWeekly or 0) >= GuildData.MIN_CONTRIBUTION,
+        contributed = m.lastWeekly or 0,
+    }
+end
+
+function GuildService.ClaimPrize(player)
+    local data = PlayerDataService.Get(player)
+    if not data or not data.GuildId then return false, "You are not in a guild" end
+    GuildService.Flush(player)
+    local guild = LoadGuild(data.GuildId)
+    if not guild then return false, "Your guild no longer exists" end
+    local status = PrizeStatus(guild, player.UserId)
+    if not status then return false, "Your guild didn't place in last week's top 10" end
+    if status.claimed then return false, "You already claimed last week's prize" end
+    if not status.canClaim then
+        return false, string.format("You needed at least %d resources last week to share in the prize", GuildData.MIN_CONTRIBUTION)
+    end
+
+    local lastWeek = GuildData.WeekId(Now()) - 1
+    local granted, err = false, nil
+    local pok = pcall(function()
+        guildStore:UpdateAsync(GuildKey(data.GuildId), function(g)
+            if type(g) ~= "table" then err = "Your guild no longer exists" return nil end
+            Rollover(g)
+            local m = g.members[tostring(player.UserId)]
+            if not m or m.prizeWeek == lastWeek then err = "You already claimed last week's prize" return nil end
+            m.prizeWeek = lastWeek
+            granted = true
+            return g
+        end)
+    end)
+    if not pok then return false, "Guilds are unavailable right now. Try again in a minute." end
+    if not granted then return false, err or "Nothing to claim" end
+
+    local prize = status.prize
+    data.EmberCoins = (data.EmberCoins or 0) + prize.coins
+    data.SpeedUps = (data.SpeedUps or 0) + prize.speedUps
+    if prize.title then
+        data.Titles = data.Titles or {}
+        if not Utils.TableContains(data.Titles, prize.title) then table.insert(data.Titles, prize.title) end
+    end
+    PlayerDataService.MarkDirty(player)
+    return true, prize, status.rank
+end
+
 -- ── Reading ───────────────────────────────────────────────────────────────────
 function GuildService.GetMine(player)
     local data = PlayerDataService.Get(player)
@@ -268,7 +345,9 @@ function GuildService.GetMine(player)
         PlayerDataService.MarkDirty(player)
         return nil
     end
-    return Snapshot(guild, player.UserId)
+    local snap = Snapshot(guild, player.UserId)
+    snap.prize = PrizeStatus(guild, player.UserId)
+    return snap
 end
 
 -- The week's top guilds by combined production: { rank, name, weekly, members }

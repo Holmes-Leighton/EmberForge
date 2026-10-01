@@ -115,6 +115,27 @@ expect(gone == "No guild has that name", "an empty guild is disbanded and its na
 local g3 = GS.Create(mkPlayer(302, "Gus"), "Frost Pack")
 expect(g3 ~= nil, "a disbanded guild's name can be used again")
 
+print("== battle prizes")
+local pnow = GS.GetMine(a)
+expect(pnow.prize == nil, "no prize before a week has finished")
+advance(7 * 86400)                                  -- the week ends
+local pa = GS.GetMine(a)
+expect(pa.prize and pa.prize.rank == 1 and pa.prize.canClaim and pa.prize.prize.title == "Guild Champion",
+    "the winning guild's contributor can claim the #1 prize (rank " .. tostring(pa.prize and pa.prize.rank) .. ")")
+local pb = GS.GetMine(b)
+expect(pb.prize and not pb.prize.canClaim, "a member who added under " .. GuildData.MIN_CONTRIBUTION .. " last week can't claim")
+local coinsBefore, suBefore = da.EmberCoins, da.SpeedUps or 0
+local okP, prize = GS.ClaimPrize(a)
+expect(okP and da.EmberCoins == coinsBefore + 3000 and da.SpeedUps == suBefore + 3, "claiming pays the #1 prize")
+expect(table.find(da.Titles or {}, "Guild Champion") ~= nil, "and grants the Guild Champion title")
+expect(GS.ClaimPrize(a) == false, "a prize is claimed once")
+expect(GS.ClaimPrize(b) == false, "an ineligible member is refused")
+expect(GS.GetMine(a).prize.claimed == true, "the menu shows it as claimed")
+advance(7 * 86400)                                  -- a further week passes with no production
+expect(GS.GetMine(a).prize == nil, "an old prize doesn't carry over a second week")
+expect(GuildData.PrizeFor(1).coins > GuildData.PrizeFor(3).coins and GuildData.PrizeFor(3).coins > GuildData.PrizeFor(10).coins
+    and GuildData.PrizeFor(11) == nil, "prizes shrink with rank and stop after 10th")
+
 print("== anti-spam")
 GS.ThrottleSeconds = 60
 local spam = mkPlayer(400, "Spam")

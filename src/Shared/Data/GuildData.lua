@@ -15,6 +15,22 @@ GuildData.CHALLENGE_PER_MEMBER = 6000
 GuildData.REWARD = { coins = 300, speedUps = 1 }       -- each member who contributed claims this once a week
 GuildData.MIN_CONTRIBUTION = 50                        -- resources a member must add to share in the reward
 
+-- Guild battle prizes: when a week ends, the guilds on that week's leaderboard are paid by final rank. Every member
+-- who added at least MIN_CONTRIBUTION that week claims it once (in the week that follows).
+GuildData.Prizes = {
+    { maxRank = 1,  coins = 3000, speedUps = 3, title = "Guild Champion", label = "1st" },
+    { maxRank = 3,  coins = 1500, speedUps = 2, title = "Guild Elite",    label = "2nd - 3rd" },
+    { maxRank = 10, coins = 600,  speedUps = 1, label = "4th - 10th" },
+}
+
+function GuildData.PrizeFor(rank)
+    if type(rank) ~= "number" then return nil end
+    for _, p in ipairs(GuildData.Prizes) do
+        if rank <= p.maxRank then return p end
+    end
+    return nil
+end
+
 function GuildData.WeekId(unixTime)
     return math.floor((unixTime or os.time()) / GuildData.WEEK_SECONDS)
 end

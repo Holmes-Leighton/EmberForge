@@ -86,6 +86,7 @@ local DEFINITIONS = {
     JoinGuild           = "event",   -- client → server (name)
     LeaveGuild          = "event",
     ClaimGuildReward    = "event",
+    ClaimGuildPrize     = "event",   -- last week's battle prize
     GuildResult         = "event",   -- server → client (action, ok, message)
     GetGuildInfo        = "function", -- → { mine = snapshot or nil, top = {...} }
 
