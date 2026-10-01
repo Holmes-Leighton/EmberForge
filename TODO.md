@@ -1,8 +1,8 @@
 # EmberForge to-do list
 
 ## Art and animation
-- [ ] **Pet movement animations**: walk, idle and happy animations for the pets (legs, tail, head and body motion), instead of the
-      current simple bob and hover in `PetController`. Needs animated rigs or per-part tweening for the 14 generated pet meshes.
+- [x] ~~Pet movement animations~~ done: 14 segmented pets (ServerStorage > UploadedAssetSources > PetPack) animated by code (PetRig).
+- [ ] **Upload the new PetPack**: right-click `PetPack` in ServerStorage > UploadedAssetSources, Save to Roblox, then put the id in `AssetData.PetPack` (it is 0 now, and the rigged models live in ReplicatedStorage.PetAssets of the place file until then).
 - [ ] Golem animations (idle, mine, walk): the code is ready for them (`AssetData.Golem.*.animations`), none are uploaded yet.
 - [ ] Game icon and thumbnails (Creator Hub); draft screenshots are in `marketing/draft-screenshots/`.
 

@@ -180,9 +180,13 @@ local function LoadPetPack(packId, petFolder)
             if CountParts(d) > 0 then
                 d.Name = petType
                 local old = petFolder:FindFirstChild(petType)
-                if old then old:Destroy() end
-                d.Parent = petFolder
-                found += 1
+                if old and old:GetAttribute("Rigged") and not d:GetAttribute("Rigged") then
+                    -- never swap a segmented (animated) pet for an old one-piece model
+                else
+                    if old then old:Destroy() end
+                    d.Parent = petFolder
+                    found += 1
+                end
             end
         end
     end

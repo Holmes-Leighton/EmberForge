@@ -7,6 +7,7 @@ local RunService = game:GetService("RunService")
 
 local GolemModel = require(game.ReplicatedStorage.Shared.Modules.GolemModel)
 local PetModel   = require(game.ReplicatedStorage.Shared.Modules.PetModel)
+local PetRig     = require(game.ReplicatedStorage.Shared.Modules.PetRig)
 local PetData    = require(game.ReplicatedStorage.Shared.Data.PetData)
 
 local PetController = {}
@@ -14,7 +15,8 @@ local PetController = {}
 local FOLLOW_GAP  = 4.5          -- studs behind the owner
 local SPACING     = 3.4          -- studs between pets worn side by side
 local SNAP_DIST   = 45           -- farther than this (a teleport) and the pet jumps to its owner
-local DRAW_DIST   = 140          -- don't bother animating pets farther than this from the camera
+local DRAW_DIST   = 140          -- farther than this from the camera and a pet is not drawn at all
+local ANIMATE_DIST  = 70           -- farther than this and its limbs rest instead of swinging (nobody can see the detail)
 
 local folder
 local states = {}                -- Player -> { key, assetVersion, pets = { { model, feet, pos, yaw, phase } } }
@@ -28,10 +30,10 @@ end
 local function MakePet(entry)
     local petType, variant = entry:match("^([^:]+):?(.*)$")
     variant = variant ~= "" and variant or nil
-    local model, feet, hover = PetModel.Build(petType, variant)
+    local model, feet, hover, rig = PetModel.Build(petType, variant)
     if not model then return nil end
     model.Parent = folder
-    local pet = { model = model, feet = feet, hover = hover, variant = variant, pos = nil, yaw = nil, phase = math.random() * 6.28 }
+    local pet = { model = model, feet = feet, hover = hover, rig = rig, variant = variant, pos = nil, yaw = nil, phase = math.random() * 6.28 }
     if variant == "MegaNeon" then                    -- Mega Neon cycles through the rainbow
         pet.tinted = {}
         for _, d in ipairs(model:GetDescendants()) do
@@ -107,38 +109,40 @@ local function Step(dt)
                 pet.yaw = pet.yaw and (pet.yaw + ((yawTarget - pet.yaw + math.pi) % (2 * math.pi) - math.pi) * (1 - math.exp(-dt * 6))) or yawTarget
             end
 
-            -- Movement animation. Every pet is one solid mesh (no legs to bend), so the life comes from the whole body:
-            --   walking: a hop on each step, leaning into the direction of travel, and a side-to-side waddle
-            --   standing: a slow breathing sway, looking about, and now and then a happy hop with a spin
+            -- Animation. A segmented pet (pet.rig) swings its limbs about their joints (see PetRig); the whole body adds a hop on
+            -- each footfall and a lean into the walk. A standing pet breathes, looks about and now and then cheers with a hop.
             local walking = moving and not atHome
-            local bob = walking and math.abs(math.sin(t * 9 + pet.phase)) * 0.5 or math.sin(t * 2 + pet.phase) * 0.06
-            local pitch, roll, spin = 0, 0, 0
-            if walking then
-                pitch = -0.16                                              -- nose down: leaning forward
-                roll = math.sin(t * 9 + pet.phase) * 0.13                  -- waddle in time with the hops
-            else
-                roll = math.sin(t * 1.4 + pet.phase) * 0.04                -- breathing sway
-                pitch = math.sin(t * 0.9 + pet.phase * 2) * 0.03
-                -- an idle pet looks around a little...
-                spin = math.sin(t * 0.55 + pet.phase) * 0.35
-                -- ...and every so often does a happy hop with a full spin
-                pet.nextHappy = pet.nextHappy or (t + 4 + math.random() * 8)
-                if not pet.happyAt and t >= pet.nextHappy then pet.happyAt = t end
+            pet.walk = (pet.walk or 0) + ((walking and 1 or 0) - (pet.walk or 0)) * (1 - math.exp(-dt * 8))      -- eases between standing and walking
+            pet.gait = (pet.gait or pet.phase) + dt * 4.5 * pet.walk                                              -- two footfalls per cycle
+            local bob = math.abs(math.sin(pet.gait * 2)) * 0.45 * pet.walk + math.sin(t * 2 + pet.phase) * 0.05 * (1 - pet.walk)
+            local pitch = -0.1 * pet.walk + math.sin(t * 0.9 + pet.phase * 2) * 0.025 * (1 - pet.walk)
+            if not walking then
+                pet.nextCheer = pet.nextCheer or (t + 4 + math.random() * 8)
+                if not pet.cheerAt and t >= pet.nextCheer then pet.cheerAt = t end
             end
-            if pet.happyAt then
-                local k = (t - pet.happyAt) / 0.7
+            local happy = 0
+            if pet.cheerAt then
+                local k = (t - pet.cheerAt) / 0.8
                 if k >= 1 or walking then
-                    pet.happyAt, pet.nextHappy = nil, t + 6 + math.random() * 10
+                    pet.cheerAt, pet.nextCheer = nil, t + 6 + math.random() * 10
                 else
-                    bob += math.sin(k * math.pi) * 1.3                     -- up and back down
-                    spin += k * math.pi * 2                                -- one full turn
-                    pitch += math.sin(k * math.pi) * 0.25                  -- lean back at the top, like a cheer
+                    happy = math.sin(k * math.pi)
+                    bob += happy * 1.1                                                     -- a hop
                 end
             end
             -- floating pets (sprites, ghosts) hover and drift a little higher than walkers bob
             local p = Vector3.new(pet.pos.X, pet.pos.Y + pet.feet + pet.hover + bob + (pet.hover > 0 and math.sin(t * 2.5 + pet.phase) * 0.15 or 0), pet.pos.Z)
-            pet.model:PivotTo(CFrame.new(p) * CFrame.Angles(0, (pet.yaw or 0) + spin, 0) * CFrame.Angles(pitch, 0, roll))
-            if pet.tinted then
+            local modelCF = CFrame.new(p) * CFrame.Angles(0, pet.yaw or 0, 0) * CFrame.Angles(pitch, 0, 0)
+            pet.model:PivotTo(modelCF)
+            if pet.rig then
+                if not cam or (p - cam.CFrame.Position).Magnitude <= ANIMATE_DIST then
+                    PetRig.Apply(pet.rig, modelCF, { t = t + pet.phase, walk = pet.walk, gait = pet.gait, happy = happy, fly = pet.hover > 0 })
+                    pet.limbsRest = false
+                elseif not pet.limbsRest then
+                    PetRig.Rest(pet.rig, modelCF)                                          -- too far to see the detail: stand it at rest
+                    pet.limbsRest = true
+                end
+            end            if pet.tinted then
                 local c = Color3.fromHSV((t * 0.25 + pet.phase) % 1, 0.65, 1)
                 for _, part in ipairs(pet.tinted) do part.Color = c end
             end

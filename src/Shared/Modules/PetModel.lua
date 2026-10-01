@@ -1,7 +1,8 @@
 -- Builds the 3D model for a pet. A pet with an uploaded model (ReplicatedStorage.PetAssets, loaded from
 -- AssetData.PetPack) is that model, scaled to its size; otherwise a mini Golem of the same type stands in.
--- Returns model, feet, hover: `feet` is how far the model's pivot sits above the floor (so callers can
--- stand it on the ground) and `hover` is how far it floats above that.
+-- Returns model, feet, hover, rig: `feet` is how far the model's pivot sits above the floor (so callers can
+-- stand it on the ground), `hover` is how far it floats above that, and `rig` (PetRig) animates a segmented pet's limbs
+-- (nil for a one-piece pet or the mini-Golem stand-in).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -9,6 +10,7 @@ local GolemModel = require(script.Parent.GolemModel)
 local CrownModel = require(script.Parent.CrownModel)
 local Theme      = require(script.Parent.Theme)
 local PetData    = require(script.Parent.Parent.Data.PetData)
+local PetRig     = require(script.Parent.PetRig)
 
 local PetModel = {}
 
@@ -28,17 +30,19 @@ end
 function PetModel.Build(petType, variant)
     local look = PetData.Looks[petType] or {}
     local size = (look.size or DEFAULT_SIZE) * (variant == "MegaNeon" and 1.18 or (variant == "Neon" and 1.08 or 1))   -- Elite / Supreme are bigger
-    local model
+    local model, rig
     local template = PetModel.Template(petType)
     if template then
         model = template:Clone()
         -- The uploaded pet's front is on its -Z side, but its pivot (the "Body" part) is turned 180 degrees, so PivotTo(yaw)
         -- used to face it backwards. Turn the pivot (not the parts) so a pivot with no turn means "front toward -Z",
         -- which is what PetController assumes.
+        -- (the segmented pet pack is already built facing -Z and is tagged "Rigged", so only the old one-piece pack needs this)
         local body = model.PrimaryPart
-        if body then body.PivotOffset = body.PivotOffset * CFrame.Angles(0, math.pi, 0) end
+        if body and not model:GetAttribute("Rigged") then body.PivotOffset = body.PivotOffset * CFrame.Angles(0, math.pi, 0) end
         local height = model:GetExtentsSize().Y
         if height > 0.05 then model:ScaleTo(model:GetScale() * size / height) end
+        if model:GetAttribute("Rigged") then rig = PetRig.Build(model) end
     else
         local ok, m = pcall(GolemModel.Build, petType, 1, { variant = variant })
         if not ok or not m then return nil end
@@ -128,7 +132,7 @@ function PetModel.Build(petType, variant)
     end
     local box, bsize = model:GetBoundingBox()
     local feet = model:GetPivot().Position.Y - (box.Position.Y - bsize.Y / 2)
-    return model, feet, look.hover or 0
+    return model, feet, look.hover or 0, rig
 end
 
 return PetModel
