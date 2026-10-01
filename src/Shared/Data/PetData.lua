@@ -96,6 +96,42 @@ PetData.Variants = {
     MegaNeon = { id = "MegaNeon", label = "Supreme",   mult = 2.0 },
 }
 
+-- Maturity: a pet grows while you wear it (online time only). A new pet is a Baby and boosts less; a grown pet boosts fully,
+-- and an Elder a little more (still inside the +20% cap per stat). Pets from before maturity existed count as Adult.
+-- t = hours worn to reach the stage, mult = share of the pet's boost, scale = how big it is drawn.
+PetData.Stages = {
+    { id = "Baby",  at = 0,  mult = 0.60, scale = 0.72 },
+    { id = "Young", at = 2,  mult = 0.80, scale = 0.86 },
+    { id = "Adult", at = 8,  mult = 1.00, scale = 1.00 },
+    { id = "Elder", at = 24, mult = 1.25, scale = 1.12 },
+}
+PetData.MERGED_START_HOURS = 2      -- a merged pet starts as a Young one (merging should not reset growth to nothing)
+PetData.GROW_TICK = 30              -- seconds between growth ticks while a pet is worn
+
+function PetData.GrownSeconds(pet)
+    if pet.grown == nil then return PetData.Stages[3].at * 3600 end      -- an older pet: Adult
+    return pet.grown
+end
+
+-- stage table, its index, progress 0..1 toward the next stage (1 at Elder), and hours left (nil at Elder)
+function PetData.StageOf(pet)
+    local hours = PetData.GrownSeconds(pet) / 3600
+    local index = 1
+    for i, s in ipairs(PetData.Stages) do if hours >= s.at then index = i end end
+    local nextStage = PetData.Stages[index + 1]
+    if not nextStage then return PetData.Stages[index], index, 1, nil end
+    local cur = PetData.Stages[index]
+    return PetData.Stages[index], index, (hours - cur.at) / (nextStage.at - cur.at), nextStage.at - hours
+end
+
+-- the boost fraction this pet actually gives right now (type x variant x stage)
+function PetData.Value(pet)
+    local def = PetData.Pets[pet.type]
+    if not def then return 0 end
+    local v = pet.variant and PetData.Variants[pet.variant]
+    return def.value * (v and v.mult or 1) * (PetData.StageOf(pet).mult)
+end
+
 function PetData.Get(typeId) return PetData.Pets[typeId] end
 
 -- "Neon Ember Pup"
@@ -110,12 +146,11 @@ end
 function PetData.BoostText(pet)
     local def = PetData.Pets[pet.type]
     if not def then return "" end
-    local v = pet.variant and PetData.Variants[pet.variant]
-    if not v then return def.text end
-    if def.stat == "wear" then return string.format("Golems wear out %.1f%% slower", def.value * v.mult * 100) end
-    if def.stat == "all" then return string.format("+%.1f%% mining, carry, luck and efficiency", def.value * v.mult * 100) end
+    local value = PetData.Value(pet) * 100
+    if def.stat == "wear" then return string.format("Golems wear out %.1f%% slower", value) end
+    if def.stat == "all" then return string.format("+%.1f%% mining, carry, luck and efficiency", value) end
     local names = { rate = "mining speed", carry = "carry capacity", luck = "luck", eff = "efficiency", bp = "blueprint finds" }
-    return string.format("+%.1f%% %s", def.value * v.mult * 100, names[def.stat] or def.stat)
+    return string.format("+%.1f%% %s", value, names[def.stat] or def.stat)
 end
 
 -- "26%", "3.0%", "0.05% (1 in 2,000)", "0.001% (1 in 100,000)": readable at every scale
@@ -154,8 +189,7 @@ function PetData.Boosts(data)
         local pet = byId[id]
         local def = pet and PetData.Pets[pet.type]
         if def then
-            local v = pet.variant and PetData.Variants[pet.variant]
-            local value = def.value * (v and v.mult or 1)
+            local value = PetData.Value(pet)
             if def.stat == "all" then
                 b.rate += value; b.carry += value; b.luck += value; b.eff += value
             else

@@ -27,9 +27,11 @@ function PetModel.AssetVersion()
     return (folder and folder:GetAttribute("Version") or 0) + CrownModel.AssetVersion() * 1000   -- crowns loading also rebuild pets
 end
 
-function PetModel.Build(petType, variant)
+function PetModel.Build(petType, variant, stage)
     local look = PetData.Looks[petType] or {}
-    local size = (look.size or DEFAULT_SIZE) * (variant == "MegaNeon" and 1.18 or (variant == "Neon" and 1.08 or 1))   -- Elite / Supreme are bigger
+    local stageScale = 1
+    for _, s in ipairs(PetData.Stages) do if s.id == stage then stageScale = s.scale end end            -- Baby is small, Elder is big
+    local size = (look.size or DEFAULT_SIZE) * stageScale * (variant == "MegaNeon" and 1.18 or (variant == "Neon" and 1.08 or 1))   -- Elite / Supreme are bigger
     local model, rig
     local template = PetModel.Template(petType)
     if template then

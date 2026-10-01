@@ -29,9 +29,9 @@ end
 
 -- Builds one pet (its own model, or a mini Golem until one is uploaded; see PetModel)
 local function MakePet(entry)
-    local petType, variant = entry:match("^([^:]+):?(.*)$")
+    local petType, variant, stage = entry:match("^([^:]+):?([^:]*):?(.*)$")
     variant = variant ~= "" and variant or nil
-    local model, feet, hover, rig = PetModel.Build(petType, variant)
+    local model, feet, hover, rig = PetModel.Build(petType, variant, stage ~= "" and stage or nil)
     if not model then return nil end
     model.Parent = folder
     local pet = { model = model, feet = feet, hover = hover, rig = rig, variant = variant, pos = nil, yaw = nil, phase = math.random() * 6.28 }
@@ -57,7 +57,7 @@ end
 local function Parse(value)
     local types = {}
     for t in tostring(value or ""):gmatch("[^,]+") do          -- "Ember" or "Ember:Neon"
-        local petType, variant = t:match("^([^:]+):?(.*)$")
+        local petType, variant = t:match("^([^:]+):?([^:]*)")          -- "Ember", "Ember:Neon" or "Ember:Neon:Young"
         if PetData.Get(petType) and (variant == "" or PetData.Variants[variant]) then table.insert(types, t) end
     end
     return types

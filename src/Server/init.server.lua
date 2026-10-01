@@ -44,6 +44,7 @@ PlayerDataService.StartAutoSave()
 LeaderboardService.StartFlushLoop()
 GuildService.StartFlushLoop()
 LadderService.StartFlushLoop()
+require(script.Services.PetService).StartGrowLoop()
 require(script.Services.GuildHallService).Start(function(member) return GuildService.GetMine(member) end)
 
 -- ── Player join ───────────────────────────────────────────────────────────────

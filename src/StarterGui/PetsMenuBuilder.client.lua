@@ -240,7 +240,7 @@ ShowReveal = function(pet)
     revealOk.Text = #revealQueue > 0 and string.format("Next (%d more)", #revealQueue) or "Nice!"
     local def = PetData.Get(pet.type)
     if not def then return end
-    local model = PetModel.Build(pet.type, pet.variant)
+    local model = PetModel.Build(pet.type, pet.variant, PetData.StageOf(pet).id)
     if model then
         spinModel = model
         model.Parent = viewport
@@ -346,10 +346,12 @@ local function Reload()
     end
     -- group identical pets (same type and variant) so duplicates show as "x4" with a Merge button
     local groups, list = {}, {}
+    local totals = {}                                   -- how many of each type+variant you own across every stage (merging ignores age)
+    for _, pet in ipairs(owned) do local k = pet.type .. "|" .. (pet.variant or "") totals[k] = (totals[k] or 0) + 1 end
     for _, pet in ipairs(owned) do
         local def = PetData.Get(pet.type)
         if def then
-            local key = pet.type .. "|" .. (pet.variant or "")
+            local key = pet.type .. "|" .. (pet.variant or "") .. "|" .. PetData.StageOf(pet).id
             local g = groups[key]
             if not g then
                 g = { type = pet.type, variant = pet.variant, def = def, pets = {}, wornIds = {} }
@@ -371,14 +373,17 @@ local function Reload()
         local isWorn = #g.wornIds > 0
         local rc = Theme.Colors[g.def.rarity] or Theme.Colors.Common
         local count = #g.pets
-        local canMerge = count >= PetData.MERGE_COUNT and g.variant ~= "MegaNeon"
+        local canMerge = (totals[g.type .. "|" .. (g.variant or "")] or 0) >= PetData.MERGE_COUNT and g.variant ~= "MegaNeon"
+        local stage, _, progress, hoursLeft = PetData.StageOf(sample)
         local nextLabel = g.variant and PetData.Variants[g.variant] and PetData.Variants[g.variant].next
         nextLabel = nextLabel and PetData.Variants[nextLabel].label or PetData.Variants.Neon.label      -- (the first merge makes an Elite)
         local sub = string.upper(g.def.rarity) .. "  -  " .. PetData.BoostText(sample)
+        sub ..= hoursLeft and string.format("   -   %s, %d%% grown (%s more worn hours to the next stage)", stage.id, math.floor(progress * 100), string.format("%.1f", hoursLeft))
+            or ("   -   " .. stage.id .. " (fully grown)")
         if g.variant ~= "MegaNeon" then
             sub ..= string.format("   (merge %d to make 1 %s)", PetData.MERGE_COUNT, nextLabel)
         end
-        Row(PetData.DisplayName(sample) .. (count > 1 and ("  x" .. count) or ""), sub, rc,
+        Row(stage.id .. " " .. PetData.DisplayName(sample) .. (count > 1 and ("  x" .. count) or ""), sub, rc,
             isWorn and "Put away" or "Wear", isWorn and Theme.Colors.PanelAlt or Theme.Colors.Accent,
             function()
                 local id = isWorn and g.wornIds[1] or g.pets[1].id

@@ -22,7 +22,7 @@ function PetService.Sync(player)
     local types = {}
     for _, id in ipairs(data.EquippedPets or {}) do
         local pet = FindPet(data, id)
-        if pet then table.insert(types, pet.type .. (pet.variant and (":" .. pet.variant) or "")) end
+        if pet then table.insert(types, pet.type .. ":" .. (pet.variant or "") .. ":" .. PetData.StageOf(pet).id) end
     end
     player:SetAttribute("EFPets", table.concat(types, ","))
 end
@@ -41,7 +41,7 @@ function PetService.Hatch(player, eggId)
     end
 
     data.EmberCoins -= egg.cost
-    local pet = { id = Utils.GenerateId(), type = Utils.WeightedRandom(egg.pool), hatchedAt = Utils.UnixTimestamp() }
+    local pet = { id = Utils.GenerateId(), type = Utils.WeightedRandom(egg.pool), hatchedAt = Utils.UnixTimestamp(), grown = 0 }
     table.insert(data.OwnedPets, pet)
     -- a first pet goes straight onto your side so the egg pays off at once
     data.EquippedPets = data.EquippedPets or {}
@@ -62,7 +62,7 @@ function PetService.HatchPaid(player, eggId, count)
     data.EquippedPets = data.EquippedPets or {}
     local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
     for _ = 1, math.max(1, count or 1) do
-        local pet = { id = Utils.GenerateId(), type = Utils.WeightedRandom(egg.pool), hatchedAt = Utils.UnixTimestamp() }
+        local pet = { id = Utils.GenerateId(), type = Utils.WeightedRandom(egg.pool), hatchedAt = Utils.UnixTimestamp(), grown = 0 }
         table.insert(data.OwnedPets, pet)
         if #data.EquippedPets < PetData.SLOTS then table.insert(data.EquippedPets, pet.id) end
         table.insert(pets, pet)
@@ -120,7 +120,7 @@ function PetService.Merge(player, petType, variant)
     table.sort(candidates, function(a, b)
         local aw, bw = table.find(data.EquippedPets, a.id) ~= nil, table.find(data.EquippedPets, b.id) ~= nil
         if aw ~= bw then return not aw end
-        return (a.hatchedAt or 0) < (b.hatchedAt or 0)
+        return PetData.GrownSeconds(a) < PetData.GrownSeconds(b)           -- use up the youngest first, keep the grown ones
     end)
 
     local wasWorn = false
@@ -133,12 +133,52 @@ function PetService.Merge(player, petType, variant)
         end
     end
 
-    local merged = { id = Utils.GenerateId(), type = petType, variant = nextId, hatchedAt = Utils.UnixTimestamp() }
+    local merged = { id = Utils.GenerateId(), type = petType, variant = nextId, hatchedAt = Utils.UnixTimestamp(), grown = PetData.MERGED_START_HOURS * 3600 }
     table.insert(data.OwnedPets, merged)
     if wasWorn and #data.EquippedPets < PetData.SLOTS then table.insert(data.EquippedPets, merged.id) end
     PlayerDataService.MarkDirty(player)
     PetService.Sync(player)
     return merged, nil
+end
+
+-- Growth: every GROW_TICK seconds the pets a player is wearing get that much older. Returns the pets that just reached a new stage.
+function PetService.Grow(player, seconds)
+    local data = PlayerDataService.Get(player)
+    if not data then return {} end
+    local byId = {}
+    for _, pet in ipairs(data.OwnedPets or {}) do byId[pet.id] = pet end
+    local grew = {}
+    for _, id in ipairs(data.EquippedPets or {}) do
+        local pet = byId[id]
+        if pet then
+            local before = select(2, PetData.StageOf(pet))
+            pet.grown = PetData.GrownSeconds(pet) + seconds
+            local stage, after = PetData.StageOf(pet)
+            if after > before then table.insert(grew, { pet = pet, stage = stage }) end
+        end
+    end
+    if #grew > 0 then
+        PlayerDataService.MarkDirty(player)
+        PetService.Sync(player)                                    -- bigger model for everyone
+        local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
+        for _, g in ipairs(grew) do
+            RemoteEvents.Notify:FireClient(player, "Your pet grew up!", string.format("%s is now %s: %s", PetData.DisplayName(g.pet), g.stage.id, PetData.BoostText(g.pet)))
+        end
+    elseif #(data.EquippedPets or {}) > 0 then
+        PlayerDataService.MarkDirty(player)
+    end
+    return grew
+end
+
+function PetService.StartGrowLoop()
+    task.spawn(function()
+        while true do
+            task.wait(PetData.GROW_TICK)
+            for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
+                pcall(PetService.Grow, p, PetData.GROW_TICK)
+            end
+        end
+    end)
 end
 
 -- Say goodbye to a pet you no longer want

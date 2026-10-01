@@ -37,3 +37,6 @@
 - [ ] Quarry follow-ups: visitor view, Storm node mesh still renders pinkish-peach (the generator ignores yellow): swap for a better one, recolour in code if the generator allows.
 
 - [x] Idle animations: pets (look about, stretch, shake, hop) and Golems (look, flex, stomp, inspect pickaxe) pick random moves with rests between (IdleMoves).
+
+- [x] Pet maturity: Baby/Young/Adult/Elder (worn time 0/2/8/24h), boost x0.6/0.8/1.0/1.25, size 0.72-1.12, old pets count as Adult, merged pets start Young.
+- [ ] Quarry node maturity (nodes grow Mature/Prime for more output and a bigger model) - next.
