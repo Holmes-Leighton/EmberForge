@@ -508,6 +508,46 @@ function ForgeZoneService.PlaceOf(player)
     return "World"
 end
 
+-- The owner whose Quarry this player is standing in (not their own), or nil
+function ForgeZoneService.QuarryVisitOf(player)
+    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    local p = root.Position
+    for userId, index in pairs(plotAssignments) do
+        if userId ~= player.UserId then
+            local c = PlotCentre(index) + Vector3.new(0, 0, QuarryData.PLOT_OFFSET_Z)
+            if math.abs(p.X - c.X) <= ZONE_SIZE.X / 2 and math.abs(p.Z - c.Z) <= ZONE_SIZE.Z / 2 then return userId end
+        end
+    end
+    return nil
+end
+
+-- What a visitor may see of someone's Quarry (read-only, nothing private): owner, Core level, what it is made of. nil when there is
+-- nothing to show (not founded yet) or the owner keeps their forge to friends only and the visitor is not one.
+function ForgeZoneService.QuarrySummary(ownerUserId, visitor)
+    local owner = Players:GetPlayerByUserId(ownerUserId)
+    local data = owner and PlayerDataService.Get(owner)
+    local q = data and type(data.Quarry) == "table" and data.Quarry.placed and data.Quarry
+    if not q then return nil end
+    if data.Settings and data.Settings.ForgeFriendsOnly and visitor then
+        local ok, isFriend = pcall(function() return visitor:IsFriendsWith(ownerUserId) end)
+        if not (ok and isFriend) then return nil end
+    end
+    local byElement, helpers, nodes = {}, 0, 0
+    for _, placed in ipairs(q.placed) do
+        local def = QuarryData.Pieces[placed.id]
+        if def and def.kind == "node" then
+            nodes += 1
+            byElement[def.element] = (byElement[def.element] or 0) + 1
+        elseif def and def.kind == "helper" then
+            helpers += 1
+        end
+    end
+    local t = QuarryData.CoreLevels[q.level or 1]
+    return { userId = ownerUserId, name = owner.DisplayName, level = q.level or 1, maxLevel = #QuarryData.CoreLevels,
+             nodes = nodes, byElement = byElement, helpers = helpers, crew = #(q.crew or {}), maxNodes = t and t.nodes }
+end
+
 function ForgeZoneService.OnPlayerAdded(player)
     local plotIndex = FreePlotIndex()
     plotAssignments[player.UserId] = plotIndex
@@ -520,9 +560,15 @@ function ForgeZoneService.OnPlayerAdded(player)
     ForgeZoneService.RefreshQuarry(player)
 
     task.spawn(function()
+        local lastVisit
         while player.Parent and plotAssignments[player.UserId] == plotIndex do
             local place = ForgeZoneService.PlaceOf(player)
             if player:GetAttribute("EFPlace") ~= place then player:SetAttribute("EFPlace", place) end
+            local visiting = ForgeZoneService.QuarryVisitOf(player)
+            if visiting ~= lastVisit then
+                lastVisit = visiting
+                RemoteEvents.QuarryVisit:FireClient(player, visiting and ForgeZoneService.QuarrySummary(visiting, player) or nil)
+            end
             task.wait(1)
         end
     end)

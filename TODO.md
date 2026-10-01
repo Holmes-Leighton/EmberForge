@@ -45,7 +45,7 @@ Recommendation: not yet. Six mining zones, the Quarry and pets already give plen
 - [x] Quarry crew: idle Golems can work the Quarry (+8% per tier, up to 4 Golems, +100% cap).
 - [x] Quarry sign over the Core (owner, core level, nodes, crew).
 - [x] Storm node mesh pinkish-peach: now painted in code (texture dropped, yellow Neon) via `recolour = true` in QuarryData. Check how it looks in Studio.
-- [ ] Quarry follow-ups: visitor view.
+- [x] Quarry visitor view: standing in someone's Quarry shows a read-only panel (owner, Core level, nodes by element, helpers, crew); respects friends-only.
 
 - [x] Idle animations: pets (look about, stretch, shake, hop) and Golems (look, flex, stomp, inspect pickaxe) pick random moves with rests between (IdleMoves).
 

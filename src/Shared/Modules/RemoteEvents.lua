@@ -119,6 +119,7 @@ local DEFINITIONS = {
     QuarryResult        = "event",   -- server → client (action, ok, message)
     GetQuarryInfo       = "function", -- → QuarryService.Snapshot
     GoToQuarry          = "event",
+    QuarryVisit         = "event",   -- server → client (summary or nil): you walked into / out of another player's Quarry
 
     -- Forge Builder
     BuildAction         = "event",   -- client → server (action: "buy" | "place" | "pickup" | "sell", id or index)
