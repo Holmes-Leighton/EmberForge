@@ -6,7 +6,31 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local RunService = game:GetService("RunService")
+
 local MaterialIcon = {}
+
+-- Every icon turns slowly on the spot. One shared loop (about 30 times a second) turns all the icons that are on screen.
+local SPIN_SPEED = math.rad(50)          -- radians per second
+local spinning = {}                      -- [viewport] = { model, centre, phase }
+local acc = 0
+RunService.Heartbeat:Connect(function(dt)
+    acc += dt
+    if acc < 1 / 30 then return end
+    local step = acc
+    acc = 0
+    local now = os.clock()
+    for vp, s in pairs(spinning) do
+        if not vp.Parent or not s.model.Parent then
+            spinning[vp] = nil
+        else
+            local gui = vp:FindFirstAncestorWhichIsA("LayerCollector")
+            if gui and gui.Enabled and vp.Visible and vp.AbsoluteSize.X > 0 then
+                s.model:PivotTo(CFrame.new(s.centre) * CFrame.Angles(0, s.phase + now * SPIN_SPEED, 0) * CFrame.new(-s.centre) * s.rest)
+            end
+        end
+    end
+end)
 
 function MaterialIcon.Template(materialId)
     local folder = ReplicatedStorage:FindFirstChild("MaterialAssets")
@@ -21,15 +45,17 @@ local function Fill(vp, template)
     end
     local _, size = model:GetBoundingBox()
     model.Parent = vp
+    local rest = model:GetPivot()
     local cam = Instance.new("Camera")
     cam.FieldOfView = 30
     cam.Parent = vp
     vp.CurrentCamera = cam
     local centre = select(1, model:GetBoundingBox()).Position
-    local reach = math.max(size.X, size.Y, size.Z) * 0.5
+    local reach = math.max(size.X, size.Y, size.Z) * 0.58
     local dist = reach / math.tan(math.rad(cam.FieldOfView / 2))
     local dir = CFrame.Angles(0, math.rad(35), 0) * CFrame.Angles(math.rad(-18), 0, 0)
     cam.CFrame = CFrame.lookAt(centre + dir:VectorToWorldSpace(Vector3.new(0, 0, -dist)), centre)
+    spinning[vp] = { model = model, centre = centre, rest = rest, phase = (vp.AbsolutePosition.X * 0.013 + vp.AbsolutePosition.Y * 0.007) % (math.pi * 2) }
 end
 
 function MaterialIcon.Make(parent, materialId, size)
