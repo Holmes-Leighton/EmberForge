@@ -84,7 +84,7 @@ AssetData.QuarryPack = { assetId = 89170227615937 }
 AssetData.BiomeMeshes = {
     GlacialPeaks = {
         PadCrystals = 101967249752492, IceSpires = 139671736216015, FrozenFalls = 116246960530806, SnowPine = 87740268281257,
-        IceCrystals = 123799570185346, SnowBoulder = 99023961205039, FloatingShard = 135106810772880,
+        IceCrystals = 123799570185346, SnowBoulder = 99023961205039, FloatingShard = 135106810772880, IceStalactite = 129502847479173,
     },
     EmberDepths = {
         PadPiece = 126719407630672, Spires = 97622011353183, WallPiece = 102589271885312, Flora = 97426858110519,
@@ -107,6 +107,11 @@ AssetData.BiomeMeshes = {
         GlowCluster = 83918826188549, Boulder = 71900023894219, FloatingPiece = 106569186177475,
     },
     World = {
+        PadStarter = 111177879306009, PadCopper = 123195080353933, PadIron = 112430349013618,
+        PadGold = 112129818110095, PadLegend = 113037444351955, PadAdmin = 103717249592542,
+        CartGold = 98489401322118, CartCrystal = 88573853323324, TimberFrame = 92943577852045,
+        OreCrates = 130388675708310, RockCluster = 102073740936074, CrystalCluster = 115852827884095,
+        Stalagmite = 108378956476502, Stalactite = 130560032309476,
         GolemAnvil = 120881231422580,     -- the big golden Anvil at the start; its parts are named anvil / chains / stone platform
     },
 }

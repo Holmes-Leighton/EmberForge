@@ -92,7 +92,7 @@ local function Template(zoneKey, name)
     return zone and zone:FindFirstChild(name)
 end
 
--- opts: height | width (target size), yaw (radians), float (pos is the centre, not the ground), top (the piece's top surface goes at this height)
+-- opts: height | width (target size), yaw (radians), float (pos is the centre, not the ground), top (the piece's top surface goes at this height), hang (pos.Y is a ceiling: the piece hangs from it)
 local function MeshPiece(parent, zoneKey, name, pos, opts)
     local template = Template(zoneKey, name)
     if not template then return nil end
@@ -106,7 +106,9 @@ local function MeshPiece(parent, zoneKey, name, pos, opts)
     m:ScaleTo(m:GetScale() * factor)
     m:PivotTo(m:GetPivot() * CFrame.Angles(0, opts.yaw or 0, 0))
     local box, size = m:GetBoundingBox()
-    local centre = Vector3.new(pos.X, opts.float and pos.Y or (opts.top and (opts.top - size.Y / 2) or (pos.Y + size.Y / 2)), pos.Z)
+    local cy = pos.Y + size.Y / 2
+    if opts.float then cy = pos.Y elseif opts.top then cy = opts.top - size.Y / 2 elseif opts.hang then cy = pos.Y - size.Y / 2 end
+    local centre = Vector3.new(pos.X, cy, pos.Z)
     m:PivotTo(m:GetPivot() + (centre - box.Position))
     if not m.PrimaryPart then m.PrimaryPart = m:FindFirstChildWhichIsA("BasePart", true) end
     m.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
@@ -378,6 +380,9 @@ local function BuildGlacial(rec)
     Scatter(6, 34, 62, rng, function(dx, dz) BiomeArt.IceCrystals(group, Vector3.new(cx + dx, 0.2, cz + dz), rng, rng:NextNumber(0.9, 1.4)) end)
     Scatter(9, 30, 66, rng, function(dx, dz) BiomeArt.SnowBoulder(group, Vector3.new(cx + dx, 0.2, cz + dz), rng) end)
     Scatter(9, 14, 60, rng, function(dx, dz) BiomeArt.FloatingShard(group, Vector3.new(cx + dx, rng:NextNumber(14, 34), cz + dz), rng) end)
+    Scatter(12, 10, 66, rng, function(dx, dz)                                             -- icicles hanging from the roof (it is 60 studs up)
+        MeshPiece(group, "GlacialPeaks", "IceStalactite", Vector3.new(cx + dx, 60, cz + dz), { height = rng:NextNumber(12, 24), yaw = rng:NextNumber(0, math.pi * 2), hang = true })
+    end)
     rec.group = group
 end
 
@@ -439,6 +444,10 @@ local function BuildMeshZone(rec)
             Animate(s, "bobspin", rng:NextNumber(0.5, 0.9), 1.4, rng:NextNumber(0, 6))
         end
     end)
+    if zone == "GraniteCaverns" then                                                            -- a real cave: stalagmites below, stalactites above
+        Scatter(10, 38, 68, rng, function(dx, dz) MeshPiece(group, "World", "Stalagmite", at(dx, dz), { height = rng:NextNumber(10, 20), yaw = rng:NextNumber(0, math.pi * 2) }) end)
+        Scatter(14, 10, 66, rng, function(dx, dz) MeshPiece(group, "World", "Stalactite", Vector3.new(cx + dx, 60, cz + dz), { height = rng:NextNumber(12, 24), yaw = rng:NextNumber(0, math.pi * 2), hang = true }) end)
+    end
     rec.group = group
 end
 
@@ -595,13 +604,13 @@ local scatterRec
 
 local function BuildScatter(rec)
     if rec.group then rec.group:Destroy() end
-    local have = Template("World", "OreCrates") or Template("World", "RockCluster") or Template("World", "CrystalCluster")
+    local have = Template("World", "OreCrates") or Template("World", "RockCluster") or Template("World", "CrystalCluster") or Template("World", "Stalagmite") or Template("World", "Stalactite")
     if not have then return end
     local group = Instance.new("Folder")
     group.Name = "HubScenery"
     group.Parent = rec.parent
     local rng = Random.new(2468)
-    local kinds = { { "RockCluster", 7, 10, 40 }, { "CrystalCluster", 8, 12, 24 }, { "OreCrates", 5, 8, 36 } }     -- name, height range, how many
+    local kinds = { { "RockCluster", 7, 10, 40 }, { "CrystalCluster", 8, 12, 24 }, { "OreCrates", 5, 8, 36 }, { "Stalagmite", 10, 22, 36 } }     -- name, height range, how many
     local regions = {
         { x1 = -420, x2 = 2050, z1 = 118, z2 = 168 },      -- the north strip, behind the quarry plots
         { x1 = -420, x2 = 2050, z1 = -242, z2 = -226 },    -- the south strip
@@ -615,6 +624,12 @@ local function BuildScatter(rec)
                 local m = MeshPiece(group, "World", k[1], pos, { height = rng:NextNumber(k[2], k[3]), yaw = rng:NextNumber(0, math.pi * 2) })
                 if m and k[1] == "CrystalCluster" then GlowLight(m, Color3.fromRGB(255, 200, 110), 22, 0.9, rng:NextNumber(0, 6)) end
             end
+        end
+    end
+    if Template("World", "Stalactite") then                                  -- stalactites hanging from the cavern roof (about 110 studs up) all along it
+        for _ = 1, 60 do
+            local pos = Vector3.new(rng:NextNumber(-420, 2050), 108, rng:NextNumber(-245, 165))
+            MeshPiece(group, "World", "Stalactite", pos, { height = rng:NextNumber(14, 30), yaw = rng:NextNumber(0, math.pi * 2), hang = true })
         end
     end
     rec.group = group
