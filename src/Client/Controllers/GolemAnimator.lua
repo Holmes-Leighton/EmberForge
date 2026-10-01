@@ -19,6 +19,7 @@ local SWING_SPEED = 4
 
 local golems = {}           -- model -> { parts... }
 local spinners = {}         -- part -> { cf = original CFrame, speed = rad/s }  (forge gears)
+local scenery = {}          -- Model or part -> { base = rest CFrame, kind, speed, amp, phase }  (biome art: see BiomeArt on the server)
 
 local function LoadTrack(animator, model, attr, looped)
     local id = model:GetAttribute(attr)
@@ -108,6 +109,31 @@ local function Step()
             spinners[part] = nil
         elseif (part.Position - camPos).Magnitude < NEAR * 1.5 then
             part.CFrame = info.cf * CFrame.Angles(t * info.speed, 0, 0)
+        end
+    end
+
+    -- biome scenery: floating shards bob and turn, pines sway, crystal cores breathe (only when within range)
+    for inst, s in pairs(scenery) do
+        if not inst.Parent then
+            scenery[inst] = nil
+        else
+            local pos = s.base.Position
+            if (pos - camPos).Magnitude < NEAR * 1.6 then
+                local a = t * s.speed + s.phase
+                if s.kind == "bob" then
+                    inst:PivotTo(s.base * CFrame.new(0, math.sin(a) * s.amp, 0))
+                elseif s.kind == "spin" then
+                    inst:PivotTo(s.base * CFrame.Angles(0, a, 0))
+                elseif s.kind == "bobspin" then
+                    inst:PivotTo(s.base * CFrame.new(0, math.sin(a) * s.amp, 0) * CFrame.Angles(0, a * 0.6, 0))
+                elseif s.kind == "sway" then
+                    inst:PivotTo(s.base * CFrame.Angles(math.sin(a) * s.amp, 0, math.cos(a * 0.8) * s.amp * 0.7))
+                elseif s.kind == "pulse" and inst:IsA("BasePart") then
+                    inst.Transparency = 0.3 + math.sin(a) * s.amp
+                    local light = inst:FindFirstChildWhichIsA("PointLight")
+                    if light then light.Brightness = 1 + math.sin(a) * 0.5 end
+                end
+            end
         end
     end
 
@@ -206,6 +232,16 @@ function GolemAnimator.Init()
     for _, p in ipairs(CollectionService:GetTagged("EFSpin")) do AddSpinner(p) end
     CollectionService:GetInstanceAddedSignal("EFSpin"):Connect(AddSpinner)
     CollectionService:GetInstanceRemovedSignal("EFSpin"):Connect(function(p) spinners[p] = nil end)
+    local function AddScenery(inst)
+        if not (inst:IsA("BasePart") or inst:IsA("Model")) then return end
+        local kind = inst:GetAttribute("AnimKind")
+        if not kind then return end
+        scenery[inst] = { base = inst:GetPivot(), kind = kind, speed = inst:GetAttribute("AnimSpeed") or 1, amp = inst:GetAttribute("AnimAmp") or 0.5,
+            phase = inst:GetAttribute("AnimPhase") or 0 }
+    end
+    for _, i in ipairs(CollectionService:GetTagged("EFAnim")) do AddScenery(i) end
+    CollectionService:GetInstanceAddedSignal("EFAnim"):Connect(AddScenery)
+    CollectionService:GetInstanceRemovedSignal("EFAnim"):Connect(function(i) scenery[i] = nil end)
     RunService.RenderStepped:Connect(Step)
 
     -- deployed Golems

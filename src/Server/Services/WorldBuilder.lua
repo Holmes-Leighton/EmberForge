@@ -156,13 +156,7 @@ ZoneProps.GraniteCaverns = function(model, cx, cz, rng, color)
 end
 
 ZoneProps.GlacialPeaks = function(model, cx, cz, rng, color)
-    for i = 1, 12 do
-        local a = rng:NextNumber(0, math.pi * 2)
-        local r = rng:NextInteger(50, 68)
-        local h = rng:NextInteger(16, 38)
-        Part({ Name = "IceSpike", Material = Enum.Material.Ice, Color = Color3.fromRGB(170, 220, 255), Transparency = 0.25, Size = Vector3.new(4, h, 4),
-            CFrame = CFrame.new(cx + math.cos(a) * r, h / 2, cz + math.sin(a) * r) * CFrame.Angles(rng:NextNumber(-0.25, 0.25), a, rng:NextNumber(-0.25, 0.25)) }, model)
-    end
+    require(script.Parent.BiomeArt).GlacialPeaks(model, cx, cz, rng)       -- ice spires, frozen waterfalls, snowy pines, floating shards (animated)
     Emitter(Anchor(model, Vector3.new(cx, 60, cz)), { Color = ColorSequence.new(Color3.fromRGB(255, 255, 255)), Rate = 60,
         Lifetime = NumberRange.new(6, 8), Speed = NumberRange.new(4, 7), SpreadAngle = Vector2.new(60, 60),
         EmissionDirection = Enum.NormalId.Bottom, Size = NumberSequence.new(0.6), Shape = Enum.ParticleEmitterShape.Box,
