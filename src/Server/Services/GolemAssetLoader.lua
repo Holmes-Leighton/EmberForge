@@ -220,7 +220,44 @@ local function LoadCrownPack(packId, crownFolder)
     pending -= 1
 end
 
+-- Forge build pieces: one asset holding every piece (children named after ForgeBuildData ids) -> ReplicatedStorage.BuildAssets
+local function LoadBuildPack(packId, buildFolder)
+    pending += 1
+    local ok, result = pcall(function() return InsertService:LoadAsset(packId) end)
+    if not ok or not result then
+        warn(string.format("[GolemAssets] Build Pack (asset %d) FAILED to load: %s. Forge pieces will be plain blocks.", packId, tostring(result)))
+        pending -= 1
+        return
+    end
+    local found = 0
+    local root = result:FindFirstChildWhichIsA("Model") or result
+    for _, d in ipairs(root:GetChildren()) do
+        if d:IsA("Model") then
+            Sanitise(d)
+            if CountParts(d) > 0 then
+                local old = buildFolder:FindFirstChild(d.Name)
+                if old then old:Destroy() end
+                d.Parent = buildFolder
+                found += 1
+            end
+        end
+    end
+    buildFolder:SetAttribute("Version", found)
+    log(string.format("Build Pack (asset %d): %d forge piece(s) loaded", packId, found))
+    pending -= 1
+end
+
 function GolemAssetLoader.Init()
+    local buildFolder = ReplicatedStorage:FindFirstChild("BuildAssets")
+    if not buildFolder then
+        buildFolder = Instance.new("Folder")
+        buildFolder.Name = "BuildAssets"
+        buildFolder.Parent = ReplicatedStorage
+    end
+    buildFolder:SetAttribute("Version", 0)
+    local buildPackId = AssetData.BuildPack and AssetData.BuildPack.assetId or 0
+    if buildPackId > 0 then task.spawn(LoadBuildPack, buildPackId, buildFolder) end
+
     local crownFolder = ReplicatedStorage:FindFirstChild("CrownAssets")
     if not crownFolder then
         crownFolder = Instance.new("Folder")

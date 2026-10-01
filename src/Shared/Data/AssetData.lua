@@ -74,6 +74,10 @@ AssetData.PetPack = { assetId = 94911546053505 }
 -- circlet is built in code instead.
 AssetData.CrownPack = { assetId = 133428041942823 }
 
+-- Forge buildings and props for the Forge Builder (mine cart, racks, furnaces ...): one Model whose children are
+-- named after ForgeBuildData items (MineCart, Hearth ...), each a model of mesh parts.
+AssetData.BuildPack = { assetId = 78179352496738 }
+
 local MODES = { Auto = true, Skinned = true, Parts = true, Static = true }
 
 -- The per-type settings a Golem Pack model is given: Default's settings with that type's own on top

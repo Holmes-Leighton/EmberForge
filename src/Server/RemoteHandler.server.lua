@@ -453,6 +453,48 @@ RemoteEvents.GetGuildInfo.OnServerInvoke = function(player)
     return { mine = GuildService.GetMine(player), top = GuildService.Top(10) }
 end
 
+-- ── Forge Builder ────────────────────────────────────────────────────────────
+-- Placing uses where the player is standing (relative to their own plot) and which way they face, so there is
+-- no way to place anywhere the server hasn't checked.
+RemoteEvents.BuildAction.OnServerEvent:Connect(function(player, action, arg)
+    SafeCall(player, function()
+        local FB = require(script.Parent.Services.ForgeBuildService)
+        local ok, result, msg
+        if action == "buy" and type(arg) == "string" then
+            ok, result = FB.Buy(player, arg)
+            msg = ok and "Bought!" or result
+        elseif action == "place" and type(arg) == "string" then
+            local plot = ForgeZoneService.GetPlotCFrame(player.UserId)
+            local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if not plot or not root then
+                ok, result = false, "Stand on your forge to place things"
+            else
+                local rel = plot:PointToObjectSpace(root.Position)
+                local look = root.CFrame.LookVector
+                -- put it a little in front of the player, facing them
+                local fx, fz = rel.X + look.X * 5, rel.Z + look.Z * 5
+                local yaw = math.deg(math.atan2(-look.X, -look.Z)) + 180
+                ok, result = FB.Place(player, arg, fx, fz, yaw)
+            end
+            msg = ok and "Placed! Walk somewhere else to place the next one." or result
+        elseif action == "pickup" and type(arg) == "number" then
+            ok, result = FB.Pickup(player, arg)
+            msg = ok and "Picked up." or result
+        elseif action == "sell" and type(arg) == "string" then
+            ok, result = FB.Sell(player, arg)
+            msg = ok and string.format("Sold for %d coins.", result) or result
+        else
+            return
+        end
+        if ok then ForgeZoneService.RefreshBuild(player) end
+        RemoteEvents.BuildResult:FireClient(player, action, ok == true, msg)
+    end)
+end)
+
+RemoteEvents.GetBuildInfo.OnServerInvoke = function(player)
+    return require(script.Parent.Services.ForgeBuildService).Snapshot(player)
+end
+
 -- ── Pets ──────────────────────────────────────────────────────────────────────
 RemoteEvents.HatchPet.OnServerEvent:Connect(function(player, eggId)
     SafeCall(player, function()

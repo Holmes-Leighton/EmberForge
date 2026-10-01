@@ -6,6 +6,7 @@ local GolemData    = require(game.ReplicatedStorage.Shared.Data.GolemData)
 local Utils        = require(game.ReplicatedStorage.Shared.Modules.Utils)
 local ForgeData    = require(game.ReplicatedStorage.Shared.Data.ForgeData)
 local PetData      = require(game.ReplicatedStorage.Shared.Data.PetData)
+local ForgeBuildData = require(game.ReplicatedStorage.Shared.Data.ForgeBuildData)
 
 local IdleEngine = {}
 
@@ -60,14 +61,15 @@ local function CrewAuras(playerData)
     end
     local cp, jp, bp = SkillParams("Coral"), SkillParams("StormJar"), SkillParams("Dragonbone")
     local pets = PetData.Boosts(playerData)            -- the pets being worn (small boosts)
+    local forge = ForgeBuildData.Perks(playerData.ForgeBuild and playerData.ForgeBuild.placed)   -- pieces on your plot
     return {
-        luck      = math.min(cp.luckCap, cp.luckPer * coral) + pets.luck,
+        luck      = math.min(cp.luckCap, cp.luckPer * coral) + pets.luck + forge.luck,
         shelter   = math.min(jp.shelterCap, jp.shelterPer * jar),
         blueprint = (1 + math.min(bp.blueprintCap, bp.blueprintPer * bone)) * (1 + pets.bp),
-        rate      = pets.rate,      -- mining speed
-        carry     = pets.carry,     -- carry capacity
-        eff       = pets.eff,       -- efficiency
-        wear      = pets.wear,      -- durability wear saved
+        rate      = pets.rate + forge.rate,      -- mining speed
+        carry     = pets.carry + forge.carry,    -- carry capacity
+        eff       = pets.eff + forge.eff,        -- efficiency
+        wear      = math.min(0.9, pets.wear + forge.wear),   -- durability wear saved
     }
 end
 IdleEngine.CrewAuras = CrewAuras

@@ -255,6 +255,71 @@ function ForgeZoneService.Refresh(player)
     end
 end
 
+-- ── Forge Builder pieces ──────────────────────────────────────────────────────
+local ForgeBuildData = require(game.ReplicatedStorage.Shared.Data.ForgeBuildData)
+local FLOOR_Y = 1            -- top of the plot's ground pad
+
+local function BuildPiece(def, placed, centre)
+    local template = game.ReplicatedStorage:FindFirstChild("BuildAssets")
+    template = template and template:FindFirstChild(def.id)
+    local piece
+    if template then
+        piece = template:Clone()
+        for _, d in ipairs(piece:GetDescendants()) do
+            if d:IsA("BasePart") then d.Anchored = true d.CanCollide = false end
+        end
+        local _, size = piece:GetBoundingBox()
+        if size.Y > 0.01 then piece:ScaleTo(piece:GetScale() * def.height / size.Y) end
+    else
+        -- no model uploaded yet: a plain labelled block
+        piece = Instance.new("Model")
+        local block = Instance.new("Part")
+        block.Name = "Block"
+        block.Size = Vector3.new(def.height * 0.6, def.height, def.height * 0.6)
+        block.Color = def.color or Color3.fromRGB(170, 140, 110)
+        block.Anchored, block.CanCollide = true, false
+        block.Parent = piece
+        piece.PrimaryPart = block
+    end
+    piece.Name = def.id
+    local _, size = piece:GetBoundingBox()
+    local pos = Vector3.new(centre.X + placed.x, FLOOR_Y + size.Y / 2, centre.Z + placed.z)
+    piece:PivotTo(CFrame.new(pos) * CFrame.Angles(0, math.rad(placed.rot or 0), 0))
+    return piece
+end
+
+local function BuildSignature(data)
+    local assets = game.ReplicatedStorage:FindFirstChild("BuildAssets")
+    local parts = { tostring(assets and assets:GetAttribute("Version") or 0) }     -- redraw once the models have loaded
+    for _, p in ipairs(data.ForgeBuild and data.ForgeBuild.placed or {}) do
+        table.insert(parts, string.format("%s@%d,%d,%d", p.id, p.x, p.z, p.rot or 0))
+    end
+    return table.concat(parts, ";")
+end
+
+-- Redraw the pieces placed on a player's plot (visible to everyone)
+function ForgeZoneService.RefreshBuild(player)
+    local entry = zones[player.UserId]
+    local idx = plotAssignments[player.UserId]
+    local data = PlayerDataService.Get(player)
+    if not entry or not idx or not data then return end
+    EnsureFolder()
+    if entry.build then entry.build:Destroy() end
+    local model = Instance.new("Model")
+    model.Name = "ForgeBuild_" .. player.UserId
+    local centre = PlotCentre(idx)
+    for _, placed in ipairs(data.ForgeBuild and data.ForgeBuild.placed or {}) do
+        local def = ForgeBuildData.Get(placed.id)
+        if def then
+            local ok, piece = pcall(BuildPiece, def, placed, centre)
+            if ok and piece then piece.Parent = model else warn("[ForgeBuild] could not draw " .. tostring(placed.id) .. ": " .. tostring(piece)) end
+        end
+    end
+    model.Parent = zonesFolder
+    entry.build = model
+    entry.buildSignature = BuildSignature(data)
+end
+
 function ForgeZoneService.OnPlayerAdded(player)
     local plotIndex = FreePlotIndex()
     plotAssignments[player.UserId] = plotIndex
@@ -263,6 +328,7 @@ function ForgeZoneService.OnPlayerAdded(player)
     zones[player.UserId] = { part = part, playersInside = {} }
     WireZoneTouched(player, part)
     ForgeZoneService.Refresh(player)
+    ForgeZoneService.RefreshBuild(player)
 
     -- Keep the forge in step with the player's Golems, equipment and vault
     task.spawn(function()
@@ -272,6 +338,9 @@ function ForgeZoneService.OnPlayerAdded(player)
             local entry = zones[player.UserId]
             if data and entry and entry.signature ~= Signature(data) then
                 ForgeZoneService.Refresh(player)
+            end
+            if data and entry and entry.buildSignature ~= BuildSignature(data) then
+                ForgeZoneService.RefreshBuild(player)
             end
         end
     end)
@@ -301,6 +370,7 @@ function ForgeZoneService.OnPlayerLeave(player)
             entry.part:Destroy()
         end
         if entry.forge then entry.forge:Destroy() end
+        if entry.build then entry.build:Destroy() end
         local pad = zonesFolder and zonesFolder:FindFirstChild("ForgePad_" .. player.UserId)
         if pad then pad:Destroy() end
         zones[player.UserId] = nil
