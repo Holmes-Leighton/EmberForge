@@ -461,6 +461,34 @@ RemoteEvents.GetGuildInfo.OnServerInvoke = function(player)
     return { mine = GuildService.GetMine(player), top = GuildService.Top(10) }
 end
 
+-- ── Rewards: codes, ranked ladder, login streak ──────────────────────────────
+RemoteEvents.RedeemCode.OnServerEvent:Connect(function(player, code)
+    SafeCall(player, function()
+        if type(code) ~= "string" or #code > 60 then return end
+        local ok, msg = require(script.Parent.Services.CodeService).Redeem(player, code)
+        RemoteEvents.RewardsResult:FireClient(player, "code", ok == true, msg)
+    end)
+end)
+
+RemoteEvents.ClaimLadderPrize.OnServerEvent:Connect(function(player)
+    SafeCall(player, function()
+        local ok, prize = require(script.Parent.Services.LadderService).ClaimPrize(player)
+        local msg = ok and string.format("Ranked prize: +%d coins%s%s!", prize.coins,
+            (prize.speedUps or 0) > 0 and (" and " .. prize.speedUps .. " Speed-Ups") or "", prize.title and (" and the " .. prize.title .. " title") or "") or prize
+        RemoteEvents.RewardsResult:FireClient(player, "ladder", ok == true, msg)
+    end)
+end)
+
+RemoteEvents.GetLadderInfo.OnServerInvoke = function(player)
+    return require(script.Parent.Services.LadderService).GetInfo(player)
+end
+
+RemoteEvents.GetStreakInfo.OnServerInvoke = function(player)
+    local data = PlayerDataService.Get(player)
+    local s = data and data.LoginStreak or { count = 0, best = 0, lastDay = 0 }
+    return { count = s.count or 0, best = s.best or 0, lastDay = s.lastDay or 0, today = math.floor(os.time() / 86400) }
+end
+
 -- ── Forge Builder ────────────────────────────────────────────────────────────
 -- Placing uses where the player is standing (relative to their own plot) and which way they face, so there is
 -- no way to place anywhere the server hasn't checked.

@@ -25,7 +25,7 @@ pill.BackgroundTransparency = 0.1
 pill.BorderSizePixel = 0
 pill.Parent = gui
 Theme.AddCorner(pill, UDim.new(0, 22))
-Theme.AddStroke(pill, Theme.Colors.Gold, 2, 0.2)
+local stroke = Theme.AddStroke(pill, Theme.Colors.Gold, 2, 0.2)
 ScaleUI.ApplyHud(pill)
 
 local title = Instance.new("TextLabel")
@@ -67,6 +67,16 @@ RunService.Heartbeat:Connect(function()
     last = now
     local cur = Schedule.Current(now)
     local nxt = Schedule.Next(now)
+    local surge = Schedule.Surge(now)
+    if surge then       -- a surge takes over the banner while it lasts
+        title.Text = string.format("%s  -  %s", surge.name:upper(), surge.blurb)
+        title.TextColor3 = Color3.fromRGB(255, 110, 90)
+        sub.Text = string.format("surge ends in %s  |  hourly: %s", Clock(surge.endTime - now), cur.name)
+        stroke.Color = Color3.fromRGB(255, 110, 90)
+        return
+    end
+    title.TextColor3 = Theme.Colors.Gold
+    stroke.Color = Theme.Colors.Gold
     title.Text = string.format("%s  -  %s", cur.name, cur.blurb)
     sub.Text = string.format("ends in %s  |  next: %s", Clock(cur.endTime - now), nxt.name)
 end)

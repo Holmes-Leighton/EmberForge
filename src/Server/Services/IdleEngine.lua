@@ -194,7 +194,7 @@ function IdleEngine.CalculateOfflineProduction(playerData)
     if magnetActive then eventMult = eventMult * 2 end
     local LiveOps = require(script.Parent.LiveOpsService)
     eventMult = eventMult * LiveOps.GetMultiplier("drops")
-    local eventLuck = LiveOps.GetMultiplier("luck")
+    local eventLuck = LiveOps.GetMultiplier("luck") * ((playerData.LuckBoostExpiry or 0) > Utils.UnixTimestamp() and 2 or 1)   -- + the Lucky Boost
 
     local stormBoost = StormBoost(playerData)
     local auras = CrewAuras(playerData)
@@ -255,7 +255,7 @@ function IdleEngine.TickOnlineProduction(playerData, deltaSeconds)
     if magnetActive then eventMult = eventMult * 2 end
     local LiveOps = require(script.Parent.LiveOpsService)
     eventMult = eventMult * LiveOps.GetMultiplier("drops")
-    local eventLuck = LiveOps.GetMultiplier("luck")
+    local eventLuck = LiveOps.GetMultiplier("luck") * ((playerData.LuckBoostExpiry or 0) > Utils.UnixTimestamp() and 2 or 1)   -- + the Lucky Boost
 
     local stormBoost = StormBoost(playerData)
     local auras = CrewAuras(playerData)

@@ -78,7 +78,8 @@ local convItems = {
     { name="SlotPackBtn",         emoji="🧩",  title="+5 Golem Slots",    sub="Permanent. Buy again for more.", price="249 R$",  color=Theme.Colors.Gold    },
     { name="SlotBoostBtn",        emoji="🔓",  title="Slot Boost",        sub="+1 deploy slot for 7 days",     price="149 R$/wk",color=Theme.Colors.Storm   },
     { name="MaterialMagnetBtn",   emoji="🧲",  title="Material Magnet",   sub="2× resource collection 24 hrs", price="199 R$",   color=Theme.Colors.Success },
-    { name="EventCatalystBtn",    emoji="✨",  title="Event Catalyst",    sub="Skip the grind for 1 event mat",price="~400 R$",  color=Theme.Colors.Legendary },
+    { name="LuckBoostBtn",        emoji="🍀",  title="Lucky Boost",       sub="2× rare drop chance for 1 hr",  price="49 R$",    color=Theme.Colors.Success },
+    { name="EventCatalystBtn",   emoji="✨",  title="Event Catalyst",    sub="Skip the grind for 1 event mat",price="~400 R$",  color=Theme.Colors.Legendary },
 }
 
 local COLS = 4

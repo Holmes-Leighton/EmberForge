@@ -76,7 +76,7 @@ AssetData.CrownPack = { assetId = 133428041942823 }
 
 -- Forge buildings and props for the Forge Builder (mine cart, racks, furnaces ...): one Model whose children are
 -- named after ForgeBuildData items (MineCart, Hearth ...), each a model of mesh parts.
-AssetData.BuildPack = { assetId = 78179352496738 }
+AssetData.BuildPack = { assetId = 108557283111622 }
 
 local MODES = { Auto = true, Skinned = true, Parts = true, Static = true }
 

@@ -37,6 +37,46 @@ function EventScheduleData.Current(now)
     return e
 end
 
+-- ── Surges: rare, short, server-wide moments ──────────────────────────────────
+-- Every 3 hours there is a chance (SURGE_CHANCE) that a Surge strikes in the first SURGE_SECONDS of that window.
+-- Like the hourly event it comes from the clock alone, so every server has the same surge at the same moment.
+EventScheduleData.SURGE_WINDOW  = 3 * 3600
+EventScheduleData.SURGE_SECONDS = 10 * 60
+EventScheduleData.SURGE_CHANCE  = 0.35
+EventScheduleData.Surges = {
+    { id = "meteor",  name = "Meteor Shower",  kind = "drops", multiplier = 3, blurb = "Meteors fall! All resources x3" },
+    { id = "richvein", name = "Rich Vein",     kind = "luck",  multiplier = 4, blurb = "A rich vein is exposed! Rare drops x4" },
+    { id = "frenzy",  name = "Forge Frenzy",   kind = "xp",    multiplier = 3, blurb = "The forge roars! All XP x3" },
+}
+
+local function SurgeHash(window)
+    local h = (window % 1000003) * 2654435761 % 4294967296
+    return (h % 10000) / 10000, math.floor(h / 10000) % #EventScheduleData.Surges + 1
+end
+
+-- The surge live at `now`, or nil. `startTime`/`endTime` are set; `surge = true`.
+function EventScheduleData.Surge(now)
+    local window = math.floor(now / EventScheduleData.SURGE_WINDOW)
+    local roll, index = SurgeHash(window)
+    if roll >= EventScheduleData.SURGE_CHANCE then return nil end
+    local start = window * EventScheduleData.SURGE_WINDOW
+    if now < start or now >= start + EventScheduleData.SURGE_SECONDS then return nil end
+    local e = table.clone(EventScheduleData.Surges[index])
+    e.startTime, e.endTime, e.surge = start, start + EventScheduleData.SURGE_SECONDS, true
+    return e
+end
+
+-- The next surge after `now` (looks up to a week ahead), or nil
+function EventScheduleData.NextSurgeStart(now)
+    local window = math.floor(now / EventScheduleData.SURGE_WINDOW)
+    for w = window, window + 56 do
+        local roll = SurgeHash(w)
+        local start = w * EventScheduleData.SURGE_WINDOW
+        if roll < EventScheduleData.SURGE_CHANCE and start + EventScheduleData.SURGE_SECONDS > now then return start end
+    end
+    return nil
+end
+
 -- The event that follows the current one
 function EventScheduleData.Next(now)
     return EventScheduleData.Current(now + EventScheduleData.SLOT_SECONDS)

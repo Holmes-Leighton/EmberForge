@@ -8,7 +8,7 @@ local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 
 local MENUS = {
     InventoryMenu = true, ForgeMenu = true, MarketMenu = true, TradeMenu = true, ShopMenu = true,
-    SeasonMenu = true, ChallengesMenu = true, StyleMenu = true, LeaderboardMenu = true, AnvilMenu = true, PetsMenu = true, GuildMenu = true, BuildMenu = true,
+    SeasonMenu = true, ChallengesMenu = true, StyleMenu = true, LeaderboardMenu = true, AnvilMenu = true, PetsMenu = true, GuildMenu = true, BuildMenu = true, RewardsMenu = true,
 }
 
 local function PopIn(gui)

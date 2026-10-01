@@ -90,6 +90,13 @@ local DEFINITIONS = {
     GuildResult         = "event",   -- server → client (action, ok, message)
     GetGuildInfo        = "function", -- → { mine = snapshot or nil, top = {...} }
 
+    -- Rewards: login streak, codes, ranked ladder
+    RedeemCode          = "event",   -- client → server (code)
+    ClaimLadderPrize    = "event",
+    RewardsResult       = "event",   -- server → client (action, ok, message)
+    GetLadderInfo       = "function", -- → LadderService.GetInfo
+    GetStreakInfo       = "function", -- → { count, best, lastDay, today }
+
     -- Forge Builder
     BuildAction         = "event",   -- client → server (action: "buy" | "place" | "pickup" | "sell", id or index)
     BuildResult         = "event",   -- server → client (action, ok, message)

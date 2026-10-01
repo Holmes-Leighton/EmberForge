@@ -18,6 +18,9 @@ local ShopService        = require(script.Services.ShopService)
 local SeasonPassService  = require(script.Services.SeasonPassService)
 local LeaderboardService = require(script.Services.LeaderboardService)
 local GuildService       = require(script.Services.GuildService)
+local LadderService      = require(script.Services.LadderService)
+local StreakService      = require(script.Services.StreakService)
+local CodeService        = require(script.Services.CodeService)
 local ForgeZoneService   = require(script.Services.ForgeZoneService)
 local WorldBuilder       = require(script.Services.WorldBuilder)
 local PadService         = require(script.Services.PadService)
@@ -40,6 +43,7 @@ GolemVisuals.Init()
 PlayerDataService.StartAutoSave()
 LeaderboardService.StartFlushLoop()
 GuildService.StartFlushLoop()
+LadderService.StartFlushLoop()
 
 -- ── Player join ───────────────────────────────────────────────────────────────
 -- Roblox's default character script loads a facial "mood" animation that Studio can't fetch for an
@@ -111,6 +115,13 @@ local function OnPlayerAdded(player)
     -- Check slot milestones
     GolemService.CheckSlotMilestones(player)
 
+    -- Daily login streak reward
+    task.delay(5, function()
+        if not player.Parent then return end
+        local ok, result = pcall(StreakService.OnJoin, player)
+        if ok and result then RemoteEvents.Notify:FireClient(player, "Daily streak!", result.message) end
+    end)
+
     -- Tell them about any live events (Double XP weekend etc.)
     task.delay(8, function()
         if not player.Parent then return end
@@ -134,6 +145,8 @@ local function OnPlayerLeave(player)
     ForgeZoneService.OnPlayerLeave(player)
     LeaderboardService.OnPlayerLeave(player)
     GuildService.OnPlayerLeave(player)
+    LadderService.OnPlayerLeave(player)
+    CodeService.OnPlayerLeave(player)
     PlayerDataService.OnPlayerLeave(player)
     print("[Main] " .. player.Name .. " left — data saved.")
 end
@@ -181,6 +194,7 @@ task.spawn(function()
                 if totalGained > 0 then
                     LeaderboardService.OnResourcesGained(player, totalGained)
                     GuildService.OnResourcesGained(player, totalGained)
+                    LadderService.OnResourcesGained(player, totalGained)
                 end
 
                 -- Tick smelt jobs

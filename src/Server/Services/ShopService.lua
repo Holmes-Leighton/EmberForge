@@ -57,6 +57,13 @@ PRODUCT_HANDLERS.MaterialMagnet = function(player)
     end)
 end
 
+-- ── Lucky Boost (1h: rare drops twice as likely; buying again extends it) ─────────
+PRODUCT_HANDLERS.LuckBoost_1h = function(player)
+    return withData(player, function(d)
+        d.LuckBoostExpiry = math.max(d.LuckBoostExpiry or 0, Utils.UnixTimestamp()) + 3600
+    end)
+end
+
 -- ── Event Catalyst ────────────────────────────────────────────────────────────
 PRODUCT_HANDLERS.EventCatalyst = function(player)
     PlayerDataService.AddMaterial(player, "EventCatalyst", 1)

@@ -12,6 +12,7 @@ ProductData.Products = {
     SlotBoost_7d      = { id = 0, displayName = "Forge Slot Boost (7d)", robux = 149  },
     MaterialMagnet    = { id = 0, displayName = "Material Magnet (24h)", robux = 199  },
     EventCatalyst     = { id = 0, displayName = "Event Catalyst",        robux = 400  },
+    LuckBoost_1h      = { id = 0, displayName = "Lucky Boost (1h)",      robux = 49   },
 
     -- Pet eggs (paid random items: odds are shown in the Pets menu; hidden where Roblox restricts them).
     -- `eggId` / `count` tell ShopService how many pets to hatch from PetData.Eggs[eggId].

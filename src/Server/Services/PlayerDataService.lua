@@ -65,6 +65,7 @@ local function DefaultData()
         SpeedUps             = 0,
         TempSlotBoostExpiry  = 0,
         MaterialMagnetExpiry = 0,
+        LuckBoostExpiry      = 0,
         -- Cosmetics & receipts
         PurchasedSlots  = 0,           -- extra Golem slots bought with Robux (packs of 5, stackable)
         UnlockedPads    = {},          -- padId -> true (bought with Robux)

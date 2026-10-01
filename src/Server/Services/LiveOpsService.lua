@@ -83,7 +83,11 @@ function LiveOpsService.ActiveEvents()
     if config.weekendXP and IsWeekend(now) then
         table.insert(list, { id = "weekend", name = "Double XP Weekend", kind = "xp", multiplier = 2 })
     end
-    if LiveOpsService.HourlyEnabled then table.insert(list, EventScheduleData.Current(now)) end
+    if LiveOpsService.HourlyEnabled then
+        table.insert(list, EventScheduleData.Current(now))
+        local surge = EventScheduleData.Surge(now)
+        if surge then table.insert(list, surge) end
+    end
     return list
 end
 
@@ -136,8 +140,30 @@ function LiveOpsService.SetOverride(key, value)
     return true
 end
 
+-- Tell everyone the moment a surge begins (every server sees the same one, see EventScheduleData.Surge)
+local lastSurge
+function LiveOpsService.AnnounceSurge()
+    if not LiveOpsService.HourlyEnabled then return end
+    local surge = EventScheduleData.Surge(Utils.UnixTimestamp())
+    if surge and lastSurge ~= surge.startTime then
+        lastSurge = surge.startTime
+        local ok, RemoteEvents = pcall(function() return require(game.ReplicatedStorage.Shared.Modules.RemoteEvents) end)
+        if ok and RemoteEvents.Notify then
+            for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
+                RemoteEvents.Notify:FireClient(p, surge.name .. "!", surge.blurb .. " for 10 minutes. Get mining!")
+            end
+        end
+    end
+end
+
 function LiveOpsService.Init()
     LiveOpsService.Refresh()
+    task.spawn(function()
+        while true do
+            LiveOpsService.AnnounceSurge()
+            task.wait(15)
+        end
+    end)
     task.spawn(function()
         while true do
             task.wait(REFRESH_SECONDS)
