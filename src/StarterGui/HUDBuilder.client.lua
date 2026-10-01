@@ -119,6 +119,7 @@ local NAV = {
     { name = "StyleButton",       icon = "🎨", label = "Style",      color = Color3.fromRGB(220, 90, 150),  targetGui = "StyleMenu"       },
     { name = "PetsButton",        icon = "🐾", label = "Pets",       color = Color3.fromRGB(110, 185, 100), targetGui = "PetsMenu"        },
     { name = "RewardsButton",     icon = "🎁", label = "Rewards",    color = Color3.fromRGB(215, 100, 90),  targetGui = "RewardsMenu"     },
+    { name = "QuarryButton",      icon = "💎", label = "Quarry",     color = Color3.fromRGB(110, 150, 220), targetGui = "QuarryMenu"      },
     { name = "BuildButton",      icon = "🔨", label = "Build",      color = Color3.fromRGB(200, 130, 60),  targetGui = "BuildMenu"       },
     { name = "GuildButton",      icon = "🛡️", label = "Guild",      color = Color3.fromRGB(90, 130, 210),  targetGui = "GuildMenu"       },
     { name = "HomeButton",        icon = "🏠", label = "My Forge",   color = Color3.fromRGB(120, 130, 150), action = "GoToMyForge"        },

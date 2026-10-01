@@ -346,6 +346,114 @@ function ForgeZoneService.RefreshBuild(player)
     entry.buildSignature = BuildSignature(data)
 end
 
+-- ── The Quarry (second plot behind the forge) ─────────────────────────────────
+local QuarryData = require(game.ReplicatedStorage.Shared.Data.QuarryData)
+
+local QUARRY_SCALE = 1.4      -- Quarry pieces are drawn this much bigger than their design height, so the plot feels full
+
+local function QuarryDecor(def, piece)
+    -- light + sparkles per piece, so nodes glow and helpers look alive (the motion itself is QuarryAnimator on the client)
+    local anchor = piece.PrimaryPart or piece:FindFirstChildWhichIsA("BasePart", true)
+    if not anchor then return end
+    local color = def.color or Color3.fromRGB(150, 220, 255)
+    if def.kind == "node" or piece.Name == "PrismCluster" or piece.Name == "Core" then
+        local light = Instance.new("PointLight")
+        light.Name, light.Color, light.Range, light.Brightness = "QLight", color, 14, 1.2
+        light.Parent = anchor
+        local sparkle = Instance.new("ParticleEmitter")
+        sparkle.Name, sparkle.Color, sparkle.Rate, sparkle.Lifetime = "QSparkle", ColorSequence.new(color), 3, NumberRange.new(1.2, 2.2)
+        sparkle.Speed, sparkle.LightEmission, sparkle.Size = NumberRange.new(0.5, 1.5), 1, NumberSequence.new(0.35, 0)
+        sparkle.EmissionDirection = Enum.NormalId.Top
+        sparkle.Parent = anchor
+    elseif piece.Name == "CoolingPool" then
+        local steam = Instance.new("ParticleEmitter")
+        steam.Name, steam.Color, steam.Rate, steam.Lifetime = "QSteam", ColorSequence.new(Color3.fromRGB(200, 240, 255)), 6, NumberRange.new(1.5, 2.5)
+        steam.Speed, steam.Transparency, steam.Size = NumberRange.new(1, 2), NumberSequence.new(0.5, 1), NumberSequence.new(0.8, 2.4)
+        steam.EmissionDirection = Enum.NormalId.Top
+        steam.Parent = anchor
+    elseif piece.Name == "SkySpire" then
+        local light = Instance.new("PointLight")
+        light.Name, light.Color, light.Range, light.Brightness = "QLight", Color3.fromRGB(255, 240, 120), 22, 1.6
+        light.Parent = piece:FindFirstChild("Orb") or anchor
+    elseif piece.Name == "DrillRig" then
+        local dust = Instance.new("ParticleEmitter")
+        dust.Name, dust.Color, dust.Rate, dust.Lifetime = "QDust", ColorSequence.new(Color3.fromRGB(150, 120, 90)), 8, NumberRange.new(0.6, 1.2)
+        dust.Speed, dust.Size, dust.Transparency = NumberRange.new(2, 4), NumberSequence.new(0.5, 0), NumberSequence.new(0.2, 1)
+        dust.Parent = piece:FindFirstChild("Drill") or anchor
+    end
+end
+
+local function BuildQuarryPiece(id, placed, centre)
+    local def = QuarryData.Pieces[id]
+    local assets = game.ReplicatedStorage:FindFirstChild("QuarryAssets")
+    local template = assets and assets:FindFirstChild(id)
+    local piece
+    if template then
+        piece = template:Clone()
+        for _, d in ipairs(piece:GetDescendants()) do if d:IsA("BasePart") then d.Anchored, d.CanCollide = true, false end end
+        local _, size = piece:GetBoundingBox()
+        if size.Y > 0.01 then piece:ScaleTo(piece:GetScale() * def.height * QUARRY_SCALE / size.Y) end
+    else
+        piece = Instance.new("Model")
+        local block = Instance.new("Part")
+        block.Name, block.Size, block.Color = "Block", Vector3.new(def.height * 0.6, def.height, def.height * 0.6) * QUARRY_SCALE, def.color or Color3.fromRGB(150, 150, 160)
+        block.Material, block.Anchored, block.CanCollide = Enum.Material.Slate, true, false
+        block.Parent = piece
+        piece.PrimaryPart = block
+    end
+    piece.Name = id
+    piece:SetAttribute("PieceId", id)
+    local _, size = piece:GetBoundingBox()
+    local pos = Vector3.new(centre.X + placed.x, FLOOR_Y + size.Y / 2, centre.Z + placed.z)
+    piece:PivotTo(CFrame.new(pos) * CFrame.Angles(0, math.rad(placed.rot or 0), 0))
+    QuarryDecor(def, piece)
+    return piece
+end
+
+function ForgeZoneService.RefreshQuarry(player)
+    local entry = zones[player.UserId]
+    local idx = plotAssignments[player.UserId]
+    local data = PlayerDataService.Get(player)
+    if not entry or not idx or not data then return end
+    EnsureFolder()
+    if entry.quarry then entry.quarry:Destroy() entry.quarry = nil end
+    local q = type(data.Quarry) == "table" and data.Quarry.placed and data.Quarry
+    if not q then entry.quarrySignature = "none" return end
+    local model = Instance.new("Model")
+    model.Name = "Quarry_" .. player.UserId
+    local centre = PlotCentre(idx) + Vector3.new(0, 0, QuarryData.PLOT_OFFSET_Z)
+    local pad = Instance.new("Part")
+    pad.Name, pad.Size, pad.Anchored = "QuarryGround", Vector3.new(ZONE_SIZE.X, 1, ZONE_SIZE.Z), true
+    pad.CFrame = CFrame.new(centre.X, 0.5, centre.Z)
+    pad.Material, pad.Color = Enum.Material.Slate, Color3.fromRGB(58, 52, 58)
+    pad.Parent = model
+    for _, placed in ipairs(q.placed) do
+        local ok, piece = pcall(BuildQuarryPiece, placed.id, placed, centre)
+        if ok and piece then piece.Parent = model else warn("[Quarry] could not draw " .. tostring(placed.id) .. ": " .. tostring(piece)) end
+    end
+    model.Parent = zonesFolder
+    entry.quarry = model
+    local assets = game.ReplicatedStorage:FindFirstChild("QuarryAssets")
+    local parts = { tostring(assets and assets:GetAttribute("Version") or 0) }
+    for _, p in ipairs(q.placed) do table.insert(parts, string.format("%s@%d,%d,%d", p.id, p.x, p.z, p.rot or 0)) end
+    entry.quarrySignature = table.concat(parts, ";")
+end
+
+local function QuarrySignature(data)
+    local q = type(data.Quarry) == "table" and data.Quarry.placed and data.Quarry
+    if not q then return "none" end
+    local assets = game.ReplicatedStorage:FindFirstChild("QuarryAssets")
+    local parts = { tostring(assets and assets:GetAttribute("Version") or 0) }
+    for _, p in ipairs(q.placed) do table.insert(parts, string.format("%s@%d,%d,%d", p.id, p.x, p.z, p.rot or 0)) end
+    return table.concat(parts, ";")
+end
+
+function ForgeZoneService.GetQuarryCFrame(userId)
+    local idx = plotAssignments[userId]
+    if not idx then return nil end
+    return CFrame.new(PlotCentre(idx) + Vector3.new(0, 0, QuarryData.PLOT_OFFSET_Z))
+end
+
 function ForgeZoneService.OnPlayerAdded(player)
     local plotIndex = FreePlotIndex()
     plotAssignments[player.UserId] = plotIndex
@@ -355,6 +463,7 @@ function ForgeZoneService.OnPlayerAdded(player)
     WireZoneTouched(player, part)
     ForgeZoneService.Refresh(player)
     ForgeZoneService.RefreshBuild(player)
+    ForgeZoneService.RefreshQuarry(player)
 
     -- Keep the forge in step with the player's Golems, equipment and vault
     task.spawn(function()
@@ -367,6 +476,9 @@ function ForgeZoneService.OnPlayerAdded(player)
             end
             if data and entry and entry.buildSignature ~= BuildSignature(data) then
                 ForgeZoneService.RefreshBuild(player)
+            end
+            if data and entry and entry.quarrySignature ~= QuarrySignature(data) then
+                ForgeZoneService.RefreshQuarry(player)
             end
         end
     end)
@@ -397,6 +509,7 @@ function ForgeZoneService.OnPlayerLeave(player)
         end
         if entry.forge then entry.forge:Destroy() end
         if entry.build then entry.build:Destroy() end
+        if entry.quarry then entry.quarry:Destroy() end
         local pad = zonesFolder and zonesFolder:FindFirstChild("ForgePad_" .. player.UserId)
         if pad then pad:Destroy() end
         zones[player.UserId] = nil

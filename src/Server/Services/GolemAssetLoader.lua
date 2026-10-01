@@ -251,7 +251,41 @@ local function LoadBuildPack(packId, buildFolder)
     pending -= 1
 end
 
+-- Quarry pieces: one asset holding every piece (children named after QuarryData ids) -> ReplicatedStorage.QuarryAssets
+local function LoadQuarryPack(packId, folder)
+    pending += 1
+    local ok, result = pcall(function() return InsertService:LoadAsset(packId) end)
+    if not ok or not result then
+        warn(string.format("[GolemAssets] Quarry Pack (asset %d) FAILED to load: %s. Quarry pieces will be plain blocks.", packId, tostring(result)))
+        pending -= 1
+        return
+    end
+    local found = 0
+    local root = result:FindFirstChildWhichIsA("Model") or result
+    for _, d in ipairs(root:GetChildren()) do
+        if d:IsA("Model") then
+            Sanitise(d)
+            if CountParts(d) > 0 then
+                local old = folder:FindFirstChild(d.Name)
+                if old then old:Destroy() end
+                d.Parent = folder
+                found += 1
+            end
+        end
+    end
+    folder:SetAttribute("Version", found)
+    log(string.format("Quarry Pack (asset %d): %d piece(s) loaded", packId, found))
+    pending -= 1
+end
 function GolemAssetLoader.Init()
+    local quarryFolder = ReplicatedStorage:FindFirstChild("QuarryAssets")
+    if not quarryFolder then
+        quarryFolder = Instance.new("Folder")
+        quarryFolder.Name = "QuarryAssets"
+        quarryFolder.Parent = ReplicatedStorage
+    end
+    local quarryPackId = AssetData.QuarryPack and AssetData.QuarryPack.assetId or 0
+    if quarryPackId > 0 then task.spawn(LoadQuarryPack, quarryPackId, quarryFolder) end
     local buildFolder = ReplicatedStorage:FindFirstChild("BuildAssets")
     if not buildFolder then
         buildFolder = Instance.new("Folder")

@@ -8,6 +8,7 @@ local RunService = game:GetService("RunService")
 local GolemModel = require(game.ReplicatedStorage.Shared.Modules.GolemModel)
 local PetModel   = require(game.ReplicatedStorage.Shared.Modules.PetModel)
 local PetRig     = require(game.ReplicatedStorage.Shared.Modules.PetRig)
+local IdleMoves   = require(game.ReplicatedStorage.Shared.Modules.IdleMoves)
 local PetData    = require(game.ReplicatedStorage.Shared.Data.PetData)
 
 local PetController = {}
@@ -116,27 +117,19 @@ local function Step(dt)
             pet.gait = (pet.gait or pet.phase) + dt * 4.5 * pet.walk                                              -- two footfalls per cycle
             local bob = math.abs(math.sin(pet.gait * 2)) * 0.45 * pet.walk + math.sin(t * 2 + pet.phase) * 0.05 * (1 - pet.walk)
             local pitch = -0.1 * pet.walk + math.sin(t * 0.9 + pet.phase * 2) * 0.025 * (1 - pet.walk)
-            if not walking then
-                pet.nextCheer = pet.nextCheer or (t + 4 + math.random() * 8)
-                if not pet.cheerAt and t >= pet.nextCheer then pet.cheerAt = t end
-            end
-            local happy = 0
-            if pet.cheerAt then
-                local k = (t - pet.cheerAt) / 0.8
-                if k >= 1 or walking then
-                    pet.cheerAt, pet.nextCheer = nil, t + 6 + math.random() * 10
-                else
-                    happy = math.sin(k * math.pi)
-                    bob += happy * 1.1                                                     -- a hop
-                end
-            end
-            -- floating pets (sprites, ghosts) hover and drift a little higher than walkers bob
+            -- idle: stand still and the pet performs one of four moves (look about, stretch, shake, hop) in random order
+            pet.idle = pet.idle or IdleMoves.New("pet", math.floor(pet.phase * 1000) + 1)
+            local move, mk = IdleMoves.Step(pet.idle, t, not walking)
+            local ibob, ipitch, _, iyaw = IdleMoves.Body("pet", move, mk, t)
+            local happy = (move == "hop") and math.sin(mk * math.pi) or 0
+            bob += ibob
+            pitch += ipitch            -- floating pets (sprites, ghosts) hover and drift a little higher than walkers bob
             local p = Vector3.new(pet.pos.X, pet.pos.Y + pet.feet + pet.hover + bob + (pet.hover > 0 and math.sin(t * 2.5 + pet.phase) * 0.15 or 0), pet.pos.Z)
-            local modelCF = CFrame.new(p) * CFrame.Angles(0, pet.yaw or 0, 0) * CFrame.Angles(pitch, 0, 0)
+            local modelCF = CFrame.new(p) * CFrame.Angles(0, (pet.yaw or 0) + iyaw, 0) * CFrame.Angles(pitch, 0, 0)
             pet.model:PivotTo(modelCF)
             if pet.rig then
                 if not cam or (p - cam.CFrame.Position).Magnitude <= ANIMATE_DIST then
-                    PetRig.Apply(pet.rig, modelCF, { t = t + pet.phase, walk = pet.walk, gait = pet.gait, happy = happy, fly = pet.hover > 0 })
+                    PetRig.Apply(pet.rig, modelCF, { t = t + pet.phase, walk = pet.walk, gait = pet.gait, happy = happy, fly = pet.hover > 0, move = move, moveK = mk })
                     pet.limbsRest = false
                 elseif not pet.limbsRest then
                     PetRig.Rest(pet.rig, modelCF)                                          -- too far to see the detail: stand it at rest

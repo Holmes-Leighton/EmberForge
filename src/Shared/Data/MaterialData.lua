@@ -164,9 +164,18 @@ MaterialData.Special = {
     },
 }
 
+-- Quarry-exclusive materials: they can only be made by a player's own Quarry (see QuarryData), and are tradeable
+MaterialData.Quarry = {
+    TemperedEmber = { id = "TemperedEmber", displayName = "Tempered Ember", rarity = "Rare",      element = "Ember", tradeable = true },
+    Stormglass    = { id = "Stormglass",    displayName = "Stormglass",     rarity = "Rare",      element = "Storm", tradeable = true },
+    FrostfireGem  = { id = "FrostfireGem",  displayName = "Frostfire Gem",  rarity = "Epic",      element = nil,     tradeable = true },
+    Voidstone     = { id = "Voidstone",     displayName = "Voidstone",      rarity = "Epic",      element = "Void",  tradeable = true },
+    PrismaticShard = { id = "PrismaticShard", displayName = "Prismatic Shard", rarity = "Legendary", element = nil,   tradeable = true },
+}
+
 -- Flat lookup by id
 MaterialData.All = {}
-for _, tbl in pairs({ MaterialData.Raw, MaterialData.Refined, MaterialData.Special }) do
+for _, tbl in pairs({ MaterialData.Raw, MaterialData.Refined, MaterialData.Special, MaterialData.Quarry }) do
     for id, mat in pairs(tbl) do
         MaterialData.All[id] = mat
     end

@@ -108,6 +108,12 @@ local DEFINITIONS = {
 
     TeleportToGolem     = "event",   -- client → server (golemId): stand next to one of your deployed Golems
 
+    -- Quarry (player-built mining zone)
+    QuarryAction        = "event",   -- client → server (action: found | place | remove | collect | upgrade, arg)
+    QuarryResult        = "event",   -- server → client (action, ok, message)
+    GetQuarryInfo       = "function", -- → QuarryService.Snapshot
+    GoToQuarry          = "event",
+
     -- Forge Builder
     BuildAction         = "event",   -- client → server (action: "buy" | "place" | "pickup" | "sell", id or index)
     BuildResult         = "event",   -- server → client (action, ok, message)

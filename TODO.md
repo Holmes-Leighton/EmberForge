@@ -30,4 +30,8 @@
 - [ ] Guild extras beyond the current set: roles other than leader, guild banners, guild-vs-guild events.
 
 ## New feature ideas
-- [ ] **Player-built mining zones** (see the design notes given in chat): build and customise your own zone to mine special or zone-exclusive materials; needs meshes for crystals, ore veins, buildings and props.
+- [x] ~~Player-built mining zones~~ built as the **Quarry** (Forge Level 6, 15,000 coins): 11 pieces, adjacency recipes, 5 exclusive materials, Core upgrades, animated by QuarryAnimator.
+- [ ] **Upload the QuarryPack**: right-click `QuarryPack` in ServerStorage > UploadedAssetSources, Save to Roblox, send the id (`AssetData.QuarryPack` is 0 until then; the models are staged in ReplicatedStorage.QuarryAssets of the place file).
+- [ ] Quarry follow-ups: Golems working the Quarry for a bonus, a Quarry sign and visitor view, Storm node mesh still renders pinkish-peach (the generator ignores yellow): swap for a better one, recolour in code if the generator allows.
+
+- [x] Idle animations: pets (look about, stretch, shake, hop) and Golems (look, flex, stomp, inspect pickaxe) pick random moves with rests between (IdleMoves).

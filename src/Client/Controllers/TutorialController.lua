@@ -154,7 +154,7 @@ end
 
 -- ── Init ──────────────────────────────────────────────────────────────────────
 local MENU_NAMES = { "InventoryMenu", "ForgeMenu", "MarketMenu", "TradeMenu", "ShopMenu", "SeasonMenu", "ChallengesMenu", "StyleMenu",
-    "LeaderboardMenu", "AnvilMenu", "PetsMenu", "GuildMenu", "BuildMenu", "RewardsMenu" }
+    "LeaderboardMenu", "AnvilMenu", "PetsMenu", "GuildMenu", "BuildMenu", "RewardsMenu", "QuarryMenu" }
 
 function TutorialController.Init(playerData)
     Build()

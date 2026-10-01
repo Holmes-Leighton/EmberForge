@@ -55,6 +55,7 @@ SoundController.Init()
 BadgeController.Init()
 OfferController.Init()
 PetController.Init()
+require(script.Controllers.QuarryAnimator).Init()
 
 -- ── Global event listeners ────────────────────────────────────────────────────
 

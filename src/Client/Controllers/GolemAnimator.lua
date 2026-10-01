@@ -10,6 +10,7 @@
 
 local RunService = game:GetService("RunService")
 local CollectionService = game:GetService("CollectionService")
+local IdleMoves = require(game.ReplicatedStorage.Shared.Modules.IdleMoves)
 
 local GolemAnimator = {}
 
@@ -70,6 +71,10 @@ local function Track(model)
         info.armR = Rest(base, model:FindFirstChild("ArmR", true))
         info.handle = Rest(base, model:FindFirstChild("PickHandle", true))
         info.pickHead = Rest(base, model:FindFirstChild("PickHead", true))
+        info.head = Rest(base, model:FindFirstChild("Head", true))
+        info.rest = base:ToObjectSpace(model:GetPivot())
+        -- every few seconds a mining Golem stops to do one of four idle moves (look about, flex, stomp, inspect its pickaxe), in random order
+        info.idle = IdleMoves.New("golem", math.floor((model:GetAttribute("Phase") or 0) * 1000) + 7, 6, 16)
     elseif info.mode == "Static" and base then
         info.rest = base:ToObjectSpace(model:GetPivot())
     elseif info.mode == "Skinned" then
@@ -139,13 +144,29 @@ local function Step()
                 elseif info.mode == "Parts" then
                     -- Rotate each arm about its own pivot (the shoulder). Positive angle raises the arm forward.
                     local raise = 0.6 + math.sin(t * SWING_SPEED + phase) * 0.6
+                    -- idle move: whole-body motion plus an arm pose blended over the mining swing
+                    local move, mk = IdleMoves.Step(info.idle, t, true)
+                    local ibob, ipitch, iroll, iyaw = IdleMoves.Body("golem", move, mk, t)
+                    local w = move and math.sin(math.clamp(mk, 0, 1) * math.pi) or 0
+                    w = math.min(1, w * 2.5)                                             -- quick in and out, holds in between
+                    local zL, zR, xL, xR = 0, 0, 0.2 - raise * 0.25, raise
+                    if move == "flex" then zL, zR, xL, xR = -1.25 * w, 1.25 * w, xL + (0.4 - xL) * w, xR + (0.4 - xR) * w
+                    elseif move == "stomp" or move == "look" then xL, xR = xL + (0.1 - xL) * w, xR + (0.1 - xR) * w
+                    elseif move == "inspect" then xL, xR = xL + (0.1 - xL) * w, xR + (1.15 - xR) * w end
+                    local b = base * CFrame.new(0, ibob * scale, 0) * CFrame.Angles(ipitch, iyaw, iroll)
+                    if info.rest then model:PivotTo(b * info.rest) end
+                    if info.head then
+                        local h = info.head
+                        local nod = (move == "inspect") and 0.35 * w or 0
+                        h.part.CFrame = b * h.pivot * CFrame.Angles(nod, (move == "look" and math.sin(mk * math.pi * 3) * 0.7 * w or 0) - iyaw * 0.0, 0) * h.pivot:Inverse() * h.rel
+                    end
                     if info.armL then
                         local a = info.armL
-                        a.part.CFrame = base * a.pivot * CFrame.Angles(0.2 - raise * 0.25, 0, 0) * a.pivot:Inverse() * a.rel
+                        a.part.CFrame = b * a.pivot * CFrame.Angles(xL, 0, zL) * a.pivot:Inverse() * a.rel
                     end
                     if info.armR then
                         local a = info.armR
-                        local delta = base * a.pivot * CFrame.Angles(raise, 0, 0) * a.pivot:Inverse()
+                        local delta = b * a.pivot * CFrame.Angles(xR, 0, zR) * a.pivot:Inverse()
                         a.part.CFrame = delta * a.rel
                         if info.handle then info.handle.part.CFrame = delta * info.handle.rel end
                         if info.pickHead then info.pickHead.part.CFrame = delta * info.pickHead.rel end

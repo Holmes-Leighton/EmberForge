@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local RemoteEvents      = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 RemoteEvents.Load()   -- waits for init.server.lua to create the remotes
 local GameConfig        = require(game.ReplicatedStorage.Shared.Data.GameConfig)
+local MaterialData      = require(game.ReplicatedStorage.Shared.Data.MaterialData)
 local PlayerDataService = require(script.Parent.Services.PlayerDataService)
 local IdleEngine        = require(script.Parent.Services.IdleEngine)
 local GolemService      = require(script.Parent.Services.GolemService)
@@ -551,6 +552,64 @@ RemoteEvents.GetGuildInfo.OnServerInvoke = function(player)
     return { mine = GuildService.GetMine(player), top = GuildService.Top(10), coins = pdata and pdata.EmberCoins or 0 }
 end
 
+-- ── Quarry ───────────────────────────────────────────────────────────────────
+RemoteEvents.QuarryAction.OnServerEvent:Connect(function(player, action, arg)
+    SafeCall(player, function()
+        local QS = require(script.Parent.Services.QuarryService)
+        local ok, result, msg
+        if action == "found" then
+            ok, result = QS.Found(player)
+            msg = ok and "Your Quarry is founded! Build nodes and helpers around the Core." or result
+        elseif action == "place" and type(arg) == "string" then
+            local plot = ForgeZoneService.GetQuarryCFrame(player.UserId)
+            local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if not plot or not root then
+                ok, result = false, "Stand in your Quarry to place things"
+            else
+                local rel = plot:PointToObjectSpace(root.Position)
+                local look = root.CFrame.LookVector
+                ok, result = QS.Place(player, arg, rel.X + look.X * 6, rel.Z + look.Z * 6, math.deg(math.atan2(-look.X, -look.Z)) + 180)
+            end
+            msg = ok and "Built! Walk somewhere else to place the next one." or result
+        elseif action == "remove" and type(arg) == "number" then
+            ok, result = QS.Remove(player, arg)
+            msg = ok and "Removed (half refunded)." or result
+        elseif action == "collect" then
+            local got, why = QS.Collect(player)
+            ok = got ~= nil
+            if ok then
+                local bits = {}
+                for m, n in pairs(got) do table.insert(bits, n .. " " .. (MaterialData.Get(m) and MaterialData.Get(m).displayName or m)) end
+                table.sort(bits)
+                msg = "Collected: " .. table.concat(bits, ", ")
+            else
+                msg = why
+            end        elseif action == "upgrade" then
+            local lvl, why = QS.UpgradeCore(player)
+            ok = lvl == true
+            msg = ok and ("Your Core is now level " .. tostring(why) .. "!") or why
+        else
+            return
+        end
+        if ok then ForgeZoneService.RefreshQuarry(player) end
+        RemoteEvents.QuarryResult:FireClient(player, action, ok == true, msg)
+    end)
+end)
+
+RemoteEvents.GetQuarryInfo.OnServerInvoke = function(player)
+    return require(script.Parent.Services.QuarryService).Snapshot(player)
+end
+
+RemoteEvents.GoToQuarry.OnServerEvent:Connect(function(player)
+    SafeCall(player, function()
+        local data = PlayerDataService.Get(player)
+        local cf = ForgeZoneService.GetQuarryCFrame(player.UserId)
+        local char = player.Character
+        if not (data and type(data.Quarry) == "table") then Tell(player, "Quarry", "Found your Quarry first (Forge Level 6).") return end
+        if not cf or not char or not char.PrimaryPart then return end
+        char:PivotTo(CFrame.lookAt(cf.Position + Vector3.new(0, 6, 22), cf.Position + Vector3.new(0, 6, 0)))
+    end)
+end)
 -- ── Teleport to one of your deployed Golems ──────────────────────────────────
 local lastTeleport = {}
 RemoteEvents.TeleportToGolem.OnServerEvent:Connect(function(player, golemId)

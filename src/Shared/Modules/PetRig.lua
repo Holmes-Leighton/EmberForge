@@ -40,12 +40,17 @@ end
 function PetRig.Angles(kind, sx, sz, st)
     local t, walk, gait, happy = st.t, st.walk or 0, st.gait or 0, st.happy or 0
     local idle = 1 - walk
+    -- the idle move being performed (see IDLE_MOVES) and how far through it we are (0..1)
+    local mv, k = st.move, st.moveK or 0
+    local env = (k > 0 and k < 1) and math.sin(k * math.pi) or 0          -- 0 -> 1 -> 0 over the move
+    local isLook, isStretch, isShake = mv == "look", mv == "stretch", mv == "shake"
 
     if kind == "leg" then
         -- four legs trot in diagonal pairs (front-left with back-right); two legs simply alternate
         local phase
         if sz ~= 0 then phase = gait + ((sx * sz > 0) and 0 or math.pi) else phase = gait + (sx > 0 and math.pi or 0) end
-        return math.sin(phase) * 0.8 * walk - 0.7 * happy, 0, 0
+        local stretch = isStretch and (sz < 0 and -0.9 * env or (sz > 0 and 0.15 * env or 0)) or 0     -- front legs reach out, back legs push
+        return math.sin(phase) * 0.8 * walk - 0.7 * happy + stretch, 0, 0
     elseif kind == "legs" then
         return math.sin(gait * 2) * 0.12 * walk - 0.4 * happy, 0, 0
     elseif kind == "arm" then
@@ -61,13 +66,17 @@ function PetRig.Angles(kind, sx, sz, st)
         else lift = 0.08 + 0.06 * math.sin(t * 2.4) + 0.2 * walk * math.sin(gait * 2) + happy * (0.55 + 0.45 * math.sin(t * 20)) end
         return 0, 0, sx * lift
     elseif kind == "tail" then
-        local rate = 2.3 + 4.5 * walk + 5 * happy
-        return -0.1 * walk, math.sin(t * rate) * (0.25 + 0.3 * walk + 0.35 * happy), 0
+        local rate = 2.3 + 4.5 * walk + 5 * happy + (isShake and 10 * env or 0)
+        return -0.1 * walk + (isStretch and 0.5 * env or 0), math.sin(t * rate) * (0.25 + 0.3 * walk + 0.35 * happy + (isShake and 0.4 * env or 0)), 0
     elseif kind == "ears" then
         local flick = math.max(0, math.sin(t * 0.9 + 1)) ^ 14                  -- now and then an ear flicks
-        return math.sin(gait * 2 + 1) * 0.16 * walk + math.sin(t * 1.1) * 0.04 + flick * 0.35 + 0.3 * happy, 0, 0
+        local shake = isShake and math.sin(t * 28) * 0.5 * env or 0           -- shaking the head: ears flap
+        return math.sin(gait * 2 + 1) * 0.16 * walk + math.sin(t * 1.1) * 0.04 + flick * 0.35 + 0.3 * happy + shake, 0, 0
     elseif kind == "head" then
-        return math.sin(gait * 2) * 0.07 * walk - 0.25 * happy, math.sin(t * 0.6) * 0.35 * idle, 0
+        local lookY = isLook and math.sin(k * math.pi * 3) * 0.85 * env or math.sin(t * 0.6) * 0.2 * idle       -- glancing left, right, left
+        local nod = isStretch and 0.45 * env or 0                                                            -- head dips during a stretch
+        local shake = isShake and math.sin(t * 24) * 0.5 * env or 0
+        return math.sin(gait * 2) * 0.07 * walk - 0.25 * happy + nod, lookY + shake, 0
     elseif kind == "jaw" then
         return -(0.04 + 0.5 * happy + 0.18 * (math.max(0, math.sin(t * 0.8)) ^ 8) * idle), 0, 0
     elseif kind == "feelers" then
