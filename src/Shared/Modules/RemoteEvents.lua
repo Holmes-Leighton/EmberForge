@@ -106,6 +106,8 @@ local DEFINITIONS = {
     GetLadderInfo       = "function", -- → LadderService.GetInfo
     GetStreakInfo       = "function", -- → { count, best, lastDay, today }
 
+    TeleportToGolem     = "event",   -- client → server (golemId): stand next to one of your deployed Golems
+
     -- Forge Builder
     BuildAction         = "event",   -- client → server (action: "buy" | "place" | "pickup" | "sell", id or index)
     BuildResult         = "event",   -- server → client (action, ok, message)

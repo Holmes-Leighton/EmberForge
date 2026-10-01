@@ -684,6 +684,15 @@ function ForgeController._BuildDeployPanel()
             recall.MouseButton1Click:Connect(function()
                 RemoteEvents.ReturnGolem:FireServer(g.id)
             end)
+            -- walk over to it: teleports you next to this Golem in its mining zone
+            local goTo = Theme.Button(card, "Go to", Theme.Colors.Info, Color3.fromRGB(255, 255, 255), "GoToGolem")
+            goTo.Size = UDim2.new(0, 70, 0, 30)
+            goTo.Position = UDim2.new(1, -172, 0.5, -15)
+            goTo.TextSize = 12
+            goTo.MouseButton1Click:Connect(function()
+                RemoteEvents.TeleportToGolem:FireServer(g.id)
+                if forgeGui then forgeGui.Enabled = false end
+            end)
         end
     end
 end

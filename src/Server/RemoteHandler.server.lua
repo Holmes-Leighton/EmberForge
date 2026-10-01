@@ -551,6 +551,28 @@ RemoteEvents.GetGuildInfo.OnServerInvoke = function(player)
     return { mine = GuildService.GetMine(player), top = GuildService.Top(10), coins = pdata and pdata.EmberCoins or 0 }
 end
 
+-- ── Teleport to one of your deployed Golems ──────────────────────────────────
+local lastTeleport = {}
+RemoteEvents.TeleportToGolem.OnServerEvent:Connect(function(player, golemId)
+    SafeCall(player, function()
+        if type(golemId) ~= "string" then return end
+        if os.clock() - (lastTeleport[player.UserId] or -1e9) < 1.5 then return end
+        lastTeleport[player.UserId] = os.clock()
+        local data = PlayerDataService.Get(player)
+        local owned
+        for _, g in ipairs(data and data.Golems or {}) do if g.id == golemId then owned = g end end
+        if not owned or not owned.deployed then Tell(player, "Can't go there", "That Golem isn't deployed.") return end
+        local folder = workspace:FindFirstChild("EmberWorld") and workspace.EmberWorld:FindFirstChild("DeployedGolems")
+        local model = folder and folder:FindFirstChild("Golem_" .. golemId)
+        local char = player.Character
+        if not model or not char or not char.PrimaryPart then Tell(player, "Can't go there", "That Golem isn't in its zone yet. Try again in a moment.") return end
+        local pos = model:GetPivot().Position
+        local _, size = model:GetBoundingBox()
+        local stand = pos + Vector3.new(0, 0, -math.max(size.Y * 1.2, size.Z / 2 + 14))   -- far enough back to see all of it, looking at it
+        char:PivotTo(CFrame.lookAt(Vector3.new(stand.X, pos.Y + 3, stand.Z), Vector3.new(pos.X, pos.Y + 3, pos.Z)))
+    end)
+end)
+
 -- ── Rewards: codes, ranked ladder, login streak ──────────────────────────────
 RemoteEvents.RedeemCode.OnServerEvent:Connect(function(player, code)
     SafeCall(player, function()
