@@ -18,11 +18,11 @@
 
 ## Gameplay and UX (from the new-player walkthrough)
 - [ ] The anvil's E prompt only worked with the anvil in front of the camera: check on a real client; add a floating arrow for tutorial step 2.
-- [ ] Forge menu opens on Blueprints while tutorial step 3 says "deploy" (Deploy is the second tab).
-- [ ] Two "Storm Golem" entries in the Anvil list (Tier 1 and Tier 4): show the tier or a distinct name.
+- [x] ~~Forge menu opens on Blueprints while tutorial step 3 says deploy~~ now opens on Deploy when a Golem is waiting for work.
+- [x] ~~Two Storm Golem entries in the Anvil list~~ stronger tiers carry their tier name.
 - [x] World labels stacking near the anvil: pad signs now fade beyond 90 studs.
-- [ ] Several toasts at once cover the sidebar.
-- [ ] Ascension lives inside the Build menu: consider its own tile once players reach Forge Level 10; coin amounts show as "25.0K" (use 25K).
+- [x] ~~Several toasts at once cover the sidebar~~ the stack now sits left of the button column.
+- [ ] Ascension lives inside the Build menu: consider its own tile once players reach Forge Level 10; coin amounts now show as "25K" (done).
 - [ ] Balance pass with real play data: build prices, Ascension costs, ladder tiers, prize sizes, pad ore rates.
 
 ## Features not built
@@ -39,4 +39,12 @@
 - [x] Idle animations: pets (look about, stretch, shake, hop) and Golems (look, flex, stomp, inspect pickaxe) pick random moves with rests between (IdleMoves).
 
 - [x] Pet maturity: Baby/Young/Adult/Elder (worn time 0/2/8/24h), boost x0.6/0.8/1.0/1.25, size 0.72-1.12, old pets count as Adult, merged pets start Young.
-- [ ] Quarry node maturity (nodes grow Mature/Prime for more output and a bigger model) - next.
+- [x] Quarry node maturity: Budding -> Mature (x1.3, after 1 day) -> Prime (x1.6, after 3 days); bigger models, menu shows progress, fair credit across stage changes, total output capped at x3, old nodes start Mature.
+- [x] Pets can be traded and sold on the Market (Pets tab); duplicate pets can all be worn; pet Collection tab (index) with Elite/Supreme forms.
+- [x] Face portraits (pets, Golems) and spinning 3D mesh icons (26 materials, 15 HUD buttons) in the menus.
+- [x] Feature gates: Pets L2, Trades L3, Build L4, Guild L5, Quarry Forge 6 show a requirement label on the HUD button (table in FeatureGates.lua); server refuses the actions too.
+- [ ] Place-based labels ("Go to your forge" for Build) and locks on options inside menus (Elite Forge tab etc.).
+- [ ] More 3D icons: toasts, trade window and quest rewards still use plain text/emoji.
+
+## Running the tests
+`python tests/run_tests.py` needs the `luau` runtime (https://github.com/luau-lang/luau/releases) on PATH or in the `LUAU` environment variable.

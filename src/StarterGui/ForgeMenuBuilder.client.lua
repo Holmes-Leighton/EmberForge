@@ -225,3 +225,8 @@ for name, btn in pairs(tabBtns) do
 end
 
 switchTab("Blueprints")  -- default
+-- ForgeController sets "OpenTab" when the menu opens (for example straight to Deploy when there is a Golem waiting for work)
+gui:GetAttributeChangedSignal("OpenTab"):Connect(function()
+    local want = gui:GetAttribute("OpenTab")
+    if want and panels[want] then switchTab(want) end
+end)

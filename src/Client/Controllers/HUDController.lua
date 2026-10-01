@@ -302,7 +302,7 @@ local function EnsureToastHolder()
     toastHolder = Instance.new("Frame")
     toastHolder.Name = "Stack"
     toastHolder.AnchorPoint = Vector2.new(1, 0)
-    toastHolder.Position = UDim2.new(1, -16, 0, 16)
+    toastHolder.Position = UDim2.new(1, -108, 0, 16)           -- clear of the button column on the right
     toastHolder.Size = UDim2.new(0, 320, 1, -32)
     toastHolder.BackgroundTransparency = 1
     toastHolder.Parent = sg

@@ -333,7 +333,10 @@ local function RenderList()
         Theme.AddCorner(bar, UDim.new(0, 3))
 
         local rowElem = GolemData.Elements[bp.element]
-        local nameL = Theme.Label(row, (rowElem and rowElem.displayName or bp.element) .. " Golem", Theme.TextSize.Heading,
+        -- Tier 1 is just "Storm Golem"; stronger tiers carry their tier name so two Storm Golems are never confused
+        local tierName = GolemData.Tiers[bp.tier] and GolemData.Tiers[bp.tier].name or "Golem"
+        local rowName = (rowElem and rowElem.displayName or bp.element) .. " " .. ((bp.tier or 1) > 1 and tierName or "Golem")
+        local nameL = Theme.Label(row, rowName, Theme.TextSize.Heading,
             selected and Theme.Colors.AccentBright or Theme.Colors.TextPrimary, Theme.Fonts.Heading)
         local face = Portrait.Golem(row, { element = bp.element, tier = bp.tier }, 42)
         face.Position = UDim2.new(0, 18, 0.5, -21)

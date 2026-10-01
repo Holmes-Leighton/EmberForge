@@ -33,7 +33,15 @@ function ForgeController.Init(playerData)
         ForgeController._RenderSmeltQueue()
         ForgeController._StartSmeltCountdowns()
         forgeGui:GetPropertyChangedSignal("Enabled"):Connect(function()
-            if forgeGui.Enabled then ForgeController.Resync() end
+            if forgeGui.Enabled then
+                ForgeController.Resync()
+                -- a Golem waiting for work (none deployed yet): open straight on the Deploy tab, as the tutorial says
+                local golems = ForgeController._data and ForgeController._data.Golems or {}
+                local anyDeployed = false
+                for _, g in ipairs(golems) do if g.deployed then anyDeployed = true end end
+                forgeGui:SetAttribute("OpenTab", nil)
+                forgeGui:SetAttribute("OpenTab", (#golems > 0 and not anyDeployed) and "Deploy" or "Blueprints")
+            end
         end)
         ForgeController._WireFuseButton()
     end)

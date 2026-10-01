@@ -33,9 +33,9 @@ end
 -- Format a large number with K/M suffixes
 function Utils.FormatNumber(n)
     if n >= 1000000 then
-        return string.format("%.1fM", n / 1000000)
+        return (string.format("%.1fM", n / 1000000):gsub("%.0M$", "M"))        -- "25M", not "25.0M"
     elseif n >= 1000 then
-        return string.format("%.1fK", n / 1000)
+        return (string.format("%.1fK", n / 1000):gsub("%.0K$", "K"))
     else
         return tostring(math.floor(n))
     end
