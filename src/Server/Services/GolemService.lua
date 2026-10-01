@@ -74,7 +74,7 @@ function GolemService.DeployGolem(player, golemId, zoneId)
     if targetGolem.deployed then return false, "Golem already deployed" end
     local ShopService = require(script.Parent.ShopService)
     local effectiveSlots = ShopService.GetEffectiveGolemSlots(player)
-    if deployedCount >= effectiveSlots then return false, "No free deployment slots" end
+    if deployedCount >= effectiveSlots then return false, "No free deployment slots. Recall a Golem first, or earn more slots by levelling your Forge." end
 
     -- Verify zone is unlocked
     local MiningZoneData = require(game.ReplicatedStorage.Shared.Data.MiningZoneData)

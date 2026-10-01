@@ -28,3 +28,6 @@
 ## Features not built
 - [ ] Rail track meshes (the AI generator makes them too small; the piece is built from parts in code).
 - [ ] Guild extras beyond the current set: roles other than leader, guild banners, guild-vs-guild events.
+
+## New feature ideas
+- [ ] **Player-built mining zones** (see the design notes given in chat): build and customise your own zone to mine special or zone-exclusive materials; needs meshes for crystals, ore veins, buildings and props.

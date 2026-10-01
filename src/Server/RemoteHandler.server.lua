@@ -220,7 +220,7 @@ RemoteEvents.DeployGolem.OnServerEvent:Connect(function(player, golemId, zoneId)
         if type(golemId) ~= "string" or type(zoneId) ~= "string" then return end
 
         local ok, err = GolemService.DeployGolem(player, golemId, zoneId)
-        if not ok and err == "No free deployment slots" then
+        if not ok and type(err) == "string" and err:find("^No free deployment slots") then
             ShopService.Offer(player, "product", "SlotPack_5", "All your Golem slots are busy. Add 5 more, forever?")
         end
         if ok then

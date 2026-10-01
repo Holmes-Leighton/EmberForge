@@ -193,11 +193,12 @@ function TutorialController.Init(playerData)
             Advance(4)
         end
     end)
+    -- A player who gets ahead of the tip (buys ore, crafts at the forge, deploys early) skips the steps they've already done
     RemoteEvents.GolemCrafted.OnClientEvent:Connect(function(golem)
-        if golem then Advance(2) end
+        if golem then for s = stepIndex, 2 do Advance(s) end end
     end)
     RemoteEvents.GolemDeployed.OnClientEvent:Connect(function(ok)
-        if ok then Advance(3) end
+        if ok then for s = stepIndex, 3 do Advance(s) end end
     end)
 end
 
