@@ -187,7 +187,8 @@ local function BuildChallengeCard(scroll, challenge, progress, claimed, layoutOr
     rewardLbl.Position = UDim2.new(0, 10, 0, 48)
     -- a little spinning picture of each material you will get (up to three)
     if rewards.materials then
-        local x = 10 + math.min(rewardLbl.TextBounds.X, rewardLbl.AbsoluteSize.X) + 8
+        local bounds = rewardLbl.TextBounds and rewardLbl.TextBounds.X or 200
+        local x = 10 + math.min(bounds, rewardLbl.AbsoluteSize and rewardLbl.AbsoluteSize.X or bounds) + 8
         for i, m in ipairs(rewards.materials) do
             if i > 3 then break end
             local icon = MaterialIcon.Make(card, m.id, 22)
