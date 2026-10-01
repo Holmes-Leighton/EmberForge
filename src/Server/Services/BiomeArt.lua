@@ -92,7 +92,7 @@ local function Template(zoneKey, name)
     return zone and zone:FindFirstChild(name)
 end
 
--- opts: height | width (target size), yaw (radians), float (pos is the centre, not the ground)
+-- opts: height | width (target size), yaw (radians), float (pos is the centre, not the ground), top (the piece's top surface goes at this height)
 local function MeshPiece(parent, zoneKey, name, pos, opts)
     local template = Template(zoneKey, name)
     if not template then return nil end
@@ -106,7 +106,7 @@ local function MeshPiece(parent, zoneKey, name, pos, opts)
     m:ScaleTo(m:GetScale() * factor)
     m:PivotTo(m:GetPivot() * CFrame.Angles(0, opts.yaw or 0, 0))
     local box, size = m:GetBoundingBox()
-    local centre = Vector3.new(pos.X, opts.float and pos.Y or (pos.Y + size.Y / 2), pos.Z)
+    local centre = Vector3.new(pos.X, opts.float and pos.Y or (opts.top and (opts.top - size.Y / 2) or (pos.Y + size.Y / 2)), pos.Z)
     m:PivotTo(m:GetPivot() + (centre - box.Position))
     if not m.PrimaryPart then m.PrimaryPart = m:FindFirstChildWhichIsA("BasePart", true) end
     m.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
@@ -450,6 +450,181 @@ function BiomeArt.Register(zoneKey, model, cx, cz, seed, legacy)
     BuildMeshZone(rec)
 end
 
+-- ── The hub: mining pads, pushable mine carts, timber support frames and scatter scenery ──────────
+-- All of these come from the "World" mesh set (AssetData.BiomeMeshes.World). Until it has loaded they stay as the part-built versions WorldBuilder and
+-- PadService make; Refresh("World") swaps the meshes in.
+local padRecords = {}
+
+local function BuildPadArt(rec)
+    local model = rec.model
+    if not model.Parent then return end
+    if rec.art then rec.art:Destroy() rec.art = nil end
+    local art = MeshPiece(model, "World", "Pad" .. rec.id, Vector3.new(rec.x, 0, rec.z), { width = 28, top = rec.topY })
+    local plain = art == nil
+    local base, rim, glow = model:FindFirstChild("PadBase"), model:FindFirstChild("PadRim"), model:FindFirstChild("PadGlow")
+    if base then base.Transparency = plain and 0 or 1 end              -- the base stays as the (invisible) step you walk up
+    if rim then rim.Transparency = plain and 0.1 or 1 end
+    if glow then glow.Transparency = plain and 0.35 or 1 end
+    if rec.part then rec.part.Transparency = plain and 0 or 1 end       -- the stepping surface keeps working (and its painted multiplier) but the mesh is what you see
+    if art then
+        art.Name = "PadArt"
+        rec.art = art
+    end
+end
+
+-- PadService calls this for each pad it builds: `part` is the walkable Pad_<id> surface, `topY` the height of its top
+function BiomeArt.Pad(model, id, part, x, z, topY)
+    local rec = { model = model, id = id, part = part, x = x, z = z, topY = topY }
+    table.insert(padRecords, rec)
+    BuildPadArt(rec)
+end
+
+-- Mine carts: each is a real physical object that slides along the track when pushed (a prismatic constraint holds it on the rail within CART_TRAVEL
+-- studs of where it started). The collision is one invisible block; the cart you see (a mesh, or the old parts) is welded to it.
+local CART_TRAVEL = 55
+local cartRec
+
+local function WeldAll(model, body)
+    for _, d in ipairs(model:GetDescendants()) do
+        if d:IsA("BasePart") and d ~= body then
+            d.Anchored, d.CanCollide, d.Massless = false, false, true
+            local w = Instance.new("WeldConstraint")
+            w.Part0, w.Part1, w.Parent = body, d, d
+        end
+    end
+end
+
+local function BuildCart(parent, spot, index)
+    local model = Instance.new("Model")
+    model.Name = "MineCart"
+    local body = Instance.new("Part")
+    body.Name = "Body"
+    body.Size = Vector3.new(7.6, 3.2, 5.4)
+    body.Transparency = 1
+    body.Anchored = false
+    body.CanCollide = true
+    body.TopSurface, body.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+    body.CFrame = CFrame.new(spot.x, 3, spot.z)
+    if PhysicalProperties then body.CustomPhysicalProperties = PhysicalProperties.new(0.25, 0.25, 0.1, 1, 1) end     -- light and slippery: a player can shove it along
+    body.Parent = model
+    model.PrimaryPart = body
+    local template = Template("World", index % 2 == 0 and "CartCrystal" or "CartGold")
+    if template then
+        local m = template:Clone()
+        local ext = m:GetExtentsSize()
+        m:ScaleTo(m:GetScale() * 9 / math.max(math.max(ext.X, ext.Z), 0.01))
+        local box, size = m:GetBoundingBox()
+        m:PivotTo(m:GetPivot() + (Vector3.new(spot.x, 0.5 + size.Y / 2, spot.z) - box.Position))
+        m.Parent = model
+        m.Name = "CartArt"
+    else
+        local function P2(name, size, cf, color, material, shape)
+            local p = Instance.new("Part")
+            p.Name, p.Size, p.CFrame, p.Color, p.Material = name, size, cf, color, material
+            if shape then p.Shape = shape end
+            p.Parent = model
+            return p
+        end
+        local iron = Color3.fromRGB(70, 68, 74)
+        P2("CartBody", Vector3.new(8, 3.4, 6), CFrame.new(spot.x, 3, spot.z), Color3.fromRGB(80, 62, 52), Enum.Material.Metal)
+        P2("CartRim", Vector3.new(8.6, 0.6, 6.6), CFrame.new(spot.x, 4.9, spot.z), iron, Enum.Material.Metal)
+        for _, wx in ipairs({ -2.6, 2.6 }) do
+            for _, wz in ipairs({ -3.2, 3.2 }) do
+                P2("CartWheel", Vector3.new(0.6, 2, 2), CFrame.new(spot.x + wx, 1.3, spot.z + wz) * CFrame.Angles(0, math.pi / 2, 0), iron, Enum.Material.Metal, Enum.PartType.Cylinder)
+            end
+        end
+        for j = 1, 4 do
+            P2("CartOre", Vector3.new(2.4, 2.4, 2.4), CFrame.new(spot.x + ((j * 37) % 5 - 2) * 0.9, 5.4 + (j % 2) * 0.5, spot.z + ((j * 53) % 3 - 1) * 1.2),
+                spot.ore or Color3.fromRGB(255, 200, 70), Enum.Material.Neon, Enum.PartType.Ball)
+        end
+    end
+    WeldAll(model, body)
+    -- the rail: an invisible anchored post that the cart slides along (the track runs along X)
+    local anchor = Instance.new("Part")
+    anchor.Name, anchor.Size, anchor.Transparency, anchor.Anchored, anchor.CanCollide, anchor.CanQuery = "CartRailAnchor", Vector3.new(1, 1, 1), 1, true, false, false
+    anchor.CFrame = CFrame.new(spot.x, 3, spot.z)
+    anchor.Parent = model
+    local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
+    a0.Parent, a1.Parent = anchor, body
+    local slide = Instance.new("PrismaticConstraint")
+    slide.Attachment0, slide.Attachment1 = a0, a1
+    slide.LimitsEnabled, slide.LowerLimit, slide.UpperLimit = true, -CART_TRAVEL, CART_TRAVEL
+    slide.Parent = anchor
+    model.Parent = parent
+    return model
+end
+
+local function BuildCarts(rec)
+    for _, m in ipairs(rec.built or {}) do if m.Parent then m:Destroy() end end
+    rec.built = {}
+    for i, spot in ipairs(rec.spots) do table.insert(rec.built, BuildCart(rec.parent, spot, i)) end
+end
+
+-- WorldBuilder gives the carts' track positions: { x, z, ore = colour } each
+function BiomeArt.Carts(parent, spots)
+    cartRec = { parent = parent, spots = spots }
+    BuildCarts(cartRec)
+end
+
+-- Timber support frames across the road: a mesh frame replaces the part-built one (and its lantern) once the mesh is loaded
+local frameRec
+
+local function BuildFrames(rec)
+    if not Template("World", "TimberFrame") then return end
+    for _, c in ipairs(rec.legacy or {}) do if c.Parent then c:Destroy() end end
+    rec.legacy = nil
+    for _, f in ipairs(rec.built or {}) do if f.Parent then f:Destroy() end end
+    rec.built = {}
+    for _, spot in ipairs(rec.spots) do
+        local m = MeshPiece(rec.parent, "World", "TimberFrame", Vector3.new(spot.x, 0, spot.z), { width = 24, yaw = math.pi / 2 })   -- spans the road (along Z)
+        if m then
+            GlowLight(m, Color3.fromRGB(255, 190, 100), 60, 1.4, 0)
+            table.insert(rec.built, m)
+        end
+    end
+end
+
+function BiomeArt.Frames(parent, spots, legacy)
+    frameRec = { parent = parent, spots = spots, legacy = legacy }
+    BuildFrames(frameRec)
+end
+
+-- General scenery scattered through the hub's quiet corners (crates, rock clusters, crystal clusters). Nothing goes near the roads, the forge plots,
+-- the pad plaza or the spawn.
+local scatterRec
+
+local function BuildScatter(rec)
+    if rec.group then rec.group:Destroy() end
+    local have = Template("World", "OreCrates") or Template("World", "RockCluster") or Template("World", "CrystalCluster")
+    if not have then return end
+    local group = Instance.new("Folder")
+    group.Name = "HubScenery"
+    group.Parent = rec.parent
+    local rng = Random.new(2468)
+    local kinds = { { "RockCluster", 7, 10, 40 }, { "CrystalCluster", 8, 12, 24 }, { "OreCrates", 5, 8, 36 } }     -- name, height range, how many
+    local regions = {
+        { x1 = -420, x2 = 2050, z1 = 118, z2 = 168 },      -- the north strip, behind the quarry plots
+        { x1 = -420, x2 = 2050, z1 = -242, z2 = -226 },    -- the south strip
+        { x1 = -420, x2 = -190, z1 = -215, z2 = 110 },     -- the west end
+    }
+    for _, k in ipairs(kinds) do
+        if Template("World", k[1]) then
+            for _ = 1, k[4] do
+                local r = regions[rng:NextInteger(1, #regions)]
+                local pos = Vector3.new(rng:NextNumber(r.x1, r.x2), 0.2, rng:NextNumber(r.z1, r.z2))
+                local m = MeshPiece(group, "World", k[1], pos, { height = rng:NextNumber(k[2], k[3]), yaw = rng:NextNumber(0, math.pi * 2) })
+                if m and k[1] == "CrystalCluster" then GlowLight(m, Color3.fromRGB(255, 200, 110), 22, 0.9, rng:NextNumber(0, 6)) end
+            end
+        end
+    end
+    rec.group = group
+end
+
+function BiomeArt.HubScatter(parent)
+    scatterRec = { parent = parent }
+    BuildScatter(scatterRec)
+end
+
 -- ── The Golem Anvil ───────────────────────────────────────────────────────────
 -- The starter station's anvil: a large golden mesh when its pack is loaded (the "World" pack's GolemAnvil), otherwise the plain block from WorldBuilder.
 -- The mesh's own colours come out peach-orange, so the golden parts (named anvil / chains in the model) get a yellow-green tint over their texture and
@@ -502,7 +677,13 @@ function BiomeArt.AnvilHeight() return anvilRec and anvilRec.height or nil end
 
 -- Called by GolemAssetLoader when a mesh pack has loaded: rebuild that area's art with the meshes
 function BiomeArt.Refresh(zoneKey)
-    if zoneKey == "World" then BuildAnvil() end
+    if zoneKey == "World" then
+        BuildAnvil()
+        for _, rec in ipairs(padRecords) do BuildPadArt(rec) end
+        if cartRec then BuildCarts(cartRec) end
+        if frameRec then BuildFrames(frameRec) end
+        if scatterRec then BuildScatter(scatterRec) end
+    end
     for _, rec in ipairs(zoneRecords) do
         if rec.zone == zoneKey and rec.model.Parent then
             if rec.kind == "mesh" then BuildMeshZone(rec) else BuildGlacial(rec) end

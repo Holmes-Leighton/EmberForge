@@ -199,6 +199,9 @@ local function BuildPad(world, def)
     prompt:SetAttribute("PadId", def.id)
     prompt.Parent = info
 
+    -- the pad's custom mesh (when its set has loaded) replaces the plinth, rim and glow; the walkable surface and everything above stay
+    require(script.Parent.BiomeArt).Pad(model, def.id, part, x, z, 1.4 + PadData.SIZE.Y)
+
     return part
 end
 

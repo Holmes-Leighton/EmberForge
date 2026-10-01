@@ -550,31 +550,30 @@ local function BuildMine(world)
             CFrame = CFrame.new(x, 0.35, 60), CanCollide = false }, mine)
     end
 
-    -- timber support frames across the road, each with a hanging lantern
+    -- timber support frames across the road, each with a hanging lantern (BiomeArt swaps in the mesh frame once its set has loaded)
+    local frameSpots, legacyFrames = {}, {}
+    local beforeFrames = {}
+    for _, c in ipairs(mine:GetChildren()) do beforeFrames[c] = true end
     for x = x1 + 40, x2 - 40, 90 do
         TimberFrame(mine, x, 60, 24, 17, false)
         Lantern(mine, x, 14, 60, 60)
         Part({ Name = "LanternChain", Material = Enum.Material.Metal, Color = IRON, Size = Vector3.new(0.3, 2, 0.3), CFrame = CFrame.new(x, 16.5, 60), CanCollide = false }, mine)
+        table.insert(frameSpots, { x = x, z = 60 })
     end
+    for _, c in ipairs(mine:GetChildren()) do
+        if not beforeFrames[c] and (c.Name:find("Timber") or c.Name:find("Lantern")) then table.insert(legacyFrames, c) end
+    end
+    require(script.Parent.BiomeArt).Frames(mine, frameSpots, legacyFrames)
 
-    -- minecarts full of ore
+    -- minecarts full of ore: real objects a player can push along the track (BiomeArt builds them, from a mesh when its set has loaded)
     local ore = { Color3.fromRGB(255, 200, 70), Color3.fromRGB(255, 130, 50), Color3.fromRGB(120, 210, 255) }
+    local cartSpots = {}
     for k = 1, 12 do
         local x = x1 + 60 + (k - 1) * ((x2 - x1 - 120) / 11) + rng:NextInteger(-12, 12)
-        Part({ Name = "CartBody", Material = Enum.Material.Metal, Color = Color3.fromRGB(80, 62, 52), Size = Vector3.new(8, 3.4, 6), CFrame = CFrame.new(x, 3, 60) }, mine)
-        Part({ Name = "CartRim", Material = Enum.Material.Metal, Color = IRON, Size = Vector3.new(8.6, 0.6, 6.6), CFrame = CFrame.new(x, 4.9, 60), CanCollide = false }, mine)
-        for _, wx in ipairs({ -2.6, 2.6 }) do
-            for _, wz in ipairs({ -3.2, 3.2 }) do
-                Part({ Name = "CartWheel", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, Color = IRON, Size = Vector3.new(0.6, 2, 2),
-                    CFrame = CFrame.new(x + wx, 1.3, 60 + wz) * CFrame.Angles(0, math.pi / 2, 0), CanCollide = false }, mine)
-            end
-        end
-        local c = ore[rng:NextInteger(1, #ore)]
-        for j = 1, 4 do
-            Part({ Name = "CartOre", Shape = Enum.PartType.Ball, Material = Enum.Material.Neon, Color = c, Size = Vector3.new(2.4, 2.4, 2.4),
-                CFrame = CFrame.new(x + rng:NextNumber(-2.4, 2.4), 5.4 + rng:NextNumber(0, 0.8), 60 + rng:NextNumber(-1.6, 1.6)), CanCollide = false }, mine)
-        end
+        table.insert(cartSpots, { x = x, z = 60, ore = ore[rng:NextInteger(1, #ore)] })
     end
+    require(script.Parent.BiomeArt).Carts(mine, cartSpots)
+    require(script.Parent.BiomeArt).HubScatter(mine)
 
     -- glowing ore veins in the walls
     local veins = { Color3.fromRGB(255, 200, 70), Color3.fromRGB(255, 120, 60), Color3.fromRGB(120, 210, 255), Color3.fromRGB(190, 130, 255), Color3.fromRGB(110, 240, 160) }
