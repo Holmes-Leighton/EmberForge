@@ -61,6 +61,13 @@ expect(ok3 and (db.LuckBoostExpiry or 0) > os.time(), "a code can give a Lucky B
 CD.Codes.OLD = { coins = 5, expires = os.time() - 10 }
 local ok4, msg4 = CS.Redeem(b, "old")
 expect(not ok4 and msg4:find("expired"), "expired code refused")
+CD.Codes.LIMITED = { coins = 10, maxUses = 2 }
+local e1, d_e1 = mk(10, "E1", 0)
+local e2 = mk(11, "E2", 0)
+local e3, d_e3 = mk(12, "E3", 0)
+expect(CS.Redeem(e1, "limited") and CS.Redeem(e2, "limited"), "a capped code works until it runs out")
+local okL, msgL = CS.Redeem(e3, "limited")
+expect(not okL and msgL == "That code has run out" and d_e3.EmberCoins == 0 and not (d_e3.RedeemedCodes or {}).LIMITED, "the third use is refused and costs nothing (" .. tostring(msgL) .. ")")
 CS.ThrottleSeconds = 60
 CS.Redeem(b, "x1x")
 local ok5, msg5 = CS.Redeem(b, "x2x")

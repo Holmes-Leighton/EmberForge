@@ -261,11 +261,35 @@ end
 local ForgeBuildData = require(game.ReplicatedStorage.Shared.Data.ForgeBuildData)
 local FLOOR_Y = 1            -- top of the plot's ground pad
 
+-- Pieces that are made from plain parts instead of a mesh. Each returns a Model about 4 studs long on Z, lying flat.
+local PROCEDURAL = {}
+function PROCEDURAL.rail()
+    local model = Instance.new("Model")
+    local function part(name, size, pos, color, material)
+        local p = Instance.new("Part")
+        p.Name, p.Size, p.Position, p.Color, p.Material = name, size, pos, color, material
+        p.Anchored, p.CanCollide = true, false
+        p.Parent = model
+        return p
+    end
+    local wood, iron = Color3.fromRGB(110, 78, 50), Color3.fromRGB(150, 150, 160)
+    for i = 0, 4 do        -- sleepers
+        part("Sleeper" .. i, Vector3.new(3.2, 0.3, 0.5), Vector3.new(0, 0.15, -1.6 + i * 0.8), wood, Enum.Material.Wood)
+    end
+    for _, x in ipairs({ -0.9, 0.9 }) do      -- rails
+        part("Rail", Vector3.new(0.25, 0.25, 4), Vector3.new(x, 0.42, 0), iron, Enum.Material.Metal)
+    end
+    model.PrimaryPart = model:FindFirstChild("Sleeper0")
+    return model
+end
+
 local function BuildPiece(def, placed, centre)
     local template = game.ReplicatedStorage:FindFirstChild("BuildAssets")
     template = template and template:FindFirstChild(def.id)
     local piece
-    if template then
+    if def.procedural and PROCEDURAL[def.procedural] then
+        piece = PROCEDURAL[def.procedural]()
+    elseif template then
         piece = template:Clone()
         for _, d in ipairs(piece:GetDescendants()) do
             if d:IsA("BasePart") then d.Anchored = true d.CanCollide = false end

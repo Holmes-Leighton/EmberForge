@@ -87,6 +87,7 @@ local DEFINITIONS = {
     LeaveGuild          = "event",
     ClaimGuildReward    = "event",
     ClaimGuildPrize     = "event",   -- last week's battle prize
+    ManageGuild         = "event",   -- client → server (action: "kick" | "promote", userId) - leader only
     GuildResult         = "event",   -- server → client (action, ok, message)
     GetGuildInfo        = "function", -- → { mine = snapshot or nil, top = {...} }
 

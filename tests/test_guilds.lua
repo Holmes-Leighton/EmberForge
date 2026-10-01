@@ -136,6 +136,27 @@ expect(GS.GetMine(a).prize == nil, "an old prize doesn't carry over a second wee
 expect(GuildData.PrizeFor(1).coins > GuildData.PrizeFor(3).coins and GuildData.PrizeFor(3).coins > GuildData.PrizeFor(10).coins
     and GuildData.PrizeFor(11) == nil, "prizes shrink with rank and stop after 10th")
 
+print("== leader tools")
+local lead, dlead = mkPlayer(500, "Lead", 5000)
+local m1, dm1 = mkPlayer(501, "Mem1")
+local m2, dm2 = mkPlayer(502, "Mem2")
+local gl = GS.Create(lead, "Tool Crew")
+GS.Join(m1, "Tool Crew")
+GS.Join(m2, "Tool Crew")
+local okK, errK = GS.Kick(m1, 502)
+expect(not okK and errK:find("leader"), "a regular member can't remove anyone (" .. tostring(errK) .. ")")
+expect(not GS.Kick(lead, 500), "the leader can't remove themself")
+expect(not GS.Kick(lead, 99999), "removing a stranger is refused")
+local okR = GS.Kick(lead, 502)
+expect(okR and dm2.GuildId == nil, "the leader removes a member and their guild link is cleared")
+expect(GS.GetMine(lead).memberCount == 2, "the guild is down to two members")
+local _, rejoin = GS.Join(m2, "Tool Crew")
+expect(rejoin == nil, "a removed member can join again (no ban list yet)")
+expect(not GS.Promote(m1, 500), "a regular member can't hand over leadership")
+local okP = GS.Promote(lead, 501)
+expect(okP and GS.GetMine(m1).isLeader and not GS.GetMine(lead).isLeader, "leadership can be handed to another member")
+expect(not GS.Kick(lead, 501), "the old leader no longer has leader tools")
+
 print("== anti-spam")
 GS.ThrottleSeconds = 60
 local spam = mkPlayer(400, "Spam")

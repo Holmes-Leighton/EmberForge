@@ -44,7 +44,7 @@ AssetData.Golem = {
         Frost = { assetId = 0, height = 10.5 },   -- tall angular ice crystal
         Storm = { assetId = 0, height = 10.5 },   -- armoured, crackling
         Void  = { assetId = 0, height = 10   },   -- slim shard-and-galaxy
-        All   = { assetId = 0 },
+        All   = { assetId = 0, height = 12 },   -- the Primordial titan (seasonal event Golem); body comes from the pack's EF_All
 
         -- Special Golems (GolemData.Specials): each has its own body, size and look. Until an id is set the
         -- type falls back to the shared model dressed in code (GolemSkinData.Specials). `height` = studs at tier 1.

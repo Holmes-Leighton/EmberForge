@@ -110,7 +110,7 @@ local function Note(text, height, color)
     return l
 end
 
-local function Row(name, sub, color, buttonText, buttonColor, onClick, enabled, height)
+local function Row(name, sub, color, buttonText, buttonColor, onClick, enabled, height, b2Text, b2Color, b2Click)
     local row = Instance.new("Frame")
     row.Size = UDim2.new(1, -8, 0, height or 50)
     row.BackgroundColor3 = Theme.Colors.Panel
@@ -140,6 +140,16 @@ local function Row(name, sub, color, buttonText, buttonColor, onClick, enabled, 
         b.TextSize = 13
         b.AutoButtonColor = enabled ~= false
         b.MouseButton1Click:Connect(function() if enabled ~= false and onClick then onClick() end end)
+    end
+    if b2Text then      -- a second button to the left of the first (the leader's member tools)
+        n.Size = UDim2.new(1, -270, 0, 22)
+        s.Size = UDim2.new(1, -270, 0, (height or 50) - 28)
+        local b2 = Theme.Button(row, b2Text, b2Color, Color3.fromRGB(255, 255, 255))
+        b2.AnchorPoint = Vector2.new(1, 0.5)
+        b2.Position = UDim2.new(1, -128, 0.5, 0)
+        b2.Size = UDim2.new(0, 110, 0, 32)
+        b2.TextSize = 13
+        b2.MouseButton1Click:Connect(function() if b2Click then b2Click() end end)
     end
     return row
 end
@@ -256,8 +266,15 @@ local function Reload_()
     end
     Note("Members (this week)", 24, Theme.Colors.AccentBright)
     for _, m in ipairs(mine.members) do
-        Row(m.name .. (m.leader and "  (leader)" or ""), Utils.FormatNumber(m.weekly) .. " mined this week",
-            m.leader and Theme.Colors.Gold or Theme.Colors.Info, nil, nil, nil, nil, 44)
+        local label = m.name .. (m.leader and "  (leader)" or "")
+        local sub = Utils.FormatNumber(m.weekly) .. " mined this week"
+        local color = m.leader and Theme.Colors.Gold or Theme.Colors.Info
+        if mine.isLeader and not m.leader then       -- the leader can remove a member or hand over the guild
+            Row(label, sub, color, "Remove", Theme.Colors.Danger, function() RemoteEvents.ManageGuild:FireServer("kick", m.userId) end, true, 44,
+                "Make leader", Theme.Colors.Accent, function() RemoteEvents.ManageGuild:FireServer("promote", m.userId) end)
+        else
+            Row(label, sub, color, nil, nil, nil, nil, 44)
+        end
     end
 end
 Reload = Reload_

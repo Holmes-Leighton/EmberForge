@@ -448,6 +448,16 @@ RemoteEvents.ClaimGuildReward.OnServerEvent:Connect(function(player)
     end)
 end)
 
+RemoteEvents.ManageGuild.OnServerEvent:Connect(function(player, action, userId)
+    SafeCall(player, function()
+        if (action ~= "kick" and action ~= "promote") or (type(userId) ~= "string" and type(userId) ~= "number") then return end
+        local GuildService = require(script.Parent.Services.GuildService)
+        local ok, err
+        if action == "kick" then ok, err = GuildService.Kick(player, userId) else ok, err = GuildService.Promote(player, userId) end
+        RemoteEvents.GuildResult:FireClient(player, action, ok == true, ok and (action == "kick" and "Member removed." or "Leadership handed over.") or err)
+    end)
+end)
+
 RemoteEvents.ClaimGuildPrize.OnServerEvent:Connect(function(player)
     SafeCall(player, function()
         local ok, prize, rank = require(script.Parent.Services.GuildService).ClaimPrize(player)

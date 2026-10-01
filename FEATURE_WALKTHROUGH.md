@@ -51,7 +51,7 @@ Status key: **Verified** = seen working in Studio; **Unit** = mock tests only; *
 2. Not testable from one Studio client: pets seen by other players, builds seen by visitors, real purchase receipts,
    guild/ladder writes across servers, a full week/season rollover live.
 3. Balance numbers (build prices, Ascension cost, ladder tiers, prize sizes) are first guesses and need real playtime data.
-4. The "All" (Primordial) event Golem has no unique body; rail track meshes could not be generated at a usable size.
+4. The Primordial ("All") event Golem now has a body (EF_All in the GolemPack in Studio): it shows in game once the GolemPack is re-uploaded and its id swapped in AssetData.Pack. Rail Track is built from parts in code instead of a mesh.
 5. Game icon and thumbnails must be set in Creator Hub (draft screenshots in `marketing/draft-screenshots/`).
-6. Guild extras (shared Guild Forge, invites/roles, chat) are not built.
+6. Guild leaders can now remove members and hand over leadership. Still not built: a shared Guild Forge, invites, guild chat.
 7. Codes are not capped globally across servers (`maxUses` is not enforced); keep any limited code generous.

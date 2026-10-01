@@ -1,6 +1,6 @@
 -- Redeemable codes (for creators, launches and events). Each code can be redeemed once per player.
--- Codes are matched ignoring case. `expires` is an optional unix time; `maxUses` an optional global cap (not enforced
--- across servers, so keep it generous). Add new codes here and ship; nothing else needs changing.
+-- Codes are matched ignoring case. `expires` is an optional unix time; `maxUses` an optional global cap that counts every
+-- redemption on every server. Add new codes here and ship; nothing else needs changing.
 local CodeData = {}
 
 CodeData.Codes = {

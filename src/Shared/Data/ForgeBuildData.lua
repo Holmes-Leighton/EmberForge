@@ -14,6 +14,9 @@ ForgeBuildData.RESTOCK_SECONDS = 300    -- the shop restocks every 5 minutes
 ForgeBuildData.BUY_PER_RESTOCK = 3      -- how many of one piece a player can buy per restock
 ForgeBuildData.SELL_BACK     = 0.5      -- fraction of the price refunded when a piece is removed for good
 
+-- always in the shop, so a new player is never left with nothing to buy (and cheap decor like rails is always there)
+ForgeBuildData.ALWAYS = { Hearth = true, LanternPost = true, MineCart = true, RailTrack = true, Fence = true }
+
 -- rarity -> chance a piece is in stock in a given restock
 ForgeBuildData.StockChance = { Common = 0.9, Uncommon = 0.6, Rare = 0.3, Epic = 0.15 }
 
@@ -38,6 +41,8 @@ ForgeBuildData.Items = {
     { id = "LanternPost", name = "Lantern Post",     category = "decor", rarity = "Common",   price = 120,   height = 7,   maxOwned = 6, blurb = "Warm light for your plot", color = Color3.fromRGB(255, 200, 100) },
     { id = "BannerFlag",  name = "Ember Banner",     category = "decor", rarity = "Common",   price = 200,   height = 9,   maxOwned = 4, blurb = "Fly your colours", color = Color3.fromRGB(220, 80, 50) },
     { id = "ChimneyStack", name = "Chimney Stack",   category = "decor", rarity = "Uncommon", price = 700,   height = 12,  maxOwned = 2, blurb = "Smoke on the skyline", color = Color3.fromRGB(160, 90, 70) },
+    -- built in code (no mesh): `procedural` names the builder in ForgeZoneService
+    { id = "RailTrack",   name = "Rail Track",       category = "decor", rarity = "Common",   price = 100,   height = 0.6, maxOwned = 12, procedural = "rail", blurb = "A length of mine rail. Line them up!", color = Color3.fromRGB(120, 120, 130) },
     -- second batch
     { id = "BarrelStack", name = "Barrel Stack",     category = "tools", rarity = "Common",   price = 600,   height = 4,   maxOwned = 2, perk = { wear = 0.02 }, blurb = "Golems wear 2% slower each", color = Color3.fromRGB(150, 110, 70) },
     { id = "OrePile",     name = "Ore Pile",         category = "tools", rarity = "Uncommon", price = 1000,  height = 3,   maxOwned = 2, perk = { carry = 0.02 }, blurb = "+2% carry capacity each", color = Color3.fromRGB(200, 120, 200) },
@@ -73,7 +78,7 @@ function ForgeBuildData.SlotOf(now) return math.floor(now / ForgeBuildData.RESTO
 function ForgeBuildData.InStock(id, slot)
     local it = byId[id]
     if not it then return false end
-    if it.id == "Hearth" or it.id == "LanternPost" or it.id == "MineCart" then return true end
+    if ForgeBuildData.ALWAYS[it.id] then return true end
     return Hash(slot, id) < (ForgeBuildData.StockChance[it.rarity] or 0.5)
 end
 

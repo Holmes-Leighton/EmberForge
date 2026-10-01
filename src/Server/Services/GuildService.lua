@@ -200,6 +200,60 @@ function GuildService.Leave(player)
     return true
 end
 
+-- ── Leader tools ──────────────────────────────────────────────────────────────
+-- Only the leader may use these. The removed player finds out the next time their guild is read (GetMine/Flush
+-- notice they are no longer a member and clear their GuildId), so this works even if they are on another server.
+function GuildService.Kick(leader, targetUserId)
+    local data = PlayerDataService.Get(leader)
+    if not data or not data.GuildId then return false, "You are not in a guild" end
+    local target = tostring(targetUserId)
+    if target == tostring(leader.UserId) then return false, "Use Leave to leave your own guild" end
+    local err, kicked
+    local ok = pcall(function()
+        guildStore:UpdateAsync(GuildKey(data.GuildId), function(guild)
+            if type(guild) ~= "table" then err = "Your guild no longer exists" return nil end
+            if tostring(guild.leader) ~= tostring(leader.UserId) then err = "Only the guild leader can do that" return nil end
+            if not guild.members[target] then err = "That player isn't in your guild" return nil end
+            guild.members[target] = nil
+            kicked = true
+            return guild
+        end)
+    end)
+    if not ok then return false, "Guilds are unavailable right now. Try again in a minute." end
+    if not kicked then return false, err or "Couldn't remove that player" end
+    local online = Players:GetPlayerByUserId(tonumber(target))
+    local od = online and PlayerDataService.Get(online)
+    if od then
+        od.GuildId = nil
+        pending[online.UserId] = nil
+        PlayerDataService.MarkDirty(online)
+        local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
+        if RemoteEvents.Notify then RemoteEvents.Notify:FireClient(online, "Guild", "You were removed from your guild.") end
+    end
+    return true
+end
+
+function GuildService.Promote(leader, targetUserId)
+    local data = PlayerDataService.Get(leader)
+    if not data or not data.GuildId then return false, "You are not in a guild" end
+    local target = tostring(targetUserId)
+    if target == tostring(leader.UserId) then return false, "You already lead this guild" end
+    local err, done
+    local ok = pcall(function()
+        guildStore:UpdateAsync(GuildKey(data.GuildId), function(guild)
+            if type(guild) ~= "table" then err = "Your guild no longer exists" return nil end
+            if tostring(guild.leader) ~= tostring(leader.UserId) then err = "Only the guild leader can do that" return nil end
+            if not guild.members[target] then err = "That player isn't in your guild" return nil end
+            guild.leader = tonumber(target) or target
+            done = true
+            return guild
+        end)
+    end)
+    if not ok then return false, "Guilds are unavailable right now. Try again in a minute." end
+    if not done then return false, err or "Couldn't change the leader" end
+    return true
+end
+
 -- ── Production and the weekly challenge ───────────────────────────────────────
 function GuildService.OnResourcesGained(player, amount)
     local data = PlayerDataService.Get(player)
