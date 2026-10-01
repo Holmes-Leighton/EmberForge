@@ -32,8 +32,11 @@ function PetModel.Build(petType, variant)
     local template = PetModel.Template(petType)
     if template then
         model = template:Clone()
-        -- the generated pet meshes face +Z; the game (and the gear below) treats -Z as the front, like every Golem
-        model:PivotTo(model:GetPivot() * CFrame.Angles(0, math.pi, 0))
+        -- The uploaded pet's front is on its -Z side, but its pivot (the "Body" part) is turned 180 degrees, so PivotTo(yaw)
+        -- used to face it backwards. Turn the pivot (not the parts) so a pivot with no turn means "front toward -Z",
+        -- which is what PetController assumes.
+        local body = model.PrimaryPart
+        if body then body.PivotOffset = body.PivotOffset * CFrame.Angles(0, math.pi, 0) end
         local height = model:GetExtentsSize().Y
         if height > 0.05 then model:ScaleTo(model:GetScale() * size / height) end
     else
