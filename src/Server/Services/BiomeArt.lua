@@ -388,6 +388,68 @@ function BiomeArt.GlacialPeaks(model, cx, cz, rng)
     return rec.group
 end
 
+-- ── The other zones: the same layout from each zone's own mesh pack ───────────
+-- Every zone pack holds the same seven pieces (PadPiece, Spires, WallPiece, Flora, GlowCluster, Boulder, FloatingPiece), so one builder serves them all.
+-- Until a pack is loaded the zone keeps the simple props WorldBuilder gave it (`legacy`); once it is, those are swapped for the meshes.
+local MESH_ZONES = {
+    EmberDepths     = { glow = Color3.fromRGB(255, 140, 50),  padLight = Color3.fromRGB(255, 120, 40) },
+    GraniteCaverns  = { glow = Color3.fromRGB(255, 190, 90),  padLight = Color3.fromRGB(255, 190, 90) },
+    StormriftCliffs = { glow = Color3.fromRGB(190, 160, 255), padLight = Color3.fromRGB(190, 150, 255) },
+    TheHollow       = { glow = Color3.fromRGB(190, 110, 255), padLight = Color3.fromRGB(170, 90, 255) },
+    TheDeepForge    = { glow = Color3.fromRGB(255, 200, 80),  padLight = Color3.fromRGB(255, 190, 70) },
+}
+
+local function BuildMeshZone(rec)
+    local cfg = MESH_ZONES[rec.zone]
+    if not cfg or not Template(rec.zone, "PadPiece") then return end         -- no pack yet: keep the simple props
+    if rec.group then rec.group:Destroy() end
+    for _, c in ipairs(rec.legacy or {}) do
+        if c.Parent then c:Destroy() end
+    end
+    rec.legacy = nil
+    for _, c in ipairs(rec.model:GetChildren()) do                          -- the generic neon crystals every zone starts with
+        if c.Name == "Crystal" then c:Destroy() end
+    end
+    local rng = Random.new(rec.seed)
+    local cx, cz, zone = rec.cx, rec.cz, rec.zone
+    local group = Instance.new("Folder")
+    group.Name = "ZoneArt"
+    group.Parent = rec.model
+    local function at(dx, dz, y) return Vector3.new(cx + dx, y or 0.2, cz + dz) end
+    local pad = MeshPiece(group, zone, "PadPiece", at(0, 0, 0.4), { height = 30, yaw = rng:NextNumber(0, math.pi * 2) })
+    if pad then GlowLight(pad, cfg.padLight, 60, 1.8, 0) end
+    Scatter(7, 50, 66, rng, function(dx, dz) MeshPiece(group, zone, "Spires", at(dx, dz), { height = rng:NextNumber(16, 24), yaw = rng:NextNumber(0, math.pi * 2) }) end)
+    for _, fx in ipairs({ -44, 0, 44 }) do                                  -- three wall features along the back (their front faces -Z, toward the pad)
+        local w = MeshPiece(group, zone, "WallPiece", at(fx, 66), { width = 22 })
+        if w then GlowLight(w, cfg.glow, 26, 0.9, rng:NextNumber(0, 6)) end
+    end
+    Scatter(14, 36, 68, rng, function(dx, dz)
+        local f = MeshPiece(group, zone, "Flora", at(dx, dz), { height = rng:NextNumber(9, 15), yaw = rng:NextNumber(0, math.pi * 2) })
+        if f then Animate(f, "sway", rng:NextNumber(0.6, 1.1), 0.025, rng:NextNumber(0, 6)) end
+    end)
+    Scatter(6, 34, 62, rng, function(dx, dz)
+        local g = MeshPiece(group, zone, "GlowCluster", at(dx, dz), { height = rng:NextNumber(6, 9), yaw = rng:NextNumber(0, math.pi * 2) })
+        if g then GlowLight(g, cfg.glow, 20, 1.4, rng:NextNumber(0, 6)) end
+    end)
+    Scatter(9, 30, 66, rng, function(dx, dz) MeshPiece(group, zone, "Boulder", at(dx, dz), { height = rng:NextNumber(5, 9), yaw = rng:NextNumber(0, math.pi * 2) }) end)
+    Scatter(9, 14, 60, rng, function(dx, dz)
+        local s = MeshPiece(group, zone, "FloatingPiece", at(dx, dz, rng:NextNumber(14, 34)), { height = rng:NextNumber(8, 12), yaw = rng:NextNumber(0, math.pi * 2), float = true })
+        if s then
+            GlowLight(s, cfg.glow, 16, 1, rng:NextNumber(0, 6))
+            Animate(s, "bobspin", rng:NextNumber(0.5, 0.9), 1.4, rng:NextNumber(0, 6))
+        end
+    end)
+    rec.group = group
+end
+
+-- WorldBuilder calls this for every zone but Glacial Peaks (which builds itself above), passing the simple props it just made
+function BiomeArt.Register(zoneKey, model, cx, cz, seed, legacy)
+    if not MESH_ZONES[zoneKey] then return end
+    local rec = { zone = zoneKey, kind = "mesh", model = model, cx = cx, cz = cz, seed = seed, legacy = legacy }
+    table.insert(zoneRecords, rec)
+    BuildMeshZone(rec)
+end
+
 -- ── The Golem Anvil ───────────────────────────────────────────────────────────
 -- The starter station's anvil: a large golden mesh when its pack is loaded (the "World" pack's GolemAnvil), otherwise the plain block from WorldBuilder.
 -- The mesh's own colours come out pale and orange, so the golden parts (named anvil / chains in the model) are made plain polished gold metal here;
@@ -443,7 +505,9 @@ function BiomeArt.AnvilHeight() return anvilRec and anvilRec.height or nil end
 function BiomeArt.Refresh(zoneKey)
     if zoneKey == "World" then BuildAnvil() end
     for _, rec in ipairs(zoneRecords) do
-        if rec.zone == zoneKey and rec.model.Parent then BuildGlacial(rec) end
+        if rec.zone == zoneKey and rec.model.Parent then
+            if rec.kind == "mesh" then BuildMeshZone(rec) else BuildGlacial(rec) end
+        end
     end
 end
 

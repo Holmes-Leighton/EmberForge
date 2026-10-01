@@ -259,6 +259,12 @@ local function BuildLandmark(world, index, layout)
         local before = {}
         for _, c in ipairs(model:GetChildren()) do before[c] = true end
         props(model, cx, ZONE_Z, Random.new(index * 31), layout.color)
+        local added = {}
+        for _, c in ipairs(model:GetChildren()) do
+            if not before[c] and c:IsA("BasePart") and c.Name ~= "FxAnchor" then table.insert(added, c) end
+        end
+        -- if this zone has a mesh pack, BiomeArt swaps these simple props for the meshes (now, or when the pack finishes loading)
+        require(script.Parent.BiomeArt).Register(layout.id, model, cx, ZONE_Z, index * 31 + 7, added)
         -- nothing may stand in the corridor between the tunnel and the pad
         for _, c in ipairs(model:GetChildren()) do
             if not before[c] and c:IsA("BasePart") and c.Name ~= "FxAnchor" then

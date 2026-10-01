@@ -84,6 +84,14 @@ AssetData.QuarryPack = { assetId = 89170227615937 }
 AssetData.GlacialPack = { assetId = 0 }
 -- Hub scenery: a Model with a child named GolemAnvil (the big golden Anvil at the start). Same rule: upload it and paste the id.
 AssetData.WorldPack = { assetId = 0 }
+-- The other five zones: each pack is a Model with the seven pieces PadPiece, Spires, WallPiece, Flora, GlowCluster, Boulder, FloatingPiece. 0 = not uploaded.
+AssetData.ZonePacks = {
+    EmberDepths     = { assetId = 0 },
+    GraniteCaverns  = { assetId = 0 },
+    StormriftCliffs = { assetId = 0 },
+    TheHollow       = { assetId = 0 },
+    TheDeepForge    = { assetId = 0 },
+}
 AssetData.BuildPack = { assetId = 108557283111622 }
 
 -- 3D spinning icons for the HUD buttons (HUDBuilder NAV names), loaded into ReplicatedStorage.IconAssets as Nav_<Name>.
