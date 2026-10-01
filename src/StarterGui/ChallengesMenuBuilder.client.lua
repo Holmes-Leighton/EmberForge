@@ -5,6 +5,7 @@ local Players     = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Theme = require(game.ReplicatedStorage.Shared.Modules.Theme)
 local ScaleUI = require(game.ReplicatedStorage.Shared.Modules.ScaleUI)
+local MaterialIcon = require(game.ReplicatedStorage.Shared.Modules.MaterialIcon)
 local MaterialData = require(game.ReplicatedStorage.Shared.Data.MaterialData)
 
 local gui = Instance.new("ScreenGui")
@@ -184,6 +185,15 @@ local function BuildChallengeCard(scroll, challenge, progress, claimed, layoutOr
         Theme.TextSize.Small, Theme.Colors.Gold, Theme.Fonts.Body, "RewardLabel")
     rewardLbl.Size = UDim2.new(0.7, 0, 0, 16)
     rewardLbl.Position = UDim2.new(0, 10, 0, 48)
+    -- a little spinning picture of each material you will get (up to three)
+    if rewards.materials then
+        local x = 10 + math.min(rewardLbl.TextBounds.X, rewardLbl.AbsoluteSize.X) + 8
+        for i, m in ipairs(rewards.materials) do
+            if i > 3 then break end
+            local icon = MaterialIcon.Make(card, m.id, 22)
+            if icon then icon.Position = UDim2.new(0, x + (i - 1) * 26, 0, 45) end
+        end
+    end
 
     -- Progress bar background
     local barBg = Instance.new("Frame")
