@@ -36,6 +36,23 @@ QuarryData.Pieces = {
 }
 QuarryData.PieceOrder = { "EmberNode", "FrostNode", "StormNode", "StoneNode", "VoidNode", "CoolingPool", "SkySpire", "DrillRig", "Silo", "PrismCluster" }
 
+-- Crew: Golems NOT deployed to a mining zone can work the Quarry instead. Each adds CREW_PER_TIER x its tier to every node's output
+-- (so a Tier 3 Golem is +24%), at most CREW_MAX_SLOTS Golems and CREW_CAP in total. Elite and Supreme Golems count for more.
+QuarryData.CREW_PER_TIER  = 0.08
+QuarryData.CREW_MAX_SLOTS = 4
+QuarryData.CREW_CAP       = 1.0
+QuarryData.CREW_VARIANT   = { Neon = 1.25, MegaNeon = 1.6 }
+
+-- Output multiplier from a list of crew Golems ({ tier, variant }): 1.0 = no crew
+function QuarryData.CrewMultiplier(crew)
+    local bonus = 0
+    for i, g in ipairs(crew or {}) do
+        if i > QuarryData.CREW_MAX_SLOTS then break end
+        bonus += QuarryData.CREW_PER_TIER * (g.tier or 1) * (QuarryData.CREW_VARIANT[g.variant] or 1)
+    end
+    return 1 + math.min(bonus, QuarryData.CREW_CAP)
+end
+
 QuarryData.EXCLUSIVE_RATE = 14      -- units/hour of an exclusive material from one linked node
 QuarryData.DRILL_BOOST    = 0.35
 QuarryData.BASE_STORAGE   = 600

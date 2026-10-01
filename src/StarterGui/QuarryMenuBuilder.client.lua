@@ -186,6 +186,26 @@ local function Reload()
                 if (info.inventory[m] or 0) > 0 then table.insert(bits, info.inventory[m] .. " " .. Mat(m)) end
             end
             return #bits > 0 and table.concat(bits, ", ") or "none" end)()), 40)
+        -- the crew: idle Golems working the Quarry
+        local GolemNames = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
+        local function Name(g) local d = GolemNames.Describe(g) return d and d.name or (g.element .. " Golem") end
+        Note(string.format("Crew: %d / %d Golems working here (+%d%% output). Golems that are not mining in a zone can work the Quarry instead.",
+            #info.crew, info.crewSlots, math.floor((info.crewBoost - 1) * 100 + 0.5)), 40, Theme.Colors.AccentBright)
+        for _, g in ipairs(info.crew) do
+            Row(Name(g), string.format("Tier %d, working in the Quarry", g.tier), Theme.Colors.Success,
+                { { text = "Call back", color = Theme.Colors.PanelAlt, onClick = function() RemoteEvents.QuarryAction:FireServer("crewremove", g.id) end } }, 44)
+        end
+        if #info.crew < info.crewSlots then
+            local shown = 0
+            table.sort(info.idleGolems, function(a, b) return (a.tier or 1) > (b.tier or 1) end)
+            for _, g in ipairs(info.idleGolems) do
+                if shown >= 4 then break end
+                shown += 1
+                Row(Name(g), string.format("Tier %d, idle: +%d%% if it works here", g.tier, math.floor(QuarryData.CREW_PER_TIER * (g.tier or 1) * (QuarryData.CREW_VARIANT[g.variant] or 1) * 100 + 0.5)),
+                    Theme.Colors.Info, { { text = "Send to work", color = Theme.Colors.Accent, onClick = function() RemoteEvents.QuarryAction:FireServer("crewadd", g.id) end } }, 44)
+            end
+            if shown == 0 then Note("You have no idle Golems. Recall one from its zone in the Forge menu, or craft another.", 30, Theme.Colors.TextDim) end
+        end
         Note("Tip: put a Cooling Pool next to an Ember node, a Sky Spire next to a Storm node, an Ember node next to a Frost node, a Void Geode next to a Granite Vein, "
             .. "or a Prism Cluster among three different nodes. Pieces count as 'next to' each other within " .. QuarryData.LINK_RANGE .. " studs.", 76, Theme.Colors.TextDim)
     elseif tab == "Build" then

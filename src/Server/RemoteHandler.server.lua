@@ -584,7 +584,13 @@ RemoteEvents.QuarryAction.OnServerEvent:Connect(function(player, action, arg)
                 msg = "Collected: " .. table.concat(bits, ", ")
             else
                 msg = why
-            end        elseif action == "upgrade" then
+            end        elseif action == "crewadd" and type(arg) == "string" then
+            ok, result = QS.AddCrew(player, arg)
+            msg = ok and "Golem sent to work in the Quarry." or result
+        elseif action == "crewremove" and type(arg) == "string" then
+            ok, result = QS.RemoveCrew(player, arg)
+            msg = ok and "Golem called back." or result
+        elseif action == "upgrade" then
             local lvl, why = QS.UpgradeCore(player)
             ok = lvl == true
             msg = ok and ("Your Core is now level " .. tostring(why) .. "!") or why

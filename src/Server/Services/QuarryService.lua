@@ -18,6 +18,18 @@ local function StoredTotal(q) local n = 0 for _, v in pairs(q.stored) do n += v 
 
 local function Q(data) return type(data.Quarry) == "table" and data.Quarry.placed and data.Quarry or nil end
 
+-- The Golems really working the Quarry: crew ids that still exist and are not deployed (anything else is dropped)
+local function CrewGolems(data, q)
+    local list, keep = {}, {}
+    for _, id in ipairs(q.crew or {}) do
+        for _, g in ipairs(data.Golems or {}) do
+            if g.id == id and not g.deployed then table.insert(list, g) table.insert(keep, id) break end
+        end
+    end
+    q.crew = keep
+    return list
+end
+
 -- Credits the mined materials since the last time, up to the storage limit. Fractions are carried over.
 function QuarryService.Accrue(data)
     local q = Q(data)
@@ -28,8 +40,9 @@ function QuarryService.Accrue(data)
     if hours <= 0 then return end
     q.frac = q.frac or {}
     local room = QuarryData.Capacity(q.placed, q.level) - StoredTotal(q)
+    local crewBoost = QuarryData.CrewMultiplier(CrewGolems(data, q))
     for material, rate in pairs(QuarryData.RatesPerHour(q.placed)) do
-        local exact = rate * hours + (q.frac[material] or 0)
+        local exact = rate * crewBoost * hours + (q.frac[material] or 0)
         local whole = math.floor(exact)
         local take = math.max(0, math.min(whole, room))
         q.frac[material] = (take < whole) and 0 or (exact - whole)      -- a full silo wastes the overflow
@@ -51,6 +64,13 @@ function QuarryService.Snapshot(player)
     local nextLv = QuarryData.CoreLevels[(q.level or 1) + 1]
     info.level, info.nodeLimit, info.placed, info.stored = q.level, lv.nodes, q.placed, q.stored
     info.capacity, info.storedTotal = QuarryData.Capacity(q.placed, q.level), StoredTotal(q)
+    local crew = CrewGolems(data, q)
+    info.crewBoost, info.crewSlots, info.crew = QuarryData.CrewMultiplier(crew), QuarryData.CREW_MAX_SLOTS, {}
+    for _, g in ipairs(crew) do table.insert(info.crew, { id = g.id, element = g.element, tier = g.tier, variant = g.variant }) end
+    info.idleGolems = {}
+    for _, g in ipairs(data.Golems or {}) do
+        if not g.deployed and not table.find(q.crew or {}, g.id) then table.insert(info.idleGolems, { id = g.id, element = g.element, tier = g.tier, variant = g.variant }) end
+    end
     info.rates, info.nextLevel = QuarryData.RatesPerHour(q.placed), nextLv
     info.owned = {}
     for id in pairs(QuarryData.Pieces) do info.owned[id] = Count(q.placed, id) end
@@ -113,6 +133,39 @@ function QuarryService.Remove(player, index)
     QuarryService.Accrue(data)
     table.remove(q.placed, index)
     data.EmberCoins = (data.EmberCoins or 0) + math.floor((QuarryData.Pieces[p.id].price or 0) * 0.5)
+    PlayerDataService.MarkDirty(player)
+    return true
+end
+
+-- Put an idle Golem to work in the Quarry (it can not mine in a zone while it does). Returns true, or false + reason.
+function QuarryService.AddCrew(player, golemId)
+    local data = PlayerDataService.Get(player)
+    local q = data and Q(data)
+    if not q then return false, "No Quarry" end
+    if type(golemId) ~= "string" then return false, "Pick a Golem" end
+    QuarryService.Accrue(data)
+    CrewGolems(data, q)
+    if #q.crew >= QuarryData.CREW_MAX_SLOTS then return false, string.format("Your crew is full (%d Golems)", QuarryData.CREW_MAX_SLOTS) end
+    if table.find(q.crew, golemId) then return false, "That Golem is already working here" end
+    for _, g in ipairs(data.Golems or {}) do
+        if g.id == golemId then
+            if g.deployed then return false, "Recall that Golem from its mining zone first" end
+            table.insert(q.crew, golemId)
+            PlayerDataService.MarkDirty(player)
+            return true
+        end
+    end
+    return false, "You do not have that Golem"
+end
+
+function QuarryService.RemoveCrew(player, golemId)
+    local data = PlayerDataService.Get(player)
+    local q = data and Q(data)
+    if not q then return false, "No Quarry" end
+    QuarryService.Accrue(data)
+    local i = table.find(q.crew or {}, golemId)
+    if not i then return false, "That Golem is not working here" end
+    table.remove(q.crew, i)
     PlayerDataService.MarkDirty(player)
     return true
 end

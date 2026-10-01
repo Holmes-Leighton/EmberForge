@@ -90,4 +90,34 @@ QS.UpgradeCore(f) QS.UpgradeCore(f)
 local top, eTop = QS.UpgradeCore(f)
 expect(not top and eTop:find("highest") and df.Quarry.level == 4, "the Core tops out at level 4")
 
+print("== crew")
+local h, dh = mk(50)
+QS.Found(h)
+QS.Place(h, "StoneNode", 10, 10)
+dh.Golems = {
+    { id = "g1", element = "Ember", tier = 3 }, { id = "g2", element = "Stone", tier = 1, variant = "MegaNeon" },
+    { id = "g3", element = "Frost", tier = 1, deployed = true }, { id = "g4", element = "Ember", tier = 2 },
+    { id = "g5", element = "Ember", tier = 1 }, { id = "g6", element = "Ember", tier = 1 }, { id = "g7", element = "Ember", tier = 1 },
+}
+expect(not QS.AddCrew(h, "g3"), "a Golem mining in a zone can not join the crew")
+expect(not QS.AddCrew(h, "nope"), "an unknown Golem is refused")
+expect(QS.AddCrew(h, "g1") and QS.Snapshot(h).crewBoost == 1 + 0.08 * 3, "a Tier 3 Golem adds 24% (" .. tostring(QS.Snapshot(h).crewBoost) .. ")")
+expect(not QS.AddCrew(h, "g1"), "no joining twice")
+QS.AddCrew(h, "g2")
+expect(math.abs(QS.Snapshot(h).crewBoost - (1 + 0.24 + 0.08 * 1.6)) < 1e-9, "a Supreme Golem counts for 1.6x")
+QS.AddCrew(h, "g4") QS.AddCrew(h, "g5")
+local okF, eF = QS.AddCrew(h, "g6")
+expect(not okF and eF:find("full"), "the crew holds " .. QD.CREW_MAX_SLOTS .. " Golems (" .. tostring(eF) .. ")")
+local snapC = QS.Snapshot(h)
+expect(#snapC.crew == 4 and #snapC.idleGolems == 2, "the menu lists the crew and the Golems still idle")
+local before2 = QS.Snapshot(h).stored.GraniteShard or 0
+advance(3600)
+local after2 = QS.Snapshot(h).stored.GraniteShard
+local want = math.floor(90 * snapC.crewBoost)
+expect(math.abs(after2 - before2 - want) <= 1, "an hour with the crew mines " .. want .. " instead of 90 (" .. tostring(after2 - before2) .. ")")
+dh.Golems[1].deployed = true                          -- deploying a crew Golem takes it off the crew
+expect(math.abs(QS.Snapshot(h).crewBoost - (1 + 0.08 * 1.6 + 0.16 + 0.08)) < 1e-9, "a deployed Golem stops counting")
+expect(QS.RemoveCrew(h, "g2") and not QS.RemoveCrew(h, "g2"), "calling a Golem back works once")
+expect(QD.CrewMultiplier({ { tier = 5 }, { tier = 5 }, { tier = 5 }, { tier = 5 } }) == 1 + QD.CREW_CAP, "the crew bonus is capped at +" .. QD.CREW_CAP * 100 .. "%")
+
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")
