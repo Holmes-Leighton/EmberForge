@@ -82,6 +82,8 @@ AssetData.QuarryPack = { assetId = 89170227615937 }
 -- IceCrystals, FloatingShard, SnowBoulder, PadCrystals). 0 = not uploaded yet: the zone then uses pieces built from parts. The pack must be UPLOADED (in
 -- Studio: right-click the Model > Save to Roblox) and its id pasted here; generated meshes that are only in the Studio session do not show up in play.
 AssetData.GlacialPack = { assetId = 0 }
+-- Hub scenery: a Model with a child named GolemAnvil (the big golden Anvil at the start). Same rule: upload it and paste the id.
+AssetData.WorldPack = { assetId = 0 }
 AssetData.BuildPack = { assetId = 108557283111622 }
 
 -- 3D spinning icons for the HUD buttons (HUDBuilder NAV names), loaded into ReplicatedStorage.IconAssets as Nav_<Name>.

@@ -381,6 +381,7 @@ function GolemAssetLoader.Init()
     local quarryPackId = AssetData.QuarryPack and AssetData.QuarryPack.assetId or 0
     if quarryPackId > 0 then task.spawn(LoadQuarryPack, quarryPackId, quarryFolder) end
     task.spawn(LoadBiomePack, "GlacialPeaks", AssetData.GlacialPack and AssetData.GlacialPack.assetId or 0)
+    task.spawn(LoadBiomePack, "World", AssetData.WorldPack and AssetData.WorldPack.assetId or 0)
     local buildFolder = ReplicatedStorage:FindFirstChild("BuildAssets")
     if not buildFolder then
         buildFolder = Instance.new("Folder")

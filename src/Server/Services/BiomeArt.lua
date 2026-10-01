@@ -388,8 +388,59 @@ function BiomeArt.GlacialPeaks(model, cx, cz, rng)
     return rec.group
 end
 
--- Called by GolemAssetLoader when a zone's mesh pack has loaded: rebuild that zone's art with the meshes
+-- ── The Golem Anvil ───────────────────────────────────────────────────────────
+-- The starter station's anvil: a large golden mesh when its pack is loaded (the "World" pack's GolemAnvil), otherwise the plain block from WorldBuilder.
+-- The mesh's own colours come out pale, so the golden parts (named anvil / chains in the model) are tinted and given a metal finish here; the stone
+-- platform keeps its own look. `rec.part` is WorldBuilder's anvil block: it stays as the invisible collision and the E prompt's anchor.
+local GOLD = Color3.fromRGB(255, 196, 40)
+local anvilRec
+
+local function BuildAnvil()
+    local rec = anvilRec
+    if not rec or not rec.world.Parent then return end
+    if rec.art then rec.art:Destroy() rec.art = nil end
+    local art = MeshPiece(rec.world, "World", "GolemAnvil", Vector3.new(rec.x, 0, rec.z), { width = rec.width })
+    if not art then
+        rec.part.Transparency = 0
+        if rec.top then rec.top.Transparency = 0 end
+        return
+    end
+    art.Name = "AnvilArt"
+    for _, d in ipairs(art:GetDescendants()) do
+        if d:IsA("MeshPart") then
+            local n = d.Name:lower()
+            if n:find("platform") or n:find("stone") or n:find("base") then
+                d.Reflectance = 0
+            else                                            -- the anvil itself, its chains, or a single-piece mesh: gold
+                d.Color, d.Material, d.Reflectance = GOLD, Enum.Material.Metal, 0.08
+            end
+        end
+    end
+    local box, size = art:GetBoundingBox()
+    rec.part.Transparency = 1                               -- the block becomes the invisible collision / prompt anchor
+    rec.part.Size = Vector3.new(size.X * 0.8, math.min(size.Y, 8), size.Z * 0.8)
+    rec.part.CFrame = CFrame.new(rec.x, rec.part.Size.Y / 2, rec.z)
+    if rec.top then rec.top.Transparency = 1 end
+    local embers = Instance.new("ParticleEmitter")
+    embers.Color, embers.Rate, embers.Lifetime = ColorSequence.new(Color3.fromRGB(255, 170, 60)), 14, NumberRange.new(1.5, 3)
+    embers.Speed, embers.LightEmission, embers.Size = NumberRange.new(2, 5), 1, NumberSequence.new(0.4, 0)
+    embers.EmissionDirection, embers.Acceleration = Enum.NormalId.Top, Vector3.new(0, 3, 0)
+    embers.Parent = art.PrimaryPart
+    GlowLight(art, Color3.fromRGB(255, 190, 80), 40, 1.6, 0)
+    rec.art = art
+    rec.height = size.Y
+end
+
+function BiomeArt.Anvil(world, part, top, x, z, width)
+    anvilRec = { world = world, part = part, top = top, x = x, z = z, width = width or 18 }
+    BuildAnvil()
+end
+
+function BiomeArt.AnvilHeight() return anvilRec and anvilRec.height or nil end
+
+-- Called by GolemAssetLoader when a mesh pack has loaded: rebuild that area's art with the meshes
 function BiomeArt.Refresh(zoneKey)
+    if zoneKey == "World" then BuildAnvil() end
     for _, rec in ipairs(zoneRecords) do
         if rec.zone == zoneKey and rec.model.Parent then BuildGlacial(rec) end
     end
