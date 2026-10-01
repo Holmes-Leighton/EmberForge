@@ -6,6 +6,7 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 
 local MaterialData = require(game.ReplicatedStorage.Shared.Data.MaterialData)
+local MaterialIcon = require(game.ReplicatedStorage.Shared.Modules.MaterialIcon)
 local Theme = require(game.ReplicatedStorage.Shared.Modules.Theme)
 local Utils      = require(game.ReplicatedStorage.Shared.Modules.Utils)
 local GameConfig = require(game.ReplicatedStorage.Shared.Data.GameConfig)
@@ -315,6 +316,23 @@ local function EnsureToastHolder()
 end
 
 local toastOrder = 0
+-- The material a toast is about (its display name appears in the text, longest name first so "Refined Ore" beats "Ore"), or nil
+local materialNames
+function HUDController.MaterialInText(text)
+    if not materialNames then
+        materialNames = {}
+        for id, mat in pairs(MaterialData.All) do
+            if mat.displayName then table.insert(materialNames, { id = id, name = mat.displayName:lower() }) end
+        end
+        table.sort(materialNames, function(a, b) return #a.name > #b.name end)
+    end
+    local lower = tostring(text):lower()
+    for _, m in ipairs(materialNames) do
+        if lower:find(m.name, 1, true) then return m.id end
+    end
+    return nil
+end
+
 function HUDController.ShowNotification(title, message)
     local holder = EnsureToastHolder()
     title, message = tostring(title), tostring(message or "")
@@ -356,6 +374,8 @@ function HUDController.ShowNotification(title, message)
     badge.BorderSizePixel = 0
     badge.Parent = toast
     Theme.AddCorner(badge, UDim.new(1, 0))
+    local matId = HUDController.MaterialInText(message)
+    if matId then MaterialIcon.Overlay(badge, matId) end        -- a toast about a material shows that material's spinning mesh
 
     local titleLbl = Theme.Label(toast, title, Theme.TextSize.Heading, color, Theme.Fonts.Heading, "Title")
     titleLbl.Position = UDim2.new(0, 58, 0, 6)

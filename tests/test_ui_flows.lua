@@ -339,6 +339,8 @@ local function toasts()
     return n, st
 end
 HUDController.ShowNotification("Golem Crafted!", "Ember Golem")
+expect(HUDController.MaterialInText("You collected 50 Basic Ore") == "BasicOre", "a toast about a material finds that material")
+expect(HUDController.MaterialInText("Ember Golem crafted") == nil, "a toast about something else finds none")
 HUDController.ShowNotification("Golem Crafted!", "Ember Golem")
 local n1, stack = toasts()
 expect(n1 == 1, "identical toasts merge into one with a counter (" .. n1 .. ")")

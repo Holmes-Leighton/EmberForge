@@ -61,7 +61,7 @@ Recommendation: not yet. Six mining zones, the Quarry and pets already give plen
 - [ ] Trading safety, still open: tuning of the lopsided-value numbers with real play.
 - [x] Admin panel extras done: blueprint and cosmetic gifts, player inspector, events pushed to every server at once (MessagingService, falls back to the 5-minute refresh).
 - [ ] Admin panel, still open: economy dashboard (coins in circulation, faucet/sink totals), gifting Season Pass items.
-- [ ] More 3D icons: toasts, trade window and quest rewards still use plain text/emoji.
+- [x] 3D icons: toasts about a material now show its spinning mesh (trade window and quest rewards already did).
 
 ## Running the tests
 `python tests/run_tests.py` needs the `luau` runtime (https://github.com/luau-lang/luau/releases) on PATH or in the `LUAU` environment variable.
