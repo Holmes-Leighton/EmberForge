@@ -5,7 +5,7 @@
 local ForgeBuildData = {}
 
 ForgeBuildData.BUILD_CAP     = 0.20     -- most any one stat can gain from all pieces together
-ForgeBuildData.MAX_PLACED    = 24       -- pieces on one plot
+ForgeBuildData.MAX_PLACED    = 30      -- pieces on one plot
 ForgeBuildData.PLOT_HALF     = 26       -- pieces stay within this many studs of the plot centre
 ForgeBuildData.CLEAR_HALF    = 10       -- keep the middle (the forge itself) free
 ForgeBuildData.SPACING       = 2.5      -- minimum distance between two pieces
@@ -38,7 +38,19 @@ ForgeBuildData.Items = {
     { id = "LanternPost", name = "Lantern Post",     category = "decor", rarity = "Common",   price = 120,   height = 7,   maxOwned = 6, blurb = "Warm light for your plot", color = Color3.fromRGB(255, 200, 100) },
     { id = "BannerFlag",  name = "Ember Banner",     category = "decor", rarity = "Common",   price = 200,   height = 9,   maxOwned = 4, blurb = "Fly your colours", color = Color3.fromRGB(220, 80, 50) },
     { id = "ChimneyStack", name = "Chimney Stack",   category = "decor", rarity = "Uncommon", price = 700,   height = 12,  maxOwned = 2, blurb = "Smoke on the skyline", color = Color3.fromRGB(160, 90, 70) },
-    { id = "GemLamp",     name = "Gem Lamp",         category = "decor", rarity = "Uncommon", price = 900,   height = 5,   maxOwned = 4, blurb = "A glowing gemstone lamp", color = Color3.fromRGB(100, 170, 255) },
+    -- second batch
+    { id = "BarrelStack", name = "Barrel Stack",     category = "tools", rarity = "Common",   price = 600,   height = 4,   maxOwned = 2, perk = { wear = 0.02 }, blurb = "Golems wear 2% slower each", color = Color3.fromRGB(150, 110, 70) },
+    { id = "OrePile",     name = "Ore Pile",         category = "tools", rarity = "Uncommon", price = 1000,  height = 3,   maxOwned = 2, perk = { carry = 0.02 }, blurb = "+2% carry capacity each", color = Color3.fromRGB(200, 120, 200) },
+    { id = "MineEntrance", name = "Mine Entrance",   category = "tools", rarity = "Rare",     price = 8000,  height = 8,   maxOwned = 1, perk = { rate = 0.03 }, blurb = "+3% mining speed", color = Color3.fromRGB(130, 100, 70) },
+    { id = "CrystalCluster", name = "Crystal Cluster", category = "tools", rarity = "Epic",   price = 15000, height = 7,   maxOwned = 1, perk = { luck = 0.02 }, blurb = "+2% luck", color = Color3.fromRGB(170, 130, 255) },
+    { id = "Fence",       name = "Wooden Fence",     category = "decor", rarity = "Common",   price = 150,   height = 3,   maxOwned = 12, blurb = "Mark out your plot", color = Color3.fromRGB(160, 120, 80) },
+    { id = "Signpost",    name = "Signpost",         category = "decor", rarity = "Common",   price = 180,   height = 6,   maxOwned = 3, blurb = "Which way to the forge?", color = Color3.fromRGB(160, 120, 80) },
+    { id = "Campfire",    name = "Campfire",         category = "decor", rarity = "Common",   price = 400,   height = 2.5, maxOwned = 2, blurb = "A cosy fire with log seats", color = Color3.fromRGB(255, 150, 60) },
+    { id = "Well",        name = "Stone Well",       category = "decor", rarity = "Uncommon", price = 1800,  height = 6,   maxOwned = 1, blurb = "Fresh water for the smiths", color = Color3.fromRGB(150, 150, 160) },
+    { id = "DisplayStand", name = "Display Stand",   category = "decor", rarity = "Uncommon", price = 2200,  height = 4,   maxOwned = 3, blurb = "Show off a trophy", color = Color3.fromRGB(180, 200, 220) },
+    { id = "Fountain",    name = "Anvil Fountain",   category = "decor", rarity = "Rare",     price = 7000,  height = 6,   maxOwned = 1, blurb = "A fountain fit for a forgemaster", color = Color3.fromRGB(230, 200, 100) },
+    { id = "Throne",      name = "Forgemaster's Throne", category = "decor", rarity = "Epic", price = 25000, height = 6,   maxOwned = 1, blurb = "Sit like a king of the forge", color = Color3.fromRGB(240, 200, 90) },
+    { id = "GemLamp",    name = "Gem Lamp",         category = "decor", rarity = "Uncommon", price = 900,   height = 5,   maxOwned = 4, blurb = "A glowing gemstone lamp", color = Color3.fromRGB(100, 170, 255) },
     { id = "TrophyStatue", name = "Trophy Statue",   category = "decor", rarity = "Rare",     price = 5000,  height = 8,   maxOwned = 1, blurb = "A hero of the forge", color = Color3.fromRGB(240, 200, 90) },
 }
 
