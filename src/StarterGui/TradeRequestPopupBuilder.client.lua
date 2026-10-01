@@ -24,7 +24,7 @@ local card = Instance.new("Frame")
 card.Name = "Card"
 card.AnchorPoint = Vector2.new(0.5, 0)
 card.Position = UDim2.new(0.5, 0, 0, 80)
-card.Size = UDim2.new(0, 420, 0, 170)
+card.Size = UDim2.new(0, 420, 0, 192)
 card.BackgroundColor3 = Theme.Colors.Panel
 card.BorderSizePixel = 0
 card.Parent = gui
@@ -60,7 +60,7 @@ detailLbl.TextYAlignment = Enum.TextYAlignment.Top
 
 local timerBar = Instance.new("Frame")
 timerBar.Name = "Timer"
-timerBar.Position = UDim2.new(0, 16, 0, 128)
+timerBar.Position = UDim2.new(0, 16, 0, 128)       -- the separator: 16px sides, 16px above the buttons
 timerBar.Size = UDim2.new(1, -32, 0, 4)
 timerBar.BackgroundColor3 = Theme.Colors.PanelAlt
 timerBar.BorderSizePixel = 0
@@ -74,12 +74,12 @@ timerFill.Parent = timerBar
 Theme.AddCorner(timerFill, UDim.new(0, 2))
 
 local acceptBtn = Theme.Button(card, "Accept", Theme.Colors.Success, Color3.fromRGB(255, 255, 255), "Accept")
-acceptBtn.Size = UDim2.new(0.5, -22, 0, 28)
-acceptBtn.Position = UDim2.new(0, 16, 1, -36)
+acceptBtn.Size = UDim2.new(0.5, -22, 0, 28)             -- 16px left, 12px between the buttons, 16px right
+acceptBtn.Position = UDim2.new(0, 16, 1, -44)          -- 16px from the bottom (card is 192 high)
 acceptBtn.TextSize = 14
 local declineBtn = Theme.Button(card, "Decline", Theme.Colors.Danger, Color3.fromRGB(255, 255, 255), "Decline")
 declineBtn.Size = UDim2.new(0.5, -22, 0, 28)
-declineBtn.Position = UDim2.new(0.5, 6, 1, -36)
+declineBtn.Position = UDim2.new(0.5, 6, 1, -44)
 declineBtn.TextSize = 14
 
 local token = 0
