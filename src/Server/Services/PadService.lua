@@ -132,6 +132,21 @@ local function BuildPad(world, def)
     -- beam of light: the tier is visible from the far side of the cavern
     local beam = Block(model, "PadBeam", Vector3.new(style.beam, 5, 5), CFrame.new(x, 2 + style.beam / 2, z) * CFrame.Angles(0, 0, math.pi / 2),
         def.color, Enum.Material.Neon, { Shape = Enum.PartType.Cylinder, Transparency = 0.82, CanCollide = false })
+    -- the hard neon bar becomes a soft shaft of light: a camera-facing ribbon that is bright at the pad and fades away as it rises (the cylinder stays,
+    -- invisible, as the thing the sparkles come from). The tier is still readable from across the cavern by how tall the shaft is.
+    beam.Transparency = 1
+    local lower, upper = Instance.new("Attachment"), Instance.new("Attachment")
+    lower.Position, upper.Position = Vector3.new(-style.beam / 2, 0, 0), Vector3.new(style.beam / 2, 0, 0)       -- (the cylinder's X axis points up)
+    lower.Parent, upper.Parent = beam, beam
+    local shaft = Instance.new("Beam")
+    shaft.Attachment0, shaft.Attachment1 = lower, upper
+    shaft.Color = ColorSequence.new(def.color:Lerp(Color3.new(1, 1, 1), 0.35))
+    shaft.LightEmission, shaft.LightInfluence = 1, 0
+    shaft.Width0, shaft.Width1 = 9, 1.5
+    shaft.Segments = 1
+    shaft.FaceCamera = true
+    shaft.Transparency = NumberSequence.new(0.3, 1)
+    shaft.Parent = beam
     local sparkle = Instance.new("ParticleEmitter")
     sparkle.Color = ColorSequence.new(def.color)
     sparkle.Rate = style.sparkle
