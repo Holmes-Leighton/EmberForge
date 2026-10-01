@@ -16,21 +16,37 @@ FeatureGates.List = {
     Quarry = { name = "The Quarry", nav = "QuarryButton", kind = "forge", level = QuarryData.UNLOCK_FORGE_LEVEL },
 }
 
+-- Options that only work in a particular place. Checked after the level rules; `need` is a value of the player's "EFPlace" attribute
+-- (set by ForgeZoneService.PlaceOf). With no place known they stay open.
+FeatureGates.PlaceRules = {
+    Build = { need = "MyForge", name = "Build", label = "At your forge", reason = "Build: go to your own forge to build (the My Forge button takes you there)" },
+}
+
+-- Buttons that make no sense where you already are (not a lock: just a label)
+FeatureGates.Here = {
+    HomeButton = { place = "MyForge", label = "You're home", reason = "You are already at your forge." },
+}
+
 local function Have(def, data)
     if def.kind == "forge" then return (data and data.ForgeLevel) or 1 end
     return (data and data.PlayerLevel) or 1
 end
 
--- ok, reason (long, for toasts), label (short, for the button)
-function FeatureGates.Check(id, data)
+-- ok, reason (long, for toasts), label (short, for the button).  `place` is the player's current EFPlace (optional).
+function FeatureGates.Check(id, data, place)
     local def = FeatureGates.List[id]
-    if not def then return true end
-    local have = Have(def, data)
-    if have >= def.level then return true end
-    local what = def.kind == "forge" and "Forge Level" or "Level"
-    return false,
-        string.format("%s: available at %s %d (you are %s %d)", def.name, what, def.level, what, have),
-        (def.kind == "forge" and "Forge " or "Level ") .. def.level
+    if def then
+        local have = Have(def, data)
+        if have < def.level then
+            local what = def.kind == "forge" and "Forge Level" or "Level"
+            return false,
+                string.format("%s: available at %s %d (you are %s %d)", def.name, what, def.level, what, have),
+                (def.kind == "forge" and "Forge " or "Level ") .. def.level
+        end
+    end
+    local rule = FeatureGates.PlaceRules[id]
+    if rule and place and place ~= rule.need then return false, rule.reason, rule.label end
+    return true
 end
 
 return FeatureGates

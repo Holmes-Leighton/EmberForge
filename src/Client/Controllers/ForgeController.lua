@@ -137,7 +137,7 @@ function ForgeController._CreateBlueprintCard(bp, data, yOffset, events)
     badge.Size = UDim2.new(0, 92, 0, 24)
     badge.Position = UDim2.new(1, -98, 0, 8)
     badge.BackgroundColor3 = craftable > 0 and Color3.fromRGB(60, 150, 80) or Color3.fromRGB(70, 60, 55)
-    badge.Text = lock and "Locked" or (craftable > 0 and ("Can craft: " .. craftable) or "Need more")
+    badge.Text = lock and CraftRules.ShortLockReason(lock) or (craftable > 0 and ("Can craft: " .. craftable) or "Need more")
     badge.TextColor3 = craftable > 0 and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(170, 150, 140)
     badge.Font = Enum.Font.GothamBold
     badge.TextSize = 12

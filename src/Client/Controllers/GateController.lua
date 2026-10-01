@@ -9,6 +9,7 @@ local FeatureGates = require(game.ReplicatedStorage.Shared.Data.FeatureGates)
 local GateController = {}
 
 local lastData
+local hooked = false
 local wired = {}        -- button -> true once its click handler is connected
 
 local LOCK_COLOUR = Color3.fromRGB(255, 214, 120)
@@ -58,28 +59,58 @@ local function Unlock(button)
     if tag then tag:Destroy() end
 end
 
+local function Wire(button)
+    if wired[button] then return end
+    wired[button] = true
+    button.MouseButton1Click:Connect(function()
+        local reason = button:GetAttribute("GateReason")
+        if reason then Toast("Not yet", reason) end
+    end)
+end
+
+-- A label with no lock: used where a button simply makes no sense right now ("You're home")
+local function Note(button, label, reason)
+    button:SetAttribute("GateReason", reason)
+    local cap = button:FindFirstChild("Caption")
+    if cap then
+        if not button:GetAttribute("BaseCaption") then button:SetAttribute("BaseCaption", cap.Text) end
+        cap.Text = label
+        cap.TextColor3 = LOCK_COLOUR
+    end
+end
+
 local function Apply()
     local pg = Players.LocalPlayer and Players.LocalPlayer:FindFirstChild("PlayerGui")
     local hud = pg and pg:FindFirstChild("HUD")
     if not hud or not lastData then return end
-    for id, def in pairs(FeatureGates.List) do
-        local button = hud:FindFirstChild(def.nav, true)
+    local place = Players.LocalPlayer:GetAttribute("EFPlace")
+    local ids = {}
+    for id in pairs(FeatureGates.List) do ids[id] = true end
+    for id in pairs(FeatureGates.PlaceRules) do ids[id] = true end
+    for id in pairs(ids) do
+        local def = FeatureGates.List[id] or FeatureGates.PlaceRules[id]
+        local button = hud:FindFirstChild(def.nav or (id .. "Button"), true)
         if button then
-            if not wired[button] then
-                wired[button] = true
-                button.MouseButton1Click:Connect(function()
-                    local reason = button:GetAttribute("GateReason")
-                    if reason then Toast("Not yet", reason) end
-                end)
-            end
-            local ok, reason, label = FeatureGates.Check(id, lastData)
+            Wire(button)
+            local ok, reason, label = FeatureGates.Check(id, lastData, place)
             if ok then Unlock(button) else Lock(button, label, reason) end
+        end
+    end
+    for name, rule in pairs(FeatureGates.Here) do
+        local button = hud:FindFirstChild(name, true)
+        if button then
+            Wire(button)
+            if place == rule.place then Note(button, rule.label, rule.reason) else Unlock(button) end
         end
     end
 end
 
 function GateController.Update(data)
     lastData = data
+    if not hooked then
+        hooked = true
+        Players.LocalPlayer:GetAttributeChangedSignal("EFPlace"):Connect(Apply)         -- walking into / out of your forge relabels the buttons
+    end
     Apply()
 end
 

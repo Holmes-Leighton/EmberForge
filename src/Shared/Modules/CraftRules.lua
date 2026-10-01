@@ -34,6 +34,18 @@ end
 
 -- Returns nil when the player may craft this blueprint right now, otherwise a short reason.
 -- `availableEvents` is a set { [blueprintId] = true } of event blueprints currently on offer.
+-- The same reason in a few words, for a small badge ("Forge Lv 4"). Anything unrecognised is just "Locked".
+function CraftRules.ShortLockReason(reason)
+    if not reason then return nil end
+    local lvl = reason:match("Forge Level (%d+)")
+    if lvl then return "Forge Lv " .. lvl end
+    if reason:find("not discovered") then return "Find blueprint" end
+    if reason:find("Tier 2 Golem first") then return "Craft Tier 2" end
+    if reason:find("Event Golem") then return "Event only" end
+    if reason:find("material slots") then return "More slots" end
+    return "Locked"
+end
+
 function CraftRules.GetLockReason(data, bp, availableEvents)
     if not bp then return "Unknown blueprint" end
 

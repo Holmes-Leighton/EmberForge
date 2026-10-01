@@ -478,6 +478,27 @@ function ForgeZoneService.GetQuarryCFrame(userId)
     return CFrame.new(PlotCentre(idx) + Vector3.new(0, 0, QuarryData.PLOT_OFFSET_Z))
 end
 
+-- Where a player is standing: "MyForge", "MyQuarry", "Visiting" (another player's forge) or "World". Published as the player attribute
+-- "EFPlace" so the HUD can label options that only work somewhere in particular (see FeatureGates.PlaceRules).
+function ForgeZoneService.PlaceOf(player)
+    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return "World" end
+    local p = root.Position
+    local function inside(centre)
+        return math.abs(p.X - centre.X) <= ZONE_SIZE.X / 2 and math.abs(p.Z - centre.Z) <= ZONE_SIZE.Z / 2
+    end
+    local mine = plotAssignments[player.UserId]
+    if mine then
+        local c = PlotCentre(mine)
+        if inside(c) then return "MyForge" end
+        if inside(c + Vector3.new(0, 0, QuarryData.PLOT_OFFSET_Z)) then return "MyQuarry" end
+    end
+    for userId, index in pairs(plotAssignments) do
+        if userId ~= player.UserId and inside(PlotCentre(index)) then return "Visiting" end
+    end
+    return "World"
+end
+
 function ForgeZoneService.OnPlayerAdded(player)
     local plotIndex = FreePlotIndex()
     plotAssignments[player.UserId] = plotIndex
@@ -488,6 +509,14 @@ function ForgeZoneService.OnPlayerAdded(player)
     ForgeZoneService.Refresh(player)
     ForgeZoneService.RefreshBuild(player)
     ForgeZoneService.RefreshQuarry(player)
+
+    task.spawn(function()
+        while player.Parent and plotAssignments[player.UserId] == plotIndex do
+            local place = ForgeZoneService.PlaceOf(player)
+            if player:GetAttribute("EFPlace") ~= place then player:SetAttribute("EFPlace", place) end
+            task.wait(1)
+        end
+    end)
 
     -- Keep the forge in step with the player's Golems, equipment and vault
     task.spawn(function()

@@ -354,8 +354,8 @@ local function RenderList()
         badge.Size = UDim2.new(0, 80, 0, 24)
         badge.Position = UDim2.new(1, -88, 0.5, -12)
         badge.BackgroundColor3 = (craftable > 0 and not lock) and Theme.Colors.Success or Theme.Colors.PanelAlt
-        badge.Text = lock and "Locked" or (craftable > 0 and ("x" .. craftable) or "Need more")
-        badge.TextColor3 = (craftable > 0 and not lock) and Color3.fromRGB(255, 255, 255) or Theme.Colors.TextSecondary
+        badge.Text = lock and CraftRules.ShortLockReason(lock) or (craftable > 0 and ("x" .. craftable) or "Need more")
+        badge.TextColor3 = lock and Color3.fromRGB(255, 214, 120) or ((craftable > 0) and Color3.fromRGB(255, 255, 255) or Theme.Colors.TextSecondary)
         badge.Font = Enum.Font.GothamBold
         badge.TextSize = 12
         badge.BorderSizePixel = 0

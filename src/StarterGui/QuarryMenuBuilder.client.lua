@@ -218,6 +218,9 @@ local function Reload()
         Note("Tip: put a Cooling Pool next to an Ember node, a Sky Spire next to a Storm node, an Ember node next to a Frost node, a Void Geode next to a Granite Vein, "
             .. "or a Prism Cluster among three different nodes. Pieces count as 'next to' each other within " .. QuarryData.LINK_RANGE .. " studs.", 76, Theme.Colors.TextDim)
     elseif tab == "Build" then
+        if Players.LocalPlayer:GetAttribute("EFPlace") ~= "MyQuarry" then
+            Note("You are not in your Quarry. Press \"Go to my Quarry\" (left) first: pieces are placed where you stand, in front of you.", 40, Theme.Colors.AccentBright)
+        end
         Note("Go to your Quarry, stand where you want a piece (it appears just in front of you), then press Place. It is bought when you place it.", 46)
         for _, id in ipairs(QuarryData.PieceOrder) do
             local def = QuarryData.Pieces[id]
