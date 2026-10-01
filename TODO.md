@@ -36,7 +36,7 @@ Recommendation: not yet. Six mining zones, the Quarry and pets already give plen
 - [ ] Per-world pets and eggs (a Lava Egg, an Ice Egg ...) fit the pet index: one more reason to collect.
 
 ## Features not built
-- [ ] Rail track meshes (the AI generator makes them too small; the piece is built from parts in code).
+- [x] Rail track: built from parts in code (the AI mesh generator makes them too small), so no mesh is needed. Look at it in Studio and say if it needs more detail.
 - [x] Guild extras: officers (up to 3, can remove plain members), leader-set banners (colour + emblem), weekly guild-vs-guild duels (challenge, accept, winner's contributors claim 400 coins + a Speed-Up next week).
 
 ## New feature ideas
