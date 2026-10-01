@@ -8,6 +8,7 @@ local RemoteEvents   = require(game.ReplicatedStorage.Shared.Modules.RemoteEvent
 local MaterialData   = require(game.ReplicatedStorage.Shared.Data.MaterialData)
 local GolemData      = require(game.ReplicatedStorage.Shared.Data.GolemData)
 local Portrait       = require(game.ReplicatedStorage.Shared.Modules.Portrait)
+local MaterialIcon   = require(game.ReplicatedStorage.Shared.Modules.MaterialIcon)
 local Utils          = require(game.ReplicatedStorage.Shared.Modules.Utils)
 local GolemNames     = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
 
@@ -178,6 +179,7 @@ function InventoryController._CreateMaterialRow(matId, qty, mat, yOff, pending)
     local tileCorner = Instance.new("UICorner")
     tileCorner.CornerRadius = UDim.new(0, 6)
     tileCorner.Parent = tile
+    MaterialIcon.Overlay(tile, matId)
 
     -- Name
     local nameLbl = Instance.new("TextLabel")

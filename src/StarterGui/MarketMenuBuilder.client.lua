@@ -13,6 +13,8 @@ local MaterialData = require(game.ReplicatedStorage.Shared.Data.MaterialData)
 local GolemData    = require(game.ReplicatedStorage.Shared.Data.GolemData)
 local GameConfig   = require(game.ReplicatedStorage.Shared.Data.GameConfig)
 local GolemNames   = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
+local Portrait = require(game.ReplicatedStorage.Shared.Modules.Portrait)
+local MaterialIcon = require(game.ReplicatedStorage.Shared.Modules.MaterialIcon)
 
 RemoteEvents.Load()
 
@@ -193,13 +195,29 @@ local function Render(listings)
         bar2.BorderSizePixel = 0
         bar2.Parent = row
 
+        -- picture: the material's mesh, or the Golem's face
+        local pic
+        if listing.item.type == "material" then
+            local tile = Instance.new("Frame")
+            tile.Size, tile.Position = UDim2.new(0, 40, 0, 40), UDim2.new(0, 14, 0.5, -20)
+            tile.BackgroundColor3, tile.BackgroundTransparency, tile.BorderSizePixel = color, 0.55, 0
+            tile.Parent = row
+            Theme.AddCorner(tile, Theme.Corner.Small)
+            MaterialIcon.Overlay(tile, listing.item.id)
+            pic = true
+        elseif listing.golem then
+            local face = Portrait.Golem(row, listing.golem, 42)
+            face.Position = UDim2.new(0, 12, 0.5, -21)
+            pic = true
+        end
+        local textX = pic and 62 or 16
         local name = Theme.Label(row, text, Theme.TextSize.Heading, color, Theme.Fonts.Heading)
-        name.Position = UDim2.new(0, 16, 0, sub and 6 or 0)
-        name.Size = UDim2.new(0, 320, 0, sub and 24 or 56)
+        name.Position = UDim2.new(0, textX, 0, sub and 6 or 0)
+        name.Size = UDim2.new(0, 340 - textX, 0, sub and 24 or 56)
         if sub then
             local s = Theme.Label(row, sub, Theme.TextSize.Small, Theme.Colors.TextSecondary, Theme.Fonts.Mono)
-            s.Position = UDim2.new(0, 16, 0, 30)
-            s.Size = UDim2.new(0, 320, 0, 18)
+            s.Position = UDim2.new(0, textX, 0, 30)
+            s.Size = UDim2.new(0, 340 - textX, 0, 18)
         end
 
         local seller = Theme.Label(row, tostring(listing.sellerName or "?"), Theme.TextSize.Body, Theme.Colors.TextSecondary)

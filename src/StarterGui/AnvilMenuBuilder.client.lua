@@ -11,6 +11,7 @@ local Theme          = require(game.ReplicatedStorage.Shared.Modules.Theme)
 local RemoteEvents   = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local GolemModel     = require(game.ReplicatedStorage.Shared.Modules.GolemModel)
 local ScaleUI        = require(game.ReplicatedStorage.Shared.Modules.ScaleUI)
+local MaterialIcon   = require(game.ReplicatedStorage.Shared.Modules.MaterialIcon)
 local Portrait       = require(game.ReplicatedStorage.Shared.Modules.Portrait)
 local CraftRules     = require(game.ReplicatedStorage.Shared.Modules.CraftRules)
 local GolemData      = require(game.ReplicatedStorage.Shared.Data.GolemData)
@@ -283,7 +284,12 @@ local function RenderDetail()
         local row = Theme.Label(compFrame,
             string.format("%s   %d / %d", MaterialName(req.id), have, req.qty),
             Theme.TextSize.Body + 1, ok and Theme.Colors.Success or Theme.Colors.Danger, Theme.Fonts.Heading)
-        row.Size = UDim2.new(1, 0, 0, 22)
+        row.Size = UDim2.new(1, 0, 0, 26)
+        local pad = Instance.new("UIPadding")
+        pad.PaddingLeft = UDim.new(0, 30)
+        pad.Parent = row
+        local icon = MaterialIcon.Make(row, req.id, 24)
+        if icon then icon.Position = UDim2.new(0, -28, 0, 1) else pad:Destroy() end
     end
 
     local canForge = craftable > 0 and not lock

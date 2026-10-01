@@ -80,6 +80,37 @@ AssetData.CrownPack = { assetId = 133428041942823 }
 AssetData.QuarryPack = { assetId = 89170227615937 }
 AssetData.BuildPack = { assetId = 108557283111622 }
 
+-- One generated mesh per material (MaterialData ids). Loaded by GolemAssetLoader into ReplicatedStorage.MaterialAssets;
+-- MaterialIcon draws them in the menus. A material without one keeps its lettered tile.
+AssetData.MaterialMeshes = {
+    BasicOre = 117308458941304,
+    Coal = 82793928556878,
+    IgniteOre = 95491104642503,
+    MoltenCore = 91143722326428,
+    AncientBedrock = 94651533937019,
+    GlacialCrystal = 114370828716636,
+    EternalIce = 105033188208568,
+    ChargedFlint = 76933705602929,
+    ThunderShard = 128232234133958,
+    ShadowDust = 86811512393028,
+    VoidEssence = 114012372064230,
+    GraniteShard = 85247538364266,
+    PrimordialOre = 137759538706157,
+    RefinedOre = 87675658742580,
+    EmberDust = 81667665834934,
+    ElementalIngot = 75370874468098,
+    CrystalFragment = 111738750867959,
+    EssenceShard = 95153260195282,
+    PureIngot = 117957342934601,
+    EventCatalyst = 104958134512199,
+    TemperedEmber = 133917670512775,
+    Stormglass = 99737376753074,
+    PrimordialIngot = 122126190476359,
+    FrostfireGem = 123351298386815,
+    Voidstone = 91156670078621,
+    PrismaticShard = 135173389733208,
+}
+
 local MODES = { Auto = true, Skinned = true, Parts = true, Static = true }
 
 -- The per-type settings a Golem Pack model is given: Default's settings with that type's own on top

@@ -277,7 +277,46 @@ local function LoadQuarryPack(packId, folder)
     log(string.format("Quarry Pack (asset %d): %d piece(s) loaded", packId, found))
     pending -= 1
 end
+-- Material meshes: one small asset per material (AssetData.MaterialMeshes) -> ReplicatedStorage.MaterialAssets.<MaterialId>
+local function LoadMaterialMeshes(list, folder)
+    pending += 1
+    local found, total = 0, 0
+    local done = 0
+    for matId, assetId in pairs(list) do
+        total += 1
+        task.spawn(function()
+            local ok, result = pcall(function() return InsertService:LoadAsset(assetId) end)
+            if ok and result then
+                local model = Unwrap(result)
+                Sanitise(model)
+                if CountParts(model) > 0 then
+                    model.Name = matId
+                    local old = folder:FindFirstChild(matId)
+                    if old then old:Destroy() end
+                    model.Parent = folder
+                    found += 1
+                    folder:SetAttribute("Version", found)
+                end
+            else
+                warn(string.format("[GolemAssets] Material mesh %s (asset %d) FAILED to load: %s", matId, assetId, tostring(result)))
+            end
+            done += 1
+        end)
+    end
+    while done < total do task.wait(0.1) end
+    log(string.format("Material meshes: %d of %d loaded", found, total))
+    pending -= 1
+end
+
 function GolemAssetLoader.Init()
+    local materialFolder = ReplicatedStorage:FindFirstChild("MaterialAssets")
+    if not materialFolder then
+        materialFolder = Instance.new("Folder")
+        materialFolder.Name = "MaterialAssets"
+        materialFolder.Parent = ReplicatedStorage
+    end
+    materialFolder:SetAttribute("Version", 0)
+    if AssetData.MaterialMeshes and next(AssetData.MaterialMeshes) then task.spawn(LoadMaterialMeshes, AssetData.MaterialMeshes, materialFolder) end
     local quarryFolder = ReplicatedStorage:FindFirstChild("QuarryAssets")
     if not quarryFolder then
         quarryFolder = Instance.new("Folder")
