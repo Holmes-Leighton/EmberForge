@@ -19,6 +19,7 @@ local MaterialIcon = require(game.ReplicatedStorage.Shared.Modules.MaterialIcon)
 RemoteEvents.Load()
 
 local W, H = 820, 600
+local PetData = require(game.ReplicatedStorage.Shared.Data.PetData)
 local RARITY = {
     Common = Theme.Colors.Common, Uncommon = Theme.Colors.Uncommon, Rare = Theme.Colors.Rare,
     Epic = Theme.Colors.Epic, Legendary = Theme.Colors.Legendary,
@@ -89,15 +90,16 @@ Theme.AddCorner(bar, Theme.Corner.Small)
 
 local function TabButton(text, x, name)
     local b = Theme.Button(bar, text, Theme.Colors.PanelAlt, Theme.Colors.TextSecondary, name)
-    b.Size = UDim2.new(0, 110, 0, 30)
+    b.Size = UDim2.new(0, 98, 0, 30)
     b.Position = UDim2.new(0, x, 0.5, -15)
     return b
 end
 local supplierTab = TabButton("Supplier",   8,   "SupplierTab")
-local matTab   = TabButton("Player Sales", 124, "MaterialsTab")
-local golemTab = TabButton("Golems",       240, "GolemsTab")
-local mineTab  = TabButton("My Listings",  356, "MyListingsTab")
-mineTab.Size = UDim2.new(0, 130, 0, 30)
+local matTab   = TabButton("Player Sales", 112, "MaterialsTab")
+local golemTab = TabButton("Golems",       216, "GolemsTab")
+local petTab   = TabButton("Pets",         320, "PetsTab")
+local mineTab  = TabButton("My Listings",  424, "MyListingsTab")
+mineTab.Size = UDim2.new(0, 120, 0, 30)
 
 local refreshBtn = Theme.Button(bar, "Refresh", Theme.Colors.PanelAlt, Theme.Colors.TextPrimary, "RefreshButton")
 refreshBtn.Size = UDim2.new(0, 90, 0, 30)
@@ -158,6 +160,9 @@ local function ItemLine(listing)
         return string.format("%s  x%d", it.name or (def and def.displayName) or it.id, it.qty),
                RARITY[def and def.rarity or "Common"] or Theme.Colors.TextPrimary, nil
     end
+    if it.type == "pet" then
+        return it.name or "Pet", Theme.Colors[it.rarity or "Common"] or Theme.Colors.TextPrimary, nil
+    end
     local g = listing.golem
     local d = g and GolemNames.Describe(g)
     local stats = g and GolemData.ComputeStats(g.element, g.tier, g.fusionBonus, g.quality, g.variant)
@@ -207,6 +212,10 @@ local function Render(listings)
             pic = true
         elseif listing.golem then
             local face = Portrait.Golem(row, listing.golem, 42)
+            face.Position = UDim2.new(0, 12, 0.5, -21)
+            pic = true
+        elseif listing.item.type == "pet" then
+            local face = Portrait.Pet(row, { type = listing.item.petType, variant = listing.item.variant, grown = listing.item.grown }, 42)
             face.Position = UDim2.new(0, 12, 0.5, -21)
             pic = true
         end
@@ -336,6 +345,7 @@ end
 supplierTab.MouseButton1Click:Connect(function() tab = "supplier" Reload() end)
 matTab.MouseButton1Click:Connect(function() tab = "material" Reload() end)
 golemTab.MouseButton1Click:Connect(function() tab = "golem" Reload() end)
+petTab.MouseButton1Click:Connect(function() tab = "pet" Reload() end)
 mineTab.MouseButton1Click:Connect(function() tab = "mine" Reload() end)
 refreshBtn.MouseButton1Click:Connect(Reload)
 
@@ -450,7 +460,10 @@ local function BuildPickList()
         l.Position = UDim2.new(0, 56, 0, 0)
         l.Size = UDim2.new(1, -68, 1, 0)
         l.ZIndex = 13
-        if golem then
+        if golem and golem.petId then
+            local face = Portrait.Pet(row, golem, 36)
+            face.Position, face.ZIndex = UDim2.new(0, 10, 0.5, -18), 13
+        elseif golem then
             local face = Portrait.Golem(row, golem, 36)
             face.Position, face.ZIndex = UDim2.new(0, 10, 0.5, -18), 13
         else
@@ -473,7 +486,7 @@ local function BuildPickList()
         table.insert(rows, row)
     end
 
-    if tab ~= "golem" then
+    if tab ~= "golem" and tab ~= "pet" then
         local ids = {}
         for id, qty in pairs(data.Inventory or {}) do
             local def = MaterialData.Get(id)
@@ -491,6 +504,18 @@ local function BuildPickList()
             if not g.deployed then
                 local d = GolemNames.Describe(g)
                 AddRow(string.format("%s   [%s]", d.name, d.rarity), d.rarityColor, { type = "golem", id = g.id, max = 1 }, g)
+            end
+        end
+    end
+    if tab == "pet" or tab == "mine" then
+        local worn = {}
+        for _, id in ipairs(data.EquippedPets or {}) do worn[id] = true end
+        for _, p in ipairs(data.OwnedPets or {}) do
+            if not worn[p.id] then
+                local def = PetData.Get(p.type)
+                AddRow(string.format("%s   [%s]", PetData.DisplayName(p), PetData.StageOf(p).id),
+                    def and RARITY[def.rarity] or Theme.Colors.TextPrimary, { type = "pet", id = p.id, max = 1 },
+                    { petId = p.id, type = p.type, variant = p.variant, grown = p.grown })
             end
         end
     end

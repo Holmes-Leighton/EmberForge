@@ -67,7 +67,7 @@ local function Finish(vp, model, fallbackLetter)
         if d:IsA("ParticleEmitter") or d:IsA("PointLight") then d.Enabled = false end
     end
     model.Parent = vp
-    Aim(vp, model)
+    if not pcall(Aim, vp, model) then Fallback(vp, fallbackLetter) end        -- a model we cannot frame gives the plain letter
     return vp
 end
 

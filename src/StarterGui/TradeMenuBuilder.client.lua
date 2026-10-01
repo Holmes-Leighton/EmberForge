@@ -10,6 +10,7 @@ local ScaleUI      = require(game.ReplicatedStorage.Shared.Modules.ScaleUI)
 local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local MaterialData = require(game.ReplicatedStorage.Shared.Data.MaterialData)
 local GolemNames   = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
+local PetData      = require(game.ReplicatedStorage.Shared.Data.PetData)
 local Portrait     = require(game.ReplicatedStorage.Shared.Modules.Portrait)
 local MaterialIcon = require(game.ReplicatedStorage.Shared.Modules.MaterialIcon)
 
@@ -180,6 +181,9 @@ local function Row(parent, text, color, height, item)
         if item.type == "golem" then
             pic = Portrait.Golem(row, item, 36)
             pic.Position = UDim2.new(0, 6, 0.5, -18)
+        elseif item.type == "pet" then
+            pic = Portrait.Pet(row, { type = item.petType, variant = item.variant, grown = item.grown }, 36)
+            pic.Position = UDim2.new(0, 6, 0.5, -18)
         else
             pic = Instance.new("Frame")
             pic.Size, pic.Position = UDim2.new(0, 36, 0, 36), UDim2.new(0, 6, 0.5, -18)
@@ -224,6 +228,20 @@ local function AvailableGolems()
     return list
 end
 
+local function AvailablePets()
+    local offered = {}
+    for _, it in ipairs(view and view.yourItems or {}) do
+        if it.type == "pet" then offered[it.id] = true end
+    end
+    local worn = {}
+    for _, id in ipairs(data and data.EquippedPets or {}) do worn[id] = true end
+    local list = {}
+    for _, p in ipairs(data and data.OwnedPets or {}) do
+        if not worn[p.id] and not offered[p.id] then table.insert(list, p) end
+    end
+    return list
+end
+
 -- ── Rendering ─────────────────────────────────────────────────────────────────
 local function RenderInventory()
     Clear(invList)
@@ -252,6 +270,20 @@ local function RenderInventory()
             if qty >= 1 and tradeId then
                 RemoteEvents.AddTradeItem:FireServer(tradeId, { type = "material", id = m.id, qty = math.min(qty, m.free) })
             end
+        end)
+    end
+
+    for _, p in ipairs(AvailablePets()) do
+        local def = PetData.Get(p.type)
+        local row = Row(invList, string.format("%s  [%s]", PetData.DisplayName(p), PetData.StageOf(p).id),
+            def and Theme.Colors[def.rarity] or Theme.Colors.TextPrimary, 36,
+            { type = "pet", petType = p.type, variant = p.variant, grown = p.grown })
+        local add = Theme.Button(row, "Add", Theme.Colors.Accent, Color3.fromRGB(255, 255, 255))
+        add.Size = UDim2.new(0, 60, 0, 24)
+        add.Position = UDim2.new(1, -76, 0.5, -12)
+        add.TextSize = 12
+        add.MouseButton1Click:Connect(function()
+            if tradeId then RemoteEvents.AddTradeItem:FireServer(tradeId, { type = "pet", id = p.id }) end
         end)
     end
 

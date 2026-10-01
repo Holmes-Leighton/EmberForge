@@ -9,6 +9,7 @@ local Utils             = require(game.ReplicatedStorage.Shared.Modules.Utils)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 local SafeDataStore     = require(script.Parent.SafeDataStore)
 local GolemNames        = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
+local PetData           = require(game.ReplicatedStorage.Shared.Data.PetData)
 
 local TradingService = {}
 
@@ -68,15 +69,17 @@ end
 
 -- Ownership totals already committed by `items`, so the same stack can't be offered twice
 local function CommittedTotals(items)
-    local mats, golems = {}, {}
+    local mats, golems, pets = {}, {}, {}
     for _, it in ipairs(items) do
         if it.type == "material" then
             mats[it.id] = (mats[it.id] or 0) + it.qty
         elseif it.type == "golem" then
             golems[it.id] = true
+        elseif it.type == "pet" then
+            pets[it.id] = true
         end
     end
-    return mats, golems
+    return mats, golems, pets
 end
 
 -- Returns a clean item table built from *our* data (never the client's), or nil + reason.
@@ -87,7 +90,7 @@ local function ValidateItem(data, raw, alreadyOffered)
     if kind == "blueprint" then return nil, "Blueprints cannot be traded" end
     if type(id) ~= "string" then return nil, "Bad item" end
 
-    local mats, golems = CommittedTotals(alreadyOffered or {})
+    local mats, golems, pets = CommittedTotals(alreadyOffered or {})
 
     if kind == "material" then
         if not PositiveInt(raw.qty, MAX_ITEM_QTY) then return nil, "Invalid quantity" end
@@ -110,6 +113,19 @@ local function ValidateItem(data, raw, alreadyOffered)
             end
         end
         return nil, "Golem not found"
+
+    elseif kind == "pet" then
+        if pets[id] then return nil, "Pet already offered" end
+        for _, pet in ipairs(data.OwnedPets or {}) do
+            if pet.id == id then
+                if table.find(data.EquippedPets or {}, id) then return nil, "Put that pet away before trading it" end
+                local def = PetData.Get(pet.type)
+                if not def then return nil, "Unknown pet" end
+                return { type = "pet", id = id, qty = 1, petType = pet.type, variant = pet.variant, grown = pet.grown,
+                         rarity = def.rarity, name = PetData.DisplayName(pet) .. " (" .. PetData.StageOf(pet).id .. ")" }
+            end
+        end
+        return nil, "Pet not found"
     end
     return nil, "Unknown item type"
 end
@@ -276,6 +292,15 @@ function TradingService._ExecuteTrade(tradeId)
         return false, "Trade cancelled: " .. tostring(offWhy or tarWhy)
     end
 
+    -- a full pet box cancels the trade rather than losing a pet
+    local function incomingPets(items) local n = 0 for _, it in ipairs(items) do if it.type == "pet" then n += 1 end end return n end
+    local offIn, tarIn = incomingPets(trade.targetItems), incomingPets(trade.offererItems)
+    local offHeld, tarHeld = #(offData.OwnedPets or {}), #(tarData.OwnedPets or {})
+    if offHeld - tarIn + offIn > PetData.MAX_OWNED or tarHeld - offIn + tarIn > PetData.MAX_OWNED then
+        CloseTrade(tradeId)
+        return false, "Trade cancelled: a pet box would be full"
+    end
+
     local function transfer(fromData, toData, items)
         for _, it in ipairs(items) do
             if it.type == "material" then
@@ -286,6 +311,14 @@ function TradingService._ExecuteTrade(tradeId)
                 for i = #fromData.Golems, 1, -1 do
                     if fromData.Golems[i].id == it.id then
                         table.insert(toData.Golems, table.remove(fromData.Golems, i))
+                        break
+                    end
+                end
+            elseif it.type == "pet" then
+                for i = #fromData.OwnedPets, 1, -1 do
+                    if fromData.OwnedPets[i].id == it.id then
+                        toData.OwnedPets = toData.OwnedPets or {}
+                        table.insert(toData.OwnedPets, table.remove(fromData.OwnedPets, i))
                         break
                     end
                 end
@@ -351,11 +384,19 @@ function TradingService.ListOnMarket(player, rawItem, priceCoins)
     if not item then return nil, why end
 
     -- Take the item out of the seller's hands (the real object, not the client's copy)
-    local golemObject
+    local golemObject, petObject
     if item.type == "material" then
         if not PlayerDataService.RemoveMaterial(player, item.id, item.qty) then
             return nil, "Not enough material"
         end
+    elseif item.type == "pet" then
+        for i, pet in ipairs(data.OwnedPets) do
+            if pet.id == item.id then
+                petObject = table.remove(data.OwnedPets, i)
+                break
+            end
+        end
+        if not petObject then return nil, "Pet not found" end
     else
         for i, g in ipairs(data.Golems) do
             if g.id == item.id then
@@ -373,6 +414,7 @@ function TradingService.ListOnMarket(player, rawItem, priceCoins)
         sellerName = player.DisplayName,
         item       = item,
         golem      = golemObject,            -- only set for Golem listings
+        pet        = petObject,              -- only set for pet listings
         priceCoins = priceCoins,
         listedAt   = Utils.UnixTimestamp(),
     }
@@ -381,6 +423,7 @@ function TradingService.ListOnMarket(player, rawItem, priceCoins)
     if err then
         -- couldn't publish: give everything back
         if golemObject then table.insert(data.Golems, golemObject)
+        elseif petObject then table.insert(data.OwnedPets, petObject)
         else PlayerDataService.AddMaterial(player, item.id, item.qty) end
         return nil, err
     end
@@ -397,6 +440,11 @@ local function DeliverListing(player, listing)
         local data = PlayerDataService.Get(player)
         table.insert(data.Golems, listing.golem)
         PlayerDataService.MarkDirty(player)
+    elseif listing.pet then
+        local data = PlayerDataService.Get(player)
+        data.OwnedPets = data.OwnedPets or {}
+        table.insert(data.OwnedPets, listing.pet)
+        PlayerDataService.MarkDirty(player)
     end
 end
 
@@ -409,6 +457,7 @@ function TradingService.BuyFromMarket(player, listingId)
     if not cached then return false, "Listing not found" end
     if cached.sellerId == player.UserId then return false, "You can't buy your own listing" end
     if (data.EmberCoins or 0) < cached.priceCoins then return false, "Not enough Ember Coins" end
+    if cached.pet and #(data.OwnedPets or {}) >= PetData.MAX_OWNED then return false, "Your pet box is full" end
 
     -- Claim it atomically; whoever removes it from the shared table first owns it
     local listing, err = EditMarket(function(listings)

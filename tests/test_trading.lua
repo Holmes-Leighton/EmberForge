@@ -96,4 +96,36 @@ expect(da.Inventory.Coal == 40 and (db.Inventory.Coal or 0) == 60, "coal moved 6
 expect(da.Inventory.BasicOre == 75 and db.Inventory.BasicOre == 25, "ore moved 15 bob->alice (bob had 40)")
 expect(#da.TradeHistory == 1 and #db.TradeHistory == 1, "history recorded for both")
 
+print("== pets can be traded and sold")
+for _, mine in ipairs(Trading.GetMyListings(alice)) do Trading.CancelListing(alice, mine.id) end
+da.OwnedPets = { { id = "p1", type = "Ember", grown = 10 * 3600 }, { id = "p2", type = "Frost", grown = 0 }, { id = "p3", type = "Stone" } }
+da.EquippedPets = { "p3" }
+db.OwnedPets = {}
+db.EquippedPets = {}
+ok, err = Trading.ListOnMarket(alice, { type = "pet", id = "p3" }, 100)
+expect(not ok and #da.OwnedPets == 3, "a worn pet cannot be listed (" .. tostring(err) .. ")")
+ok, err = Trading.ListOnMarket(alice, { type = "pet", id = "nope" }, 100)
+expect(not ok, "an unknown pet id is rejected")
+local pl = Trading.ListOnMarket(alice, { type = "pet", id = "p1", junk = 1 }, 250)
+expect(pl ~= nil and #da.OwnedPets == 2 and pl.pet and pl.pet.grown == 10 * 3600 and pl.item.type == "pet", "listing takes the real pet out of the seller's box")
+db.EmberCoins = 1000
+ok = Trading.BuyFromMarket(bob, pl.id)
+expect(ok and #db.OwnedPets == 1 and db.OwnedPets[1].id == "p1" and db.OwnedPets[1].grown == 10 * 3600 and db.EmberCoins == 750, "buyer receives the same pet, growth kept")
+local pl2 = Trading.ListOnMarket(alice, { type = "pet", id = "p2" }, 50)
+ok = Trading.CancelListing(alice, pl2.id)
+expect(ok and #da.OwnedPets == 2, "cancelling a pet listing returns the pet")
+
+tid = Trading.InitiateTrade(alice, bob)
+ok, err = Trading.AddToOffer(alice, tid, { type = "pet", id = "p3" })
+expect(not ok, "a worn pet cannot be offered in a trade")
+ok = Trading.AddToOffer(alice, tid, { type = "pet", id = "p2" })
+expect(ok, "an unworn pet can be offered")
+ok, err = Trading.AddToOffer(alice, tid, { type = "pet", id = "p2" })
+expect(not ok, "the same pet cannot be offered twice")
+Trading.AddToOffer(bob, tid, { type = "pet", id = "p1" })
+Trading.ConfirmTrade(alice, tid)
+ok, res = Trading.ConfirmTrade(bob, tid)
+local function has(d, id) for _, p in ipairs(d.OwnedPets) do if p.id == id then return true end end return false end
+expect(ok and has(da, "p1") and has(db, "p2") and not has(da, "p2") and not has(db, "p1"), "pets swapped between the two players")
+
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")

@@ -172,7 +172,7 @@ local function MakeTile(parent, nav, size)
         return true
     end
     if not ApplyMesh() then
-        local folder = game.ReplicatedStorage:FindFirstChild("IconAssets")
+        local folder = game:GetService("ReplicatedStorage"):FindFirstChild("IconAssets")
         if folder then
             local conn
             conn = folder.ChildAdded:Connect(function()

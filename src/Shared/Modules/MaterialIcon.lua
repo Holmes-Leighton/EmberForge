@@ -14,6 +14,7 @@ local MaterialIcon = {}
 local SPIN_SPEED = math.rad(50)          -- radians per second
 local spinning = {}                      -- [viewport] = { model, centre, phase }
 local acc = 0
+local made = 0                        -- icons made so far: gives each one its own starting angle
 RunService.Heartbeat:Connect(function(dt)
     acc += dt
     if acc < 1 / 30 then return end
@@ -59,7 +60,8 @@ local function Fill(vp, template)
     local dist = reach / math.tan(math.rad(cam.FieldOfView / 2))
     local dir = CFrame.Angles(0, math.rad(35), 0) * CFrame.Angles(math.rad(-18), 0, 0)
     cam.CFrame = CFrame.lookAt(centre + dir:VectorToWorldSpace(Vector3.new(0, 0, -dist)), centre)
-    spinning[vp] = { model = model, centre = centre, rest = rest, phase = (vp.AbsolutePosition.X * 0.013 + vp.AbsolutePosition.Y * 0.007) % (math.pi * 2) }
+    made += 1
+    spinning[vp] = { model = model, centre = centre, rest = rest, phase = (made * 1.7) % (math.pi * 2) }
 end
 
 function MaterialIcon.Make(parent, materialId, size)
