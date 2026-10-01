@@ -16,6 +16,15 @@ FeatureGates.List = {
     Quarry = { name = "The Quarry", nav = "QuarryButton", kind = "forge", level = QuarryData.UNLOCK_FORGE_LEVEL },
 }
 
+-- Options inside a menu that open later than the menu itself. `button` is the name of the control the client locks (found anywhere in
+-- PlayerGui); the server refuses the action either way. Pet merging has no fixed button (its buttons are rebuilt each time), so it is
+-- only enforced on the server, which tells the player why.
+FeatureGates.InMenu = {
+    Fusion     = { name = "Golem fusion", kind = "player", level = 6, button = "FuseGolemsButton" },
+    EliteForge = { name = "The Elite Forge", kind = "player", level = 8, button = "Elite ForgeTab" },
+    PetMerge   = { name = "Pet merging", kind = "player", level = 6 },
+}
+
 -- Options that only work in a particular place. Checked after the level rules; `need` is a value of the player's "EFPlace" attribute
 -- (set by ForgeZoneService.PlaceOf). With no place known they stay open.
 FeatureGates.PlaceRules = {
@@ -34,7 +43,7 @@ end
 
 -- ok, reason (long, for toasts), label (short, for the button).  `place` is the player's current EFPlace (optional).
 function FeatureGates.Check(id, data, place)
-    local def = FeatureGates.List[id]
+    local def = FeatureGates.List[id] or FeatureGates.InMenu[id]
     if def then
         local have = Have(def, data)
         if have < def.level then

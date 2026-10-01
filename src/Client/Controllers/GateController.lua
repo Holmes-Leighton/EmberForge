@@ -59,6 +59,20 @@ local function Unlock(button)
     if tag then tag:Destroy() end
 end
 
+-- In-menu controls (tabs and buttons that show their own text): the lock goes into the text itself
+local function LockText(button, label, reason)
+    button:SetAttribute("GateReason", reason)
+    if not button:GetAttribute("BaseText") then button:SetAttribute("BaseText", button.Text) end
+    button.Text = "🔒 " .. label
+end
+
+local function UnlockText(button)
+    if button:GetAttribute("GateReason") == nil then return end
+    button:SetAttribute("GateReason", nil)
+    local base = button:GetAttribute("BaseText")
+    if base then button.Text = base end
+end
+
 local function Wire(button)
     if wired[button] then return end
     wired[button] = true
@@ -94,6 +108,14 @@ local function Apply()
             Wire(button)
             local ok, reason, label = FeatureGates.Check(id, lastData, place)
             if ok then Unlock(button) else Lock(button, label, reason) end
+        end
+    end
+    for id, def in pairs(FeatureGates.InMenu) do
+        local button = def.button and pg:FindFirstChild(def.button, true)
+        if button and button:IsA("TextButton") then
+            Wire(button)
+            local ok, reason, label = FeatureGates.Check(id, lastData, place)
+            if ok then UnlockText(button) else LockText(button, label, reason) end
         end
     end
     for name, rule in pairs(FeatureGates.Here) do

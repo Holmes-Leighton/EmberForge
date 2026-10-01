@@ -55,7 +55,7 @@ Recommendation: not yet. Six mining zones, the Quarry and pets already give plen
 - [x] Face portraits (pets, Golems) and spinning 3D mesh icons (26 materials, 15 HUD buttons) in the menus.
 - [x] Feature gates: Pets L2, Trades L3, Build L4, Guild L5, Quarry Forge 6 show a requirement label on the HUD button (table in FeatureGates.lua); server refuses the actions too.
 - [x] Place-based labels: Build says "At your forge" until you stand on your forge; My Forge says "You're home"; blueprint badges show the short reason ("Forge Lv 4").
-- [ ] Locks on the remaining in-menu options (Elite Forge tab etc.) if any need requirements.
+- [x] Locks inside menus (`FeatureGates.InMenu`): Golem fusion Lv 6, Elite Forge Lv 8, pet merging Lv 6; the client labels the control, the server refuses the action. Check the levels feel right in play.
 - [x] Trading safety: permanent audit log (trades + market, admin readable), 5s confirm lock after any change, give-for-nothing / lopsided warnings, block a player from the request popup, report from the trade window.
 - [x] Admin panel (Admin button, admins only): kick, ban and mute (held across servers), gift coins, materials, eggs, pets, Golems, start/clear events, announce, player lookup (trade log, reports, admin actions); all admin actions are logged. Minimum account age to trade/use the Market (`TRADE_MIN_ACCOUNT_AGE_DAYS`, 7).
 - [ ] Trading safety, still open: tuning of the lopsided-value numbers with real play.

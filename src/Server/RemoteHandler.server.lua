@@ -814,7 +814,7 @@ end)
 
 RemoteEvents.MergePets.OnServerEvent:Connect(function(player, petType, variant)
     SafeCall(player, function()
-        if not Gate(player, "Pets") then return end
+        if not Gate(player, "Pets") or not Gate(player, "PetMerge") then return end
         if type(petType) ~= "string" or (variant ~= nil and type(variant) ~= "string") then return end
         local pet, err = require(script.Parent.Services.PetService).Merge(player, petType, variant)
         RemoteEvents.PetsMerged:FireClient(player, pet ~= nil, pet or err)
@@ -836,6 +836,7 @@ end)
 -- ── FuseGolems ────────────────────────────────────────────────────────────────
 RemoteEvents.FuseGolems.OnServerEvent:Connect(function(player, golem1Id, golem2Id)
     SafeCall(player, function()
+        if not Gate(player, "Fusion") then return end
         if type(golem1Id) ~= "string" or type(golem2Id) ~= "string" then return end
         local ok, err = GolemService.FuseGolems(player, golem1Id, golem2Id)
         RemoteEvents.GolemFused:FireClient(player, ok, golem1Id, err)
@@ -848,6 +849,7 @@ end)
 -- ── NeonFuse ──────────────────────────────────────────────────────────────────
 RemoteEvents.NeonFuse.OnServerEvent:Connect(function(player, element, tier, variant)
     SafeCall(player, function()
+        if not Gate(player, "EliteForge") then return end
         local golem, err = GolemService.NeonFuse(player, element, tier, variant)
         if golem then
             ChallengeService.TrackEvent(player, golem.variant == "MegaNeon" and "MegaMade" or "NeonMade", { count = 1 })
