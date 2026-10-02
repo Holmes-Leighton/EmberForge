@@ -31,7 +31,7 @@ SupplierData.SellPrices = {
 
 -- How many coins a player can earn from selling in one UTC day. It grows with how far they have got (the faster the game grows for a player, the more their
 -- surplus is worth), and is hard-capped so selling stays a supplement to mining, quests and the market.
-SupplierData.SELL_CAP_BASE, SupplierData.SELL_CAP_PER_LEVEL, SupplierData.SELL_CAP_PER_FORGE_LEVEL = 150, 20, 15
+SupplierData.SELL_CAP_BASE, SupplierData.SELL_CAP_PER_LEVEL, SupplierData.SELL_CAP_PER_FORGE_LEVEL = 250, 20, 15
 SupplierData.SELL_CAP_PER_ASCENSION, SupplierData.SELL_CAP_MAX = 250, 5000
 
 function SupplierData.SellCap(data)

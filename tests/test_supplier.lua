@@ -64,7 +64,7 @@ local q = newPlayer(2, "Seller"); local e = PDS.Load(q)
 e.Inventory.BasicOre = 1000; e.Inventory.MoltenCore = 5
 local before = e.EmberCoins
 local cap = SD.SellCap(e)
-expect(cap == 150 + 20 + 15, "level 1 / forge 1 allowance is 185 (" .. cap .. ")")
+expect(cap == 250 + 20 + 15, "level 1 / forge 1 allowance is 285 (" .. cap .. ")")
 ok, msg = Supplier.Sell(q, "BasicOre", 100)
 expect(ok and e.Inventory.BasicOre == 900 and e.EmberCoins == before + 100, "sells 100 ore for 100 coins (" .. msg .. ")")
 ok = Supplier.Sell(q, "MoltenCore", 1)
@@ -83,7 +83,7 @@ advance(86400)
 ok = Supplier.Sell(q, "BasicOre", 10)
 expect(ok, "the allowance resets the next UTC day")
 e.PlayerLevel, e.ForgeLevel, e.Ascensions = 40, 10, 3
-expect(SD.SellCap(e) == 150 + 800 + 150 + 750, "allowance grows with level, forge level and ascensions (" .. SD.SellCap(e) .. ")")
+expect(SD.SellCap(e) == 250 + 800 + 150 + 750, "allowance grows with level, forge level and ascensions (" .. SD.SellCap(e) .. ")")
 e.PlayerLevel = 9999
 expect(SD.SellCap(e) == SD.SELL_CAP_MAX, "and is hard-capped")
 

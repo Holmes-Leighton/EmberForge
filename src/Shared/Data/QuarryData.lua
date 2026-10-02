@@ -17,17 +17,17 @@ QuarryData.PLOT_HALF    = 26        -- the Quarry plot is the same size as the f
 QuarryData.CLEAR_HALF   = 4         -- keep the very middle free for the Core
 QuarryData.SPACING      = 3
 QuarryData.UNLOCK_FORGE_LEVEL = 6   -- the Quarry opens at Forge Level 6 (mid-game)
-QuarryData.CORE_COST    = 10000     -- coins to found it
+QuarryData.CORE_COST    = 4500      -- coins to found it (about five days of a new player's income: see tools/balance_model.py)
 QuarryData.PLOT_OFFSET_Z = 70       -- the Quarry plot sits this many studs behind (+Z) your forge plot
 
 -- Pieces. kind: core | node | helper.  rate = units mined per hour (before boosts).  height = studs shown at.
 QuarryData.Pieces = {
     Core         = { name = "Quarry Core",   kind = "core",   height = 7,  max = 1, blurb = "The heart of your Quarry. Upgrade it with Quarry materials." },
-    EmberNode    = { name = "Ember Crystal Node",  kind = "node", element = "Ember", makes = "IgniteOre",      rate = 90, height = 6, price = 4000,  max = 6, color = Color3.fromRGB(255, 110, 50) },
-    FrostNode    = { name = "Frost Crystal Node",  kind = "node", element = "Frost", makes = "GlacialCrystal", rate = 90, height = 6, price = 4000,  max = 6, color = Color3.fromRGB(120, 200, 255) },
-    StormNode    = { name = "Storm Crystal Node",  kind = "node", element = "Storm", makes = "ChargedFlint",   rate = 90, height = 6, price = 4000,  max = 6, color = Color3.fromRGB(255, 230, 90), recolour = true },   -- recolour: the generated mesh renders pinkish-peach, so its texture is dropped and it is painted in `color`
-    VoidNode     = { name = "Void Geode",          kind = "node", element = "Void",  makes = "ShadowDust",     rate = 60, height = 5, price = 7000,  max = 4, color = Color3.fromRGB(150, 80, 220) },
-    StoneNode    = { name = "Granite Vein",        kind = "node", element = "Stone", makes = "GraniteShard",   rate = 90, height = 5, price = 3000,  max = 6, color = Color3.fromRGB(160, 160, 170) },
+    EmberNode    = { name = "Ember Crystal Node",  kind = "node", element = "Ember", makes = "IgniteOre",      rate = 90, height = 6, price = 2000,  max = 6, color = Color3.fromRGB(255, 110, 50) },
+    FrostNode    = { name = "Frost Crystal Node",  kind = "node", element = "Frost", makes = "GlacialCrystal", rate = 90, height = 6, price = 2000,  max = 6, color = Color3.fromRGB(120, 200, 255) },
+    StormNode    = { name = "Storm Crystal Node",  kind = "node", element = "Storm", makes = "ChargedFlint",   rate = 90, height = 6, price = 2000,  max = 6, color = Color3.fromRGB(255, 230, 90), recolour = true },   -- recolour: the generated mesh renders pinkish-peach, so its texture is dropped and it is painted in `color`
+    VoidNode     = { name = "Void Geode",          kind = "node", element = "Void",  makes = "ShadowDust",     rate = 60, height = 5, price = 3500,  max = 4, color = Color3.fromRGB(150, 80, 220) },
+    StoneNode    = { name = "Granite Vein",        kind = "node", element = "Stone", makes = "GraniteShard",   rate = 90, height = 5, price = 1500,  max = 6, color = Color3.fromRGB(160, 160, 170) },
     CoolingPool  = { name = "Cooling Pool",  kind = "helper", height = 3, price = 6000,  max = 2, blurb = "Next to an Ember node: it makes Tempered Ember." },
     SkySpire     = { name = "Sky Spire",     kind = "helper", height = 12, price = 9000, max = 2, blurb = "Next to a Storm node: it makes Stormglass." },
     PrismCluster = { name = "Prism Cluster", kind = "helper", height = 6, price = 20000, max = 1, blurb = "Next to 3 different nodes: it makes Prismatic Shards." },

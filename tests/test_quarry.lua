@@ -24,7 +24,7 @@ expect(not QS.Place(low, "EmberNode", 10, 10), "no building before founding")
 
 print("== building")
 local c0 = da.EmberCoins
-expect(QS.Place(a, "EmberNode", 10, 10) and da.EmberCoins == c0 - 4000, "a node costs its price")
+expect(QS.Place(a, "EmberNode", 10, 10) and da.EmberCoins == c0 - QD.Pieces.EmberNode.price, "a node costs its price")
 expect(not QS.Place(a, "EmberNode", 10, 10), "pieces can't overlap")
 expect(not QS.Place(a, "EmberNode", 1, 1), "the Core's spot stays clear")
 expect(not QS.Place(a, "EmberNode", 40, 0), "outside the Quarry is refused")
@@ -76,7 +76,7 @@ advance(3600)
 local s4 = QS.Snapshot(e)
 expect(s4.stored.GraniteShard == 90 + 180, "hour 1 at one node, hour 2 at two nodes (" .. tostring(s4.stored.GraniteShard) .. ")")
 local before = de.EmberCoins
-expect(QS.Remove(e, 3) and de.EmberCoins == before + 1500, "removing a piece refunds half")
+expect(QS.Remove(e, 3) and de.EmberCoins == before + math.floor(QD.Pieces.StoneNode.price * 0.5), "removing a piece refunds half")
 expect(not QS.Remove(e, 1), "the Core can't be removed")
 
 print("== core upgrades")

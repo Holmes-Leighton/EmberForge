@@ -14,7 +14,7 @@ base_per_day = daily_login + streak + daily_quests + weekly_quests + guild + lad
 # ---- the newer coin sources, which scale with how far a player has got (all constants live in SupplierData / CartBountyData / EventScheduleData) ----
 SELL_USE = 0.7      # share of the Supplier's daily sell allowance a player actually has surplus materials to use (they need the rest for crafting)
 CART_USE = 0.6      # share of the cart-bounty allowance used (needs time in the hub; 12 shared carts, 2-minute reload)
-def sell_cap(level, forge, ascensions):  return min(5000, 150 + 20 * level + 15 * forge + 250 * ascensions)
+def sell_cap(level, forge, ascensions):  return min(5000, 250 + 20 * level + 15 * forge + 250 * ascensions)
 def cart_cap(level):                     return min(2500, 120 + 15 * level)
 # events: a player online for an hour at a random time. Hourly events are 1 hour in 10 each; coin events are Coin Rush (x1.5 quest coins) and Market Hour
 # (x2 Supplier sales). Surges (10 min, ~every 9h) and jackpots (3 min, ~daily) are so short that on average they add almost nothing, but they are felt.
@@ -36,7 +36,7 @@ per_day = base_per_day
 print(f"\nold model (no new sources): {base_per_day:,.0f} a day.\n")
 
 print("days to afford, for each persona:")
-goals = [("1st Ascension", 1500), ("Quarry (Core)", 10000), ("Quarry node", 4000), ("Forgemaster's Throne", 20000), ("Molten Forge", 30000)]
+goals = [("1st Ascension", 1500), ("Quarry (Core)", 4500), ("Quarry node", 2000), ("Forgemaster's Throne", 20000), ("Molten Forge", 30000)]
 print(f"  {'':24s}" + "".join(f"{n.split()[0]:>10s}" for n, _ in rows))
 for g, price in goals:
     print(f"  {g:24s}" + "".join(f"{price / t:>10.1f}" for _, t in rows))
