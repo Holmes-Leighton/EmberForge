@@ -72,6 +72,7 @@ end)
 
 RemoteEvents.Notify.OnClientEvent:Connect(function(title, message)
     HUDController.ShowNotification(tostring(title), tostring(message))
+    if title == "Mine Cart Delivery" then HUDController.QueueResync() end        -- the bounty paid coins: show them straight away
 end)
 
 RemoteEvents.GolemCrafted.OnClientEvent:Connect(function(golem, newLevel)

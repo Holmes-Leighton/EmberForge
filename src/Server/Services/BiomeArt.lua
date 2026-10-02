@@ -561,6 +561,27 @@ local function BuildCart(parent, spot, index)
         end
     end
     WeldAll(model, body)
+    -- Mine Cart Delivery bounty (CartBountyService): the cart is tagged, remembers its start, says what to do, and the end of its rail has a glowing depot
+    model:SetAttribute("HomeX", spot.x)
+    model:SetAttribute("HomeZ", spot.z)
+    model:SetAttribute("Loaded", true)
+    CollectionService:AddTag(model, "EFCart")
+    local sign = Instance.new("BillboardGui")
+    sign.Name, sign.Adornee, sign.Size, sign.StudsOffset, sign.MaxDistance = "CartSign", body, UDim2.new(0, 190, 0, 34), Vector3.new(0, 5.5, 0), 55
+    sign.Parent = body
+    local text = Instance.new("TextLabel")
+    text.Name, text.Size, text.BackgroundTransparency, text.Text = "Text", UDim2.new(1, 0, 1, 0), 1, "Push me to the depot for coins"
+    text.TextColor3, text.TextStrokeTransparency, text.Font, text.TextSize, text.TextWrapped = Color3.fromRGB(255, 220, 120), 0.3, Enum.Font.GothamBold, 14, true
+    text.Parent = sign
+    local depot = Instance.new("Part")
+    depot.Name, depot.Shape, depot.Material, depot.Color = "CartDepot", Enum.PartType.Cylinder, Enum.Material.Neon, Color3.fromRGB(255, 200, 70)
+    depot.Size = Vector3.new(0.4, 11, 11)
+    depot.CFrame = CFrame.new(spot.x + 53, 0.4, spot.z) * CFrame.Angles(0, 0, math.pi / 2)           -- a flat glowing disc at the end of the rail
+    depot.Anchored, depot.CanCollide, depot.CanQuery, depot.Transparency = true, false, false, 0.35
+    depot.Parent = model
+    local depotLight = Instance.new("PointLight")
+    depotLight.Color, depotLight.Range, depotLight.Brightness = Color3.fromRGB(255, 200, 70), 22, 1.4
+    depotLight.Parent = depot
     -- the rail: an invisible anchored post that the cart slides along (the track runs along X)
     local anchor = Instance.new("Part")
     anchor.Name, anchor.Size, anchor.Transparency, anchor.Anchored, anchor.CanCollide, anchor.CanQuery = "CartRailAnchor", Vector3.new(1, 1, 1), 1, true, false, false
