@@ -36,12 +36,11 @@ function PetModel.Build(petType, variant, stage)
     local template = PetModel.Template(petType)
     if template then
         model = template:Clone()
-        -- The uploaded pet's front is on its -Z side, but its pivot (the "Body" part) is turned 180 degrees, so PivotTo(yaw)
-        -- used to face it backwards. Turn the pivot (not the parts) so a pivot with no turn means "front toward -Z",
-        -- which is what PetController assumes.
-        -- (the segmented pet pack is already built facing -Z and is tagged "Rigged", so only the old one-piece pack needs this)
+        -- Every uploaded pet (the old one-piece pack and the segmented Rigged pack alike) has its head on the pivot's +Z side, but the game turns a pet's
+        -- -Z toward where it is going, so they walked tail-first. Turn the pivot (not the parts) half way round so "no turn" means "front toward -Z",
+        -- which is what PetController assumes. (Measured: every pet's Head sits at local +Z.)
         local body = model.PrimaryPart
-        if body and not model:GetAttribute("Rigged") then body.PivotOffset = body.PivotOffset * CFrame.Angles(0, math.pi, 0) end
+        if body then body.PivotOffset = body.PivotOffset * CFrame.Angles(0, math.pi, 0) end
         local height = model:GetExtentsSize().Y
         if height > 0.05 then model:ScaleTo(model:GetScale() * size / height) end
         if model:GetAttribute("Rigged") then rig = PetRig.Build(model) end

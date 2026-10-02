@@ -154,6 +154,10 @@ local function Track(model)
         local feel = ELEMENT_FEEL[model:GetAttribute("Element")] or DEFAULT_FEEL
         info.tempo = feel.tempo
         info.walkState = GolemWalk.New(math.floor((model:GetAttribute("Phase") or 0) * 1000) + 11)
+        info.solid = {}
+        for _, d in ipairs(model:GetDescendants()) do
+            if d:IsA("BasePart") and d.Transparency < 1 and d.Name ~= "PickHead" and d.Name ~= "PickHandle" then table.insert(info.solid, d) end      -- (the pick may rest on, or in, the ground; the body must not)
+        end
         -- a puff of dust when the pick lands (the emitter sits on the pick head and is fired by the swing)
         local tip = model:FindFirstChild("PickHead", true)
         if tip and tip:IsA("BasePart") then
@@ -327,7 +331,7 @@ local function Step()
                     elseif move == "inspect" then xL, xR = xL + (0.1 - xL) * w, xR + (1.15 - xR) * w end
                     -- the whole body works with the arm: lean (negative pitch = forward) and twist into the strike, sway and shift weight on a walk
                     local mine = 1 - ws.env
-                    local lean = -drive * 0.09 * mine - 0.05 * ws.env - fx.slump * (fx.stopped and 0.3 or 0.18)
+                    local lean = -drive * 0.09 * mine - 0.05 * ws.env - fx.slump * (fx.stopped and 0.12 or 0.18)
                     local twist = drive * 0.1 * mine + math.cos(stepT) * 0.06 * ws.env
                     local roll = math.sin(stepT) * 0.05 * ws.env
                     local settle = (r < 0.2 and (0.2 - r) * 0.5 or 0) * mine + fx.slump * (fx.stopped and 2.4 or 0.8)       -- sinks as the pick lands, and sags (sits, when broken)
@@ -367,6 +371,18 @@ local function Step()
                         a.part.CFrame = delta * a.rel
                         if info.handle then info.handle.part.CFrame = delta * info.handle.rel end
                         if info.pickHead then info.pickHead.part.CFrame = delta * info.pickHead.rel end
+                    end
+                    if fx.slump > 0 and info.solid then
+                        -- a tired Golem sags and a broken one sits: whatever the pose, lift it so no part is below the ground it stands on
+                        local floorY = base.Position.Y
+                        local lowest = math.huge
+                        for _, d in ipairs(info.solid) do
+                            local cf, sz = d.CFrame, d.Size
+                            local _, _, _, _, _, _, r10, r11, r12 = cf:GetComponents()
+                            local y = cf.Y - (math.abs(r10) * sz.X + math.abs(r11) * sz.Y + math.abs(r12) * sz.Z) / 2
+                            if y < lowest then lowest = y end
+                        end
+                        if lowest < floorY then model:PivotTo(model:GetPivot() + Vector3.new(0, floorY - lowest + 0.02, 0)) end
                     end
                 elseif info.mode == "Static" and info.rest then
                     local s = math.sin(t * SWING_SPEED * 0.5 + phase)

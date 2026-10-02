@@ -469,6 +469,15 @@ local function BuildPadArt(rec)
     if not model.Parent then return end
     if rec.art then rec.art:Destroy() rec.art = nil end
     local art = MeshPiece(model, "World", "Pad" .. rec.id, Vector3.new(rec.x, 0, rec.z), { width = 28, top = rec.topY })
+    if art then
+        -- Spiked or crystal-rimmed pads are taller than their deck, so aligning the tallest point would bury the deck. Find the real deck (the mesh's
+        -- surface at the pad's centre) and put THAT at the walking height.
+        local params = RaycastParams.new()
+        params.FilterType = Enum.RaycastFilterType.Include
+        params.FilterDescendantsInstances = { art }
+        local hit = workspace:Raycast(Vector3.new(rec.x, rec.topY + 40, rec.z), Vector3.new(0, -80, 0), params)
+        if hit then art:PivotTo(art:GetPivot() + Vector3.new(0, rec.topY - hit.Position.Y, 0)) end
+    end
     local plain = art == nil
     local base, rim, glow = model:FindFirstChild("PadBase"), model:FindFirstChild("PadRim"), model:FindFirstChild("PadGlow")
     if base then base.Transparency = plain and 0 or 1 end              -- the base stays as the (invisible) step you walk up
