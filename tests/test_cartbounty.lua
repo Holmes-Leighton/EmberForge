@@ -3,6 +3,7 @@ local RemoteEvents = load("game/ReplicatedStorage/Shared/Modules/RemoteEvents")
 local PDS = load("SSS/EmberForge/Services/PlayerDataService")
 local Bounty = load("SSS/EmberForge/Services/CartBountyService")
 local CD = load("game/ReplicatedStorage/Shared/Data/CartBountyData")
+load("SSS/EmberForge/Services/LiveOpsService").HourlyEnabled = false      -- these tests are about the base payouts, whatever event the mock clock happens to be in
 
 print("== Mine Cart Delivery bounty")
 local p = newPlayer(1, "Pusher"); local d = PDS.Load(p)

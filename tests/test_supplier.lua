@@ -4,6 +4,7 @@ local PDS = load("SSS/EmberForge/Services/PlayerDataService")
 local Supplier = load("SSS/EmberForge/Services/SupplierService")
 local SD = load("game/ReplicatedStorage/Shared/Data/SupplierData")
 local MD = load("game/ReplicatedStorage/Shared/Data/MaterialData")
+load("SSS/EmberForge/Services/LiveOpsService").HourlyEnabled = false      -- these tests are about the base payouts, whatever event the mock clock happens to be in
 
 local p = newPlayer(1, "Shopper"); local d = PDS.Load(p)
 d.EmberCoins = 1000

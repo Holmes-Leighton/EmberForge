@@ -368,7 +368,7 @@ local function RenderSell()
         sub.Position = UDim2.new(0, 16, 0, 30)
         sub.Size = UDim2.new(0, 300, 0, 20)
 
-        local price = Theme.Label(row, item.price .. " coins each", Theme.TextSize.Heading, Theme.Colors.Gold, Theme.Fonts.Heading)
+        local price = Theme.Label(row, item.price .. (item.price == 1 and " coin each" or " coins each"), Theme.TextSize.Heading, Theme.Colors.Gold, Theme.Fonts.Heading)
         price.Position = UDim2.new(0, 330, 0, 0)
         price.Size = UDim2.new(0, 210, 1, 0)
         price.TextXAlignment = Enum.TextXAlignment.Right
