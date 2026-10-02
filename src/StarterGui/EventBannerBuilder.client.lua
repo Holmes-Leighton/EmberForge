@@ -67,6 +67,14 @@ RunService.Heartbeat:Connect(function()
     last = now
     local cur = Schedule.Current(now)
     local nxt = Schedule.Next(now)
+    local jackpot = Schedule.Jackpot(now)
+    if jackpot then     -- the rarest, shortest event takes over the banner first
+        title.Text = string.format("%s  -  %s", jackpot.name:upper(), jackpot.blurb)
+        title.TextColor3 = Color3.fromRGB(255, 235, 120)
+        sub.Text = string.format("JACKPOT ends in %s  |  hourly: %s", Clock(jackpot.endTime - now), cur.name)
+        stroke.Color = Color3.fromRGB(255, 235, 120)
+        return
+    end
     local surge = Schedule.Surge(now)
     if surge then       -- a surge takes over the banner while it lasts
         title.Text = string.format("%s  -  %s", surge.name:upper(), surge.blurb)

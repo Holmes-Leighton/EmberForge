@@ -3,6 +3,7 @@
 local SupplierData      = require(game.ReplicatedStorage.Shared.Data.SupplierData)
 local MaterialData      = require(game.ReplicatedStorage.Shared.Data.MaterialData)
 local PlayerDataService = require(script.Parent.PlayerDataService)
+local LiveOpsService    = require(script.Parent.LiveOpsService)
 
 local SupplierService = {}
 
@@ -115,9 +116,10 @@ function SupplierService.Sell(player, itemId, quantity)
     local qty = math.min(quantity, math.floor(room / price))
 
     if not PlayerDataService.RemoveMaterial(player, itemId, qty) then return false, "You don't have enough" end
-    local coins = qty * price
+    local base = qty * price
+    local coins = math.floor(base * LiveOpsService.GetMultiplier("sell"))       -- Market Hour, Merchant Caravan, Windfall pay more per item...
     data.EmberCoins = (data.EmberCoins or 0) + coins
-    sales.earned = sales.earned + coins
+    sales.earned = sales.earned + base                                          -- ...but only the normal value counts against the daily allowance
     PlayerDataService.MarkDirty(player)
     local note = qty < quantity and string.format(" (limit reached: kept %d)", quantity - qty) or ""
     return true, string.format("Sold %d for %d coins%s", qty, coins, note)

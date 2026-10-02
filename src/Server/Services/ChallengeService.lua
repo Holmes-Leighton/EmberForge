@@ -229,7 +229,8 @@ function ChallengeService.ClaimReward(player, challengeId)
     -- Award rewards
     local rewards = challengeDef.rewards or {}
     if rewards.coins then
-        data.EmberCoins = (data.EmberCoins or 0) + rewards.coins
+        local LiveOps = require(script.Parent.LiveOpsService)
+        data.EmberCoins = (data.EmberCoins or 0) + math.floor(rewards.coins * LiveOps.GetMultiplier("coins"))       -- Coin Rush, Gold Rush, Dragon's Hoard
     end
     local leveled, newLevel
     if rewards.xp then

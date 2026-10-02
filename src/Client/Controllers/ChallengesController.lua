@@ -185,7 +185,8 @@ function ChallengesController._Claim(challengeId, btn)
     -- Apply local reward mirrors
     local rewards = def.rewards or {}
     if rewards.coins then
-        playerData.EmberCoins = (playerData.EmberCoins or 0) + rewards.coins
+        local Schedule = require(game.ReplicatedStorage.Shared.Data.EventScheduleData)       -- the same coin events the server applied
+        playerData.EmberCoins = (playerData.EmberCoins or 0) + math.floor(rewards.coins * Schedule.Multiplier("coins", workspace:GetServerTimeNow()))
     end
     if rewards.materials then
         for _, m in ipairs(rewards.materials) do

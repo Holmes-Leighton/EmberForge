@@ -36,4 +36,35 @@ LO.HourlyEnabled = false
 expect(LO.GetElementMultiplier("Ember") == 1 and LO.GetMultiplier("luck") == 1, "the hourly event can be switched off")
 LO.HourlyEnabled = true
 
+
+print("== rarer events are shorter")
+local jt0 = 1800000000 - (1800000000 % 14400)
+local jackpots = 0
+for w = 0, 600 do
+    local j = ES.Jackpot(jt0 + w * ES.JACKPOT_WINDOW + 30)
+    if j then
+        jackpots += 1
+        expect(j.endTime - j.startTime == ES.JACKPOT_SECONDS, "a jackpot lasts " .. ES.JACKPOT_SECONDS .. "s")
+        expect(j.kind == "coins" or j.kind == "sell", j.id .. " is a coin event")
+    end
+    expect(ES.Jackpot(jt0 + w * ES.JACKPOT_WINDOW + ES.JACKPOT_SECONDS + 5) == nil, "a jackpot is over after " .. ES.JACKPOT_SECONDS .. "s")
+end
+expect(jackpots > 60 and jackpots < 180, "about one window in five has a jackpot (" .. jackpots .. "/601), so roughly one a day")
+expect(ES.NextJackpotStart(jt0) ~= nil, "the next jackpot can be found")
+expect(ES.JACKPOT_SECONDS < ES.SURGE_SECONDS and ES.SURGE_SECONDS < ES.SLOT_SECONDS, "jackpot < surge < hourly in length")
+expect(ES.JACKPOT_CHANCE / ES.JACKPOT_WINDOW < ES.SURGE_CHANCE / ES.SURGE_WINDOW, "and a jackpot is rarer than a surge")
+local kinds = {}
+for _, e in ipairs(ES.Events) do kinds[e.kind] = true end
+for _, e in ipairs(ES.Surges) do kinds[e.kind] = true end
+expect(kinds.coins and kinds.sell, "hourly events and surges include coin and sell events")
+
+print("== coin multiplier is capped")
+local hits = 0
+for w = 0, 3000 do
+    local now = jt0 + w * 1200 + 5
+    local m = ES.Multiplier("coins", now)
+    expect(m >= 1 and m <= ES.COIN_MULTIPLIER_MAX, "coin multiplier stays in 1.." .. ES.COIN_MULTIPLIER_MAX .. " (" .. m .. ")")
+    if m > 1 then hits += 1 end
+end
+expect(hits > 0, "coin events do happen")
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")

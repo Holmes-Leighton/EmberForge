@@ -52,7 +52,7 @@ function ProgressionService.GrantLevelRewards(player, fromLevel, toLevel)
         local reward = LevelData.Rewards[level]
         if reward then
             if reward.type == "coins" then
-                data.EmberCoins = (data.EmberCoins or 0) + reward.qty
+                data.EmberCoins = (data.EmberCoins or 0) + math.floor(reward.qty * require(script.Parent.LiveOpsService).GetMultiplier("coins"))
             elseif reward.type == "cosmetic" then
                 data.OwnedCosmetics = data.OwnedCosmetics or {}
                 if not Utils.TableContains(data.OwnedCosmetics, reward.id) then

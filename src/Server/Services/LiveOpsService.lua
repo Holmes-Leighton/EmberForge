@@ -88,6 +88,8 @@ function LiveOpsService.ActiveEvents()
         table.insert(list, EventScheduleData.Current(now))
         local surge = EventScheduleData.Surge(now)
         if surge then table.insert(list, surge) end
+        local jackpot = EventScheduleData.Jackpot(now)
+        if jackpot then table.insert(list, jackpot) end
     end
     return list
 end
@@ -99,6 +101,7 @@ function LiveOpsService.GetMultiplier(kind, element)
     for _, e in ipairs(LiveOpsService.ActiveEvents()) do
         if e.kind == kind and (e.element == nil or e.element == element) then m = m * math.max(1, e.multiplier or 1) end
     end
+    if kind == "coins" or kind == "sell" then m = math.min(m, EventScheduleData.COIN_MULTIPLIER_MAX) end       -- overlapping coin events cannot snowball
     return m
 end
 
@@ -143,19 +146,28 @@ function LiveOpsService.SetOverride(key, value)
     return true
 end
 
--- Tell everyone the moment a surge begins (every server sees the same one, see EventScheduleData.Surge)
-local lastSurge
+-- Tell everyone the moment a surge or jackpot begins (every server sees the same one, see EventScheduleData.Surge and .Jackpot)
+local lastSurge, lastJackpot
+local function Announce(event, minutes, call)
+    local ok, RemoteEvents = pcall(function() return require(game.ReplicatedStorage.Shared.Modules.RemoteEvents) end)
+    if ok and RemoteEvents.Notify then
+        for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
+            RemoteEvents.Notify:FireClient(p, event.name .. "!", string.format("%s for %d minutes. %s", event.blurb, minutes, call))
+        end
+    end
+end
 function LiveOpsService.AnnounceSurge()
     if not LiveOpsService.HourlyEnabled then return end
-    local surge = EventScheduleData.Surge(Utils.UnixTimestamp())
+    local now = Utils.UnixTimestamp()
+    local surge = EventScheduleData.Surge(now)
     if surge and lastSurge ~= surge.startTime then
         lastSurge = surge.startTime
-        local ok, RemoteEvents = pcall(function() return require(game.ReplicatedStorage.Shared.Modules.RemoteEvents) end)
-        if ok and RemoteEvents.Notify then
-            for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
-                RemoteEvents.Notify:FireClient(p, surge.name .. "!", surge.blurb .. " for 10 minutes. Get mining!")
-            end
-        end
+        Announce(surge, EventScheduleData.SURGE_SECONDS / 60, "Get mining!")
+    end
+    local jackpot = EventScheduleData.Jackpot(now)
+    if jackpot and lastJackpot ~= jackpot.startTime then
+        lastJackpot = jackpot.startTime
+        Announce(jackpot, EventScheduleData.JACKPOT_SECONDS / 60, "Quick, it won't last!")
     end
 end
 
