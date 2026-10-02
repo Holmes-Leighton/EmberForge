@@ -17,6 +17,10 @@ local tickCount = {} -- userId → ticks spent on pads (for the coal cadence)
 local lastFullNotice   = {}   -- userId → os.clock() of the last "stock full" message
 local lastLockedNotice = {}   -- userId → os.clock() of the last "locked" message
 local lastOffer       = {}   -- "userId:padId" → os.clock() of the last Robux purchase offer
+local lastDialog      = {}   -- "userId:padId" → os.clock() of the last unlock dialog shown
+local near            = {}   -- "userId:padId" → true while the player is standing close to that pad (the dialog opens when they walk up, not every tick)
+local APPROACH        = 16   -- studs beyond a pad's edge at which walking up to a locked pad opens the unlock dialog
+local DIALOG_COOLDOWN = 60   -- seconds before the same dialog can open again for the same pad
 
 local IsAdmin = require(script.Parent.AdminService).IsAdmin
 
@@ -236,6 +240,59 @@ function PadService.OfferPass(player, def, force)
     end)
 end
 
+-- The unlock dialog: what the pad gives, how to reach it by level, and the Robux button. Opened when a player walks up to a locked pad (or presses E at it).
+-- Only pads with a game pass get one (the Starter pad is free, the Admin pad is for admins).
+local function ShowOffer(player, def, data, force)
+    local key, pass = ProductData.PassForPad(def.id)
+    if not pass then return end
+    local offerKey = player.UserId .. ":" .. def.id
+    if not force and os.clock() - (lastDialog[offerKey] or -1e9) < DIALOG_COOLDOWN then return end
+    lastDialog[offerKey] = os.clock()
+    RemoteEvents.PadOffer:FireClient(player, {
+        padId = def.id, name = def.displayName, multiplier = def.multiplier, minLevel = def.minLevel or 1,
+        level = data.PlayerLevel or 1, robux = pass.robux, available = ProductData.PassIsAvailable(key),
+    })
+end
+
+-- "Unlock forever" pressed: validate, then open Roblox's own purchase prompt
+local lastBuy = {}
+function PadService.Buy(player, padId)
+    if type(padId) ~= "string" then return end
+    if os.clock() - (lastBuy[player.UserId] or -1e9) < 2 then return end
+    lastBuy[player.UserId] = os.clock()
+    local data = PlayerDataService.Get(player)
+    if not data then return end
+    for _, entry in ipairs(pads) do
+        if entry.def.id == padId then
+            if CanUse(player, entry.def, data) then return end
+            PadService.OfferPass(player, entry.def, true)
+            return
+        end
+    end
+end
+
+-- Walking up to a locked pad (not just stepping on it) opens its unlock dialog once
+local function WatchApproach()
+    for _, player in ipairs(Players:GetPlayers()) do
+        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        local data = PlayerDataService.Get(player)
+        if root and data then
+            for _, entry in ipairs(pads) do
+                local rel = entry.part.CFrame:PointToObjectSpace(root.Position)
+                local half = entry.part.Size / 2
+                local inside = math.abs(rel.X) <= half.X + APPROACH and math.abs(rel.Z) <= half.Z + APPROACH
+                local key = player.UserId .. ":" .. entry.def.id
+                if inside and not near[key] then
+                    near[key] = true
+                    if not CanUse(player, entry.def, data) then ShowOffer(player, entry.def, data, false) end
+                elseif near[key] and (math.abs(rel.X) > half.X + APPROACH + 12 or math.abs(rel.Z) > half.Z + APPROACH + 12) then
+                    near[key] = nil                                              -- walked away: it can open again next time they walk up
+                end
+            end
+        end
+    end
+end
+
 -- Pressing E at a pad: what it gives, or what it needs
 local function PadInfo(player, def)
     local data = PlayerDataService.Get(player)
@@ -245,7 +302,7 @@ local function PadInfo(player, def)
             string.format("Unlocked. Stand on the pad to mine %dx materials.", def.multiplier))
     else
         RemoteEvents.Notify:FireClient(player, def.displayName .. " locked", RequirementText(def))
-        PadService.OfferPass(player, def, true)
+        ShowOffer(player, def, data, true)
     end
 end
 
@@ -275,9 +332,8 @@ local function Payout()
                 lastLockedNotice[player.UserId] = os.clock()
                 RemoteEvents.Notify:FireClient(player, def.displayName .. " locked", RequirementText(def))
             end
-            -- Stepping onto a locked pad offers the Robux game pass (at most every 30s per pad).
-            -- Ownership is re-checked first, so a pass bought on the game page unlocks it at once.
-            PadService.OfferPass(player, def, false)
+            -- (the unlock dialog opened when they walked up; see WatchApproach)
+            ShowOffer(player, def, data, false)
         elseif def then
             local n = (tickCount[player.UserId] or 0) + 1
             tickCount[player.UserId] = n
@@ -334,6 +390,10 @@ function PadService.Init()
         tickCount[p.UserId] = nil
         lastLockedNotice[p.UserId] = nil
         lastFullNotice[p.UserId] = nil
+        lastBuy[p.UserId] = nil
+        for _, tbl in ipairs({ lastDialog, near }) do
+            for k in pairs(tbl) do if k:sub(1, #tostring(p.UserId) + 1) == p.UserId .. ":" then tbl[k] = nil end end
+        end
         for k in pairs(lastOffer) do
             if k:sub(1, #tostring(p.UserId) + 1) == p.UserId .. ":" then lastOffer[k] = nil end
         end
@@ -356,6 +416,12 @@ function PadService.Init()
         while true do
             task.wait(PadData.TICK_SECONDS)
             Payout()
+        end
+    end)
+    task.spawn(function()
+        while true do
+            task.wait(0.5)
+            WatchApproach()
         end
     end)
 end
