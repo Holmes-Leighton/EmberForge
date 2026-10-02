@@ -12,15 +12,22 @@ local GolemMotion       = require(game.ReplicatedStorage.Shared.Modules.GolemMot
 local GolemService      = require(script.Parent.GolemService)
 local RemoteEvents      = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local MaterialData      = require(game.ReplicatedStorage.Shared.Data.MaterialData)
+local GolemRoute        = require(game.ReplicatedStorage.Shared.Modules.GolemRoute)
+local ForgeZoneService  = require(script.Parent.ForgeZoneService)
 
 local GolemVisuals = {}
 
 local RING_RADIUS = 30
 local SLOTS       = 10          -- Golems per zone ring before a second ring starts
 local GROUND_Y    = 2           -- top of the zone pads
+local HUB_Y       = 0.2         -- the hub floor, where a Golem walking home stands
+local HUB_ROAD_Z  = 60          -- the road along the cavern that every tunnel joins
+local TRAVEL_SPEED = 12         -- studs per second of a worn-out Golem trudging between its zone and its owner's forge
+local REST_SPACING = 11         -- studs between Golems waiting at the forge
 
-local entries   = {}            -- golemId -> { model, zoneId, slot, variant }
+local entries   = {}            -- golemId -> { model, zoneId, slot, variant, state, ... } (state: "mining" | "toForge" | "resting" | "toZone")
 local usedSlots = {}            -- zoneId -> { [slot] = true }
+local restSlots = {}            -- owner userId -> { [k] = true }: the places beside their forge where worn-out Golems wait
 local folder
 
 local function FreeSlot(zoneId)
@@ -159,12 +166,109 @@ local function Build(golem, ownerName, equipped, owner)
     end
 
     model.Parent = folder
-    return { model = model, zoneId = golem.zoneId, slot = slot, style = StyleKey(golem, equipped), prompt = prompt, warned = 0 }
+    return { model = model, zoneId = golem.zoneId, slot = slot, style = StyleKey(golem, equipped), prompt = prompt, warned = 0,
+        state = "mining", home = base, scale = scale, owner = owner, d = 0 }
+end
+
+-- ── The trip home ─────────────────────────────────────────────────────────────
+-- A Golem that wears out stops mining, trudges out of its cave, along the hub road and down the gap beside its owner's forge, and sits there to wait for
+-- a repair (stand by it and press E). Once repaired it walks back to its zone and carries on. The server moves it (a few Golems, ten times a second, only
+-- while one is on the move) so it stays streamed in, and the repair prompt travels with it; the client animates the legs and the sit.
+local function FreeRestSlot(userId)
+    restSlots[userId] = restSlots[userId] or {}
+    for k = 0, 40 do
+        if not restSlots[userId][k] then restSlots[userId][k] = true return k end
+    end
+    return 0
+end
+
+local function ReleaseRest(e)
+    if e.restOwnerId and e.restK and restSlots[e.restOwnerId] then restSlots[e.restOwnerId][e.restK] = nil end
+    e.restOwnerId, e.restK = nil, nil
+end
+
+-- The route from the Golem's spot in its zone to its resting place beside its owner's forge (nil if the owner has no forge plot)
+local function PlanRoute(e, owner)
+    local plot = owner and ForgeZoneService.GetPlotCFrame(owner.UserId)
+    local center = WorldBuilder.GetZoneCenter(e.zoneId)
+    if not plot or not center then return nil end
+    local k = FreeRestSlot(owner.UserId)
+    e.restOwnerId, e.restK = owner.UserId, k
+    local gapX = plot.Position.X + 40                                     -- the lane between this forge plot and the next
+    local col = ({ 0, -6, 6 })[math.floor(k / 6) % 3 + 1]
+    local restZ = 24 - REST_SPACING * (k % 6)
+    local home = e.home.Position
+    e.restCF = CFrame.lookAt(Vector3.new(gapX + col, HUB_Y, restZ), Vector3.new(gapX + col - 1, HUB_Y, restZ))      -- sits facing the forge
+    return GolemRoute.New({
+        { x = home.X, y = home.Y, z = home.Z },
+        { x = center.X, y = home.Y, z = center.Z - 45 },                  -- out of the ring, to the middle of the cave mouth
+        { x = center.X, y = HUB_Y, z = HUB_ROAD_Z },                      -- down the tunnel road to the hub road
+        { x = gapX + col, y = HUB_Y, z = HUB_ROAD_Z },                    -- along the road to the forge
+        { x = gapX + col, y = HUB_Y, z = restZ },                         -- down the gap to a free spot
+    })
+end
+
+local function PlaceOnRoute(e)
+    local x, y, z, dx, dz = GolemRoute.At(e.route, e.d)
+    local dir = (e.dir or 1) >= 0 and Vector3.new(dx, 0, dz) or Vector3.new(-dx, 0, -dz)
+    if dir.Magnitude < 0.01 then dir = Vector3.new(0, 0, -1) end
+    local pos = Vector3.new(x, y, z)
+    local cf = CFrame.lookAt(pos, pos + dir)
+    e.model:SetAttribute("Base", cf)
+    e.model:PivotTo(cf * CFrame.new(0, 5 * e.scale, 0))
+end
+
+local function GoHome(e, justBuilt)
+    if e.state == "toForge" or e.state == "resting" then return end
+    if not e.route then e.route = PlanRoute(e, e.owner) end
+    if not e.route then return end                                        -- no forge to go to: it just sits where it stopped
+    e.dir = 1
+    if justBuilt then
+        e.d = e.route.total
+        e.state = "resting"
+        e.model:SetAttribute("Travelling", false)
+        e.model:SetAttribute("Base", e.restCF)
+        e.model:PivotTo(e.restCF * CFrame.new(0, 5 * e.scale, 0))
+    else
+        e.state = "toForge"
+        e.model:SetAttribute("Travelling", true)
+        PlaceOnRoute(e)
+    end
+end
+
+local function GoBack(e)
+    if e.state ~= "toForge" and e.state ~= "resting" then return end
+    e.state = "toZone"
+    e.dir = -1
+    e.model:SetAttribute("Travelling", true)
+end
+
+local function StepTrips(dt)
+    for _, e in pairs(entries) do
+        if e.route and e.model and e.model.Parent and (e.state == "toForge" or e.state == "toZone") then
+            e.d = math.clamp(e.d + (e.dir or 1) * TRAVEL_SPEED * dt, 0, e.route.total)
+            PlaceOnRoute(e)
+            if e.state == "toForge" and e.d >= e.route.total then
+                e.state = "resting"
+                e.model:SetAttribute("Travelling", false)
+                e.model:SetAttribute("Base", e.restCF)                    -- settle into its seat, facing the forge
+                e.model:PivotTo(e.restCF * CFrame.new(0, 5 * e.scale, 0))
+            elseif e.state == "toZone" and e.d <= 0 then
+                e.state = "mining"
+                e.route = nil
+                ReleaseRest(e)
+                e.model:SetAttribute("Travelling", false)
+                e.model:SetAttribute("Base", e.home)
+                e.model:PivotTo(e.home * CFrame.new(0, 5 * e.scale, 0))
+            end
+        end
+    end
 end
 
 local function Remove(id)
     local e = entries[id]
     if not e then return end
+    ReleaseRest(e)
     if usedSlots[e.zoneId] then usedSlots[e.zoneId][e.slot] = nil end
     if e.model then e.model:Destroy() end
     entries[id] = nil
@@ -180,9 +284,11 @@ local function Reconcile()
                 local equipped = (data and data.Equipped) or {}
                 local e = entries[g.id]
                 if e and e.style ~= StyleKey(g, equipped) then Remove(g.id) e = nil end
+                local justBuilt = false
                 if not e then
                     e = Build(g, player.DisplayName, equipped, player)
                     entries[g.id] = e
+                    justBuilt = true
                 end
                 if e and e.model then                      -- keep the wear showing, and tell the owner when a Golem is getting tired or has stopped
                     local f = GolemMotion.DurabilityOf(g)
@@ -196,12 +302,13 @@ local function Reconcile()
                         local GolemNames = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
                         local name = GolemNames.Describe(g).shortName
                         if level == 2 then
-                            RemoteEvents.Notify:FireClient(player, "Golem stopped", string.format("Your %s has worn out and stopped mining. Stand by it and press E to repair it.", name))
+                            RemoteEvents.Notify:FireClient(player, "Golem stopped", string.format("Your %s has worn out and is walking back to your forge. Repair it there: stand by it and press E.", name))
                         else
                             RemoteEvents.Notify:FireClient(player, "Golem getting tired", string.format("Your %s is wearing down. Repair it soon (stand by it and press E).", name))
                         end
                     end
                     e.warned = level
+                    if f <= 0 then GoHome(e, justBuilt) elseif e.state ~= "mining" then GoBack(e) end
                 end
             end
         end
@@ -220,6 +327,12 @@ function GolemVisuals.Init()
         while true do
             task.wait(1)
             Reconcile()
+        end
+    end)
+    task.spawn(function()
+        while true do
+            task.wait(0.1)
+            StepTrips(0.1)
         end
     end)
 end

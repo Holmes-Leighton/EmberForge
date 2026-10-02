@@ -148,7 +148,11 @@ local function Track(model)
         for _, d in ipairs(model:GetDescendants()) do
             if d:IsA("BasePart") and d.Name == "Leg" then
                 local rel = base:ToObjectSpace(d.CFrame)
-                table.insert(info.legs, { part = d, rel = rel, pivot = base:ToObjectSpace(d.CFrame * CFrame.new(0, d.Size.Y * 0.42, 0)), side = rel.X < 0 and -1 or 1 })
+                -- the hip is near the top of the leg. It is built in the Golem's own frame (not the leg part's, whose axes may be turned or flipped), so a
+                -- positive swing always carries the foot forward
+                local _, _, _, _, _, _, r10, r11, r12 = rel:GetComponents()
+                local halfHeight = (math.abs(r10) * d.Size.X + math.abs(r11) * d.Size.Y + math.abs(r12) * d.Size.Z) / 2
+                table.insert(info.legs, { part = d, rel = rel, pivot = CFrame.new(rel.Position + Vector3.new(0, halfHeight * 0.84, 0)), side = rel.X < 0 and -1 or 1 })
             end
         end
         local feel = ELEMENT_FEEL[model:GetAttribute("Element")] or DEFAULT_FEEL
@@ -294,25 +298,36 @@ local function Step()
                     -- (GolemWalk), and moves like one body: the torso twists and leans into every strike, the head follows a beat behind, and on a walk
                     -- the weight shifts, the hips sway and each foot lifts. Every limb turns about its own pivot.
                     local tempo = info.tempo or 1
-                    -- tiredness: slower swings, a sag, dimmer glow; at zero it stops where it stands and sits down
+                    local dtm = math.min(0.1, t - (info.lastT or t))
+                    info.lastT = t
+                    -- a Golem that is walking to or from its owner's forge has its position moved by the server in small steps: ease between them
+                    local travelling = model:GetAttribute("Travelling") == true
+                    info.cur = info.cur or base
+                    if info.cur ~= base then info.cur = info.cur:Lerp(base, math.min(1, dtm * 10)) end
+                    base = info.cur
+                    -- tiredness: slower swings, a sag, dimmer glow; at zero it stops where it stands and sits down (but not while it is still walking home)
                     local fx = GolemMotion.Fatigue(model:GetAttribute("Durability") or 1)
+                    local stopped = fx.stopped and not travelling
                     for _, l in ipairs(info.lights or {}) do
                         if l.light.Parent then l.light.Brightness = l.base * fx.glow end
                     end
                     local ws = GolemWalk.Sample(info.walkState, t)
-                    if fx.stopped then
-                        info.frozen = info.frozen or { x = ws.x, z = ws.z, yaw = 0, walking = false, env = 0, stride = 0 }       -- stays exactly where it broke down
-                        ws = info.frozen
+                    -- the wander offset is only used while mining. Leaving it (to sit or to walk home) it eases out over a moment, and returning to work it
+                    -- eases back in, so the Golem never jumps
+                    local want = (stopped or travelling) and 0 or 1
+                    info.wander = (info.wander or 1) + (want - (info.wander or 1)) * math.min(1, dtm * 2.5)
+                    if travelling then
+                        ws = { x = 0, z = 0, yaw = 0, walking = true, env = 1, stride = 0 }       -- the route already points it the right way; it trudges
+                    elseif stopped then
+                        ws = { x = ws.x * info.wander, z = ws.z * info.wander, yaw = 0, walking = false, env = 0, stride = 0 }
                     else
-                        info.frozen = nil
+                        ws = { x = ws.x * info.wander, z = ws.z * info.wander, yaw = ws.yaw, walking = ws.walking, env = ws.env, stride = ws.stride, k = ws.k, dist = ws.dist }
                     end
                     local walking = ws.walking
-                    local dtm = math.min(0.1, t - (info.lastT or t))
-                    info.lastT = t
                     -- sitting down and standing up are animated, not snapped: `sit` eases toward 1 when it breaks down and back to 0 when repaired
                     -- (about a second each way); the legs bend at the hips and the hips lower onto the ground
-                    info.sit = (info.sit or 0) + ((fx.stopped and 1 or 0) - (info.sit or 0)) * math.min(1, dtm * 2.4)
-                    if math.abs((fx.stopped and 1 or 0) - info.sit) < 0.004 then info.sit = fx.stopped and 1 or 0 end
+                    info.sit = (info.sit or 0) + ((stopped and 1 or 0) - (info.sit or 0)) * math.min(1, dtm * 2.4)
+                    if math.abs((stopped and 1 or 0) - info.sit) < 0.004 then info.sit = stopped and 1 or 0 end
                     local sit = info.sit
                     info.swingClock = (info.swingClock or (phase / (math.pi * 2))) + dtm * tempo * fx.tempo / SWING_PERIOD
                     local clock = info.swingClock
@@ -326,7 +341,7 @@ local function Step()
                     local stride = math.sin(stepT) * 0.4 * ws.env
                     local raise = rise + (0.55 - rise) * ws.env                      -- during a walk the pick arm hangs and swings a little
                     -- idle move (only while standing and mining): whole-body motion plus an arm pose blended over the mining swing
-                    local move, mk = IdleMoves.Step(info.idle, t, not walking and not fx.stopped)
+                    local move, mk = IdleMoves.Step(info.idle, t, not walking and not stopped)
                     local ibob, ipitch, iroll, iyaw = IdleMoves.Body("golem", move, mk, t)
                     local w = move and math.sin(math.clamp(mk, 0, 1) * math.pi) or 0
                     w = math.min(1, w * 2.5)                                             -- quick in and out, holds in between
@@ -342,7 +357,7 @@ local function Step()
                     local hipHeight = (info.legs and info.legs[1] and info.legs[1].pivot.Y) or 3
                     local settle = (r < 0.2 and (0.2 - r) * 0.5 or 0) * mine * (1 - sit) + fx.slump * 0.8 * (1 - sit) + sit * hipHeight       -- sinks as the pick lands, sags when tired, and lowers the hips to the ground when sitting
                     -- puff dust the moment the pick lands
-                    if not walking and not fx.stopped then
+                    if not walking and not stopped then
                         local strike = cycle + (u >= GolemMotion.IMPACT and 1 or 0)
                         if info.lastStrike ~= nil and strike ~= info.lastStrike and info.dust then info.dust:Emit(8) end
                         info.lastStrike = strike
