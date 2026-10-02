@@ -25,7 +25,7 @@ local RARITY = {
     Epic = Theme.Colors.Epic, Legendary = Theme.Colors.Legendary,
 }
 
-local tab = "supplier"        -- "supplier" | "material" | "golem" | "mine"
+local tab = "supplier"        -- "supplier" | "sell" | "material" | "golem" | "mine"
 local data                     -- my data (coins, inventory, golems)
 
 -- ── Window ────────────────────────────────────────────────────────────────────
@@ -88,18 +88,18 @@ bar.BorderSizePixel = 0
 bar.Parent = container
 Theme.AddCorner(bar, Theme.Corner.Small)
 
-local function TabButton(text, x, name)
+local function TabButton(text, x, name, w)
     local b = Theme.Button(bar, text, Theme.Colors.PanelAlt, Theme.Colors.TextSecondary, name)
-    b.Size = UDim2.new(0, 98, 0, 30)
+    b.Size = UDim2.new(0, w or 98, 0, 30)
     b.Position = UDim2.new(0, x, 0.5, -15)
     return b
 end
-local supplierTab = TabButton("Supplier",   8,   "SupplierTab")
-local matTab   = TabButton("Player Sales", 112, "MaterialsTab")
-local golemTab = TabButton("Golems",       216, "GolemsTab")
-local petTab   = TabButton("Pets",         320, "PetsTab")
-local mineTab  = TabButton("My Listings",  424, "MyListingsTab")
-mineTab.Size = UDim2.new(0, 120, 0, 30)
+local supplierTab = TabButton("Supplier",     8,   "SupplierTab", 92)
+local sellTab  = TabButton("Sell Surplus",  104, "SellTab", 104)
+local matTab   = TabButton("Player Sales",  212, "MaterialsTab", 104)
+local golemTab = TabButton("Golems",        320, "GolemsTab", 76)
+local petTab   = TabButton("Pets",          400, "PetsTab", 60)
+local mineTab  = TabButton("My Listings",   464, "MyListingsTab", 108)
 
 local refreshBtn = Theme.Button(bar, "Refresh", Theme.Colors.PanelAlt, Theme.Colors.TextPrimary, "RefreshButton")
 refreshBtn.Size = UDim2.new(0, 90, 0, 30)
@@ -136,7 +136,7 @@ local function Clear(parent)
 end
 
 local function SetTabStyle()
-    for name, btn in pairs({ supplier = supplierTab, material = matTab, golem = golemTab, mine = mineTab }) do
+    for name, btn in pairs({ supplier = supplierTab, sell = sellTab, material = matTab, golem = golemTab, mine = mineTab }) do
         local on = name == tab
         btn.BackgroundColor3 = on and Theme.Colors.Accent or Theme.Colors.PanelAlt
         btn.TextColor3 = on and Color3.fromRGB(255, 255, 255) or Theme.Colors.TextSecondary
@@ -324,13 +324,92 @@ local function RenderSupplier()
     end
 end
 
+-- ── Sell surplus: the Supplier buys spare Common/Uncommon materials for coins, up to a daily allowance that grows with your progress ──────────────
+local function RenderSell()
+    Clear(scroll)
+    local info = RemoteEvents.GetSupplierBuyList:InvokeServer() or { items = {}, cap = 0, earned = 0 }
+    local left = math.max(0, info.cap - info.earned)
+    local intro = Theme.Label(scroll,
+        string.format("The Supplier buys spare materials for coins. Today's allowance: %s / %s coins earned (%s left). It grows as you level up and Ascend, and resets at midnight UTC. Rare and better materials are never bought.",
+            Utils.FormatNumber(info.earned), Utils.FormatNumber(info.cap), Utils.FormatNumber(left)),
+        Theme.TextSize.Small, left > 0 and Theme.Colors.TextSecondary or Theme.Colors.Danger, Theme.Fonts.Body)
+    intro.Size = UDim2.new(1, -8, 0, 48)
+    intro.TextYAlignment = Enum.TextYAlignment.Top
+    intro.TextWrapped = true
+
+    if #info.items == 0 then
+        local none = Theme.Label(scroll, "You have nothing the Supplier buys. Mine some ore with your Golems first.",
+            Theme.TextSize.Body, Theme.Colors.TextDim, Theme.Fonts.Body)
+        none.Size = UDim2.new(1, -8, 0, 40)
+        return
+    end
+
+    for _, item in ipairs(info.items) do
+        local color = Theme.Colors[item.element or ""] or RARITY[item.rarity] or Theme.Colors.TextPrimary
+        local row = Instance.new("Frame")
+        row.Size = UDim2.new(1, -8, 0, 56)
+        row.BackgroundColor3 = Theme.Colors.Panel
+        row.BorderSizePixel = 0
+        row.Parent = scroll
+        Theme.AddCorner(row, Theme.Corner.Small)
+
+        local stripe = Instance.new("Frame")
+        stripe.Size = UDim2.new(0, 4, 1, -12)
+        stripe.Position = UDim2.new(0, 4, 0, 6)
+        stripe.BackgroundColor3 = color
+        stripe.BorderSizePixel = 0
+        stripe.Parent = row
+
+        local name = Theme.Label(row, item.name, Theme.TextSize.Heading, color, Theme.Fonts.Heading)
+        name.Position = UDim2.new(0, 16, 0, 6)
+        name.Size = UDim2.new(0, 300, 0, 22)
+        local sub = Theme.Label(row, string.format("You have %s", Utils.FormatNumber(item.have)),
+            Theme.TextSize.Small, Theme.Colors.TextSecondary, Theme.Fonts.Body)
+        sub.Position = UDim2.new(0, 16, 0, 30)
+        sub.Size = UDim2.new(0, 300, 0, 20)
+
+        local price = Theme.Label(row, item.price .. " coins each", Theme.TextSize.Heading, Theme.Colors.Gold, Theme.Fonts.Heading)
+        price.Position = UDim2.new(0, 330, 0, 0)
+        price.Size = UDim2.new(0, 210, 1, 0)
+        price.TextXAlignment = Enum.TextXAlignment.Right
+
+        local box = Instance.new("TextBox")
+        box.Size = UDim2.new(0, 54, 0, 28)
+        box.Position = UDim2.new(1, -196, 0.5, -14)
+        box.BackgroundColor3 = Theme.Colors.Background
+        box.TextColor3 = Theme.Colors.TextPrimary
+        box.Font = Theme.Fonts.Mono
+        box.TextSize = 14
+        box.Text = tostring(item.have)
+        box.ClearTextOnFocus = true
+        box.BorderSizePixel = 0
+        box.Parent = row
+        Theme.AddCorner(box, Theme.Corner.Small)
+
+        local canSell = left >= item.price
+        local btn = Theme.Button(row, canSell and "Sell" or "Limit", canSell and Theme.Colors.Success or Theme.Colors.PanelAlt,
+            canSell and Color3.fromRGB(255, 255, 255) or Theme.Colors.TextDim)
+        btn.Size = UDim2.new(0, 84, 0, 32)
+        btn.Position = UDim2.new(1, -92, 0.5, -16)
+        btn.AutoButtonColor = canSell
+        btn.MouseButton1Click:Connect(function()
+            if not canSell then return end
+            local qty = math.clamp(math.floor(tonumber(box.Text) or 1), 1, item.have)
+            RemoteEvents.SellToSupplier:FireServer(item.id, qty)
+        end)
+    end
+end
+
 local function Reload()
     SetTabStyle()
     RefreshData()
-    header.Visible = tab ~= "supplier"
-    listBtn.Visible = tab ~= "supplier"
+    header.Visible = tab ~= "supplier" and tab ~= "sell"
+    listBtn.Visible = tab ~= "supplier" and tab ~= "sell"
     if tab == "supplier" then
         RenderSupplier()
+        return
+    elseif tab == "sell" then
+        RenderSell()
         return
     end
     local listings
@@ -343,6 +422,7 @@ local function Reload()
 end
 
 supplierTab.MouseButton1Click:Connect(function() tab = "supplier" Reload() end)
+sellTab.MouseButton1Click:Connect(function() tab = "sell" Reload() end)
 matTab.MouseButton1Click:Connect(function() tab = "material" Reload() end)
 golemTab.MouseButton1Click:Connect(function() tab = "golem" Reload() end)
 petTab.MouseButton1Click:Connect(function() tab = "pet" Reload() end)

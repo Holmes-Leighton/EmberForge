@@ -463,6 +463,18 @@ RemoteEvents.GetSupplierStock.OnServerInvoke = function(player)
     return SupplierService.GetCatalog(player)
 end
 
+RemoteEvents.SellToSupplier.OnServerEvent:Connect(function(player, itemId, quantity)
+    SafeCall(player, function()
+        local ok, msg = SupplierService.Sell(player, itemId, quantity)
+        Tell(player, ok and "Sold" or "Can't sell", msg)
+        RemoteEvents.PurchaseResult:FireClient(player, ok, nil, if ok then nil else msg)
+    end)
+end)
+
+RemoteEvents.GetSupplierBuyList.OnServerInvoke = function(player)
+    return SupplierService.GetBuyList(player)
+end
+
 -- ── Style & access ────────────────────────────────────────────────────────────
 RemoteEvents.EquipCosmetic.OnServerEvent:Connect(function(player, slot, id)
     SafeCall(player, function()

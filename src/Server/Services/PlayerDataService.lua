@@ -48,6 +48,7 @@ local function DefaultData()
         BlockedTraders  = {},          -- userId (string) -> true: players who can't trade with you (see TradingService.SetBlocked)
         SeenCosmetics   = {},          -- cosmetics/titles the player has already looked at
         SupplierPurchases = { day = 0, bought = {} },
+        SupplierSales   = { day = 0, earned = 0 },   -- coins earned today by selling surplus to the Supplier
         Funnel          = {},          -- onboarding steps already logged to analytics
         Equipped        = {},          -- slot → cosmetic id (Title is stored as its text)
         CraftedByTier   = {},          -- tier → how many Golems of that tier were ever crafted
