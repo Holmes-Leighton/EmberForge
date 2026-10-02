@@ -9,17 +9,44 @@ daily_quests  = 3 * 55                   # ChallengeData dailies (30-100 each)
 weekly_quests = 2 * 450 / 7              # ChallengeData weeklies
 guild         = 300 / 7                  # GuildData.REWARD once a week
 ladder        = 800 / 28                 # mid-game tier prize per 4-week season
-per_day = daily_login + streak + daily_quests + weekly_quests + guild + ladder
-print(f"coins per day for a daily player: {per_day:,.0f}  (~{per_day*7:,.0f} a week)\n")
+base_per_day = daily_login + streak + daily_quests + weekly_quests + guild + ladder
 
-# ---- Ascension: BASE_COST * n^1.5 rounded to 100 ----
+# ---- the newer coin sources, which scale with how far a player has got (all constants live in SupplierData / CartBountyData / EventScheduleData) ----
+SELL_USE = 0.7      # share of the Supplier's daily sell allowance a player actually has surplus materials to use (they need the rest for crafting)
+CART_USE = 0.6      # share of the cart-bounty allowance used (needs time in the hub; 12 shared carts, 2-minute reload)
+def sell_cap(level, forge, ascensions):  return min(5000, 150 + 20 * level + 15 * forge + 250 * ascensions)
+def cart_cap(level):                     return min(2500, 120 + 15 * level)
+# events: a player online for an hour at a random time. Hourly events are 1 hour in 10 each; coin events are Coin Rush (x1.5 quest coins) and Market Hour
+# (x2 Supplier sales). Surges (10 min, ~every 9h) and jackpots (3 min, ~daily) are so short that on average they add almost nothing, but they are felt.
+EV_QUEST = 1 + 0.5 * (1 / 10)          # Coin Rush hour is 1 in 10
+EV_SELL  = 1 + 1.0 * (1 / 10)          # Market Hour is 1 in 10
+
+personas_c = [("new (lvl 1, forge 1)", 1, 1, 0), ("early (lvl 10, forge 3)", 10, 3, 0), ("mid (lvl 25, forge 6)", 25, 6, 1), ("late (lvl 50, forge 10)", 50, 10, 3)]
+print("coins per day, by how far a player has got:")
+print(f"  {'':26s}{'old sources':>12s}{'sell':>8s}{'carts':>8s}{'events':>8s}{'total':>9s}")
+rows = []
+for name, lvl, fg, asc in personas_c:
+    sell = sell_cap(lvl, fg, asc) * SELL_USE * EV_SELL
+    cart = cart_cap(lvl) * CART_USE
+    ev = (daily_quests + weekly_quests) * (EV_QUEST - 1)
+    total = base_per_day + sell + cart + ev
+    rows.append((name, total))
+    print(f"  {name:26s}{base_per_day:>12,.0f}{sell:>8,.0f}{cart:>8,.0f}{ev:>8,.0f}{total:>9,.0f}")
+per_day = base_per_day
+print(f"\nold model (no new sources): {base_per_day:,.0f} a day.\n")
+
+print("days to afford, for each persona:")
+goals = [("1st Ascension", 1500), ("Quarry (Core)", 10000), ("Quarry node", 4000), ("Forgemaster's Throne", 20000), ("Molten Forge", 30000)]
+print(f"  {'':24s}" + "".join(f"{n.split()[0]:>10s}" for n, _ in rows))
+for g, price in goals:
+    print(f"  {g:24s}" + "".join(f"{price / t:>10.1f}" for _, t in rows))
+asc_total = sum(int(1500 * n ** 1.5 / 100 + 0.5) * 100 for n in range(1, 11))
+print(f"  {'all ten Ascensions':24s}" + "".join(f"{asc_total / t:>10.0f}" for _, t in rows))
+print("  (target from the pacing review: first big purchase in 3-5 days, a visible step every few days, the long goals a season or two)\n")
+
+# ---- Ascension: BASE_COST * n^1.5 rounded to 100 (see AscensionData) ----
 costs = [int(1500 * n ** 1.5 / 100 + 0.5) * 100 for n in range(1, 11)]
 print("Ascension costs:", ", ".join(f"{c:,}" for c in costs))
-print(f"  all ten: {sum(costs):,} coins = {sum(costs)/per_day:,.0f} days of income (about 10 months)\n")
-
-# ---- what else costs coins ----
-for name, price in [("Quarry (Core)", 10000), ("Quarry node", 4000), ("Molten Forge", 30000), ("Forgemaster's Throne", 20000), ("Royal-tier pieces (~5k)", 5000)]:
-    print(f"  {name:26s} {price:>7,} coins = {price/per_day:5.1f} days")
 
 # ---- ladder: points = resources mined; ONLINE_PRODUCTION_SPEED 60 means a Golem mines rate*60 per online hour ----
 SPEED = 60
