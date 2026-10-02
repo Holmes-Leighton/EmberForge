@@ -309,6 +309,11 @@ local function Step()
                     local walking = ws.walking
                     local dtm = math.min(0.1, t - (info.lastT or t))
                     info.lastT = t
+                    -- sitting down and standing up are animated, not snapped: `sit` eases toward 1 when it breaks down and back to 0 when repaired
+                    -- (about a second each way); the legs bend at the hips and the hips lower onto the ground
+                    info.sit = (info.sit or 0) + ((fx.stopped and 1 or 0) - (info.sit or 0)) * math.min(1, dtm * 2.4)
+                    if math.abs((fx.stopped and 1 or 0) - info.sit) < 0.004 then info.sit = fx.stopped and 1 or 0 end
+                    local sit = info.sit
                     info.swingClock = (info.swingClock or (phase / (math.pi * 2))) + dtm * tempo * fx.tempo / SWING_PERIOD
                     local clock = info.swingClock
                     local cycle = math.floor(clock)
@@ -331,10 +336,11 @@ local function Step()
                     elseif move == "inspect" then xL, xR = xL + (0.1 - xL) * w, xR + (1.15 - xR) * w end
                     -- the whole body works with the arm: lean (negative pitch = forward) and twist into the strike, sway and shift weight on a walk
                     local mine = 1 - ws.env
-                    local lean = -drive * 0.09 * mine - 0.05 * ws.env - fx.slump * (fx.stopped and 0.12 or 0.18)
+                    local lean = -drive * 0.09 * mine * (1 - sit) - 0.05 * ws.env - fx.slump * 0.18 * (1 - sit) - sit * 0.1
                     local twist = drive * 0.1 * mine + math.cos(stepT) * 0.06 * ws.env
                     local roll = math.sin(stepT) * 0.05 * ws.env
-                    local settle = (r < 0.2 and (0.2 - r) * 0.5 or 0) * mine + fx.slump * (fx.stopped and 2.4 or 0.8)       -- sinks as the pick lands, and sags (sits, when broken)
+                    local hipHeight = (info.legs and info.legs[1] and info.legs[1].pivot.Y) or 3
+                    local settle = (r < 0.2 and (0.2 - r) * 0.5 or 0) * mine * (1 - sit) + fx.slump * 0.8 * (1 - sit) + sit * hipHeight       -- sinks as the pick lands, sags when tired, and lowers the hips to the ground when sitting
                     -- puff dust the moment the pick lands
                     if not walking and not fx.stopped then
                         local strike = cycle + (u >= GolemMotion.IMPACT and 1 or 0)
@@ -348,7 +354,7 @@ local function Step()
                     if info.rest then model:PivotTo(b * info.rest) end
                     if info.legs then
                         for _, l in ipairs(info.legs) do
-                            local swing = fx.stopped and 1.2 or GolemWalk.LegSwing(ws, t, l.side)       -- a broken Golem sits with its legs out in front
+                            local swing = GolemWalk.LegSwing(ws, t, l.side) * (1 - sit) + 1.5 * sit       -- seated: both legs bend forward at the hip
                             local legPhase = stepT + (l.side == 1 and 0 or math.pi)
                             local lift = walking and math.max(0, math.cos(legPhase)) * 0.3 * ws.env * scale or 0       -- the foot lifts as the leg swings forward
                             l.part.CFrame = b * CFrame.new(0, lift, 0) * l.pivot * CFrame.Angles(swing, 0, 0) * l.pivot:Inverse() * l.rel
@@ -372,7 +378,7 @@ local function Step()
                         if info.handle then info.handle.part.CFrame = delta * info.handle.rel end
                         if info.pickHead then info.pickHead.part.CFrame = delta * info.pickHead.rel end
                     end
-                    if fx.slump > 0 and info.solid then
+                    if (fx.slump > 0 or sit > 0.001) and info.solid then
                         -- a tired Golem sags and a broken one sits: whatever the pose, lift it so no part is below the ground it stands on
                         local floorY = base.Position.Y
                         local lowest = math.huge
