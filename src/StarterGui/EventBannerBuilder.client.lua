@@ -17,15 +17,15 @@ gui.IgnoreGuiInset = false
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
 local LOOKS = {
-    hourly  = { tag = "HOURLY EVENT", colour = Theme.Colors.Gold,              fill = Color3.fromRGB(34, 26, 22),  height = 68, nameSize = 20, stroke = 2, countdown = "ends in" },
-    surge   = { tag = "SURGE",        colour = Color3.fromRGB(255, 120, 90),   fill = Color3.fromRGB(70, 28, 22),  height = 74, nameSize = 22, stroke = 3, countdown = "ends in" },
-    jackpot = { tag = "JACKPOT",      colour = Color3.fromRGB(255, 226, 90),   fill = Color3.fromRGB(78, 58, 10),  height = 80, nameSize = 24, stroke = 4, countdown = "ends in" },
+    hourly  = { tag = "HOURLY EVENT", colour = Theme.Colors.Gold,              fill = Color3.fromRGB(34, 26, 22),  nameSize = 20, stroke = 2, countdown = "ends in" },
+    surge   = { tag = "SURGE",        colour = Color3.fromRGB(255, 120, 90),   fill = Color3.fromRGB(70, 28, 22),  nameSize = 22, stroke = 3, countdown = "ends in" },
+    jackpot = { tag = "JACKPOT",      colour = Color3.fromRGB(255, 226, 90),   fill = Color3.fromRGB(78, 58, 10),  nameSize = 24, stroke = 4, countdown = "ends in" },
 }
 
 local pill = Instance.new("Frame")
 pill.Name = "Pill"
 pill.AnchorPoint = Vector2.new(0.5, 0)
-pill.Size = UDim2.new(0, 500, 0, LOOKS.hourly.height)
+pill.Size = UDim2.new(0, 500, 0, 82)
 pill.Position = UDim2.new(0.5, 0, 0, 6)
 pill.BackgroundColor3 = LOOKS.hourly.fill
 pill.BackgroundTransparency = 0.05
@@ -118,7 +118,10 @@ end
 local look = LOOKS.hourly
 local function Apply(kind)
     look = LOOKS[kind]
-    pill.Size = UDim2.new(0, 500, 0, look.height)
+    -- the card is as tall as its contents: tag row, name, description, then padding under the description
+    local nameY = 28
+    local blurbY = nameY + look.nameSize + 4
+    pill.Size = UDim2.new(0, 500, 0, blurbY + 18 + 12)
     pill.BackgroundColor3 = look.fill
     stroke.Color = look.colour
     stroke.Thickness = look.stroke
@@ -126,8 +129,9 @@ local function Apply(kind)
     chipText.Text = look.tag
     title.TextColor3 = look.colour
     title.TextSize = look.nameSize
-    title.Size = UDim2.new(1, -170, 0, look.nameSize + 6)
-    blurb.Position = UDim2.new(0, 14, 0, 28 + look.nameSize + 6)
+    title.Position = UDim2.new(0, 14, 0, nameY)
+    title.Size = UDim2.new(1, -170, 0, look.nameSize + 4)
+    blurb.Position = UDim2.new(0, 14, 0, blurbY)
     clock.TextColor3 = look.colour
 end
 

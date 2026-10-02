@@ -15,96 +15,169 @@ gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.IgnoreGuiInset = false
 gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- ── MainFrame (controller reference point) ────────────────────────────────────
+-- ── MainFrame: the player card on the left (controller reference point) ──────
+-- A level badge with the player's name and an XP bar, the coin purse, then accent-striped rows for Forge, Mastery, the Golem slots (one pip per slot:
+-- green working, red broken, hollow free) and the Smelter. HUDController.Refresh fills in the numbers; the names below are what it looks for.
+local CARD_W = 196
+local function Gradient(parent, top, bottom)
+    local g = Instance.new("UIGradient")
+    g.Color = ColorSequence.new(top, bottom)
+    g.Rotation = 90
+    g.Parent = parent
+end
+
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
 mainFrame.AnchorPoint = Vector2.new(0, 0.5)
-mainFrame.Size = UDim2.new(0, 150, 0, 6 * 36 + 12)
+mainFrame.Size = UDim2.new(0, CARD_W, 0, 318)
 mainFrame.Position = UDim2.new(0, 8, 0.5, 0)
-mainFrame.BackgroundColor3 = Theme.Colors.Panel
-mainFrame.BackgroundTransparency = 0.15
+mainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+mainFrame.BackgroundTransparency = 0.04
 mainFrame.BorderSizePixel = 0
 mainFrame.Parent = gui
-Theme.AddCorner(mainFrame, Theme.Corner.Large)
+Theme.AddCorner(mainFrame, UDim.new(0, 16))
+Gradient(mainFrame, Color3.fromRGB(70, 54, 44), Color3.fromRGB(38, 30, 27))
+Theme.AddStroke(mainFrame, Theme.Colors.Accent, 2, 0.35)
 ScaleUI.ApplyHud(mainFrame)
 
--- Player Level
-local playerLevelLabel = Instance.new("TextLabel")
-playerLevelLabel.Name = "PlayerLevelLabel"
-playerLevelLabel.Size = UDim2.new(1, -20, 0, 32)
-playerLevelLabel.Position = UDim2.new(0, 12, 0, 6)
-playerLevelLabel.BackgroundTransparency = 1
-playerLevelLabel.Text = "Level 1"
-playerLevelLabel.TextColor3 = Theme.Colors.Gold
-playerLevelLabel.Font = Theme.Fonts.Heading
-playerLevelLabel.TextSize = 15
-playerLevelLabel.TextXAlignment = Enum.TextXAlignment.Left
-playerLevelLabel.Parent = mainFrame
+local function Text(parent, name, text, size, colour, font, pos, dim, align)
+    local l = Instance.new("TextLabel")
+    l.Name = name
+    l.BackgroundTransparency = 1
+    l.Position = pos
+    l.Size = dim
+    l.Text = text
+    l.TextSize = size
+    l.TextColor3 = colour
+    l.Font = font
+    l.TextXAlignment = align or Enum.TextXAlignment.Left
+    l.TextTruncate = Enum.TextTruncate.AtEnd
+    l.Parent = parent
+    return l
+end
 
--- Forge Level
-local forgeLevelLabel = Instance.new("TextLabel")
-forgeLevelLabel.Name = "ForgeLevelLabel"
-forgeLevelLabel.Size = UDim2.new(1, -20, 0, 32)
-forgeLevelLabel.Position = UDim2.new(0, 12, 0, 42)
-forgeLevelLabel.BackgroundTransparency = 1
-forgeLevelLabel.Text = "Forge 1"
-forgeLevelLabel.TextColor3 = Theme.Colors.Ember
-forgeLevelLabel.Font = Theme.Fonts.Heading
-forgeLevelLabel.TextSize = 15
-forgeLevelLabel.TextXAlignment = Enum.TextXAlignment.Left
-forgeLevelLabel.Parent = mainFrame
+-- Header: level badge, name, XP bar
+local badge = Instance.new("Frame")
+badge.Name = "LevelBadge"
+badge.Position = UDim2.new(0, 10, 0, 10)
+badge.Size = UDim2.new(0, 50, 0, 50)
+badge.BackgroundColor3 = Theme.Colors.Gold
+badge.BorderSizePixel = 0
+badge.Parent = mainFrame
+Theme.AddCorner(badge, UDim.new(1, 0))
+Gradient(badge, Color3.fromRGB(255, 226, 110), Color3.fromRGB(235, 160, 30))
+Theme.AddStroke(badge, Color3.fromRGB(255, 240, 180), 2, 0.1)
+Text(badge, "LevelCaption", "LEVEL", 9, Color3.fromRGB(90, 52, 8), Enum.Font.GothamBlack, UDim2.new(0, 0, 0, 7), UDim2.new(1, 0, 0, 10), Enum.TextXAlignment.Center)
+local playerLevelLabel = Text(badge, "PlayerLevelLabel", "1", 22, Color3.fromRGB(60, 34, 4), Enum.Font.GothamBlack, UDim2.new(0, 0, 0, 16), UDim2.new(1, 0, 0, 28), Enum.TextXAlignment.Center)
 
--- Ember Coins
-local coinsLabel = Instance.new("TextLabel")
-coinsLabel.Name = "CoinsLabel"
-coinsLabel.Size = UDim2.new(1, -20, 0, 32)
-coinsLabel.Position = UDim2.new(0, 12, 0, 78)
-coinsLabel.BackgroundTransparency = 1
-coinsLabel.Text = "200 ⚡"
-coinsLabel.TextColor3 = Theme.Colors.Gold
-coinsLabel.Font = Theme.Fonts.Heading
-coinsLabel.TextSize = 15
-coinsLabel.TextXAlignment = Enum.TextXAlignment.Left
-coinsLabel.Parent = mainFrame
+Text(mainFrame, "PlayerNameLabel", LocalPlayer.DisplayName, 16, Color3.fromRGB(255, 244, 228), Enum.Font.GothamBlack,
+    UDim2.new(0, 68, 0, 12), UDim2.new(1, -78, 0, 20))
+local xpTrack = Instance.new("Frame")
+xpTrack.Name = "PanelXPTrack"
+xpTrack.Position = UDim2.new(0, 68, 0, 36)
+xpTrack.Size = UDim2.new(1, -78, 0, 10)
+xpTrack.BackgroundColor3 = Color3.fromRGB(24, 18, 16)
+xpTrack.BorderSizePixel = 0
+xpTrack.Parent = mainFrame
+Theme.AddCorner(xpTrack, UDim.new(0, 5))
+local xpFill = Instance.new("Frame")
+xpFill.Name = "PanelXPFill"
+xpFill.Size = UDim2.new(0, 0, 1, 0)
+xpFill.BackgroundColor3 = Theme.Colors.Gold
+xpFill.BorderSizePixel = 0
+xpFill.Parent = xpTrack
+Theme.AddCorner(xpFill, UDim.new(0, 5))
+Gradient(xpFill, Color3.fromRGB(255, 226, 110), Color3.fromRGB(240, 150, 30))
+Text(mainFrame, "PanelXPText", "0 / 0 XP", 11, Color3.fromRGB(205, 190, 170), Enum.Font.Gotham, UDim2.new(0, 68, 0, 48), UDim2.new(1, -78, 0, 14))
 
--- Golem Slots
-local golemSlotsLabel = Instance.new("TextLabel")
-golemSlotsLabel.Name = "GolemSlotsLabel"
-golemSlotsLabel.Size = UDim2.new(1, -20, 0, 32)
-golemSlotsLabel.Position = UDim2.new(0, 12, 0, 114)
-golemSlotsLabel.BackgroundTransparency = 1
-golemSlotsLabel.Text = "3 Slots"
-golemSlotsLabel.TextColor3 = Theme.Colors.TextSecondary
-golemSlotsLabel.Font = Theme.Fonts.Body
-golemSlotsLabel.TextSize = 13
-golemSlotsLabel.TextXAlignment = Enum.TextXAlignment.Left
-golemSlotsLabel.Parent = mainFrame
+-- Coin purse: a drawn coin and the amount, big
+local purse = Instance.new("Frame")
+purse.Name = "Purse"
+purse.Position = UDim2.new(0, 10, 0, 72)
+purse.Size = UDim2.new(1, -20, 0, 42)
+purse.BackgroundColor3 = Color3.fromRGB(26, 20, 17)
+purse.BackgroundTransparency = 0.15
+purse.BorderSizePixel = 0
+purse.Parent = mainFrame
+Theme.AddCorner(purse, UDim.new(0, 12))
+Theme.AddStroke(purse, Theme.Colors.Gold, 1.5, 0.55)
+local coin = Instance.new("Frame")
+coin.Name = "CoinIcon"
+coin.Position = UDim2.new(0, 8, 0.5, -14)
+coin.Size = UDim2.new(0, 28, 0, 28)
+coin.BackgroundColor3 = Theme.Colors.Gold
+coin.BorderSizePixel = 0
+coin.Parent = purse
+Theme.AddCorner(coin, UDim.new(1, 0))
+Gradient(coin, Color3.fromRGB(255, 232, 130), Color3.fromRGB(225, 150, 20))
+Theme.AddStroke(coin, Color3.fromRGB(255, 244, 190), 2, 0.1)
+local coinInner = Instance.new("Frame")
+coinInner.Position = UDim2.new(0.5, -8, 0.5, -8)
+coinInner.Size = UDim2.new(0, 16, 0, 16)
+coinInner.BackgroundTransparency = 1
+coinInner.BorderSizePixel = 0
+coinInner.Parent = coin
+Theme.AddCorner(coinInner, UDim.new(1, 0))
+Theme.AddStroke(coinInner, Color3.fromRGB(170, 105, 10), 2, 0.2)
+local coinsLabel = Text(purse, "CoinsLabel", "200", 22, Theme.Colors.Gold, Enum.Font.GothamBlack, UDim2.new(0, 46, 0, 3), UDim2.new(1, -54, 0, 26))
+Text(purse, "CoinsCaption", "EMBER COINS", 9, Color3.fromRGB(190, 160, 110), Enum.Font.GothamBold, UDim2.new(0, 46, 0, 27), UDim2.new(1, -54, 0, 12))
 
--- Mastery (highest element mastery across all elements)
-local masteryLabel = Instance.new("TextLabel")
-masteryLabel.Name = "MasteryLabel"
-masteryLabel.Size = UDim2.new(1, -20, 0, 32)
-masteryLabel.Position = UDim2.new(0, 12, 0, 150)
-masteryLabel.BackgroundTransparency = 1
-masteryLabel.Text = "M: Lv 0"
-masteryLabel.TextColor3 = Color3.fromRGB(160, 120, 220)
-masteryLabel.Font = Theme.Fonts.Body
-masteryLabel.TextSize = 13
-masteryLabel.TextXAlignment = Enum.TextXAlignment.Left
-masteryLabel.Parent = mainFrame
+-- Accent-striped rows
+local function Row(name, y, height, accent)
+    local row = Instance.new("Frame")
+    row.Name = name
+    row.Position = UDim2.new(0, 10, 0, y)
+    row.Size = UDim2.new(1, -20, 0, height)
+    row.BackgroundColor3 = Color3.fromRGB(20, 15, 13)
+    row.BackgroundTransparency = 0.35
+    row.BorderSizePixel = 0
+    row.Parent = mainFrame
+    Theme.AddCorner(row, UDim.new(0, 10))
+    local stripe = Instance.new("Frame")
+    stripe.Name = "Stripe"
+    stripe.Position = UDim2.new(0, 0, 0, 5)
+    stripe.Size = UDim2.new(0, 4, 1, -10)
+    stripe.BackgroundColor3 = accent
+    stripe.BorderSizePixel = 0
+    stripe.Parent = row
+    Theme.AddCorner(stripe, UDim.new(0, 2))
+    return row
+end
 
--- Smelter status
-local smeltStatusLabel = Instance.new("TextLabel")
-smeltStatusLabel.Name = "SmeltStatusLabel"
-smeltStatusLabel.Size = UDim2.new(1, -20, 0, 32)
-smeltStatusLabel.Position = UDim2.new(0, 12, 0, 6 + 5 * 36)
-smeltStatusLabel.BackgroundTransparency = 1
-smeltStatusLabel.Text = "Smelter idle"
-smeltStatusLabel.TextColor3 = Theme.Colors.TextSecondary
-smeltStatusLabel.Font = Theme.Fonts.Body
-smeltStatusLabel.TextSize = 13
-smeltStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
-smeltStatusLabel.Parent = mainFrame
+local forgeRow = Row("ForgeRow", 122, 30, Theme.Colors.Ember)
+local forgeLevelLabel = Text(forgeRow, "ForgeLevelLabel", "Forge 1", 15, Color3.fromRGB(255, 150, 90), Enum.Font.GothamBlack, UDim2.new(0, 14, 0, 0), UDim2.new(1, -20, 1, 0))
+
+local masteryRow = Row("MasteryRow", 158, 30, Color3.fromRGB(160, 120, 220))
+local masteryLabel = Text(masteryRow, "MasteryLabel", "Mastery Lv 0", 14, Color3.fromRGB(196, 160, 245), Enum.Font.GothamBold, UDim2.new(0, 14, 0, 0), UDim2.new(1, -20, 1, 0))
+
+local golemRow = Row("GolemRow", 194, 56, Color3.fromRGB(90, 200, 110))
+local golemSlotsLabel = Text(golemRow, "GolemSlotsLabel", "Golems 0/3", 13, Theme.Colors.TextSecondary, Enum.Font.GothamBold, UDim2.new(0, 14, 0, 4), UDim2.new(1, -20, 0, 18))
+local pips = Instance.new("Frame")
+pips.Name = "SlotPips"
+pips.BackgroundTransparency = 1
+pips.Position = UDim2.new(0, 14, 0, 28)
+pips.Size = UDim2.new(1, -22, 0, 20)
+pips.Parent = golemRow
+local pipLayout = Instance.new("UIListLayout")
+pipLayout.FillDirection = Enum.FillDirection.Horizontal
+pipLayout.Padding = UDim.new(0, 4)
+pipLayout.Parent = pips
+for i = 1, 12 do                                    -- one pip per slot (the controller shows as many as you have)
+    local pip = Instance.new("Frame")
+    pip.Name = "Pip" .. i
+    pip.Size = UDim2.new(0, 11, 0, 18)
+    pip.BackgroundColor3 = Color3.fromRGB(90, 200, 110)
+    pip.BackgroundTransparency = 1
+    pip.BorderSizePixel = 0
+    pip.LayoutOrder = i
+    pip.Visible = false
+    pip.Parent = pips
+    Theme.AddCorner(pip, UDim.new(0, 4))
+    Theme.AddStroke(pip, Color3.fromRGB(150, 140, 125), 1.5, 0.3)
+end
+
+local smeltRow = Row("SmeltRow", 256, 32, Color3.fromRGB(150, 140, 125))
+local smeltStatusLabel = Text(smeltRow, "SmeltStatusLabel", "Smelter idle", 13, Theme.Colors.TextSecondary, Enum.Font.GothamBold, UDim2.new(0, 14, 0, 0), UDim2.new(1, -20, 1, 0))
 
 -- ── Navigation: big icon hotbar (bottom) + small icon column (right) ─────────
 local NAV = {

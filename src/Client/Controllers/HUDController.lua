@@ -132,9 +132,9 @@ function HUDController.Refresh(data)
         end
     end
 
-    setLabel("PlayerLevelLabel", "Level " .. (data.PlayerLevel or 1))
+    setLabel("PlayerLevelLabel", tostring(data.PlayerLevel or 1))           -- sits in the gold level badge
     setLabel("ForgeLevelLabel",  "Forge " .. (data.ForgeLevel or 1))
-    setLabel("CoinsLabel",       Utils.FormatNumber(data.EmberCoins or 0) .. " Coins")
+    setLabel("CoinsLabel",       Utils.FormatNumber(data.EmberCoins or 0))   -- "EMBER COINS" is the caption under it
     -- Golems: deployed / usable slots, flagging any that have worn out
     local deployed, broken = 0, 0
     for _, g in ipairs(data.Golems or {}) do
@@ -149,6 +149,20 @@ function HUDController.Refresh(data)
     if slotLbl then
         slotLbl.TextColor3 = broken > 0 and Color3.fromRGB(230, 90, 70) or Theme.Colors.TextSecondary
         if broken > 0 then slotLbl.Text = string.format("Golems %d/%d (%d broken!)", deployed, slots, broken) end
+    end
+    -- one pip per slot: green = working, red = broken, hollow = free
+    for i = 1, 12 do
+        local pip = mainFrame:FindFirstChild("Pip" .. i, true)
+        if pip then
+            pip.Visible = i <= slots
+            if i <= deployed - broken then
+                pip.BackgroundTransparency, pip.BackgroundColor3 = 0, Color3.fromRGB(90, 200, 110)
+            elseif i <= deployed then
+                pip.BackgroundTransparency, pip.BackgroundColor3 = 0, Color3.fromRGB(230, 80, 60)
+            else
+                pip.BackgroundTransparency = 1
+            end
+        end
     end
 
     require(script.Parent.BadgeController).Update(data)
@@ -183,6 +197,13 @@ function HUDController.Refresh(data)
     end)() or 0
     setLabel("MasteryLabel", "Mastery Lv " .. maxLevel)
 
+    -- the smelter row's stripe lights up while it is working
+    local smeltRow = mainFrame:FindFirstChild("SmeltRow", true)
+    local stripe = smeltRow and smeltRow:FindFirstChild("Stripe")
+    if stripe then stripe.BackgroundColor3 = #jobs > 0 and Color3.fromRGB(255, 150, 50) or Color3.fromRGB(150, 140, 125) end
+    local smeltLbl = mainFrame:FindFirstChild("SmeltStatusLabel", true)
+    if smeltLbl then smeltLbl.TextColor3 = #jobs > 0 and Color3.fromRGB(255, 190, 120) or Theme.Colors.TextSecondary end
+
     -- Animate XP bar
     local xpBarBg = hudGui:FindFirstChild("XPBarBg", true)
     if xpBarBg then
@@ -197,6 +218,12 @@ function HUDController.Refresh(data)
                 TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
                 { Size = UDim2.new(ratio, 0, 1, 0) }
             ):Play()
+            -- the same progress on the player card
+            local cardFill = mainFrame:FindFirstChild("PanelXPFill", true)
+            if cardFill then
+                TweenService:Create(cardFill, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.new(ratio, 0, 1, 0) }):Play()
+            end
+            setLabel("PanelXPText", string.format("%s / %s XP", Utils.FormatNumber(math.max(0, xp - prevXP)), Utils.FormatNumber(math.max(1, nextXP - prevXP))))
         end
     end
 end
