@@ -122,7 +122,10 @@ do
     expect(table.concat(ladder, ",") == "1,3,9,25,100,250", "pad multipliers follow the 1x / 3x / 9x / 25x / 100x ladder (+250x admin)")
     expect(Product.PassForPad("Legend") == "Pad_Legend", "the 100x Legend pad is buyable")
     expect(k1 == "Pad_Copper" and Product.PassForPad("Starter") == nil and Product.PassForPad("Admin") == nil, "only Copper / Iron / Gold / Legend are for sale")
+    local realCopperId = Product.GamePasses.Pad_Copper.id
+    Product.GamePasses.Pad_Copper.id = 0
     expect(not Product.PassIsAvailable("Pad_Copper"), "unconfigured passes (id 0) are not for sale")
+    Product.GamePasses.Pad_Copper.id = realCopperId
 
     Product.GamePasses.Pad_Copper.id = 777
     Product.GamePasses.Pad_Iron.id = 888

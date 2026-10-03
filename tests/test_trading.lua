@@ -215,4 +215,33 @@ expect(#reports == 1 and reports[1].reporter == alice.UserId and reports[1].reas
 ok = Trading.Report(alice, alice.UserId, "scam")
 expect(not ok, "you cannot report yourself")
 
+print("== regional policy: paid item trading")
+local policy = game:GetService("PolicyService")
+local rsvc = game:GetService("RunService")
+local studioFn = rsvc.IsStudio
+policy._info = { IsPaidItemTradingAllowed = false }
+Trading.OnPlayerLeave(alice)     -- forget the "allowed" answer cached by the earlier trades
+expect(Trading.AgeGate(alice) ~= nil and tostring(Trading.AgeGate(alice)):find("region"), "a restricted player is gated")
+local tidP, errP = Trading.InitiateTrade(bob, alice)
+expect(tidP == nil, "nobody can start a trade with a restricted player (" .. tostring(errP) .. ")")
+tidP, errP = Trading.InitiateTrade(alice, bob)
+expect(tidP == nil, "a restricted player can't start a trade")
+da.Inventory.Coal = 5
+local lp = Trading.ListOnMarket(alice, { type = "material", id = "Coal", qty = 1 }, 5)
+expect(lp == nil and da.Inventory.Coal == 5, "a restricted player can't list on the Market")
+policy._info = { IsPaidItemTradingAllowed = true }
+expect(Trading.AgeGate(alice) ~= nil, "the answer is cached for the session")
+Trading.OnPlayerLeave(alice)
+expect(Trading.AgeGate(alice) == nil, "after rejoining the new policy answer applies")
+-- a failed lookup: open in Studio, closed live
+policy._info = nil
+Trading.OnPlayerLeave(bob)
+expect(Trading.AgeGate(bob) == nil, "Studio stays open when the policy lookup fails")
+rsvc.IsStudio = function() return false end
+expect(Trading.AgeGate(bob) ~= nil, "live, a failed policy lookup is treated as restricted")
+rsvc.IsStudio = studioFn
+policy._info = { IsPaidItemTradingAllowed = true }
+Trading.OnPlayerLeave(bob)
+expect(Trading.AgeGate(bob) == nil, "back to normal once the policy allows it")
+
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")

@@ -119,6 +119,6 @@ expect(s1 and s1.multiplier >= 3 and s1.endTime - s1.startTime == ES.SURGE_SECON
 expect(ES.NextSurgeStart(t0) ~= nil, "the next surge can be found")
 
 print("== lucky boost")
-expect(PR.Products.LuckBoost_1h ~= nil and PR.Products.LuckBoost_1h.id == 0, "the Lucky Boost product exists (id to be set)")
+expect(PR.Products.LuckBoost_1h ~= nil and type(PR.Products.LuckBoost_1h.id) == "number", "the Lucky Boost product exists")
 
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")

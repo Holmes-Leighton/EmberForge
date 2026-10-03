@@ -40,6 +40,7 @@ local stubs = {
         m.PromptGamePassPurchase = function(_, player, id) table.insert(m.prompted, id) end
         return m
     end)(),
+    PolicyService = { _info = { IsPaidItemTradingAllowed = true }, GetPolicyInfoForPlayerAsync = function(self) return self._info end },
     ReplicatedStorage = { FindFirstChild = function() return nil end }, UserService = {},
 }
 local ColorMeta = {}

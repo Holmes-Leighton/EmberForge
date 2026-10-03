@@ -217,9 +217,26 @@ local MAX_BLOCKED = 100
 local REPORT_COOLDOWN = 60
 local lastReport = {}        -- "reporter>target" -> time
 
+-- Roblox's PolicyService says, per player, whether items bought with Robux may be traded (some regions forbid it).
+-- Pets hatched from a Robux egg can't be told apart from earned ones, so a restricted player can't trade or use the
+-- Market at all. Looked up once per player and cached; if the lookup fails the player is treated as restricted
+-- (Studio can't always answer, so it stays open there).
+local policyAllowed = {}   -- userId -> true / false once Roblox has answered
+local function PaidTradingAllowed(player)
+    local known = policyAllowed[player.UserId]
+    if known ~= nil then return known end
+    local ok, info = pcall(function() return game:GetService("PolicyService"):GetPolicyInfoForPlayerAsync(player) end)
+    if ok and type(info) == "table" and info.IsPaidItemTradingAllowed ~= nil then
+        policyAllowed[player.UserId] = info.IsPaidItemTradingAllowed == true
+        return policyAllowed[player.UserId]
+    end
+    return game:GetService("RunService"):IsStudio()
+end
+
 -- Brand-new Roblox accounts can't trade or use the Market (Studio and players without an AccountAge are not limited)
 function TradingService.AgeGate(player)
     if require(script.Parent.AdminService).IsMuted(player) then return "You are muted, so you can't trade or use the Market right now." end
+    if not PaidTradingAllowed(player) then return "Trading and the Market aren't available in your region." end
     local need = GameConfig.TRADE_MIN_ACCOUNT_AGE_DAYS or 0
     local age = player.AccountAge
     if need > 0 and type(age) == "number" and age < need and not game:GetService("RunService"):IsStudio() then
@@ -286,7 +303,7 @@ function TradingService.InitiateTrade(offererPlayer, targetPlayer)
     if offererPlayer == targetPlayer then return nil, "You can't trade with yourself" end
     local young = TradingService.AgeGate(offererPlayer)
     if young then return nil, young end
-    if TradingService.AgeGate(targetPlayer) then return nil, targetPlayer.DisplayName .. " can't trade yet (new account)" end
+    if TradingService.AgeGate(targetPlayer) then return nil, targetPlayer.DisplayName .. " can't trade right now" end
     if tradeOfUser[offererPlayer.UserId] then return nil, "You are already in a trade" end
     if tradeOfUser[targetPlayer.UserId] then return nil, targetPlayer.DisplayName .. " is already in a trade" end
     if not PlayerDataService.Get(targetPlayer) then return nil, "That player isn't ready" end
@@ -749,6 +766,7 @@ end
 -- Cleanup trades when a player leaves
 -- Returns the userId of the trading partner (so the caller can tell them), if any.
 function TradingService.OnPlayerLeave(player)
+    policyAllowed[player.UserId] = nil
     local tradeId = tradeOfUser[player.UserId]
     local trade = tradeId and pendingTrades[tradeId]
     if not trade then return nil end
