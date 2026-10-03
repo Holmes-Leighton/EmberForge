@@ -4,7 +4,8 @@
 - [x] ~~Pet movement animations~~ done: 14 segmented pets (ServerStorage > UploadedAssetSources > PetPack) animated by code (PetRig).
 - [x] ~~Upload the new PetPack~~ done (136723892869054)
 - [ ] Golem animations (idle, mine, walk): the code is ready for them (`AssetData.Golem.*.animations`), none are uploaded yet.
-- [ ] Game icon and thumbnails (Creator Hub); draft screenshots are in `marketing/draft-screenshots/`.
+- [x] Game icon and 16:9 thumbnail made (`marketing/GameIcon.jpg`, `marketing/GameImageDisplay.jpg`; prompts and guide in `marketing/`).
+- [ ] Upload the icon and thumbnail in Creator Hub (check the icon at 128px first; A/B test against `marketing/DisplayImage.jpg`).
 
 ## Monetisation (needs ids from Creator Hub)
 - [ ] Developer Product and Game Pass ids in `ProductData.lua`: Royal Egg x1/x5/x10, Lucky Boost, Speed-Ups, slot packs, Magnet,
