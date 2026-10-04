@@ -78,7 +78,7 @@ Recommendation: not yet. Six mining zones, the Quarry and pets already give plen
       2. [x] Tower rewards (`TowerData`, `TowerRewards`: coin curve about 100x from level 1 to 30, a bundle every 5th level that improves with height, rare drops that get
          likelier, a top chest that pays double the first time each day, a daily coin allowance) and rounds (`TowerRound`: 8-minute rounds, a new seed each round on the
          wall clock, 60 s left after a summit). Pay levels are a first guess (a perfect climb is about 3.9k coins at player level 10): check with `tools/balance_model.py`.
-      3. [ ] Tower art: platforms, climbs, numbered level signs, sky backdrop, a portal in the hub and a return.
+      3. [x] Tower art (`TowerArt`, `TowerService`): floating platforms with glowing edges, climbs, a big numbered sign and a colour per level (rainbow with height), the summit ring, a lobby, a portal in the hub near the spawn, and ways back at the lobby and the summit. Seen in Studio. A new tower is built each round.
       4. [ ] `TowerService` + client HUD: level counter, round clock, "highest level" list, level-up effects.
       5. [ ] Boards, daily challenge, Pro mode (60 levels, 2.5x), gear and mutators.
 - [ ] Courier Run: play it by hand at a real frame rate on a phone and a PC and tune the jump distances, platform sizes, speeds and lava pace.

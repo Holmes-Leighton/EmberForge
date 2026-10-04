@@ -3,6 +3,8 @@ local TowerData = {}
 
 TowerData.BASE          = { x = 8000, y = 1500, z = 0 }     -- the first level's start, far above the cavern (nothing else is up there)
 TowerData.LEVELS        = 30
+TowerData.PORTAL        = { x = -92, z = -22 }               -- the portal in the hub (near the spawn): the world builder keeps rocks off it
+TowerData.PORTAL_CLEAR  = 34
 TowerData.PRO_LEVELS    = 60
 TowerData.PRO_TIME_MULT = 1.4          -- a Pro tower gives this much longer
 TowerData.PRO_PAY_MULT  = 2.5

@@ -8,6 +8,7 @@
 local Lighting = game:GetService("Lighting")
 local MiningZoneData = require(game.ReplicatedStorage.Shared.Data.MiningZoneData)
 local CartCourseData = require(game.ReplicatedStorage.Shared.Data.CartCourseData)
+local TowerData = require(game.ReplicatedStorage.Shared.Data.TowerData)
 
 local WorldBuilder = {}
 
@@ -758,7 +759,8 @@ local function BuildScenery(world)
         local nearSpawn = math.abs(x) < 60 and z < -20 and z > -105
         local inTunnels = z > 100
         local onCartRun = CartCourseData.NearRoute(x, z, 24)           -- the Cart Run courses (CartCourseData)
-        if not (inPlots or onRoad or inPads or nearSpawn or inTunnels or onCartRun) then
+        local atPortal = (x - TowerData.PORTAL.x) ^ 2 + (z - TowerData.PORTAL.z) ^ 2 < TowerData.PORTAL_CLEAR ^ 2        -- the Sky Tower portal
+        if not (inPlots or onRoad or inPads or nearSpawn or inTunnels or onCartRun or atPortal) then
             local roll = rng:NextNumber()
             if roll < 0.45 then
                 -- tapered: four narrowing segments, like the stalactites above
@@ -884,6 +886,7 @@ local function BuildDressing(world)
         if z > -225 and z < -85 and math.abs(x) < 210 then return false end                 -- pad plaza
         if z > -40 and z < 55 and x > -60 then return false end                             -- forge plots
         if CartCourseData.NearRoute(x, z, 24 + pad) then return false end                    -- the Cart Run courses
+        if (x - TowerData.PORTAL.x) ^ 2 + (z - TowerData.PORTAL.z) ^ 2 < (TowerData.PORTAL_CLEAR + pad) ^ 2 then return false end      -- the Sky Tower portal
         return true
     end
     local function Boulder(x, z, size)

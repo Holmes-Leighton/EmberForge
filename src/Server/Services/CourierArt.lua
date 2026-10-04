@@ -64,7 +64,7 @@ local function BuildPlatforms(folder, r)
         P({ Name = isRest and "RestPlatform" or "Platform", Material = look.material, Color = isRest and look.rest or look.color,
             Size = Vector3.new(p.sx, p.sy, p.sz), CFrame = CFrame.new(p.x, p.y, p.z) }, group)
         trim(p, top)
-        if isRest then                                              -- rest platforms stand on pillars; the small ones float
+        if isRest and p.y < 150 then                                -- rest platforms stand on pillars (the Sky Tower, high up, floats); the small ones float
             for _, dz in ipairs({ -p.sz / 2 + 3, p.sz / 2 - 3 }) do
                 local h = p.y - p.sy / 2
                 P({ Name = "Pillar", Material = Enum.Material.Basalt, Color = Color3.fromRGB(58, 42, 38), Size = Vector3.new(4, h, 4), CFrame = CFrame.new(p.x, h / 2, p.z + dz) }, group)
@@ -217,6 +217,13 @@ local function BuildRamp(folder, r)
             CFrame = CFrame.new(midX, midY + 2.6, cp.z + side * 8) * CFrame.Angles(0, 0, theta) }, folder)
     end
 end
+
+-- The pieces, for other builders (the Sky Tower builds each of its levels from these)
+CourierArt.Platforms = BuildPlatforms
+CourierArt.Obstacles = BuildObstacles
+CourierArt.Finish = BuildFinish
+CourierArt.P = P
+CourierArt.Sign = Sign
 
 -- Builds one course's scenery under `parent`. Returns the folder.
 function CourierArt.Build(parent, r)

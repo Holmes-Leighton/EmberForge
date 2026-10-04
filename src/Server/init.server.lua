@@ -31,6 +31,7 @@ local AdminService       = require(script.Services.AdminService)
 local CartBountyService  = require(script.Services.CartBountyService)
 local CartCourseService  = require(script.Services.CartCourseService)
 local CourierService     = require(script.Services.CourierService)
+local TowerService       = require(script.Services.TowerService)
 local Utils              = require(game.ReplicatedStorage.Shared.Modules.Utils)
 local GameConfig         = require(game.ReplicatedStorage.Shared.Data.GameConfig)
 
@@ -44,6 +45,7 @@ GolemVisuals.Init()
 CartBountyService.Init()           -- the Mine Cart Delivery bounty
 CartCourseService.Init()           -- the Cart Run courses (CartCourseData): winding rails with tunnels, hills, gates and bridges
 CourierService.Init()              -- the Courier Run obstacle courses (CourierData): carry a crate to the drop-off
+TowerService.Init()                -- the Sky Tower (TOWER_DESIGN.md): a new tower to climb every round
 
 -- Start periodic auto-save and leaderboard flush
 PlayerDataService.StartAutoSave()
