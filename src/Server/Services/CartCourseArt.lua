@@ -309,20 +309,27 @@ function CartCourseArt.CartCFrame(r, s)
     return CFrame.fromMatrix(Vector3.new(x, y + RAIL_TOP, z), Vector3.new(fx, fy, fz), Vector3.new(ux, uy, uz))
 end
 
--- The cart for a course: art only (no physics: every client moves it from PathS / PathV / PathT), with its sign. Returns the model.
+-- The cart for a course: its art plus an invisible solid body the size of the cart (so a player pushing it feels it, can't walk through it, and can't hop on:
+-- the body is taller than a jump). There is no physics: every client moves the whole model from PathS / PathV / PathT, and each client's own character
+-- collides with the body where that client draws it. Returns the model.
 function CartCourseArt.BuildCart(parent, r, index)
     local model = Instance.new("Model")
     model.Name = "CartRunCart_" .. r.id
-    local body = P({ Name = "Body", Transparency = 1, CanCollide = false, CanQuery = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(0, 0.5, 0) }, model)
+    local body = P({ Name = "Body", Transparency = 1, CanCollide = true, CanQuery = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(0, 0.5, 0) }, model)
     model.PrimaryPart = body
     BiomeArt.MakeCartArt(model, { x = 0, z = 0, ore = r.def.color }, index)
-    for _, d in ipairs(model:GetDescendants()) do
-        if d:IsA("BasePart") then d.Anchored, d.CanCollide, d.CanQuery = true, false, false end
-    end
-    local artHeight = 7
     local art = model:FindFirstChild("CartArt")
-    if art then artHeight = select(2, art:GetBoundingBox()).Y end
-    Label(model, body, string.format("%s  (level %d+)  Push me to the depot!", r.name, r.def.minLevel), UDim2.new(0, 280, 0, 44), Vector3.new(0, artHeight + 2, 0), nil, 90)
+    local center, size = CFrame.new(0, 0.5 + 3.5, 0), Vector3.new(8.6, 7, 6.6)
+    if art then center, size = art:GetBoundingBox() end
+    for _, d in ipairs(model:GetDescendants()) do
+        if d:IsA("BasePart") and d ~= body then d.Anchored, d.CanCollide, d.CanQuery = true, false, false end
+    end
+    -- the solid body: as wide and as tall as the cart you see, resting where its wheels do; the model's pivot stays at the middle of the cart's base
+    local solid = Vector3.new(math.max(size.X * 0.92, 6), math.max(size.Y, 6), math.max(size.Z * 0.92, 5))
+    body.Size = solid
+    body.CFrame = CFrame.new(center.Position.X, 0.5 + solid.Y / 2, center.Position.Z)
+    body.PivotOffset = CFrame.new(-center.Position.X, -solid.Y / 2, -center.Position.Z)
+    Label(model, body, string.format("%s  (level %d+)  Push me to the depot!", r.name, r.def.minLevel), UDim2.new(0, 280, 0, 44), Vector3.new(0, solid.Y / 2 + 2, 0), nil, 90)
     model:SetAttribute("CourseId", r.id)
     model:SetAttribute("PathS", 0)
     model:SetAttribute("PathV", 0)

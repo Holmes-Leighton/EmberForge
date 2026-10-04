@@ -5,7 +5,10 @@
 - [x] ~~Upload the new PetPack~~ done (136723892869054)
 - [ ] Golem animations (idle, mine, walk): the code is ready for them (`AssetData.Golem.*.animations`), none are uploaded yet.
 - [x] Game icon and 16:9 thumbnail made (`marketing/GameIcon.jpg`, `marketing/GameImageDisplay.jpg`; prompts and guide in `marketing/`).
-- [ ] Upload the icon and thumbnail in Creator Hub (check the icon at 128px first; A/B test against `marketing/DisplayImage.jpg`).
+- [x] Upload the icon and thumbnail in Creator Hub (done). Product and pass ids are set in `ProductData.lua`.
+- [ ] **Cart Run depot mesh**: a cool building or tunnel mouth at the end of each Cart Run course that the cart is pushed *into* and stops inside (a buffer stop or
+      hatch behind it), not a glowing disc it rolls through. Also nicer meshes for the crusher gate, tunnel mouths, bridge planks and checkpoint banners
+      (`CartCourseArt.lua`: each is a separate named part, so a mesh can replace it). Prompts for the mesh generator are in `ART_BRIEF.md` part B.
 
 ## Monetisation (needs ids from Creator Hub)
 - [ ] Developer Product and Game Pass ids in `ProductData.lua`: Royal Egg x1/x5/x10, Lucky Boost, Speed-Ups, slot packs, Magnet,
@@ -39,6 +42,15 @@ Recommendation: not yet. Six mining zones, the Quarry and pets already give plen
 ## Features not built
 - [x] Rail track: built from parts in code (the AI mesh generator makes them too small), so no mesh is needed. Look at it in Studio and say if it needs more detail.
 - [x] Guild extras: officers (up to 3, can remove plain members), leader-set banners (colour + emblem), weekly guild-vs-guild duels (challenge, accept, winner's contributors claim 400 coins + a Speed-Up next week).
+
+## Cart Run (courses in `CartCourseData.lua`; code in `CartRunner`, `CartCourseService`, `CartCourseArt`, `CartCourseController`)
+- [x] Three cart courses (Easy Haul, Cave Run, Deep Run) with tunnels, hills, crusher gates and retracting bridges; cart collision body; own daily allowance.
+- [ ] Check it in Studio at a real frame rate (the test session ran at about 15 fps): smooth cart, gate and bridge animation, signs, tunnels, the solid cart body.
+- [ ] A signpost and beam near the spawn pointing to the courses (they start at x 180 / 700 / 1520 in the south band, far from the spawn).
+- [ ] Balance the Cart Run pay (x1.5 / x4 / x9 of the quick-haul reward, allowance x4) with `tools/balance_model.py` once someone has played a few runs.
+- [ ] Courier Run (carry a crate through an obstacle course) alongside the carts, with a lava chase, Courier Level, fastest-time boards, a daily challenge and
+      juice (sparks, floating numbers, combos). Started: `CourierLayout.lua` (the geometry generator). Still to do: `CourierData`, the runner rules, art, service,
+      client controller, boards, daily challenge, progression.
 
 ## New feature ideas
 - [x] ~~Player-built mining zones~~ built as the **Quarry** (Forge Level 6, 15,000 coins): 11 pieces, adjacency recipes, 5 exclusive materials, Core upgrades, animated by QuarryAnimator.
