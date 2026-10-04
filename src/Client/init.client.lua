@@ -105,6 +105,13 @@ RemoteEvents.GolemReturned.OnClientEvent:Connect(function(result, golemId, err)
     end
 end)
 
+RemoteEvents.ItemRenamed.OnClientEvent:Connect(function(kind, id, ok, result)
+    ForgeController.OnItemRenamed(kind, id, ok, result)
+    if ok then
+        HUDController.ShowNotification(result and "Named!" or "Name removed", result and ("It answers to " .. result .. " now.") or "Back to its usual name.")
+    end
+end)
+
 RemoteEvents.SmeltQueued.OnClientEvent:Connect(function(job, err)
     ForgeController.OnSmeltQueued(job, err)
 end)

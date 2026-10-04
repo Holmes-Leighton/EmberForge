@@ -118,8 +118,10 @@ function PetService.Merge(player, petType, variant)
     if #candidates < PetData.MERGE_COUNT then
         return nil, string.format("You need %d matching pets (you have %d)", PetData.MERGE_COUNT, #candidates)
     end
-    -- spare ones first, worn ones last
+    -- spare ones first, then worn ones; a pet its owner has named goes last of all
     table.sort(candidates, function(a, b)
+        local an, bn = a.nickname ~= nil, b.nickname ~= nil
+        if an ~= bn then return not an end
         local aw, bw = table.find(data.EquippedPets, a.id) ~= nil, table.find(data.EquippedPets, b.id) ~= nil
         if aw ~= bw then return not aw end
         return PetData.GrownSeconds(a) < PetData.GrownSeconds(b)           -- use up the youngest first, keep the grown ones

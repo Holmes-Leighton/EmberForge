@@ -134,12 +134,14 @@ end
 
 function PetData.Get(typeId) return PetData.Pets[typeId] end
 
--- "Neon Ember Pup"
+-- "Neon Ember Pup", or "Rex the Neon Ember Pup" when its owner has named it
 function PetData.DisplayName(pet)
     local def = PetData.Pets[pet.type]
     if not def then return tostring(pet.type) end
     local v = pet.variant and PetData.Variants[pet.variant]
-    return (v and (v.label .. " ") or "") .. def.displayName
+    local base = (v and (v.label .. " ") or "") .. def.displayName
+    if type(pet.nickname) == "string" and pet.nickname ~= "" then return pet.nickname .. " the " .. base end
+    return base
 end
 
 -- The boost text for a pet, scaled by its variant ("+4.5% luck")

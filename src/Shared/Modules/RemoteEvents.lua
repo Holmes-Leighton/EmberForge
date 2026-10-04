@@ -30,6 +30,9 @@ local DEFINITIONS = {
     GolemDeployed       = "event",   -- server → client
     ReturnGolem         = "event",
     GolemReturned       = "event",   -- server → client
+    RenameGolem         = "event",   -- client → server (golemId, text; blank removes the name)
+    RenamePet           = "event",   -- client → server (petId, text)
+    ItemRenamed         = "event",   -- server → client (kind, id, ok, newNameOrReason)
 
     -- Trading
     InitiateTrade       = "event",

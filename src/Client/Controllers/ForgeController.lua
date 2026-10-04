@@ -13,6 +13,7 @@ local Utils         = require(game.ReplicatedStorage.Shared.Modules.Utils)
 local MaterialData  = require(game.ReplicatedStorage.Shared.Data.MaterialData)
 local CraftRules    = require(game.ReplicatedStorage.Shared.Modules.CraftRules)
 local GolemNames    = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
+local RenameDialog  = require(game.ReplicatedStorage.Shared.Modules.RenameDialog)
 
 local ForgeController = {}
 
@@ -625,6 +626,13 @@ function ForgeController._BuildDeployPanel()
         title.Position = UDim2.new(0, 60, 0, 6)
         local face = Portrait.Golem(card, g, 42)
         face.Position = UDim2.new(0, 8, 0.5, -21)
+        RenameDialog.AddPencil(card, title, function()
+            RenameDialog.Open({
+                kind = "Golem", current = g.nickname,
+                baseName = GolemNames.Describe({ element = g.element, tier = g.tier, variant = g.variant, rarity = g.rarity }).name,
+                onSubmit = function(text) RemoteEvents.RenameGolem:FireServer(g.id, text) end,
+            })
+        end)
 
         local zone = g.zoneId and MiningZoneData.Get(g.zoneId)
         local status = Theme.Label(card,
@@ -766,6 +774,10 @@ end
 
 function ForgeController.OnGolemReturned(result, golemId, err)
     ForgeController.Resync()
+end
+
+function ForgeController.OnItemRenamed(kind, id, ok, result)
+    if kind == "golem" and ok then ForgeController.Resync() end
 end
 
 -- Draws the queue from the server's copy (so jobs that were running before you joined show up too)

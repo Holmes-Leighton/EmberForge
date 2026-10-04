@@ -828,6 +828,21 @@ RemoteEvents.EquipPet.OnServerEvent:Connect(function(player, petId, on)
     end)
 end)
 
+-- ── Naming ────────────────────────────────────────────────────────────────────
+local function RenameHandler(kind, gate)
+    return function(player, id, text)
+        SafeCall(player, function()
+            if gate and not Gate(player, gate) then return end
+            if type(id) ~= "string" or (text ~= nil and type(text) ~= "string") then return end
+            local ok, res = require(script.Parent.Services.NicknameService).Rename(player, kind, id, text or "")
+            RemoteEvents.ItemRenamed:FireClient(player, kind, id, ok, res)
+            if not ok then Tell(player, "Can't rename", tostring(res)) end
+        end)
+    end
+end
+RemoteEvents.RenameGolem.OnServerEvent:Connect(RenameHandler("golem"))
+RemoteEvents.RenamePet.OnServerEvent:Connect(RenameHandler("pet", "Pets"))
+
 RemoteEvents.MergePets.OnServerEvent:Connect(function(player, petType, variant)
     SafeCall(player, function()
         if not Gate(player, "Pets") or not Gate(player, "PetMerge") then return end
@@ -988,6 +1003,7 @@ end
 -- ── Cleanup ────────────────────────────────────────────────────────────────────
 Players.PlayerRemoving:Connect(function(player)
     rateLimits[tostring(player.UserId)] = nil
+    require(script.Parent.Services.NicknameService).OnPlayerLeave(player)
     local partnerId = TradingService.OnPlayerLeave(player)
     local partner = partnerId and Players:GetPlayerByUserId(partnerId)
     if partner then RemoteEvents.TradeClosed:FireClient(partner, "", player.DisplayName .. " left the game") end

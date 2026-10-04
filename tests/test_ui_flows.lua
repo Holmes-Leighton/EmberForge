@@ -273,7 +273,11 @@ do
     expect(copper.Text == "Unlocked by level", "level-unlocked pad says so")
     Snapshot.PlayerLevel = 1
     ShopController.RefreshPads()
+    local productData = load("game/ReplicatedStorage/Shared/Data/ProductData")
+    local realCopperId = productData.GamePasses.Pad_Copper.id
+    productData.GamePasses.Pad_Copper.id = 0              -- (the real pass has an id now; this checks the "not on sale yet" path)
     click(copper)
+    productData.GamePasses.Pad_Copper.id = realCopperId
     local stack = gui("Toasts"):FindFirstChild("Stack")
     local told = false
     for _, t in ipairs(stack:GetChildren()) do

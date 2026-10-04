@@ -7,6 +7,7 @@ local LocalPlayer = Players.LocalPlayer
 local Theme        = require(game.ReplicatedStorage.Shared.Modules.Theme)
 local ScaleUI      = require(game.ReplicatedStorage.Shared.Modules.ScaleUI)
 local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
+local RenameDialog = require(game.ReplicatedStorage.Shared.Modules.RenameDialog)
 local PetModel     = require(game.ReplicatedStorage.Shared.Modules.PetModel)
 local PetData      = require(game.ReplicatedStorage.Shared.Data.PetData)
 local ProductData  = require(game.ReplicatedStorage.Shared.Data.ProductData)
@@ -430,7 +431,7 @@ local function Reload()
         local def = PetData.Get(pet.type)
         if def then
             -- worn pets get their own row, so "Put away" and "Wear" each act on exactly the pets in that row
-            local key = pet.type .. "|" .. (pet.variant or "") .. "|" .. PetData.StageOf(pet).id .. (worn[pet.id] and "|worn" or "")
+            local key = pet.type .. "|" .. (pet.variant or "") .. "|" .. PetData.StageOf(pet).id .. (worn[pet.id] and "|worn" or "") .. (pet.nickname and ("|n" .. pet.id) or "")      -- a named pet is its own row
             local g = groups[key]
             if not g then
                 g = { type = pet.type, variant = pet.variant, def = def, pets = {}, wornIds = {} }
@@ -463,7 +464,8 @@ local function Reload()
         if g.variant ~= "MegaNeon" then
             sub ..= string.format("   (merge %d to make 1 %s)", PetData.MERGE_COUNT, nextLabel)
         end
-        local petRow = Row(stage.id .. " " .. PetData.DisplayName(sample) .. (count > 1 and ("  x" .. count) or "") .. (isWorn and "  (worn)" or ""), sub, rc,
+        local petTitle = sample.nickname and (PetData.DisplayName(sample) .. " (" .. stage.id .. ")") or (stage.id .. " " .. PetData.DisplayName(sample))
+        local petRow = Row(petTitle .. (count > 1 and ("  x" .. count) or "") .. (isWorn and "  (worn)" or ""), sub, rc,
             isWorn and "Put away" or "Wear", isWorn and Theme.Colors.PanelAlt or Theme.Colors.Accent,
             function()
                 local id = isWorn and g.wornIds[1] or g.pets[1].id
@@ -473,6 +475,19 @@ local function Reload()
             canMerge and { text = "Merge " .. PetData.MERGE_COUNT, color = Theme.Colors.Success,
                 onClick = function() RemoteEvents.MergePets:FireServer(g.type, g.variant) end } or nil)
         AddPortrait(petRow, sample)
+        if petRow then
+            local nameLbl = petRow:FindFirstChildWhichIsA("TextLabel")
+            if nameLbl then
+                local target = isWorn and sample or g.pets[1]
+                RenameDialog.AddPencil(petRow, nameLbl, function()
+                    RenameDialog.Open({
+                        kind = "pet", current = target.nickname,
+                        baseName = PetData.DisplayName({ type = target.type, variant = target.variant }),
+                        onSubmit = function(text) RemoteEvents.RenamePet:FireServer(target.id, text) end,
+                    })
+                end)
+            end
+        end
     end
 end
 
@@ -498,6 +513,10 @@ task.spawn(function()
         paidRandomRestricted = false
         if gui.Enabled then Reload() end
     end
+end)
+
+RemoteEvents.ItemRenamed.OnClientEvent:Connect(function(kind, id, ok)
+    if kind == "pet" and ok and gui.Enabled then task.delay(0.2, Reload) end
 end)
 
 RemoteEvents.PetsMerged.OnClientEvent:Connect(function(ok, result)

@@ -21,10 +21,19 @@ function GolemNames.Describe(golem)
     -- a special Golem is just "<Name> Golem" (its tier shows as rarity); elements get "<Element> <Tier name>"
     local label = special and special.displayName or tostring(golem.element)
     local base = special and (label .. " Golem") or string.format("%s %s", label, tierDef and tierDef.name or "Golem")
+    local fullName  = (variantDef and (variantDef.label .. " ") or "") .. base
+    local shortName = (variantDef and (variantDef.label .. " ") or "") .. label .. " Golem"
+    -- a Golem its owner has named: "Rocky the Frost Core Golem" in lists, just "Rocky" over its head and in alerts
+    local nickname = type(golem.nickname) == "string" and golem.nickname ~= "" and golem.nickname or nil
+    if nickname then
+        fullName  = nickname .. " the " .. fullName
+        shortName = nickname
+    end
     return {
         skill      = special and special.skill or nil,
-        name       = (variantDef and (variantDef.label .. " ") or "") .. base,
-        shortName  = (variantDef and (variantDef.label .. " ") or "") .. label .. " Golem",
+        nickname   = nickname,
+        name       = fullName,
+        shortName  = shortName,
         tierName   = tierDef and tierDef.name or "Golem",
         rarity     = rarity,
         rarityColor = GolemNames.RarityColor(rarity),

@@ -115,6 +115,7 @@ local function Build(golem, ownerName, equipped, owner)
         owner.Parent = tag
 
         local name = Instance.new("TextLabel")
+        name.Name = "NameLabel"
         name.Position = UDim2.new(0, 0, 0.38, 0)
         name.Size = UDim2.new(1, 0, 0.34, 0)
         name.BackgroundTransparency = 1

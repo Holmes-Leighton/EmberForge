@@ -118,6 +118,7 @@ Instance = {
         local o = setmetatable({ ClassName = class, Name = name or class, _kids = {}, _props = {}, _signals = {}, _propSignals = {},
             _attrs = {}, _fired = {}, _parent = nil }, instanceMeta)
         if class == "ScrollingFrame" then rawget(o, "_props").AbsoluteCanvasSize = Vector2.new(0, 0) end
+        if class == "Part" or class == "MeshPart" or class == "WedgePart" or class == "UnionOperation" then rawget(o, "_props").Transparency = 0 end    -- Roblox's default
         local p = forceParent or parent
         if p then o.Parent = p end
         return o
@@ -197,6 +198,7 @@ local services = {
 }
 rawset(game, "GetService", function(_, name) return services[name] or realGetService(game, name) end)
 workspace = Instance.new("Workspace")
+workspace.GetServerTimeNow = function() return os.time() end
 workspace.CurrentCamera = { ViewportSize = Vector2.new(1280, 720), GetPropertyChangedSignal = function() return newSignal() end,
     CFrame = { Position = Vector3.new(0, 0, 0) } }
 
