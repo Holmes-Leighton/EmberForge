@@ -6,7 +6,7 @@ local CartBountyData = require(game.ReplicatedStorage.Shared.Data.CartBountyData
 local CourierRewards = {}
 
 CourierRewards.BUNDLE_RUNS_PER_DAY = 15       -- material bundles are paid for this many runs a day; after that a run pays coins and XP only
-CourierRewards.CAP_RUNS_BASE = 25             -- the daily coin allowance is this many "base rewards" (so about this many rookie runs)
+CourierRewards.CAP_RUNS_BASE = 10             -- the daily coin allowance is this many "base rewards" (kept small: see tools/balance_model.py)
 
 function CourierRewards.Defaults()
     return { level = 1, xp = 0, runs = 0, best = {}, day = 0, earned = 0, runsToday = 0, dailyDone = 0 }

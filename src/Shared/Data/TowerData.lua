@@ -27,15 +27,15 @@ TowerData.PAR_SECONDS_PER_LEVEL = 16   -- a summit under this x the number of le
 TowerData.GATE_LEVEL    = 3            -- the player level that unlocks the tower (FeatureGates)
 
 -- ── Rewards ───────────────────────────────────────────────────────────────────
--- Each level pays more than the one below: coins(n) = (1 + 0.2 x playerLevel) x n^1.35. Level 1 is a handful of coins, level 30 about 100 times that
+-- Each level pays more than the one below: coins(n) = (0.4 + 0.08 x playerLevel) x n^1.35, at least 1. Level 1 is a handful of coins, level 30 about 100 times that
 -- (Tower of Hell's curve). The daily allowance caps coins (XP and Courier Level are not capped), so the tower is not an unlimited faucet.
 TowerData.COIN_EXPONENT = 1.35
-TowerData.CAP_RUNS      = 70           -- the daily coin allowance is this many "base rewards" (see CourierRewards.DailyCap)
+TowerData.CAP_RUNS      = 30           -- the daily coin allowance is this many "base rewards" (see CourierRewards.DailyCap)
 TowerData.TOP_CHEST_MULT = 3           -- the summit chest pays this many times the top level's coins
 TowerData.FIRST_SUMMIT_MULT = 2        -- the first summit of the day pays double
 
 function TowerData.LevelCoins(playerLevel, level)
-    return math.floor((1 + 0.2 * (playerLevel or 1)) * level ^ TowerData.COIN_EXPONENT)
+    return math.max(1, math.floor((0.4 + 0.08 * (playerLevel or 1)) * level ^ TowerData.COIN_EXPONENT))
 end
 
 -- Materials a level pays, by height. Only every 5th level pays a bundle (so the inventory is not flooded), and the bundle gets better with height.

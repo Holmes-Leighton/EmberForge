@@ -21,17 +21,35 @@ def cart_cap(level):                     return min(2500, 120 + 15 * level)
 EV_QUEST = 1 + 0.5 * (1 / 10)          # Coin Rush hour is 1 in 10
 EV_SELL  = 1 + 1.0 * (1 / 10)          # Market Hour is 1 in 10
 
+# ---- the activity sources added since: Cart Run courses, Courier Run, Sky Tower (formulas copied from CartBountyData / CartCourseData / CourierRewards / TowerData / TowerRewards) ----
+# What a session of each pays, and how many sessions a daily player does, are assumptions: replace them with analytics. The allowances are the hard caps from the code.
+def quick_reward(level):  return 30 + 4 * level                      # CartBountyData.Reward
+def cartrun_cap(level):   return cart_cap(level) * 1.5                # CartBountyData.CourseCap
+def cartrun_run(level):   return quick_reward(level) * 2 * 1.25       # the mid course (Cave Run, x2) plus its checkpoints (about 12% each, two of them)
+CARTRUN_RUNS = 3
+def courier_cap(level):   return (40 + 5 * level) * 10                # CourierRewards.DailyCap
+def courier_run(level):   return (40 + 5 * level) * 1.0 * 1.2        # Cavern Courier (x1.0) with a Silver medal
+COURIER_RUNS = 4
+def tower_level_coins(level, n):  return max(1, int((0.4 + 0.08 * level) * n ** 1.35))      # TowerData.LevelCoins
+def tower_cap(level):     return (40 + 5 * level) * 30                # TowerData.CAP_RUNS
+def tower_climb(level, reach):    return sum(tower_level_coins(level, n) for n in range(1, reach + 1))
+TOWER_CLIMBS, TOWER_REACH = 2, 15                                     # two 10-minute climbs a day, reaching about level 15 (the summit is level 30)
+def tower_daily(level):   return min(tower_cap(level), TOWER_CLIMBS * tower_climb(level, TOWER_REACH) + tower_level_coins(level, 14) * 4)   # plus the daily challenge chest
+
 personas_c = [("new (lvl 1, forge 1)", 1, 1, 0), ("early (lvl 10, forge 3)", 10, 3, 0), ("mid (lvl 25, forge 6)", 25, 6, 1), ("late (lvl 50, forge 10)", 50, 10, 3)]
 print("coins per day, by how far a player has got:")
-print(f"  {'':26s}{'old sources':>12s}{'sell':>8s}{'carts':>8s}{'events':>8s}{'total':>9s}")
+print(f"  {'':26s}{'old sources':>12s}{'sell':>8s}{'carts':>8s}{'events':>8s}{'cartrun':>9s}{'courier':>9s}{'tower':>8s}{'total':>9s}")
 rows = []
 for name, lvl, fg, asc in personas_c:
     sell = sell_cap(lvl, fg, asc) * SELL_USE * EV_SELL
     cart = cart_cap(lvl) * CART_USE
     ev = (daily_quests + weekly_quests) * (EV_QUEST - 1)
-    total = base_per_day + sell + cart + ev
+    cr = min(cartrun_cap(lvl), CARTRUN_RUNS * cartrun_run(lvl)) if lvl >= 4 else 0
+    co = min(courier_cap(lvl), COURIER_RUNS * courier_run(lvl)) if lvl >= 3 else 0
+    tw = tower_daily(lvl) if lvl >= 3 else 0
+    total = base_per_day + sell + cart + ev + cr + co + tw
     rows.append((name, total))
-    print(f"  {name:26s}{base_per_day:>12,.0f}{sell:>8,.0f}{cart:>8,.0f}{ev:>8,.0f}{total:>9,.0f}")
+    print(f"  {name:26s}{base_per_day:>12,.0f}{sell:>8,.0f}{cart:>8,.0f}{ev:>8,.0f}{cr:>9,.0f}{co:>9,.0f}{tw:>8,.0f}{total:>9,.0f}")
 per_day = base_per_day
 print(f"\nold model (no new sources): {base_per_day:,.0f} a day.\n")
 

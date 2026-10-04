@@ -67,7 +67,7 @@ Recommendation: not yet. Six mining zones, the Quarry and pets already give plen
 - [x] Three cart courses (Easy Haul, Cave Run, Deep Run) with tunnels, hills, crusher gates and retracting bridges; cart collision body; own daily allowance.
 - [ ] Check it in Studio at a real frame rate (the test session ran at about 15 fps): smooth cart, gate and bridge animation, signs, tunnels, the solid cart body.
 - [x] A signpost near the spawn pointing east to the courses (names and levels on the board), plus a tall beam over each course's start.
-- [ ] Balance the Cart Run pay (x1.5 / x4 / x9 of the quick-haul reward, allowance x4) with `tools/balance_model.py` once someone has played a few runs.
+- [x] Balance pass for Cart Run, Courier Run and the Sky Tower (`tools/balance_model.py` now models them): together they paid about 4,100 coins a day at level 10, four times everything else, so pay was scaled down (cart courses x0.8 / x2 / x4.5 with a 1.5x allowance, Courier x0.4 / x1 / x2.5 with a 10-reward allowance, tower coins (0.4 + 0.08 x level) x n^1.35 with a 30-reward allowance): now about 1,600 a day at level 10 (total 2.9k). Still assumptions: replace the session counts in the model with real analytics once players exist.
 - [x] Courier Run v1 works end to end in Studio: three flat-ish obstacle courses in the north strip (crate pickup, timer HUD, checkpoints, falls, lava chase, spinners,
       crushers, moving and crumbling platforms, drop-off, results screen with confetti, Courier Level, fastest-time boards, daily challenge). Code: `CourierData`,
       `CourierLayout`, `CourierRunner`, `CourierRewards`, `CourierArt`, `CourierService`, `CourierController`.

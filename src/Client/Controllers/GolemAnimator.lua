@@ -162,18 +162,6 @@ local function Track(model)
         for _, d in ipairs(model:GetDescendants()) do
             if d:IsA("BasePart") and d.Transparency < 1 and d.Name ~= "PickHead" and d.Name ~= "PickHandle" then table.insert(info.solid, d) end      -- (the pick may rest on, or in, the ground; the body must not)
         end
-        -- a body with no legs (a floating Void Golem) hovers: how far its lowest part is above the ground, so it can settle onto it when it sits
-        info.legless = #info.legs == 0
-        info.hoverHeight = 0
-        if info.legless and #info.solid > 0 then
-            local lowest = math.huge
-            for _, d in ipairs(info.solid) do
-                local rel = base:ToObjectSpace(d.CFrame)
-                local _, _, _, _, _, _, r10, r11, r12 = rel:GetComponents()
-                lowest = math.min(lowest, rel.Y - (math.abs(r10) * d.Size.X + math.abs(r11) * d.Size.Y + math.abs(r12) * d.Size.Z) / 2)
-            end
-            info.hoverHeight = math.max(0, lowest)
-        end
         -- a puff of dust when the pick lands (the emitter sits on the pick head and is fired by the swing)
         local tip = model:FindFirstChild("PickHead", true)
         if tip and tip:IsA("BasePart") then
@@ -338,11 +326,8 @@ local function Step()
                     local walking = ws.walking
                     -- sitting down and standing up are animated, not snapped: `sit` eases toward 1 when it breaks down and back to 0 when repaired
                     -- (about a second each way); the legs bend at the hips and the hips lower onto the ground
-                    -- a Golem with no legs (a floating Void Golem, say) has nothing to step with: it glides, and when it breaks down it sinks onto the ground
-                    local legless = info.legless
-                    local sitGoal = stopped and 1 or 0
-                    info.sit = (info.sit or 0) + (sitGoal - (info.sit or 0)) * math.min(1, dtm * 2.4)
-                    if math.abs(sitGoal - info.sit) < 0.004 then info.sit = sitGoal end
+                    info.sit = (info.sit or 0) + ((stopped and 1 or 0) - (info.sit or 0)) * math.min(1, dtm * 2.4)
+                    if math.abs((stopped and 1 or 0) - info.sit) < 0.004 then info.sit = stopped and 1 or 0 end
                     local sit = info.sit
                     info.swingClock = (info.swingClock or (phase / (math.pi * 2))) + dtm * tempo * fx.tempo / SWING_PERIOD
                     local clock = info.swingClock
@@ -354,9 +339,6 @@ local function Step()
                     local rise = r * 1.2 * (1 - fx.slump * 0.55)                    -- the arm angle in radians while mining (a tired arm is raised less)
                     local stepT = t * GolemWalk.STRIDE_RATE
                     local stride = math.sin(stepT) * 0.4 * ws.env
-                    local hover = legless and math.sin(t * 1.6 + phase) * 0.25 * (1 - fx.slump) or 0       -- limbless: a slow float instead of footsteps
-                    -- with no arm to swing, the whole body does the work: it rears up and back on the wind-up and slams down into the strike
-                    local bodyWork = (legless and not info.armR) and 1 or 0
                     local raise = rise + (0.55 - rise) * ws.env                      -- during a walk the pick arm hangs and swings a little
                     -- idle move (only while standing and mining): whole-body motion plus an arm pose blended over the mining swing
                     local move, mk = IdleMoves.Step(info.idle, t, not walking and not stopped)
@@ -369,12 +351,11 @@ local function Step()
                     elseif move == "inspect" then xL, xR = xL + (0.1 - xL) * w, xR + (1.15 - xR) * w end
                     -- the whole body works with the arm: lean (negative pitch = forward) and twist into the strike, sway and shift weight on a walk
                     local mine = 1 - ws.env
-                    local lean = -drive * (0.09 + 0.2 * bodyWork) * mine * (1 - sit) - 0.05 * ws.env - fx.slump * 0.18 * (1 - sit) - sit * 0.1
-                    local twist = drive * (0.1 + 0.12 * bodyWork) * mine + math.cos(stepT) * 0.06 * ws.env
-                    local roll = legless and 0 or math.sin(stepT) * 0.05 * ws.env
-                    local hipHeight = legless and info.hoverHeight or (info.legs and info.legs[1] and info.legs[1].pivot.Y) or 3
-                    local settle = (r < 0.2 and (0.2 - r) * (0.5 + 2 * bodyWork) or 0) * mine * (1 - sit) + fx.slump * 0.8 * (1 - sit) + sit * hipHeight
-                        - r * 0.9 * bodyWork * mine * (1 - sit)      -- sinks as the pick lands, sags when tired, and lowers the hips to the ground when sitting
+                    local lean = -drive * 0.09 * mine * (1 - sit) - 0.05 * ws.env - fx.slump * 0.18 * (1 - sit) - sit * 0.1
+                    local twist = drive * 0.1 * mine + math.cos(stepT) * 0.06 * ws.env
+                    local roll = math.sin(stepT) * 0.05 * ws.env
+                    local hipHeight = (info.legs and info.legs[1] and info.legs[1].pivot.Y) or 3
+                    local settle = (r < 0.2 and (0.2 - r) * 0.5 or 0) * mine * (1 - sit) + fx.slump * 0.8 * (1 - sit) + sit * hipHeight       -- sinks as the pick lands, sags when tired, and lowers the hips to the ground when sitting
                     -- puff dust the moment the pick lands
                     if not walking and not stopped then
                         local strike = cycle + (u >= GolemMotion.IMPACT and 1 or 0)
@@ -383,8 +364,7 @@ local function Step()
                     else
                         info.lastStrike = nil
                     end
-                    local stepBob = legless and hover or GolemWalk.Bob(ws, t)
-                    local b = base * CFrame.new(ws.x, (ibob + stepBob - settle) * scale, ws.z)
+                    local b = base * CFrame.new(ws.x, (ibob + GolemWalk.Bob(ws, t) - settle) * scale, ws.z)
                         * CFrame.Angles(ipitch + lean, iyaw + ws.yaw + twist, iroll + roll)
                     if info.rest then model:PivotTo(b * info.rest) end
                     if info.legs then

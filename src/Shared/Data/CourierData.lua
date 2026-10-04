@@ -23,7 +23,7 @@ CourierData.Limits = {
 
 CourierData.Courses = {
     {
-        id = "RookieRun", name = "Rookie Run", tier = 1, minLevel = 3, minCourier = 1, rewardMult = 1.0,
+        id = "RookieRun", name = "Rookie Run", tier = 1, minLevel = 3, minCourier = 1, rewardMult = 0.4,
         color = Color3 and Color3.fromRGB(120, 210, 255) or nil,
         base = { x = 470, y = 14, z = 142 }, zRange = 12,
         lava = nil,
@@ -42,7 +42,7 @@ CourierData.Courses = {
         },
     },
     {
-        id = "CavernCourier", name = "Cavern Courier", tier = 2, minLevel = 8, minCourier = 3, rewardMult = 2.5,
+        id = "CavernCourier", name = "Cavern Courier", tier = 2, minLevel = 8, minCourier = 3, rewardMult = 1.0,
         color = Color3 and Color3.fromRGB(255, 190, 80) or nil,
         base = { x = 910, y = 14, z = 142 }, zRange = 12,
         lava = { speed = 3.4, headStart = 55 },
@@ -63,7 +63,7 @@ CourierData.Courses = {
         },
     },
     {
-        id = "DeepCourier", name = "Deep Courier", tier = 3, minLevel = 14, minCourier = 8, rewardMult = 6,
+        id = "DeepCourier", name = "Deep Courier", tier = 3, minLevel = 14, minCourier = 8, rewardMult = 2.5,
         color = Color3 and Color3.fromRGB(255, 90, 60) or nil,
         base = { x = 1480, y = 14, z = 142 }, zRange = 12,
         lava = { speed = 4.2, headStart = 45 },

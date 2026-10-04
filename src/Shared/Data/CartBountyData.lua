@@ -20,7 +20,7 @@ function CartBountyData.Cap(data)
 end
 
 -- Cart Run courses (CartCourseData) pay from their own daily allowance, so they never use up the quick hauls' (and the reverse).
-CartBountyData.COURSE_CAP_MULT = 4              -- the course allowance is this many times the quick-haul allowance
+CartBountyData.COURSE_CAP_MULT = 1.5            -- the course allowance is this many times the quick-haul allowance (kept small: see tools/balance_model.py)
 CartBountyData.COURSE_CHECKPOINT_SHARE = 0.12   -- each checkpoint pays this share of the run's base reward
 CartBountyData.GOLD_BONUS, CartBountyData.SILVER_BONUS = 1.5, 1.2     -- finishing under par / under 1.35 x par
 

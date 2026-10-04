@@ -23,7 +23,7 @@ CartCourseData.MIN_PUSH_TIME = 6        -- a player must have pushed at least th
 
 CartCourseData.Courses = {
     {
-        id = "EasyHaul", name = "Easy Haul", tier = 1, minLevel = 1, rewardMult = 1.5, parSpeed = 10,
+        id = "EasyHaul", name = "Easy Haul", tier = 1, minLevel = 1, rewardMult = 0.8, parSpeed = 10,
         color = Color3 and Color3.fromRGB(120, 210, 255) or nil,
         controls = {
             { 180, 0.6, -103 }, { 250, 0.6, -103 }, { 310, 0.6, -86 }, { 380, 0.6, -86 }, { 440, 0.6, -108 },
@@ -34,7 +34,7 @@ CartCourseData.Courses = {
         hazards     = {},
     },
     {
-        id = "CaveRun", name = "Cave Run", tier = 2, minLevel = 4, rewardMult = 4, parSpeed = 10,
+        id = "CaveRun", name = "Cave Run", tier = 2, minLevel = 4, rewardMult = 2, parSpeed = 10,
         color = Color3 and Color3.fromRGB(255, 190, 80) or nil,
         controls = {
             { 700, 0.6, -103 }, { 760, 0.6, -103 }, { 820, 0.6, -122 }, { 880, 0.6, -149 }, { 950, 0.6, -157 },
@@ -49,7 +49,7 @@ CartCourseData.Courses = {
         },
     },
     {
-        id = "DeepRun", name = "Deep Run", tier = 3, minLevel = 10, rewardMult = 9, parSpeed = 10,
+        id = "DeepRun", name = "Deep Run", tier = 3, minLevel = 10, rewardMult = 4.5, parSpeed = 10,
         color = Color3 and Color3.fromRGB(255, 90, 60) or nil,
         controls = {
             { 1520, 0.6, -103 }, { 1580, 0.6, -103 }, { 1640, 0.6, -85 }, { 1700, 0.6, -68 }, { 1760, 5, -66 },
