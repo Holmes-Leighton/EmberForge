@@ -16,6 +16,11 @@
       needs its own materials and a distinct look, not only a recolour) and the Forge decorations. Code: `ForgeZoneService.lua`, `ForgeBuilder.lua`,
       `ForgeBuildData.lua`, `CosmeticData.lua`. Prompts and the level-by-level look are in `ART_BRIEF.md` section 5.
 
+- [ ] **Season rewards: every week so far can be claimed at once.** Not an exploit: `SeasonPassService.ClaimWeekReward` only blocks weeks that have not started yet
+      (`weekNumber > currentWeek`), and weeks unlock by the calendar. Season 3 started 2026-08-25, so on 2026-10-04 weeks 1 to 6 are all open, and a brand-new player
+      can claim all of them in one go (the paid Standard/Premium tracks still need the pass). Decide whether that catch-up is wanted. If not, options: only let
+      players claim the current and previous week, or unlock each week by progress (season XP / weekly challenges done) instead of by date.
+
 ## Monetisation
 - [x] Developer Product and Game Pass ids are set in `ProductData.lua` (10 passes, 12 products).
 - [ ] Buy one cheap product and one pass on the published place and confirm the item arrives (`LAUNCH_GUIDE.md` phase 4).
@@ -52,7 +57,7 @@ Recommendation: not yet. Six mining zones, the Quarry and pets already give plen
 ## Cart Run (courses in `CartCourseData.lua`; code in `CartRunner`, `CartCourseService`, `CartCourseArt`, `CartCourseController`)
 - [x] Three cart courses (Easy Haul, Cave Run, Deep Run) with tunnels, hills, crusher gates and retracting bridges; cart collision body; own daily allowance.
 - [ ] Check it in Studio at a real frame rate (the test session ran at about 15 fps): smooth cart, gate and bridge animation, signs, tunnels, the solid cart body.
-- [ ] A signpost and beam near the spawn pointing to the courses (they start at x 180 / 700 / 1520 in the south band, far from the spawn).
+- [x] A signpost near the spawn pointing east to the courses (names and levels on the board), plus a tall beam over each course's start.
 - [ ] Balance the Cart Run pay (x1.5 / x4 / x9 of the quick-haul reward, allowance x4) with `tools/balance_model.py` once someone has played a few runs.
 - [ ] Courier Run (carry a crate through an obstacle course) alongside the carts, with a lava chase, Courier Level, fastest-time boards, a daily challenge and
       juice (sparks, floating numbers, combos). Started: `CourierLayout.lua` (the geometry generator). Still to do: `CourierData`, the runner rules, art, service,

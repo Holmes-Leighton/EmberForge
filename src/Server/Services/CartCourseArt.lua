@@ -302,6 +302,37 @@ function CartCourseArt.Build(parent, r)
     return folder
 end
 
+-- A signpost near the spawn pointing east to the courses, which start 180 studs and more away along the south wall. A tall beam over the first course's start
+-- (see BuildStart) can be seen from here, and the sign names the three courses with the level each needs.
+function CartCourseArt.BuildSignpost(parent)
+    local unit = Instance.new("Model")
+    unit.Name = "CartRunSignpost"
+    local base = Vector3.new(48, 0, -74)
+    P({ Name = "SignPost", Material = Enum.Material.Wood, Color = TIMBER, Size = Vector3.new(2, 15, 2), CFrame = CFrame.new(base + Vector3.new(0, 7.5, 0)) }, unit)
+    -- the board faces west, towards the spawn, with its lettering on that face
+    local boardPos = base + Vector3.new(0, 14, 0)
+    local face = CFrame.lookAt(boardPos, boardPos + Vector3.new(-1, 0, 0))
+    local board = P({ Name = "SignBoard", Material = Enum.Material.Wood, Color = Color3.fromRGB(120, 84, 52), Size = Vector3.new(16, 7, 1), CFrame = face }, unit)
+    local stripe = P({ Name = "SignStripe", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 190, 80), Size = Vector3.new(16.4, 0.6, 1.1), CanCollide = false,
+        CFrame = face * CFrame.new(0, 3.8, 0) }, unit)
+    local lines = { "CART RUNS  >>>" }
+    for _, c in ipairs(CartCourseData.Courses) do
+        table.insert(lines, string.format("%s  (level %d+)", c.name, c.minLevel))
+    end
+    local gui = Instance.new("SurfaceGui")
+    gui.Name, gui.Face, gui.SizingMode, gui.PixelsPerStud = "Lettering", Enum.NormalId.Front, Enum.SurfaceGuiSizingMode.PixelsPerStud, 40
+    gui.Parent = board
+    local text = Instance.new("TextLabel")
+    text.Size, text.BackgroundTransparency, text.Text = UDim2.new(1, 0, 1, 0), 1, table.concat(lines, "\n")
+    text.TextColor3, text.Font, text.TextScaled = Color3.fromRGB(255, 232, 170), Enum.Font.GothamBold, true
+    text.Parent = gui
+    local light = Instance.new("PointLight")
+    light.Color, light.Range, light.Brightness = Color3.fromRGB(255, 200, 120), 40, 1.4
+    light.Parent = stripe
+    unit.Parent = parent
+    return unit
+end
+
 -- ── The cart ──────────────────────────────────────────────────────────────────
 -- Where the cart's body sits (and how it is turned) at distance s along the course
 function CartCourseArt.CartCFrame(r, s)

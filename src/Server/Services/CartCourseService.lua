@@ -167,6 +167,7 @@ local function BuildAll()
     root.Name = "CartRuns"
     root.Parent = world
     courses = {}
+    CartCourseArt.BuildSignpost(root)
     for i, def in ipairs(CartCourseData.Courses) do
         local c = BuildCourse(world, root, def.id, i)
         local s = saved[def.id]
