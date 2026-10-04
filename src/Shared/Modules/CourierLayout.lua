@@ -100,7 +100,7 @@ end
 -- A thin beam to walk along
 function Modules.beam(L, cur, p)
     local x0 = cur.x + (p.gap or 3)
-    Plat(L, x0, p.len, cur.y, cur.z, p.width)
+    Plat(L, x0, p.len, cur.y, cur.z, p.width, p.pipe and { pipe = true } or nil)             -- (pipe = true: drawn as a round steel pipe you balance on)
     cur.x = x0 + p.len
 end
 

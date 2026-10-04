@@ -86,6 +86,11 @@ Recommendation: not yet. Six mining zones, the Quarry and pets already give plen
          its sign; ladders (real trusses), conveyor belts, slippery ice, bounce pads that throw you up and forward, sweeper bars, tiny islands, and combinations; a tower deals
          from a shuffled deck (28 different designs in 30 levels). The tower stays compact. **Still needs the user's playtest**: which levels are fun, which are dull or unfair,
          and what to add next (jump distances and difficulty are tuned by number, not by feel). The portal now triggers when you walk into it.
+      7. [x] Look, round 2 (user: "so basic ... scaffolding pipes things to climb"): the tower sits inside a construction-scaffold frame (four steel corner poles the full height with
+         braces, X-diagonals and yellow couplings); metal, dark, lava, slate and wood levels have scaffold-style platforms (cross-beams under the planks, pipe railings); "Pipe Walk" and
+         "Pipe Run" levels and the beams in Ice Beam / Narrow Sweep are round steel pipes with flanges and hazard bands. 30 designs now. Still all built from plain parts.
+      8. [ ] Real meshes for the hero pieces (the user wants scaffolding, pipes and girders to look like the top obbies): generate them with Studio's mesh generator, upload under the
+         game's owner, and swap them in (`CourierArt` names every piece; prompts in `ART_BRIEF.md` part B). I cannot see other games, so the user should name or screenshot the look.
       5. [x] Daily challenge (`TowerData.DailyTarget`, `TowerRewards.PayDaily`): a target level that changes through the week; reaching it pays a 4x chest once a day; shown in the HUD
          ("Daily: reach level N") with a banner when done. The leaderboard has a "Tower" tab (highest level ever) and the best summit time is saved.
          [ ] Still to do: a fastest-summit board at the portal, Pro mode (60 levels, 2.5x; the code supports it, there is no way in yet), gear and mutators.

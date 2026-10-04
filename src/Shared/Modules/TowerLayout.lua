@@ -69,7 +69,7 @@ local DESIGNS = {
       connector = { { "ladder", { gap = 3.5, height = 26, footLen = 8, landLen = 9, width = 12 } } } },
     { name = "Ice Beam", theme = "ice", tier = 3,
       modules = { { "ice", { n = 5, gap = 5, len = 6, width = 6, zigs = { 0, 5, -5, 5, -4 } } },
-                  { "beam", { gap = 4.5, len = 24, width = 3.2 } },
+                  { "beam", { gap = 4.5, len = 24, width = 3.2, pipe = true } },
                   { "crumble", { n = 4, gap = 5, len = 6, width = 6.5, delay = 0.5 } } } },
     { name = "Conveyor Crush", theme = "metal", tier = 3,
       modules = { { "conveyor", { gap = 3, len = 36, width = 12, speed = -5 } },
@@ -108,7 +108,7 @@ local DESIGNS = {
 
     -- more tier 3
     { name = "Narrow Sweep", theme = "slate", tier = 3,
-      modules = { { "beam", { gap = 4, len = 18, width = 3.2 } },
+      modules = { { "beam", { gap = 4, len = 18, width = 3.2, pipe = true } },
                   { "sweeper", { gap = 4.5, len = 30, width = 4.6, n = 2, amp = 3.2, period = 3.2, stagger = 1.6 } } } },
     { name = "Spin Islands", theme = "lava", tier = 3,
       modules = { { "steps", { n = 5, gap = 5.5, len = 5, width = 5.5, rises = { 1, -2, 2, -1, 2 }, zigs = { 0, 4, -4, 4, -3 } } },
@@ -124,6 +124,17 @@ local DESIGNS = {
       modules = { { "bounce", { gap = 4, padLen = 10, width = 12, span = 9, rise = 13, power = 86, hspeed = 28, landLen = 14, landWidth = 14 } },
                   { "mover", { span = 28, len = 8, width = 9, period = 5, landing = 9, landingWidth = 10 } } },
       connector = { { "ladder", { gap = 3.5, height = 26, footLen = 8, landLen = 9, width = 12 } } } },
+
+    -- pipes: balance on round steel pipes
+    { name = "Pipe Walk", theme = "metal", tier = 2,
+      modules = { { "beam", { gap = 3.5, len = 30, width = 4, pipe = true } },
+                  { "steps", { n = 2, gap = 4.5, len = 8, width = 9, rises = { 0, 1 }, zigs = { 0, 0 } } },
+                  { "beam", { gap = 4.5, len = 22, width = 4, pipe = true } } } },
+    { name = "Pipe Run", theme = "dark", tier = 3,
+      modules = { { "beam", { gap = 4, len = 26, width = 3.4, pipe = true } },
+                  { "crumble", { n = 3, gap = 5, len = 6.5, width = 7, delay = 0.55 } },
+                  { "beam", { gap = 5, len = 22, width = 3.2, pipe = true } } },
+      connector = { { "ladder", { gap = 3.5, height = 26, footLen = 8, landLen = 9, width = 11 } } } },
 }
 TowerLayout.Designs = DESIGNS
 

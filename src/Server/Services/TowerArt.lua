@@ -10,15 +10,15 @@ local TIMBER = Color3.fromRGB(100, 70, 44)
 
 -- Each level design has its own look: platform material and colours, and the glow colour of its edges
 TowerArt.Themes = {
-    wood      = { material = Enum.Material.Wood,         color = Color3.fromRGB(150, 104, 64),  rest = Color3.fromRGB(190, 140, 90),  accent = Color3.fromRGB(255, 190, 90) },
+    wood      = { material = Enum.Material.Wood,         color = Color3.fromRGB(150, 104, 64),  rest = Color3.fromRGB(190, 140, 90),  accent = Color3.fromRGB(255, 190, 90), scaffold = true },
     sandstone = { material = Enum.Material.Sandstone,    color = Color3.fromRGB(196, 150, 100), rest = Color3.fromRGB(220, 180, 120), accent = Color3.fromRGB(255, 220, 130) },
-    metal     = { material = Enum.Material.DiamondPlate, color = Color3.fromRGB(110, 116, 128), rest = Color3.fromRGB(150, 156, 168), accent = Color3.fromRGB(255, 160, 60) },
+    metal     = { material = Enum.Material.DiamondPlate, color = Color3.fromRGB(110, 116, 128), rest = Color3.fromRGB(150, 156, 168), accent = Color3.fromRGB(255, 160, 60), scaffold = true },
     neon      = { material = Enum.Material.SmoothPlastic, color = Color3.fromRGB(70, 56, 110),  rest = Color3.fromRGB(96, 80, 150),   accent = Color3.fromRGB(120, 255, 230) },
     ice       = { material = Enum.Material.Ice,          color = Color3.fromRGB(150, 205, 245), rest = Color3.fromRGB(190, 230, 255), accent = Color3.fromRGB(170, 235, 255) },
-    dark      = { material = Enum.Material.Basalt,       color = Color3.fromRGB(56, 48, 56),    rest = Color3.fromRGB(84, 72, 84),    accent = Color3.fromRGB(255, 120, 60) },
+    dark      = { material = Enum.Material.Basalt,       color = Color3.fromRGB(56, 48, 56),    rest = Color3.fromRGB(84, 72, 84),    accent = Color3.fromRGB(255, 120, 60), scaffold = true },
     glass     = { material = Enum.Material.Glass,        color = Color3.fromRGB(120, 200, 230), rest = Color3.fromRGB(160, 225, 245), accent = Color3.fromRGB(200, 250, 255) },
-    slate     = { material = Enum.Material.Slate,        color = Color3.fromRGB(80, 84, 96),    rest = Color3.fromRGB(110, 114, 126), accent = Color3.fromRGB(200, 160, 255) },
-    lava      = { material = Enum.Material.Basalt,       color = Color3.fromRGB(70, 36, 30),    rest = Color3.fromRGB(110, 52, 40),   accent = Color3.fromRGB(255, 90, 40) },
+    slate     = { material = Enum.Material.Slate,        color = Color3.fromRGB(80, 84, 96),    rest = Color3.fromRGB(110, 114, 126), accent = Color3.fromRGB(200, 160, 255), scaffold = true },
+    lava      = { material = Enum.Material.Basalt,       color = Color3.fromRGB(70, 36, 30),    rest = Color3.fromRGB(110, 52, 40),   accent = Color3.fromRGB(255, 90, 40), scaffold = true },
 }
 
 -- A hue that climbs through the rainbow with height, so players can see how high they are by colour
@@ -74,10 +74,56 @@ function TowerArt.Portal(parent, position, facing, label, color, onEnter)
     return unit
 end
 
+-- A construction scaffold around the whole tower: four tall steel poles at the corners with horizontal braces every few levels and X-braces between them, so the climb
+-- happens inside a structure you can see all the way up (and down). Decorative: nothing here is solid, so it never blocks a jump.
+local function Frame(folder, T)
+    local lo, hi, zlo, zhi = 1e9, -1e9, 1e9, -1e9
+    for _, p in ipairs(T.platforms) do
+        lo, hi = math.min(lo, p.x - p.sx / 2), math.max(hi, p.x + p.sx / 2)
+        zlo, zhi = math.min(zlo, p.z - p.sz / 2), math.max(zhi, p.z + p.sz / 2)
+    end
+    local m = 16
+    lo, hi, zlo, zhi = lo - m, hi + m, zlo - m, zhi + m
+    local y0, y1 = T.base.y - 40, (T.finish and T.finish.y or T.base.y) + 60
+    local group = Instance.new("Folder")
+    group.Name = "ScaffoldFrame"
+    group.Parent = folder
+    local STEEL, YELLOW = Color3.fromRGB(110, 116, 128), Color3.fromRGB(255, 200, 60)
+    local function pole(x, z)
+        P({ Name = "ScaffoldPole", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, Color = STEEL, Size = Vector3.new(y1 - y0, 3, 3), CanCollide = false,
+            CFrame = CFrame.new(x, (y0 + y1) / 2, z) * CFrame.Angles(0, 0, math.pi / 2) }, group)
+    end
+    pole(lo, zlo) pole(lo, zhi) pole(hi, zlo) pole(hi, zhi)
+    local function bar(a, b, name)
+        local mid, span = (a + b) / 2, (b - a)
+        P({ Name = name, Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, Color = STEEL, Size = Vector3.new(span.Magnitude, 1.4, 1.4), CanCollide = false,
+            CFrame = CFrame.lookAt(mid, b) * CFrame.Angles(0, math.pi / 2, 0) }, group)
+    end
+    local step = 40
+    local flip = false
+    for y = y0 + step, y1, step do
+        bar(Vector3.new(lo, y, zlo), Vector3.new(hi, y, zlo), "BraceX")
+        bar(Vector3.new(lo, y, zhi), Vector3.new(hi, y, zhi), "BraceX")
+        bar(Vector3.new(lo, y, zlo), Vector3.new(lo, y, zhi), "BraceZ")
+        bar(Vector3.new(hi, y, zlo), Vector3.new(hi, y, zhi), "BraceZ")
+        if y + step <= y1 then                                              -- a diagonal in each bay, alternating, on the two long faces
+            local a, b = flip and lo or hi, flip and hi or lo
+            bar(Vector3.new(a, y, zlo), Vector3.new(b, y + step, zlo), "Diagonal")
+            bar(Vector3.new(b, y, zhi), Vector3.new(a, y + step, zhi), "Diagonal")
+            flip = not flip
+        end
+        for _, corner in ipairs({ { lo, zlo }, { lo, zhi }, { hi, zlo }, { hi, zhi } }) do      -- a yellow coupling band where the braces meet the poles
+            P({ Name = "PoleBand", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Neon, Color = YELLOW, Size = Vector3.new(2, 3.6, 3.6), CanCollide = false,
+                CFrame = CFrame.new(corner[1], y, corner[2]) * CFrame.Angles(0, 0, math.pi / 2) }, group)
+        end
+    end
+end
+
 -- Builds the whole tower for a layout T under `parent`. Returns the folder.
 function TowerArt.Build(parent, T)
     local folder = Instance.new("Folder")
     folder.Name = "SkyTower"
+    Frame(folder, T)
     for i, lv in ipairs(T.levels) do
         local color = LevelColor(i, T.total)
         local theme = TowerArt.Themes[lv.theme] or TowerArt.Themes.slate

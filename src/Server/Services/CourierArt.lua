@@ -75,7 +75,44 @@ local function BuildPlatforms(folder, r)
             end
             part:SetAttribute("BeltSpeed", p.conveyor)
         end
-        trim(p, top)
+        if p.pipe then                                               -- a round steel pipe: a cylinder along the course, with bolted flanges at the ends
+            part.Shape = Enum.PartType.Block
+            part.Transparency = 1
+            part.CanCollide = false
+            local dia = math.max(p.sz, 2.4)
+            local pipe = P({ Name = "PipeWalk", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, Color = Color3.fromRGB(140, 146, 158), Reflectance = 0.1,
+                Size = Vector3.new(p.sx, dia, dia), CFrame = CFrame.new(p.x, top - dia / 2, p.z) }, group)
+            for _, end_ in ipairs({ -1, 1 }) do
+                P({ Name = "PipeFlange", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, Color = Color3.fromRGB(255, 190, 60), Size = Vector3.new(0.8, dia + 1.2, dia + 1.2),
+                    CanCollide = false, CFrame = CFrame.new(p.x + end_ * (p.sx / 2 - 0.4), top - dia / 2, p.z) }, group)
+            end
+            for k = 1, math.max(1, math.floor(p.sx / 8)) do          -- a yellow hazard band every few studs
+                P({ Name = "PipeBand", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Neon, Color = accent, Size = Vector3.new(0.7, dia + 0.3, dia + 0.3),
+                    CanCollide = false, CFrame = CFrame.new(p.x - p.sx / 2 + (p.sx / (math.floor(p.sx / 8) + 1)) * k, top - dia / 2, p.z) }, group)
+            end
+            pipe.CanCollide = true
+            part:Destroy()
+            part = pipe
+        else
+            trim(p, top)
+        end
+        if look.scaffold and not p.pipe and not p.conveyor then       -- scaffold-style: cross-beams under the planks, and on the big platforms pipe railings
+            for k = 1, math.max(2, math.floor(p.sx / 6)) do
+                P({ Name = "CrossBeam", Material = Enum.Material.Metal, Color = Color3.fromRGB(96, 102, 114), Size = Vector3.new(0.9, 0.9, p.sz + 0.4), CanCollide = false,
+                    CFrame = CFrame.new(p.x - p.sx / 2 + (p.sx / (math.max(2, math.floor(p.sx / 6)) + 1)) * k, p.y - p.sy / 2 - 0.5, p.z) }, group)
+            end
+            if isRest then
+                for _, side in ipairs({ -1, 1 }) do
+                    local zr = p.z + side * (p.sz / 2 - 0.5)
+                    P({ Name = "RailPipe", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, Color = Color3.fromRGB(255, 200, 60), Size = Vector3.new(p.sx - 4, 0.7, 0.7),
+                        CanCollide = false, CFrame = CFrame.new(p.x, top + 3.4, zr) }, group)
+                    for k = 0, math.floor((p.sx - 4) / 7) do
+                        P({ Name = "RailPost", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, Color = Color3.fromRGB(110, 116, 128), Size = Vector3.new(3.4, 0.7, 0.7),
+                            CanCollide = false, CFrame = CFrame.new(p.x - (p.sx - 4) / 2 + k * 7, top + 1.7, zr) * CFrame.Angles(0, 0, math.pi / 2) }, group)
+                    end
+                end
+            end
+        end
         if isRest and p.y < 150 then                                -- rest platforms stand on pillars (the Sky Tower, high up, floats); the small ones float
             for _, dz in ipairs({ -p.sz / 2 + 3, p.sz / 2 - 3 }) do
                 local h = p.y - p.sy / 2
