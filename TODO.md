@@ -71,9 +71,14 @@ Recommendation: not yet. Six mining zones, the Quarry and pets already give plen
 - [x] Courier Run v1 works end to end in Studio: three flat-ish obstacle courses in the north strip (crate pickup, timer HUD, checkpoints, falls, lava chase, spinners,
       crushers, moving and crumbling platforms, drop-off, results screen with confetti, Courier Level, fastest-time boards, daily challenge). Code: `CourierData`,
       `CourierLayout`, `CourierRunner`, `CourierRewards`, `CourierArt`, `CourierService`, `CourierController`.
-- [ ] **Courier Run needs LEVELS and to climb really high** (user request): turn it into a tower of levels (floors) that climbs high like other obbies, with rewards
-      that grow with the height reached (each level banks a reward, falling returns you to the last level, the top pays most). Needs a decision on where it can go
-      (the cavern roof is 110 studs up).
+- [ ] **Sky Tower** (user request: levels, climb really high like the top obbies, higher = better rewards). Design in `TOWER_DESIGN.md`, modelled on Tower of Hell
+      (random tower each round, timer, pay per level rising steeply, speed-up when someone summits) and Mega Easy Obby (a checkpoint every level). Decisions made:
+      built in the sky far above the cavern, every level pays and the top pays most. Build order:
+      1. [x] `TowerLayout.lua`: composes a tower from a seed (30 levels, about 770 studs; 60 for Pro); tests prove every jump on 60 random seeds.
+      2. [ ] Tower rewards (per-level coin curve, materials by height, top chest) and rounds (8-minute timer, speed-up on a summit, a new seed each round).
+      3. [ ] Tower art: platforms, climbs, numbered level signs, sky backdrop, a portal in the hub and a return.
+      4. [ ] `TowerService` + client HUD: level counter, round clock, "highest level" list, level-up effects.
+      5. [ ] Boards, daily challenge, Pro mode (60 levels, 2.5x), gear and mutators.
 - [ ] Courier Run: play it by hand at a real frame rate on a phone and a PC and tune the jump distances, platform sizes, speeds and lava pace.
 
 ## New feature ideas
