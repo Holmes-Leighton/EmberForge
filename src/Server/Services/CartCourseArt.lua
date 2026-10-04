@@ -257,7 +257,7 @@ local function BuildStart(folder, r)
     local anchor = P({ Name = "SignAnchor", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(post + Vector3.new(0, 12, 0)) }, unit)
     local text = string.format("CART RUN: %s\n%s  Level %d+  Par %s\nPush the cart to the depot!", r.name, Stars(r.def.tier), r.def.minLevel,
         string.format("%d:%02d", math.floor(r.par) // 60, math.floor(r.par) % 60))
-    Label(unit, anchor, text, UDim2.new(0, 300, 0, 90), Vector3.new(0, 0, 0), color, 200)
+    Label(unit, anchor, text, UDim2.new(0, 300, 0, 90), Vector3.new(0, 0, 0), color, 90)
     P({ Name = "StartBeam", Material = Enum.Material.Neon, Color = color, Transparency = 0.65, Size = Vector3.new(3, 90, 3), CanCollide = false,
         CFrame = CFrame.new(post + Vector3.new(0, 36, 0)) }, unit)
     local light = Instance.new("PointLight")
@@ -308,23 +308,28 @@ function CartCourseArt.BuildSignpost(parent)
     local unit = Instance.new("Model")
     unit.Name = "CartRunSignpost"
     local base = Vector3.new(48, 0, -74)
-    P({ Name = "SignPost", Material = Enum.Material.Wood, Color = TIMBER, Size = Vector3.new(2, 15, 2), CFrame = CFrame.new(base + Vector3.new(0, 7.5, 0)) }, unit)
-    -- the board faces west, towards the spawn, with its lettering on that face
-    local boardPos = base + Vector3.new(0, 14, 0)
+    -- the board faces west, towards the spawn; the posts stand BEHIND it (so nothing covers the lettering) and the words sit on a dark panel
+    local boardPos = base + Vector3.new(0, 15, 0)
     local face = CFrame.lookAt(boardPos, boardPos + Vector3.new(-1, 0, 0))
-    local board = P({ Name = "SignBoard", Material = Enum.Material.Wood, Color = Color3.fromRGB(120, 84, 52), Size = Vector3.new(16, 7, 1), CFrame = face }, unit)
-    local stripe = P({ Name = "SignStripe", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 190, 80), Size = Vector3.new(16.4, 0.6, 1.1), CanCollide = false,
-        CFrame = face * CFrame.new(0, 3.8, 0) }, unit)
+    for _, dz in ipairs({ -6, 6 }) do
+        P({ Name = "SignPost", Material = Enum.Material.Wood, Color = TIMBER, Size = Vector3.new(2, 14, 2), CFrame = CFrame.new(base + Vector3.new(2.2, 7, dz)) }, unit)
+    end
+    local board = P({ Name = "SignBoard", Material = Enum.Material.Wood, Color = Color3.fromRGB(120, 84, 52), Size = Vector3.new(18, 8, 1), CFrame = face }, unit)
+    local stripe = P({ Name = "SignStripe", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 190, 80), Size = Vector3.new(18.4, 0.6, 1.1), CanCollide = false,
+        CFrame = face * CFrame.new(0, 4.3, 0) }, unit)
+    local panel = P({ Name = "SignPanel", Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(34, 22, 18), Size = Vector3.new(17, 7, 0.2), CanCollide = false,
+        CFrame = face * CFrame.new(0, 0, -0.6) }, unit)
     local lines = { "CART RUNS  >>>" }
     for _, c in ipairs(CartCourseData.Courses) do
-        table.insert(lines, string.format("%s  (level %d+)", c.name, c.minLevel))
+        table.insert(lines, string.format("%s   level %d+", c.name, c.minLevel))
     end
     local gui = Instance.new("SurfaceGui")
-    gui.Name, gui.Face, gui.SizingMode, gui.PixelsPerStud = "Lettering", Enum.NormalId.Front, Enum.SurfaceGuiSizingMode.PixelsPerStud, 40
-    gui.Parent = board
+    gui.Name, gui.Face, gui.SizingMode, gui.PixelsPerStud = "Lettering", Enum.NormalId.Front, Enum.SurfaceGuiSizingMode.PixelsPerStud, 50
+    gui.Parent = panel
     local text = Instance.new("TextLabel")
-    text.Size, text.BackgroundTransparency, text.Text = UDim2.new(1, 0, 1, 0), 1, table.concat(lines, "\n")
-    text.TextColor3, text.Font, text.TextScaled = Color3.fromRGB(255, 232, 170), Enum.Font.GothamBold, true
+    text.Size, text.Position, text.BackgroundTransparency = UDim2.new(1, -40, 1, -30), UDim2.new(0, 20, 0, 15), 1
+    text.Text = table.concat(lines, "\n")
+    text.TextColor3, text.Font, text.TextScaled, text.TextXAlignment = Color3.fromRGB(255, 236, 180), Enum.Font.GothamBold, true, Enum.TextXAlignment.Left
     text.Parent = gui
     local light = Instance.new("PointLight")
     light.Color, light.Range, light.Brightness = Color3.fromRGB(255, 200, 120), 40, 1.4
