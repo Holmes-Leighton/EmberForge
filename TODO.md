@@ -21,6 +21,11 @@
       can claim all of them in one go (the paid Standard/Premium tracks still need the pass). Decide whether that catch-up is wanted. If not, options: only let
       players claim the current and previous week, or unlock each week by progress (season XP / weekly challenges done) instead of by date.
 
+- [ ] **The menus need to be more engaging.** They are plain dark panels with small text. Ideas to scope with the user: bolder cartoon styling in the game's own style
+      (chunkier frames, bigger icons and headings, rarity colours and glows), animated opens and closes, sounds on every tap, reward and unlock moments with
+      effects (confetti, glow, a count-up), progress bars and "next goal" hints on each menu, less text and more pictures, and a consistent look across Forge, Bag,
+      Market, Quests, Shop, Pets, Season, Style and Guild. Check on a phone: bigger touch targets. Code: `Theme.lua` (shared look) and the `*MenuBuilder.client.lua` files.
+
 ## Monetisation
 - [x] Developer Product and Game Pass ids are set in `ProductData.lua` (10 passes, 12 products).
 - [ ] Buy one cheap product and one pass on the published place and confirm the item arrives (`LAUNCH_GUIDE.md` phase 4).
