@@ -75,7 +75,9 @@ Recommendation: not yet. Six mining zones, the Quarry and pets already give plen
       (random tower each round, timer, pay per level rising steeply, speed-up when someone summits) and Mega Easy Obby (a checkpoint every level). Decisions made:
       built in the sky far above the cavern, every level pays and the top pays most. Build order:
       1. [x] `TowerLayout.lua`: composes a tower from a seed (30 levels, about 770 studs; 60 for Pro); tests prove every jump on 60 random seeds.
-      2. [ ] Tower rewards (per-level coin curve, materials by height, top chest) and rounds (8-minute timer, speed-up on a summit, a new seed each round).
+      2. [x] Tower rewards (`TowerData`, `TowerRewards`: coin curve about 100x from level 1 to 30, a bundle every 5th level that improves with height, rare drops that get
+         likelier, a top chest that pays double the first time each day, a daily coin allowance) and rounds (`TowerRound`: 8-minute rounds, a new seed each round on the
+         wall clock, 60 s left after a summit). Pay levels are a first guess (a perfect climb is about 3.9k coins at player level 10): check with `tools/balance_model.py`.
       3. [ ] Tower art: platforms, climbs, numbered level signs, sky backdrop, a portal in the hub and a return.
       4. [ ] `TowerService` + client HUD: level counter, round clock, "highest level" list, level-up effects.
       5. [ ] Boards, daily challenge, Pro mode (60 levels, 2.5x), gear and mutators.
