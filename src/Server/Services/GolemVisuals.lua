@@ -70,6 +70,7 @@ local function Build(golem, ownerName, equipped, owner)
         variant = golem.variant, accessory = equipped.GolemAccessory, particle = equipped.ParticleEffect, skin = equipped.GolemSkin,
     })
     model.Name = "Golem_" .. golem.id
+    model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic   -- streams in whole, so the client always finds every limb when it starts animating
     model:PivotTo(base * CFrame.new(0, 5 * scale, 0))          -- torso sits 5 studs up
     model:SetAttribute("Base", base)                             -- ground-level pose, used by the animator
     model:SetAttribute("Scale", scale)

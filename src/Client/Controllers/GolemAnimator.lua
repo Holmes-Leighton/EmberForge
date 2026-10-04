@@ -458,8 +458,20 @@ function GolemAnimator.Init()
         if not world then return end
         local folder = world:WaitForChild("DeployedGolems", 60)
         if not folder then return end
-        for _, m in ipairs(folder:GetChildren()) do Track(m) end
-        folder.ChildAdded:Connect(function(m) task.wait() Track(m) end)
+        -- with StreamingEnabled a Golem can arrive before its limbs do; a Golem tracked then would have no arms or legs to move and would move
+        -- as one stiff block, so wait (briefly) until its Base and its limbs are really here
+        local function TrackWhenReady(m)
+            for _ = 1, 100 do
+                if not m.Parent then return end
+                local ready = m:GetAttribute("Base") ~= nil and m:FindFirstChildWhichIsA("BasePart", true) ~= nil
+                    and (m:GetAttribute("RigMode") ~= "Parts" or (m:FindFirstChild("ArmR", true) and m:FindFirstChild("Leg", true)))
+                if ready then break end
+                task.wait(0.1)
+            end
+            if m.Parent then Track(m) end
+        end
+        for _, m in ipairs(folder:GetChildren()) do task.spawn(TrackWhenReady, m) end
+        folder.ChildAdded:Connect(function(m) task.wait() TrackWhenReady(m) end)
         folder.ChildRemoved:Connect(Untrack)
     end)
 end
