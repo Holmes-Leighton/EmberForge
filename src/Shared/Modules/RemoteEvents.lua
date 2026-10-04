@@ -34,6 +34,9 @@ local DEFINITIONS = {
     RenamePet           = "event",   -- client → server (petId, text)
     ItemRenamed         = "event",   -- server → client (kind, id, ok, newNameOrReason)
 
+    -- Courier Run
+    CourierEvent        = "event",   -- server → client (kind: start | checkpoint | respawn | finish | abandon, payload table)
+
     -- Trading
     InitiateTrade       = "event",
     TradeRequest        = "event",   -- server → client (someone wants to trade: fromName, fromUserId, info)

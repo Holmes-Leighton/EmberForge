@@ -68,9 +68,13 @@ Recommendation: not yet. Six mining zones, the Quarry and pets already give plen
 - [ ] Check it in Studio at a real frame rate (the test session ran at about 15 fps): smooth cart, gate and bridge animation, signs, tunnels, the solid cart body.
 - [x] A signpost near the spawn pointing east to the courses (names and levels on the board), plus a tall beam over each course's start.
 - [ ] Balance the Cart Run pay (x1.5 / x4 / x9 of the quick-haul reward, allowance x4) with `tools/balance_model.py` once someone has played a few runs.
-- [ ] Courier Run (carry a crate through an obstacle course) alongside the carts, with a lava chase, Courier Level, fastest-time boards, a daily challenge and
-      juice (sparks, floating numbers, combos). Started: `CourierLayout.lua` (the geometry generator). Still to do: `CourierData`, the runner rules, art, service,
-      client controller, boards, daily challenge, progression.
+- [x] Courier Run v1 works end to end in Studio: three flat-ish obstacle courses in the north strip (crate pickup, timer HUD, checkpoints, falls, lava chase, spinners,
+      crushers, moving and crumbling platforms, drop-off, results screen with confetti, Courier Level, fastest-time boards, daily challenge). Code: `CourierData`,
+      `CourierLayout`, `CourierRunner`, `CourierRewards`, `CourierArt`, `CourierService`, `CourierController`.
+- [ ] **Courier Run needs LEVELS and to climb really high** (user request): turn it into a tower of levels (floors) that climbs high like other obbies, with rewards
+      that grow with the height reached (each level banks a reward, falling returns you to the last level, the top pays most). Needs a decision on where it can go
+      (the cavern roof is 110 studs up).
+- [ ] Courier Run: play it by hand at a real frame rate on a phone and a PC and tune the jump distances, platform sizes, speeds and lava pace.
 
 ## New feature ideas
 - [x] ~~Player-built mining zones~~ built as the **Quarry** (Forge Level 6, 15,000 coins): 11 pieces, adjacency recipes, 5 exclusive materials, Core upgrades, animated by QuarryAnimator.
