@@ -24,11 +24,12 @@ PadData.SIZE = Vector3.new(22, 1, 22)
 
 -- Pads only top your stock up to these amounts (they're a starter/convenience source, not
 -- an unlimited faucet). Higher pads fill the same cap faster. Spend materials to keep mining.
-PadData.STOCK_CAP = { BasicOre = 300, Coal = 150 }
+PadData.STOCK_CAP = { BasicOre = 100, Coal = 50 }
 
 -- Pads pay out every TICK_SECONDS. Coal comes every COAL_EVERY_N ticks so Ore:Coal is
--- 2:1, matching the Tier 1 recipes (10 Basic Ore + 5 Coal). At 1x that is 4 Ore/s.
-PadData.TICK_SECONDS    = 0.25
+-- 2:1, matching the Tier 1 recipes (10 Basic Ore + 5 Coal). At 1x that is 1 Ore/s: a Tier 1 Golem is
+-- about 10 seconds of standing, and a full top-up (100 Ore / 50 Coal) about 100 seconds. Higher pads fill it faster.
+PadData.TICK_SECONDS    = 1
 PadData.ORE_PER_TICK    = 1
 PadData.COAL_EVERY_N    = 2
 

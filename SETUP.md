@@ -42,7 +42,7 @@ They can't replace a Studio playtest (real rendering, physics, DataStore, Market
 
 ## 5. First playtest checklist
 1. Join → loading screen → How-to-Play popup → tracker says "Stand on the Starter Pad".
-2. Walk onto the glowing pad: Ore/Coal totals rise (stops at 300 / 150).
+2. Walk onto the glowing pad: Ore/Coal totals rise (stops at 100 / 50).
 3. Golem Anvil → press E → pick a Golem → Forge. It appears in **Forge → Deploy** and in the Inventory.
 4. Deploy it: a model appears in that zone's crystal area; the numbers above **Collect** climb; press Collect.
 5. Forge → Neon Cave: with 4 identical idle Golems the button lights up.

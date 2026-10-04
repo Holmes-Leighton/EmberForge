@@ -18,7 +18,7 @@ substitute for a playtest.
 | C9 | Client dead-ended if data loaded slowly | **Fixed** (retry) |
 | C10 | No session locking; unsafe fallback to fresh data after a failed load | **Fixed**: session lock, safe load, credits for offline sellers, save on shutdown |
 | C11 | Golem id collisions | **Fixed** (GUIDs) |
-| C12 | Pads were an unlimited faucet | **Fixed**: pads top stock up to a cap (300 Ore / 150 Coal); higher pads only fill it faster |
+| C12 | Pads were an unlimited faucet | **Fixed**: pads top stock up to a cap (100 Ore / 50 Coal); higher pads only fill it faster |
 | C13 | Season Pass jumped slots to 12 | **Fixed**: pass gives +3 slots on top of earned ones (spec 3.4) |
 | new | Smelt dialog crashed on selecting a material (blocked all smelting) | **Fixed** (found by the analyzer) |
 | new | Mastery XP inflated, level-up spam; challenge completions re-reported | **Fixed** |

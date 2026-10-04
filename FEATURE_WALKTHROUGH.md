@@ -58,7 +58,7 @@ Status key: **Verified** = seen working in Studio; **Unit** = mock tests only; *
 7. Codes are not capped globally across servers (`maxUses` is not enforced); keep any limited code generous.
 
 ## New-player walkthrough (played in Studio as a brand-new account)
-Path: welcome screen -> Starter Pad (about 15s for the first 10 ore and 5 coal) -> Golem Anvil -> Forge -> Deploy -> Collect.
+Path: welcome screen -> Starter Pad (about 10s for the first 10 ore and 5 coal) -> Golem Anvil -> Forge -> Deploy -> Collect.
 The tutorial completes in a couple of minutes and the Collect button, summary pop-up, Bag badge and "Claim your reward!" hint on Quests
 all point the player at the next step. Menus checked: Anvil, Forge, Bag, Quests, Market, Shop, Pets, Season, plus the earlier ones.
 
