@@ -10,9 +10,15 @@
       hatch behind it), not a glowing disc it rolls through. Also nicer meshes for the crusher gate, tunnel mouths, bridge planks and checkpoint banners
       (`CartCourseArt.lua`: each is a separate named part, so a mesh can replace it). Prompts for the mesh generator are in `ART_BRIEF.md` part B.
 
-## Monetisation (needs ids from Creator Hub)
-- [ ] Developer Product and Game Pass ids in `ProductData.lua`: Royal Egg x1/x5/x10, Lucky Boost, Speed-Ups, slot packs, Magnet,
-      Event Catalyst, Season Pass, pads, forge skins. Until set they show "Coming soon".
+- [ ] **My Forge needs a lot of visual work**: real meshes for the forge buildings and furniture (shed and workshop levels 1-10, furnace, anvil, workbench, vault,
+      fences, banners, the Forge Builder pieces) in place of the plain parts, and every solid piece must **collide** (no walking through walls, furnaces,
+      barrels, pedestals or fences; check each forge level and every Forge Builder piece). Includes the **Forge Skins** (Basic, Ember, Frost, Storm, Void: each
+      needs its own materials and a distinct look, not only a recolour) and the Forge decorations. Code: `ForgeZoneService.lua`, `ForgeBuilder.lua`,
+      `ForgeBuildData.lua`, `CosmeticData.lua`. Prompts and the level-by-level look are in `ART_BRIEF.md` section 5.
+
+## Monetisation
+- [x] Developer Product and Game Pass ids are set in `ProductData.lua` (10 passes, 12 products).
+- [ ] Buy one cheap product and one pass on the published place and confirm the item arrives (`LAUNCH_GUIDE.md` phase 4).
 
 ## Testing that needs more than one player
 - [ ] Other players seeing your pets and forge builds.
@@ -21,7 +27,7 @@
 - [ ] Guild chat text filtering (only runs on a published place).
 
 ## Gameplay and UX (from the new-player walkthrough)
-- [ ] The anvil's E prompt only worked with the anvil in front of the camera: check on a real client; add a floating arrow for tutorial step 2.
+- [x] The anvil's E prompt only shows while the anvil is on screen (a Roblox rule): the tutorial now points the way with a bobbing arrow plus an edge-of-screen marker with the distance (`TutorialPointer.lua`, steps 1, 2 and 6), the prompt reaches 16 studs, and the hint says to face the Anvil. Still worth one check on a real phone.
 - [x] ~~Forge menu opens on Blueprints while tutorial step 3 says deploy~~ now opens on Deploy when a Golem is waiting for work.
 - [x] ~~Two Storm Golem entries in the Anvil list~~ stronger tiers carry their tier name.
 - [x] World labels stacking near the anvil: pad signs now fade beyond 90 studs.

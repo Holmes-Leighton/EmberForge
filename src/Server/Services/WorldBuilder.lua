@@ -71,7 +71,7 @@ local function AddPrompt(part, action, objectText, hold)
     prompt.ActionText = action
     prompt.ObjectText = objectText
     prompt.HoldDuration = hold
-    prompt.MaxActivationDistance = 12
+    prompt.MaxActivationDistance = 16
     prompt.RequiresLineOfSight = false
     prompt.Parent = part
     return prompt

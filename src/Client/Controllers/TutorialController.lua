@@ -8,17 +8,18 @@ local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local Theme        = require(game.ReplicatedStorage.Shared.Modules.Theme)
 local ScaleUI      = require(game.ReplicatedStorage.Shared.Modules.ScaleUI)
+local TutorialPointer = require(script.Parent.TutorialPointer)
 
 local TutorialController = {}
 
 -- The tracker: do these in order. Each one advances by itself when the game sees you do it.
 local STEPS = {
     { title = "Stand on the Starter Pad", hint = "Head for the beam of light under the Mining Pads gate and stand on the Starter Pad. It mines for you: you need 10 Basic Ore and 5 Coal." },
-    { title = "Forge your first Golem", hint = "Walk to the Golem Anvil near spawn and press E. Pick a Golem from the list and press Forge." },
+    { title = "Forge your first Golem", hint = "Follow the arrow to the Golem Anvil near spawn, face it and press E. Pick a Golem from the list and press Forge." },
     { title = "Deploy your Golem",    hint = "Open the 🔥 Forge menu (bottom bar, or press F) and send your Golem to its mining zone." },
     { title = "Collect resources",    hint = "Golems mine on their own. Watch the totals build up above the button, then press ⛏ Collect." },
     { title = "Sell your spare materials", hint = "Open the 🏪 Market (M), choose Sell Surplus and sell some spare ore to the Supplier for coins." },
-    { title = "Push a mine cart",     hint = "Find a mine cart on the road in the cavern and walk it along its rail to the glowing depot at the end. It pays a coin bounty." },
+    { title = "Push a mine cart",     hint = "Follow the arrow to a mine cart, walk behind it to push it along its rail to the glowing depot. It pays a coin bounty. Bigger Cart Run courses wait in the south of the cavern." },
     { title = "Check your Quests",    hint = "Open 📋 Quests (Q). Daily and weekly challenges pay coins, XP and materials. Press Claim when one is done." },
 }
 
@@ -254,13 +255,49 @@ local function Build()
 end
 
 -- ── Steps ─────────────────────────────────────────────────────────────────────
+-- Where the arrow points for a step (nil = no arrow)
+local function EmberWorld() return workspace:FindFirstChild("EmberWorld") end
+local function PointerFor(step)
+    if step == 1 then
+        return { name = "Starter Pad", position = function()
+            local world = EmberWorld()
+            local pad = world and world:FindFirstChild("PadModel_Starter")
+            return pad and (pad:GetPivot().Position + Vector3.new(0, 10, 0)) or nil
+        end }
+    elseif step == 2 then
+        return { name = "Golem Anvil", position = function()
+            local world = EmberWorld()
+            local anvil = world and world:FindFirstChild("GolemAnvil")
+            return anvil and (anvil.Position + Vector3.new(0, 40, 0)) or nil
+        end }
+    elseif step == 6 then
+        return { name = "Mine cart", position = function()
+            local char = Players.LocalPlayer.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            if not root then return nil end
+            local best, bestD
+            for _, cart in ipairs(game:GetService("CollectionService"):GetTagged("EFCart")) do          -- the road carts (the Cart Run ones are far away)
+                local body = cart.PrimaryPart
+                if body then
+                    local d = (body.Position - root.Position).Magnitude
+                    if not bestD or d < bestD then best, bestD = body, d end
+                end
+            end
+            return best and (best.Position + Vector3.new(0, 14, 0)) or nil
+        end }
+    end
+    return nil
+end
+
 local function ShowStep()
     local step = STEPS[stepIndex]
     if not step then
         active = false
         tracker.Visible = false
+        TutorialPointer.Clear()
         return
     end
+    TutorialPointer.Set(PointerFor(stepIndex))
     trackerTitle.Text = string.format("Step %d/%d:  %s", stepIndex, #STEPS, step.title)
     trackerHint.Text = step.hint
     tracker.Visible = true
@@ -272,6 +309,7 @@ local function Advance(fromStep)
     if stepIndex > #STEPS then
         active = false
         tracker.Visible = false
+        TutorialPointer.Clear()
         local HUDController = require(script.Parent.HUDController)
         HUDController.ShowNotification("Tutorial complete!", "You're up and running. Press ? Help any time to read the guide again.")
     else
@@ -285,6 +323,7 @@ local MENU_NAMES = { "InventoryMenu", "ForgeMenu", "MarketMenu", "TradeMenu", "S
 
 function TutorialController.Init(playerData)
     Build()
+    TutorialPointer.Init()
 
     -- The tip hides while any menu is open, so it never covers a window's tabs or title (menus draw at different layers)
     task.spawn(function()
@@ -333,7 +372,7 @@ function TutorialController.Init(playerData)
     -- the Supplier sale and the cart delivery both announce themselves with a notification
     RemoteEvents.Notify.OnClientEvent:Connect(function(title)
         if title == "Sold" then Advance(5)
-        elseif title == "Mine Cart Delivery" then Advance(6) end
+        elseif title == "Mine Cart Delivery" or (type(title) == "string" and title:find(" complete!", 1, true)) then Advance(6) end
     end)
 end
 
