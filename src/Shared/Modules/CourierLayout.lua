@@ -6,6 +6,10 @@
 --   crumbles   { x, y, z, sx, sy, sz, delay, respawn }       a platform that drops away after being stood on
 --   spinners   { x, y(top of the platform), z, radius, barY, thick, omega, phase }   a bar sweeping round, to jump over
 --   crushers   { x, y(top of the platform), z, sx, sz, height, open, closed, phase }   a block that slams down on a timer
+--   trusses    { x, y(foot), z, height }   a ladder you climb
+--   bounces    { x, y(top of the pad), z, sx, sz, power, rise }   a pad that launches you up (Y speed `power`)
+--   sweepers   { x, y(top of the platform), z, amp, period, phase, thick }   a bar sliding across Z
+--   (platforms may also carry conveyor = speed, ice = true, viaTruss / viaBounce = true on the landing of a ladder or bounce)
 --   checkpoints{ x, y, z }   places to respawn (the first is the start)
 --   finish     { x, y, z, hx, hz }  the drop-off zone
 local CourierLayout = {}
@@ -100,6 +104,55 @@ function Modules.beam(L, cur, p)
     cur.x = x0 + p.len
 end
 
+-- A vertical ladder (a truss you climb) from the platform you are on up to a small landing: `height` studs higher. Real climbing, so it can rise far more than a jump.
+function Modules.ladder(L, cur, p)
+    local x0 = cur.x + (p.gap or 3)
+    local foot = Plat(L, x0, p.footLen or 8, cur.y, cur.z, p.width or 10)                -- somewhere to stand at the bottom
+    table.insert(L.trusses, { x = x0 + (p.footLen or 8) + 1, y = cur.y, z = cur.z, height = p.height })
+    cur.y += p.height
+    local top = Plat(L, x0 + (p.footLen or 8) + 1.5, p.landLen or 9, cur.y, cur.z, p.width or 10, { viaTruss = true })
+    cur.x = x0 + (p.footLen or 8) + 1.5 + (p.landLen or 9)
+end
+
+-- A platform that carries you along (a conveyor belt): speed in studs/s, positive = the way the course runs. Against it is the hard way.
+function Modules.conveyor(L, cur, p)
+    local x0 = cur.x + (p.gap or 3)
+    Plat(L, x0, p.len, cur.y, cur.z, p.width, { conveyor = p.speed })
+    cur.x = x0 + p.len
+end
+
+-- Slippery ice stepping stones: little grip, so you slide on landing
+function Modules.ice(L, cur, p)
+    for i = 1, p.n do
+        local x0 = cur.x + p.gap
+        cur.z = Clamp(cur.z + ((p.zigs and p.zigs[(i - 1) % #p.zigs + 1]) or 0), L.base.z - L.zRange, L.base.z + L.zRange)
+        Plat(L, x0, p.len, cur.y, cur.z, p.width, { ice = true })
+        cur.x = x0 + p.len
+    end
+end
+
+-- A bounce pad that launches you up to a high landing. `rise` is how much higher the landing is; the pad's power is chosen to clear it with room to spare.
+function Modules.bounce(L, cur, p)
+    local x0 = cur.x + (p.gap or 3)
+    Plat(L, x0, p.padLen or 10, cur.y, cur.z, p.width or 12)
+    local padX = x0 + (p.padLen or 10) / 2
+    table.insert(L.bounces, { x = padX, y = cur.y, z = cur.z, sx = (p.padLen or 10) - 2, sz = (p.width or 12) - 2, power = p.power or 78, rise = p.rise })
+    local landX = x0 + (p.padLen or 10) + p.span
+    cur.y += p.rise
+    Plat(L, landX, p.landLen or 14, cur.y, cur.z, p.landWidth or 14, { viaBounce = true, bounceGap = p.span, bounceRise = p.rise })
+    cur.x = landX + (p.landLen or 14)
+end
+
+-- A long narrow beam with a bar that sweeps across it: time it, or get knocked off
+function Modules.sweeper(L, cur, p)
+    local x0 = cur.x + (p.gap or 3)
+    Plat(L, x0, p.len, cur.y, cur.z, p.width)
+    for i = 1, p.n do
+        table.insert(L.sweepers, { x = x0 + (p.len / (p.n + 1)) * i, y = cur.y, z = cur.z, amp = p.amp, period = p.period, phase = (p.phase or 0) + (i - 1) * (p.stagger or 1.7), thick = 1.6 })
+    end
+    cur.x = x0 + p.len
+end
+
 -- The drop-off: a wide platform with the finish zone on it
 function Modules.finish(L, cur, p)
     local x0 = cur.x + (p.gap or 3)
@@ -113,7 +166,7 @@ end
 function CourierLayout.Build(course)
     local L = {
         base = course.base, zRange = course.zRange or 14,
-        platforms = {}, movers = {}, crumbles = {}, spinners = {}, crushers = {}, checkpoints = {},
+        platforms = {}, movers = {}, crumbles = {}, spinners = {}, crushers = {}, checkpoints = {}, trusses = {}, bounces = {}, sweepers = {},
     }
     local cur = { x = course.base.x, y = course.base.y, z = course.base.z }
     for _, m in ipairs(course.modules) do

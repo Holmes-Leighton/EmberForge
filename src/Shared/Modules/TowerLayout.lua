@@ -60,7 +60,7 @@ end
 function TowerLayout.Build(opts)
     local total, seed = opts.levels or 30, opts.seed or 1
     local base = opts.base or { x = 0, y = 100, z = 0 }
-    local perLevel = opts.sectionsPerLevel or 2
+    -- the easy levels have one obstacle section, the harder ones two (so a tower can be climbed in about a round: see TowerData.ROUND_SECONDS)
     local rng = Rng(seed)
     local T = { levels = {}, platforms = {}, movers = {}, crumbles = {}, spinners = {}, crushers = {}, checkpoints = {}, levelOfCheckpoint = {}, base = base, seed = seed, total = total }
 
@@ -71,14 +71,14 @@ function TowerLayout.Build(opts)
         local modules = { { "rest", { len = 26, width = 26 } } }
         local pool = SECTIONS[tier]
         local last = 0
-        for _ = 1, perLevel do                                         -- no section twice in a row
+        for _ = 1, (opts.sectionsPerLevel or (tier == 1 and 1 or 2)) do      -- no section twice in a row
             local pick = rng(#pool)
             if pick == last then pick = pick % #pool + 1 end
             last = pick
             for _, m in ipairs(pool[pick]) do table.insert(modules, m) end
         end
         if i < total then
-            table.insert(modules, { "climb", { n = TowerLayout.CLIMB_LEDGES, gap = 3.5, rise = TowerLayout.CLIMB_RISE[tier], len = 8, width = 8, zigs = { 0 } } })
+            table.insert(modules, { "climb", { n = TowerLayout.CLIMB_LEDGES, gap = 3.2, rise = TowerLayout.CLIMB_RISE[tier], len = 7, width = 8, zigs = { 0 } } })
         else
             table.insert(modules, { "finish", { gap = 4, len = 32, width = 28 } })
         end

@@ -60,7 +60,7 @@ end
 -- Is the point under this crusher while it is shut?
 function CourierRunner.CrusherHits(c, t, px, py, pz)
     if CartCourseData.HazardOpen(c, t) then return false end
-    return math.abs(px - c.x) <= c.sx / 2 and math.abs(pz - c.z) <= c.sz / 2 and py > c.y - 1 and py < c.y + c.height
+    return math.abs(px - c.x) <= c.sx / 2 and math.abs(pz - c.z) <= c.sz / 2 and py > c.y + 0.5 and py < c.y + c.height        -- (above its floor only: someone on a ledge below the platform is not under the block)
 end
 
 local function Respawn(run, now, reason)

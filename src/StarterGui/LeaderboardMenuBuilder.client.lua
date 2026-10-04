@@ -68,6 +68,7 @@ local CATEGORIES = {
     { id = "ForgeLevel",     label = "Forge" },
     { id = "TradeCount",     label = "Trades" },
     { id = "Ascensions",     label = "Ascended" },
+    { id = "TowerBest",      label = "Tower" },
 }
 
 local tabBtns      = {}

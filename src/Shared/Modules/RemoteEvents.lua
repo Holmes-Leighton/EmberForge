@@ -35,6 +35,7 @@ local DEFINITIONS = {
     ItemRenamed         = "event",   -- server → client (kind, id, ok, newNameOrReason)
 
     -- Courier Run
+    TowerEvent          = "event",   -- server → client (kind: start | level | respawn | summit | standings | roundover | abandon | speedup, payload table)
     CourierEvent        = "event",   -- server → client (kind: start | checkpoint | respawn | finish | abandon, payload table)
 
     -- Trading

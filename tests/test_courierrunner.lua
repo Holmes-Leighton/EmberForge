@@ -159,6 +159,7 @@ for x = 100, 120, 0.05 do if CCD.HazardOpen(cr, x) then tOpen = x break end end
 expect(not Runner.CrusherHits(cr, tOpen, 200, 33, 140), "under an open one is safe")
 expect(not Runner.CrusherHits(cr, tShut, 215, 33, 140), "beside it is safe")
 expect(not Runner.CrusherHits(cr, tShut, 200, 50, 140), "above it is safe")
+expect(not Runner.CrusherHits(cr, tShut, 200, 24, 140), "on a ledge below its platform is safe (the floor is in the way)")
 
 print("== cheats and drop-outs")
 run, log = newRun("RookieRun", 1000)

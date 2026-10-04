@@ -1,0 +1,262 @@
+-- The Sky Tower on the client: the level counter and round clock, the live "highest level" list, this player's own rising lava, level-up and fall effects, and the
+-- summary at the end of a climb. The server decides everything that matters (levels, falls, lava hits, rewards); this only draws it.
+local Players      = game:GetService("Players")
+local RunService   = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local Debris       = game:GetService("Debris")
+
+local TowerData    = require(game.ReplicatedStorage.Shared.Data.TowerData)
+local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
+local Theme        = require(game.ReplicatedStorage.Shared.Modules.Theme)
+local TowerArtColors = nil
+
+local TowerController = {}
+
+local LocalPlayer = Players.LocalPlayer
+local function ServerNow() return workspace:GetServerTimeNow() end
+
+local hud, levelLbl, clockLbl, infoLbl, lavaLbl, standingsFrame, standingsLbl, flash, banner
+local roundEnds, total = nil, 30
+local lava
+
+local function Clock(seconds)
+    seconds = math.max(0, math.floor(seconds))
+    return string.format("%d:%02d", seconds // 60, seconds % 60)
+end
+
+local function LevelColor(level)
+    return Color3.fromHSV(0.02 + 0.72 * (level - 1) / math.max(1, total - 1), 0.75, 1)
+end
+
+-- ── HUD ───────────────────────────────────────────────────────────────────────
+local function BuildHud()
+    hud = Instance.new("ScreenGui")
+    hud.Name, hud.ResetOnSpawn, hud.IgnoreGuiInset, hud.DisplayOrder, hud.Enabled = "TowerHUD", false, true, 8, false
+    hud.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+    local panel = Instance.new("Frame")
+    panel.AnchorPoint, panel.Position, panel.Size = Vector2.new(0.5, 0), UDim2.new(0.5, 0, 0, 118), UDim2.new(0, 300, 0, 96)
+    panel.BackgroundColor3, panel.BackgroundTransparency, panel.BorderSizePixel = Color3.fromRGB(26, 18, 14), 0.15, 0
+    panel.Parent = hud
+    Theme.AddCorner(panel, Theme.Corner.Medium)
+    Theme.AddStroke(panel, Color3.fromRGB(190, 120, 255), 2)
+    levelLbl = Theme.Label(panel, "LEVEL 1 / 30", 26, Color3.fromRGB(255, 255, 255), Theme.Fonts.Title)
+    levelLbl.Position, levelLbl.Size, levelLbl.TextXAlignment = UDim2.new(0, 10, 0, 4), UDim2.new(1, -20, 0, 32), Enum.TextXAlignment.Center
+    clockLbl = Theme.Label(panel, "Round 10:00", 20, Color3.fromRGB(255, 232, 170), Theme.Fonts.Heading)
+    clockLbl.Position, clockLbl.Size, clockLbl.TextXAlignment = UDim2.new(0, 10, 0, 38), UDim2.new(1, -20, 0, 24), Enum.TextXAlignment.Center
+    infoLbl = Theme.Label(panel, "", Theme.TextSize.Small, Color3.fromRGB(230, 220, 200), Theme.Fonts.Body)
+    infoLbl.Position, infoLbl.Size, infoLbl.TextXAlignment = UDim2.new(0, 10, 0, 62), UDim2.new(1, -20, 0, 16), Enum.TextXAlignment.Center
+    lavaLbl = Theme.Label(panel, "", Theme.TextSize.Small, Color3.fromRGB(255, 130, 90), Theme.Fonts.Heading)
+    lavaLbl.Position, lavaLbl.Size, lavaLbl.TextXAlignment = UDim2.new(0, 10, 0, 78), UDim2.new(1, -20, 0, 16), Enum.TextXAlignment.Center
+
+    standingsFrame = Instance.new("Frame")
+    standingsFrame.AnchorPoint, standingsFrame.Position, standingsFrame.Size = Vector2.new(1, 0), UDim2.new(1, -90, 0, 200), UDim2.new(0, 200, 0, 130)
+    standingsFrame.BackgroundColor3, standingsFrame.BackgroundTransparency, standingsFrame.BorderSizePixel = Color3.fromRGB(26, 18, 14), 0.25, 0
+    standingsFrame.Parent = hud
+    Theme.AddCorner(standingsFrame, Theme.Corner.Small)
+    standingsLbl = Theme.Label(standingsFrame, "", Theme.TextSize.Small, Color3.fromRGB(240, 230, 210), Theme.Fonts.Body)
+    standingsLbl.Position, standingsLbl.Size, standingsLbl.TextYAlignment = UDim2.new(0, 8, 0, 6), UDim2.new(1, -16, 1, -12), Enum.TextYAlignment.Top
+
+    flash = Instance.new("Frame")
+    flash.Size, flash.BackgroundTransparency, flash.BorderSizePixel, flash.Visible, flash.ZIndex = UDim2.new(1, 0, 1, 0), 1, 0, false, 20
+    flash.Parent = hud
+    banner = Theme.Label(hud, "", 36, Color3.fromRGB(255, 255, 255), Theme.Fonts.Title)
+    banner.AnchorPoint, banner.Position, banner.Size = Vector2.new(0.5, 0.5), UDim2.new(0.5, 0, 0.32, 0), UDim2.new(0.8, 0, 0, 64)
+    banner.TextXAlignment, banner.TextTransparency, banner.TextStrokeTransparency, banner.TextStrokeColor3, banner.ZIndex = Enum.TextXAlignment.Center, 1, 1, Color3.fromRGB(20, 10, 6), 21
+end
+
+local function Flash(color, strength)
+    if not flash then return end
+    flash.BackgroundColor3, flash.BackgroundTransparency, flash.Visible = color, 1 - (strength or 0.5), true
+    TweenService:Create(flash, TweenInfo.new(0.6), { BackgroundTransparency = 1 }):Play()
+    task.delay(0.65, function() if flash then flash.Visible = false end end)
+end
+
+local function Banner(text, color)
+    if not banner then return end
+    banner.Text, banner.TextColor3 = text, color or Color3.fromRGB(255, 255, 255)
+    banner.TextTransparency, banner.TextStrokeTransparency = 0, 0.2
+    banner.Position = UDim2.new(0.5, 0, 0.34, 0)
+    TweenService:Create(banner, TweenInfo.new(1.6, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { TextTransparency = 1, TextStrokeTransparency = 1, Position = UDim2.new(0.5, 0, 0.26, 0) }):Play()
+end
+
+local function Sparks(color, count)
+    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    local e = Instance.new("ParticleEmitter")
+    e.Color, e.Size, e.Lifetime, e.Speed = ColorSequence.new(color or Color3.fromRGB(255, 220, 120)), NumberSequence.new(0.9, 0), NumberRange.new(0.6, 1.2), NumberRange.new(14, 26)
+    e.SpreadAngle, e.LightEmission, e.Rate, e.Acceleration = Vector2.new(180, 180), 1, 0, Vector3.new(0, -25, 0)
+    e.Parent = root
+    e:Emit(count or 30)
+    Debris:AddItem(e, 2)
+end
+
+-- ── The lava ──────────────────────────────────────────────────────────────────
+local function EnsureLava()
+    if lava and lava.Parent then return lava end
+    lava = Instance.new("Part")
+    lava.Name = "TowerLava"
+    lava.Anchored, lava.CanCollide, lava.CanQuery, lava.CanTouch = true, false, false, false
+    lava.Material, lava.Color, lava.Transparency = Enum.Material.Neon, Color3.fromRGB(255, 96, 24), 0.2
+    lava.Size = Vector3.new(700, 6, 700)
+    lava.Parent = workspace
+    local light = Instance.new("PointLight")
+    light.Color, light.Range, light.Brightness = Color3.fromRGB(255, 120, 40), 90, 3
+    light.Parent = lava
+    local fire = Instance.new("ParticleEmitter")
+    fire.Color = ColorSequence.new(Color3.fromRGB(255, 190, 60), Color3.fromRGB(255, 60, 20))
+    fire.Size, fire.Lifetime, fire.Rate, fire.Speed = NumberSequence.new(8, 0), NumberRange.new(1.5, 2.8), 80, NumberRange.new(5, 12)
+    fire.LightEmission, fire.EmissionDirection = 1, Enum.NormalId.Top
+    fire.Parent = lava
+    return lava
+end
+
+local function LavaY(now)
+    local y0, t0, rise = LocalPlayer:GetAttribute("TowerLavaY0"), LocalPlayer:GetAttribute("TowerLavaT0"), LocalPlayer:GetAttribute("TowerLavaRise")
+    if not (y0 and t0 and rise) then return nil end
+    return y0 + rise * math.max(0, now - t0)
+end
+
+local function Update(now)
+    if not (hud and hud.Enabled) then return end
+    local level = LocalPlayer:GetAttribute("TowerLevel") or 1
+    levelLbl.Text = string.format("LEVEL %d / %d", level, total)
+    levelLbl.TextColor3 = LevelColor(level)
+    local left = roundEnds and (roundEnds - os.time()) or 0
+    clockLbl.Text = "Round  " .. Clock(left)
+    clockLbl.TextColor3 = left < 60 and Color3.fromRGB(255, 110, 90) or Color3.fromRGB(255, 232, 170)
+    local start = LocalPlayer:GetAttribute("TowerStart")
+    local respawns = LocalPlayer:GetAttribute("TowerRespawns") or 0
+    infoLbl.Text = string.format("Climbing %s%s", Clock(start and (now - start) + respawns * TowerData.RESPAWN_PENALTY or 0), respawns > 0 and ("   Falls " .. respawns) or "")
+    local ly = LavaY(now)
+    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if ly and root then
+        local gap = root.Position.Y - ly
+        lavaLbl.Text = string.format("LAVA %d studs below you!", math.max(0, math.floor(gap)))
+        lavaLbl.TextColor3 = gap < 14 and Color3.fromRGB(255, 70, 50) or Color3.fromRGB(255, 160, 100)
+        lavaLbl.Visible = true
+        local wall = EnsureLava()
+        wall.CFrame = CFrame.new(TowerData.BASE.x + 80, ly - 3, TowerData.BASE.z + 20)
+        if gap < 10 and math.floor(now * 4) % 2 == 0 then Flash(Color3.fromRGB(255, 40, 20), 0.18) end
+    else
+        lavaLbl.Visible = false
+        if lava then lava:Destroy() lava = nil end
+    end
+end
+
+-- ── The end-of-climb summary ──────────────────────────────────────────────────
+local MATERIAL_NAMES = {}
+local function MatName(id)
+    if MATERIAL_NAMES[id] then return MATERIAL_NAMES[id] end
+    local ok, MaterialData = pcall(function() return require(game.ReplicatedStorage.Shared.Data.MaterialData) end)
+    local def = ok and MaterialData.Get(id)
+    MATERIAL_NAMES[id] = def and def.displayName or id
+    return MATERIAL_NAMES[id]
+end
+
+local function ShowSummary(s)
+    local gui = Instance.new("ScreenGui")
+    gui.Name, gui.ResetOnSpawn, gui.IgnoreGuiInset, gui.DisplayOrder = "TowerSummary", false, true, 40
+    gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    local scrim = Instance.new("Frame")
+    scrim.Size, scrim.BackgroundColor3, scrim.BackgroundTransparency, scrim.BorderSizePixel = UDim2.new(1, 0, 1, 0), Color3.fromRGB(0, 0, 0), 0.5, 0
+    scrim.Parent = gui
+    local W, H = 420, 360
+    local panel = Instance.new("Frame")
+    panel.AnchorPoint, panel.Position, panel.Size = Vector2.new(0.5, 0.5), UDim2.new(0.5, 0, 0.5, 0), UDim2.new(0, W, 0, H)
+    panel.BackgroundColor3, panel.BorderSizePixel = Color3.fromRGB(32, 22, 18), 0
+    panel.Parent = gui
+    Theme.AddCorner(panel, Theme.Corner.Large)
+    local color = s.summit and Color3.fromRGB(255, 215, 90) or LevelColor(s.best)
+    Theme.AddStroke(panel, color, 3)
+    local scale = Instance.new("UIScale")
+    scale.Scale = 0.6
+    scale.Parent = panel
+    TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = math.min(1, (workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 700) / (H + 60)) }):Play()
+    local y = 14
+    local function line(text, size, col, font, height)
+        local l = Theme.Label(panel, text, size, col, font or Theme.Fonts.Body)
+        l.Position, l.Size, l.TextXAlignment = UDim2.new(0, 20, 0, y), UDim2.new(1, -40, 0, height or size + 6), Enum.TextXAlignment.Center
+        y += (height or size + 6) + 2
+        return l
+    end
+    line(s.summit and "SUMMIT!" or "CLIMB OVER", 32, color, Theme.Fonts.Title, 42)
+    line(string.format("You reached level %d of %d", s.best, s.total), 20, Color3.fromRGB(255, 255, 255), Theme.Fonts.Heading, 28)
+    if s.summit then
+        line(string.format("%s%s", s.summit.medal and (s.summit.medal .. " time  ") or "", string.format("%d:%04.1f", math.floor(s.summit.seconds / 60), s.summit.seconds % 60)), 22, Color3.fromRGB(255, 232, 140), Theme.Fonts.Heading)
+        if s.summit.personalBest then line("NEW PERSONAL BEST!", 16, Color3.fromRGB(120, 255, 150), Theme.Fonts.Heading) end
+        if s.summit.chest and s.summit.chest.firstToday then line("First summit today: double chest!", 14, Color3.fromRGB(255, 220, 150)) end
+    end
+    local reason = ({ timeup = "Time's up! A new tower is being built.", newround = "A new tower is being built.", left = "You left the tower.", home = "You went home.", speed = "That climb was stopped.", died = "You were knocked out." })[s.reason]
+    if reason then line(reason, 14, Color3.fromRGB(200, 190, 170)) end
+    y += 6
+    line(string.format("+%d coins", s.coins), 26, Color3.fromRGB(255, 215, 90), Theme.Fonts.Heading, 34)
+    line(string.format("+%d XP", s.xp + (s.summit and TowerData.SUMMIT_PLAYER_XP or 0)), 16, Color3.fromRGB(150, 220, 255), Theme.Fonts.Heading)
+    local items = {}
+    for id, qty in pairs(s.materials or {}) do table.insert(items, string.format("%s x%d", MatName(id), qty)) end
+    table.sort(items)
+    if #items > 0 then line(table.concat(items, "    "), 14, Color3.fromRGB(235, 225, 205), nil, 40) end
+    line(string.format("Falls: %d", s.respawns), 13, Color3.fromRGB(190, 180, 160))
+    local ok = Theme.Button(panel, "Nice!", Theme.Colors.Accent, Color3.fromRGB(255, 255, 255))
+    ok.AnchorPoint, ok.Position, ok.Size = Vector2.new(0.5, 1), UDim2.new(0.5, 0, 1, -14), UDim2.new(0, 160, 0, 40)
+    ok.MouseButton1Click:Connect(function() gui:Destroy() end)
+    Flash(color, 0.3)
+    Sparks(color, 50)
+    task.delay(25, function() if gui.Parent then gui:Destroy() end end)
+end
+
+-- ── Events from the server ────────────────────────────────────────────────────
+local REASONS = { fell = "You fell!", lava = "The lava got you!", crushed = "Crushed!", spun = "Knocked off by the bar!" }
+
+local function OnEvent(kind, p)
+    p = p or {}
+    if kind == "start" then
+        total, roundEnds = p.total or total, p.roundEnds
+        hud.Enabled = true
+        Banner("CLIMB!", Color3.fromRGB(255, 232, 120))
+    elseif kind == "level" then
+        if p.repeatLevel then return end
+        local col = LevelColor(p.level)
+        Banner(string.format("LEVEL %d", p.level), col)
+        Sparks(col, 40)
+        Flash(col, 0.15)
+        if p.coins and p.level > 1 then
+            task.delay(0.1, function()
+                local t = string.format("+%d coins  +%d XP", p.coins, p.xp or 0)
+                if p.rare then t ..= "  RARE!" end
+                if p.playerLevelUp then t ..= string.format("   Player level %d!", p.playerLevelUp) end
+                infoLbl.Text = t
+            end)
+        end
+    elseif kind == "respawn" then
+        Banner(string.format("%s  +%ds", REASONS[p.reason] or "Back to your level", p.penalty or 0), Color3.fromRGB(255, 110, 90))
+        Flash(Color3.fromRGB(255, 50, 30), 0.45)
+    elseif kind == "summit" then
+        Banner("SUMMIT!!", Color3.fromRGB(255, 215, 90))
+        Flash(Color3.fromRGB(255, 215, 90), 0.4)
+        Sparks(Color3.fromRGB(255, 215, 90), 80)
+    elseif kind == "speedup" then
+        Banner(string.format("%s reached the top! %ds left!", p.name or "Someone", p.seconds or 60), Color3.fromRGB(255, 150, 80))
+        roundEnds = math.min(roundEnds or math.huge, os.time() + (p.seconds or 60))
+    elseif kind == "standings" then
+        roundEnds = p.roundEnds or roundEnds
+        local lines = { "HIGHEST" }
+        for i, e in ipairs(p.list or {}) do
+            if i > 6 then break end
+            table.insert(lines, string.format("%d.  %s   L%d", i, e.name, e.level))
+        end
+        standingsLbl.Text = table.concat(lines, "\n")
+    elseif kind == "roundover" or kind == "abandon" then
+        hud.Enabled = false
+        if lava then lava:Destroy() lava = nil end
+        if kind == "roundover" then ShowSummary(p) else Banner(({ left = "You wandered off.", speed = "That climb was stopped.", died = "You were knocked out." })[p.reason] or "Climb ended", Color3.fromRGB(255, 190, 120)) end
+    end
+end
+
+function TowerController.Init()
+    BuildHud()
+    RunService.RenderStepped:Connect(function() Update(ServerNow()) end)
+    RemoteEvents.TowerEvent.OnClientEvent:Connect(OnEvent)
+end
+
+return TowerController

@@ -132,6 +132,12 @@ function CourierData.AddXp(level, xp, gained)
     return lvl, cur, ups
 end
 
+-- Main player XP for a finished Courier delivery (50 is a Tier 1 craft): more on the harder courses and for a medal
+function CourierData.PlayerXp(course, medal)
+    local base = 25 * course.tier
+    return math.floor(base * (medal == "Gold" and 1.5 or (medal == "Silver" and 1.2 or 1)))
+end
+
 -- What a Courier Level gives while you run: a share more coins, a little more speed, a little more jump
 function CourierData.Perks(level)
     level = math.clamp(level or 1, 1, CourierData.MAX_LEVEL)

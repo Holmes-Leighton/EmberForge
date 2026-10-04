@@ -972,7 +972,7 @@ RemoteEvents.GetMarketListings.OnServerInvoke = function(player, filterType, fil
 end
 
 RemoteEvents.GetLeaderboard.OnServerInvoke = function(player, category)
-    local validCategories = { ResourcesMined = true, GolemsCrafted = true, ForgeLevel = true, TradeCount = true, Ascensions = true }
+    local validCategories = { ResourcesMined = true, GolemsCrafted = true, ForgeLevel = true, TradeCount = true, Ascensions = true, TowerBest = true }
     if not validCategories[category] then return {} end
     return LeaderboardService.GetTopEntries(category, 20)
 end

@@ -79,7 +79,11 @@ Recommendation: not yet. Six mining zones, the Quarry and pets already give plen
          likelier, a top chest that pays double the first time each day, a daily coin allowance) and rounds (`TowerRound`: 8-minute rounds, a new seed each round on the
          wall clock, 60 s left after a summit). Pay levels are a first guess (a perfect climb is about 3.9k coins at player level 10): check with `tools/balance_model.py`.
       3. [x] Tower art (`TowerArt`, `TowerService`): floating platforms with glowing edges, climbs, a big numbered sign and a colour per level (rainbow with height), the summit ring, a lobby, a portal in the hub near the spawn, and ways back at the lobby and the summit. Seen in Studio. A new tower is built each round.
-      4. [ ] `TowerService` + client HUD: level counter, round clock, "highest level" list, level-up effects.
+      4. [x] `TowerService` + `TowerController` HUD (level counter, round clock, live highest-level list, lava sea, level-up and fall effects, end summary), plugged into the
+         main game: player XP (`ProgressionService.AddPlayerXP`), new daily/weekly/lifetime Quests (TowerLevel, TowerSummit, CourierDelivery, CourierGold), a "Tower" leaderboard
+         tab, coin events, a per-round pay-once rule and a daily material cap. Verified in Studio: the portal starts a run and levels 1-7 paid 2, 9, 16, 24, 33, 42, 52 coins.
+      6. [ ] **The levels are all alike and too easy (user: "absolutely awful obstacle run").** Needs a real redesign of what a level is, with the user's say. Started: ladder,
+         conveyor, ice, bounce-pad and sweeper modules in `CourierLayout` (geometry only; no art, runner rules or tests yet).
       5. [ ] Boards, daily challenge, Pro mode (60 levels, 2.5x), gear and mutators.
 - [ ] Courier Run: play it by hand at a real frame rate on a phone and a PC and tune the jump distances, platform sizes, speeds and lava pace.
 

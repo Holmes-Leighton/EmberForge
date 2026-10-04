@@ -18,6 +18,7 @@ local stores = {
     ForgeLevel     = SafeDataStore.GetOrderedDataStore("EF_LB_ForgeLevel_v1"),
     TradeCount     = SafeDataStore.GetOrderedDataStore("EF_LB_Trades_v1"),
     Ascensions     = SafeDataStore.GetOrderedDataStore("EF_LB_Ascensions_v1"),
+    TowerBest      = SafeDataStore.GetOrderedDataStore("EF_LB_TowerBest_v1"),        -- the highest Sky Tower level ever reached
 }
 
 -- In-memory session counters — flushed to DataStore on leave and periodically
@@ -25,7 +26,7 @@ local sessionStats = {}   -- userId → { resourcesMined, golemsCrafted, tradeCo
 
 local function GetOrCreate(userId)
     if not sessionStats[userId] then
-        sessionStats[userId] = { resourcesMined = 0, golemsCrafted = 0, tradeCount = 0 }
+        sessionStats[userId] = { resourcesMined = 0, golemsCrafted = 0, tradeCount = 0, towerBest = 0 }
     end
     return sessionStats[userId]
 end
@@ -39,6 +40,11 @@ end
 function LeaderboardService.OnGolemCrafted(player)
     local s = GetOrCreate(tostring(player.UserId))
     s.golemsCrafted = s.golemsCrafted + 1
+end
+
+function LeaderboardService.OnTowerLevel(player, level)
+    local s = GetOrCreate(tostring(player.UserId))
+    if level > (s.towerBest or 0) then s.towerBest = level end
 end
 
 function LeaderboardService.OnTradeComplete(player)
@@ -72,6 +78,13 @@ function LeaderboardService.Flush(player)
     safeUpdate(stores.ResourcesMined, s.resourcesMined)
     safeUpdate(stores.GolemsCrafted,  s.golemsCrafted)
     safeUpdate(stores.TradeCount,     s.tradeCount)
+
+    -- the Sky Tower's best level only ever goes up
+    if (s.towerBest or 0) > 0 then
+        pcall(function()
+            stores.TowerBest:UpdateAsync(userId, function(old) return math.max(old or 0, s.towerBest) end)
+        end)
+    end
 
     -- Forge level is absolute — just set it
     pcall(function()

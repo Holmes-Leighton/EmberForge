@@ -8,8 +8,9 @@ local TowerRewards = {}
 
 function TowerRewards.State(data, today)
     local c = CourierRewards.State(data, today)
-    if c.towerDay ~= today then c.towerDay, c.towerEarned, c.towerSummit, c.towerBest = today, 0, false, c.towerBest or 0 end
+    if c.towerDay ~= today then c.towerDay, c.towerEarned, c.towerSummit, c.towerBest, c.towerBundles = today, 0, false, c.towerBest or 0, 0 end
     c.towerEarned = c.towerEarned or 0
+    c.towerBundles = c.towerBundles or 0
     c.towerBest = c.towerBest or 0          -- the highest level ever reached
     return c
 end
@@ -32,7 +33,8 @@ function TowerRewards.PayLevel(data, level, total, today, opts)
 
     local materials, rare
     data.Inventory = data.Inventory or {}
-    if level % TowerData.BUNDLE_EVERY == 0 then
+    if level % TowerData.BUNDLE_EVERY == 0 and c.towerBundles < TowerData.BUNDLES_PER_DAY then
+        c.towerBundles += 1
         materials = {}
         for _, item in ipairs(TowerData.BundleFor(level)) do
             local qty = math.max(1, math.floor(item.qty * mult))

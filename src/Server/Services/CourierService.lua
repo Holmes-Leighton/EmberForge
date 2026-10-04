@@ -6,6 +6,8 @@ local CourierData     = require(game.ReplicatedStorage.Shared.Data.CourierData)
 local RemoteEvents    = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 local LiveOpsService  = require(script.Parent.LiveOpsService)
+local ProgressionService = require(script.Parent.ProgressionService)
+local ChallengeService = require(script.Parent.ChallengeService)
 local SafeDataStore   = require(script.Parent.SafeDataStore)
 local CourierRunner   = require(script.Parent.CourierRunner)
 local CourierRewards  = require(script.Parent.CourierRewards)
@@ -139,7 +141,7 @@ local function Summary(course, result)
     local mats = {}
     for _, m in ipairs(result.materials or {}) do table.insert(mats, { id = m.id, qty = m.qty }) end
     return {
-        course = course.name, tier = course.def.tier, medal = result.medal, seconds = result.seconds, respawns = result.respawns, coins = result.coins, xp = result.xp,
+        course = course.name, tier = course.def.tier, medal = result.medal, seconds = result.seconds, respawns = result.respawns, coins = result.coins, xp = result.xp, playerXp = result.playerXp,
         level = result.level, levelUps = result.levelUps, xpInto = result.xpInto, xpNeeded = result.xpNeeded, materials = mats, rare = result.rare,
         personalBest = result.personalBest, previousBest = result.previousBest, daily = result.daily, cappedCoins = result.cappedCoins, bundleSkipped = result.bundleSkipped,
         par = course.par,
@@ -188,6 +190,11 @@ local function StartRun(player, course)
                 local result = CourierRewards.Settle(d, course, seconds, respawns, Today(), math.random, LiveOpsService.GetMultiplier("coins"))
                 PlayerDataService.MarkDirty(player)
                 if result.personalBest then SubmitBest(player, course.id, seconds) end
+                -- the rest of the game: player XP (this is what levels you up), Quests and achievements
+                result.playerXp = CourierData.PlayerXp(course.def, result.medal)
+                ProgressionService.AddPlayerXP(player, result.playerXp)
+                ChallengeService.TrackEvent(player, "CourierDelivery", { count = 1 })
+                if result.medal == "Gold" then ChallengeService.TrackEvent(player, "CourierGold", { count = 1 }) end
                 Fire(player, "finish", Summary(course, result))
             end
             EndRun(rec)

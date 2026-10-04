@@ -10,6 +10,22 @@ ChallengeData.Type = {
 -- ── Daily Challenges (rotate from pool) ────────────────────────────────────
 ChallengeData.Daily = {
     {
+        id = "daily_courier_delivery", displayName = "Deliver a Crate",
+        description = "Finish a Courier Run: carry a crate across a course to the drop-off.",
+        type = ChallengeData.Type.Daily,
+        trackEvent = "CourierDelivery",
+        target = 1,
+        rewards = { coins = 80, xp = 150, materials = { { id = "BasicOre", qty = 20 } } },
+    },
+    {
+        id = "daily_tower_levels", displayName = "Climb 10 Tower Levels",
+        description = "Reach 10 new levels of the Sky Tower (find the portal near the spawn).",
+        type = ChallengeData.Type.Daily,
+        trackEvent = "TowerLevel",
+        target = 10,
+        rewards = { coins = 90, xp = 200, materials = { { id = "RefinedOre", qty = 8 } } },
+    },
+    {
         id = "daily_smelt_20", displayName = "Smelt 20 Ore",
         description = "Smelt any 20 raw material items.",
         type = ChallengeData.Type.Daily,
@@ -69,6 +85,22 @@ ChallengeData.Daily = {
 
 -- ── Weekly Challenges ───────────────────────────────────────────────────────
 ChallengeData.Weekly = {
+    {
+        id = "weekly_tower_summit", displayName = "Reach the Top of the Sky Tower",
+        description = "Climb all the way to the summit of the Sky Tower.",
+        type = ChallengeData.Type.Weekly,
+        trackEvent = "TowerSummit",
+        target = 1,
+        rewards = { coins = 600, xp = 1200, materials = { { id = "ElementalIngot", qty = 10 } } },
+    },
+    {
+        id = "weekly_tower_100", displayName = "Climb 100 Tower Levels",
+        description = "Reach 100 new levels of the Sky Tower across the week.",
+        type = ChallengeData.Type.Weekly,
+        trackEvent = "TowerLevel",
+        target = 100,
+        rewards = { coins = 450, xp = 900, materials = { { id = "CrystalFragment", qty = 12 } } },
+    },
     {
         id = "weekly_craft_tier3", displayName = "Craft a Tier 3 Golem",
         description = "Craft any Tier 3 Core Golem.",
@@ -138,6 +170,31 @@ ChallengeData.Weekly = {
 
 -- ── Lifetime Achievements ───────────────────────────────────────────────────
 ChallengeData.Lifetime = {
+    {
+        id = "ach_tower_15", displayName = "Sky Climber",
+        description = "Reach level 15 of the Sky Tower.",
+        type = ChallengeData.Type.Lifetime,
+        trackEvent = "TowerLevel",
+        trackFilter = { minLevel = 15 },
+        target = 1,
+        rewards = { title = "Sky Climber", xp = 2500 },
+    },
+    {
+        id = "ach_tower_summit", displayName = "Top of the World",
+        description = "Reach the summit of the Sky Tower.",
+        type = ChallengeData.Type.Lifetime,
+        trackEvent = "TowerSummit",
+        target = 1,
+        rewards = { title = "Skybreaker", xp = 6000 },
+    },
+    {
+        id = "ach_courier_gold", displayName = "Golden Courier",
+        description = "Earn a Gold medal on a Courier Run.",
+        type = ChallengeData.Type.Lifetime,
+        trackEvent = "CourierGold",
+        target = 1,
+        rewards = { title = "Golden Courier", xp = 2000 },
+    },
     {
         id = "ach_first_golem", displayName = "Forge Born",
         description = "Craft your first Golem.",
