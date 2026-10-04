@@ -6,10 +6,10 @@
 - [ ] Golem animations (idle, mine, walk): the code is ready for them (`AssetData.Golem.*.animations`), none are uploaded yet.
 - [x] Game icon and 16:9 thumbnail made (`marketing/GameIcon.jpg`, `marketing/GameImageDisplay.jpg`; prompts and guide in `marketing/`).
 - [x] Upload the icon and thumbnail in Creator Hub (done). Product and pass ids are set in `ProductData.lua`.
-- [ ] **Cart Run depot mesh**: a cool building or tunnel mouth at the end of each Cart Run course that the cart is pushed *into* and stops inside (a buffer stop or
-      hatch behind it), not a glowing disc it rolls through. Also nicer meshes for the crusher gate, tunnel mouths, bridge planks and checkpoint banners
-      (`CartCourseArt.lua`: each is a separate named part, so a mesh can replace it). Prompts for the mesh generator are in `ART_BRIEF.md` part B.
-
+- [x] Cart Run depot: each course now ends in a stone hall (entrance frame and sign, roof, lanterns, a buffer wall) that the cart is pushed *into* and stops against
+      (`CartCourseArt.BuildDepot`), built from parts.
+- [ ] **Cart Run meshes**: swap in real meshes for the depot hall, the crusher gate, tunnel mouths, bridge planks and checkpoint banners (`CartCourseArt.lua`: each is a
+      separate named part). Prompts for the mesh generator are in `ART_BRIEF.md` part B.
 - [ ] **My Forge needs a lot of visual work**: real meshes for the forge buildings and furniture (shed and workshop levels 1-10, furnace, anvil, workbench, vault,
       fences, banners, the Forge Builder pieces) in place of the plain parts, and every solid piece must **collide** (no walking through walls, furnaces,
       barrels, pedestals or fences; check each forge level and every Forge Builder piece). Includes the **Forge Skins** (Basic, Ember, Frost, Storm, Void: each

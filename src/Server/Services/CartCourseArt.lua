@@ -266,23 +266,62 @@ local function BuildStart(folder, r)
     unit.Parent = folder
 end
 
+-- The depot: a stone hall over the last stretch of rail. The cart is pushed inside and stops against the buffer at the far wall (the course ends at the
+-- buffer, so it can't roll through). Hall length is DEPOT_LENGTH studs before the end of the rail, plus the buffer bay behind it.
+CartCourseArt.DEPOT_LENGTH = 36
+
 local function BuildDepot(folder, r)
     local x, y, z, tx, _, tz = CartPath.At(r.path, r.length)
     local color = r.def.color or Color3.fromRGB(255, 220, 120)
     local dir = Vector3.new(tx, 0, tz).Unit
+    local f = CFrame.lookAt(Vector3.new(x, y, z), Vector3.new(x, y, z) + dir)       -- local -Z is forward (towards the buffer), +X is to the right
     local unit = Instance.new("Model")
     unit.Name = "Depot"
-    local disc = P({ Name = "DepotDisc", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Neon, Color = color, Transparency = 0.35, Size = Vector3.new(0.4, 18, 18),
-        CanCollide = false, CFrame = CFrame.new(x + tx * 6, y + 0.5, z + tz * 6) * CFrame.Angles(0, 0, math.pi / 2) }, unit)
-    local light = Instance.new("PointLight")
-    light.Color, light.Range, light.Brightness = color, 40, 1.8
-    light.Parent = disc
-    local anchor = P({ Name = "DepotAnchor", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(x + tx * 6, y + 16, z + tz * 6) }, unit)
-    Label(unit, anchor, "DEPOT", UDim2.new(0, 160, 0, 40), Vector3.new(0, 0, 0), color, 160)
-    local rx, rz = Right(tx, tz)
-    for _, side in ipairs({ -1, 1 }) do                                        -- the rail ends in a buffer stop
-        local c = Vector3.new(x + tx * 3 + rx * side * 3, y + 1.4, z + tz * 3 + rz * side * 3)
-        P({ Name = "Buffer", Material = Enum.Material.Metal, Color = IRON, Size = Vector3.new(1.6, 2.4, 1.6), CanCollide = false, CFrame = CFrame.lookAt(c, c + dir) }, unit)
+    local H = 24
+    local L = CartCourseArt.DEPOT_LENGTH
+    local cz = (L - 6) / 2                                                           -- the hall runs from z = +L (entrance) to z = -6 (back wall)
+    local len = L + 6
+
+    local function block(name, size, offset, props)
+        local part = P({ Name = name, Material = Enum.Material.Basalt, Color = ROCK, Size = size, CFrame = f * offset }, unit)
+        if props then for k, v in pairs(props) do part[k] = v end end
+        return part
+    end
+    -- floor that carries on to the back wall, walls, roof and back wall (all solid)
+    block("DepotFloor", Vector3.new(W, 1, 6), CFrame.new(0, -0.5, -3), { Material = Enum.Material.Slate, Color = DECK })
+    for _, side in ipairs({ -1, 1 }) do
+        block("DepotWall", Vector3.new(3, H, len), CFrame.new(side * (W / 2 + 1.5), H / 2, cz))
+    end
+    block("DepotRoof", Vector3.new(W + 8, 3, len), CFrame.new(0, H + 1.5, cz))
+    block("DepotBackWall", Vector3.new(W + 8, H + 3, 3), CFrame.new(0, (H + 3) / 2, -7.5))
+    -- the entrance: timber frame and a big sign over it
+    for _, side in ipairs({ -1, 1 }) do
+        P({ Name = "DepotPost", Material = Enum.Material.Wood, Color = TIMBER, Size = Vector3.new(3.4, H + 2, 3.4), CFrame = f * CFrame.new(side * (W / 2 + 2.2), (H + 2) / 2, L + 1) }, unit)
+    end
+    local lintel = P({ Name = "DepotLintel", Material = Enum.Material.Wood, Color = TIMBER, Size = Vector3.new(W + 10, 5, 3.6), CFrame = f * CFrame.new(0, H + 2.5, L + 1) }, unit)
+    local signPanel = P({ Name = "DepotSignPanel", Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(34, 22, 18), Size = Vector3.new(W, 4, 0.3), CanCollide = false,
+        CFrame = f * CFrame.new(0, H + 2.5, L + 2.9) }, unit)
+    local gui = Instance.new("SurfaceGui")
+    gui.Name, gui.Face, gui.SizingMode, gui.PixelsPerStud = "Lettering", Enum.NormalId.Back, Enum.SurfaceGuiSizingMode.PixelsPerStud, 50
+    gui.Parent = signPanel
+    local word = Instance.new("TextLabel")
+    word.Size, word.BackgroundTransparency, word.Text = UDim2.new(1, 0, 1, 0), 1, "DEPOT"
+    word.TextColor3, word.Font, word.TextScaled = color, Enum.Font.GothamBlack, true
+    word.Parent = gui
+    -- the buffer stop at the end of the rail, where the cart's front comes to rest
+    block("DepotBuffer", Vector3.new(W - 3, 4, 2), CFrame.new(0, 2, -5.4), { Material = Enum.Material.Metal, Color = IRON })
+    for _, off in ipairs({ -5, 0, 5 }) do
+        P({ Name = "BufferStripe", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 150, 40), Size = Vector3.new(2.4, 0.8, 2.2), CanCollide = false,
+            CFrame = f * CFrame.new(off, 3.2, -5.4) }, unit)
+    end
+    -- the glowing floor marker where the cart parks, and warm light along the hall
+    local disc = P({ Name = "DepotDisc", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Neon, Color = color, Transparency = 0.35, Size = Vector3.new(0.3, 12, 12), CanCollide = false,
+        CFrame = f * CFrame.new(0, 0.2, 0) * CFrame.Angles(0, 0, math.pi / 2) }, unit)
+    local glow = Instance.new("PointLight")
+    glow.Color, glow.Range, glow.Brightness = color, 40, 1.8
+    glow.Parent = disc
+    for k = 0, 2 do
+        Lantern(unit, (f * CFrame.new(0, H - 3, L - 6 - k * 12)).Position, color)
     end
     unit.Parent = folder
 end
