@@ -57,6 +57,18 @@ function CourierRunner.SpinnerHits(sp, t, px, py, pz)
     return math.abs(along) <= sp.radius and across <= sp.thick / 2 + BAR_BODY
 end
 
+-- Where a sweeper's bar is along Z at time t (it slides back and forth across its beam)
+function CourierRunner.SweeperZ(sw, t)
+    return sw.z + sw.amp * math.sin(2 * math.pi * (t + sw.phase) / sw.period)
+end
+
+-- Is the point touching this sweeper's bar? The bar is a low wall (3.2 tall): jump over it, or time it.
+function CourierRunner.SweeperHits(sw, t, px, py, pz)
+    local h = py - sw.y
+    if h > 3.2 + STAND_HEIGHT - 0.4 or h < -2 then return false end
+    return math.abs(px - sw.x) <= (sw.thick or 1.6) / 2 + BAR_BODY and math.abs(pz - CourierRunner.SweeperZ(sw, t)) <= 1.7 + BAR_BODY
+end
+
 -- Is the point under this crusher while it is shut?
 function CourierRunner.CrusherHits(c, t, px, py, pz)
     if CartCourseData.HazardOpen(c, t) then return false end

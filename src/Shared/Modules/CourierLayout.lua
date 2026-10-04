@@ -7,7 +7,7 @@
 --   spinners   { x, y(top of the platform), z, radius, barY, thick, omega, phase }   a bar sweeping round, to jump over
 --   crushers   { x, y(top of the platform), z, sx, sz, height, open, closed, phase }   a block that slams down on a timer
 --   trusses    { x, y(foot), z, height }   a ladder you climb
---   bounces    { x, y(top of the pad), z, sx, sz, power, rise }   a pad that launches you up (Y speed `power`)
+--   bounces    { x, y(top of the pad), z, sx, sz, power, hspeed, rise }   a pad that throws you up (Y speed `power`) and forward (`hspeed` along the course)
 --   sweepers   { x, y(top of the platform), z, amp, period, phase, thick }   a bar sliding across Z
 --   (platforms may also carry conveyor = speed, ice = true, viaTruss / viaBounce = true on the landing of a ladder or bounce)
 --   checkpoints{ x, y, z }   places to respawn (the first is the start)
@@ -136,7 +136,7 @@ function Modules.bounce(L, cur, p)
     local x0 = cur.x + (p.gap or 3)
     Plat(L, x0, p.padLen or 10, cur.y, cur.z, p.width or 12)
     local padX = x0 + (p.padLen or 10) / 2
-    table.insert(L.bounces, { x = padX, y = cur.y, z = cur.z, sx = (p.padLen or 10) - 2, sz = (p.width or 12) - 2, power = p.power or 78, rise = p.rise })
+    table.insert(L.bounces, { x = padX, y = cur.y, z = cur.z, sx = (p.padLen or 10) - 2, sz = (p.width or 12) - 2, power = p.power or 78, hspeed = p.hspeed or 28, rise = p.rise })
     local landX = x0 + (p.padLen or 10) + p.span
     cur.y += p.rise
     Plat(L, landX, p.landLen or 14, cur.y, cur.z, p.landWidth or 14, { viaBounce = true, bounceGap = p.span, bounceRise = p.rise })

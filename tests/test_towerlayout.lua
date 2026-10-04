@@ -10,9 +10,19 @@ local T = build(7)
 expect(#T.levels == 30 and T.finish ~= nil, "30 levels and a finish")
 expect(T.height > 600 and T.height < 900, "it climbs high (" .. math.floor(T.height) .. " studs)")
 expect(#T.checkpoints == 30, "one checkpoint at the start of every level (" .. #T.checkpoints .. ")")
-local dirs = true
-for i = 2, #T.levels do if T.levels[i].dir == T.levels[i - 1].dir then dirs = false end end
-expect(dirs, "levels alternate direction")
+local flips = 0
+for i = 2, #T.levels do if T.levels[i].dir ~= T.levels[i - 1].dir then flips += 1 end end
+expect(flips >= 20, "levels zig-zag (they turn back " .. flips .. " times in 29)")
+local worstWidth = 0
+for seed = 1, 60 do
+    for _, levels in ipairs({ 30, 60 }) do
+        local tw = build(seed * 29 + 4, levels)
+        local lo, hi = 1e9, -1e9
+        for _, p in ipairs(tw.platforms) do lo = math.min(lo, p.x - p.sx / 2) hi = math.max(hi, p.x + p.sx / 2) end
+        worstWidth = math.max(worstWidth, hi - lo)
+    end
+end
+expect(worstWidth < 700, "the tower stays compact on 120 random towers (widest " .. math.floor(worstWidth) .. " studs)")
 local rising = true
 for i = 2, #T.levels do if T.levels[i].y <= T.levels[i - 1].y + 10 then rising = false end end
 expect(rising, "every level is well above the one below")
@@ -34,7 +44,7 @@ local failures = {}
 for seed = 1, 60 do
     local tw = build(seed * 37 + 5, 30)
     for _, lv in ipairs(tw.levels) do
-        local lim = CD.Limits[lv.tier]
+        local lim = CD.Limits[lv.designTier]                      -- each design is held to its own tier's limits
         local order = TL.WalkOrder(tw, lv.index)
         if lv.dir == 1 then
             table.sort(order, function(a, b) return a.x1 < b.x1 end)
@@ -45,14 +55,14 @@ for seed = 1, 60 do
         for _, piece in ipairs(order) do
             local near = lv.dir == 1 and piece.x1 or piece.x2
             local far = lv.dir == 1 and piece.x2 or piece.x1
-            if lastEnd then
+            if lastEnd and not piece.viaBounce then                    -- (a bounce landing is checked on its own, below)
                 local gap = (lv.dir == 1) and (near - lastEnd) or (lastEnd - near)
-                local rise = piece.top - lastTop
+                local rise = piece.viaTruss and 0 or (piece.top - lastTop)           -- a ladder carries its own height (checked below)
                 local side = math.abs(piece.z - lastZ) - (piece.w + lastW) / 2
                 if gap > lim.maxGap + 1e-6 or rise > lim.maxRise + 1e-6 or side > 1.0 then
                     failures[#failures + 1] = string.format("seed %d level %d: gap %.1f rise %.1f side %.1f (limits %.1f / %.1f)", seed, lv.index, gap, rise, side, lim.maxGap, lim.maxRise)
                 end
-                worstGap[lv.tier] = math.max(worstGap[lv.tier] or 0, gap)
+                worstGap[lv.designTier] = math.max(worstGap[lv.designTier] or 0, gap)
             end
             local advance = (not lastEnd) or (lv.dir == 1 and far > lastEnd) or (lv.dir == -1 and far < lastEnd)
             if advance then lastEnd, lastTop, lastZ, lastW = far, piece.top, piece.z, piece.w end
@@ -63,6 +73,71 @@ expect(#failures == 0, "no impossible jump in 60 towers (" .. #failures .. " fou
 for tier = 1, 3 do
     expect((worstGap[tier] or 0) <= CD.Limits[tier].maxGap + 1e-6, "tier " .. tier .. ": the widest gap is " .. string.format("%.1f", worstGap[tier] or 0) .. " (limit " .. CD.Limits[tier].maxGap .. ")")
 end
+
+print("== the new obstacles are fair")
+local G = 196.2
+local bounceN, ladderN, convN, sweepN = 0, 0, 0, 0
+local ok = { ladder = true, belt = true, sweeper = true, bounce = true }
+for seed = 1, 60 do
+    local tw = build(seed * 13 + 1, 30)
+    for _, tr in ipairs(tw.trusses) do
+        ladderN += 1
+        if tr.height < 10 or tr.height > 30 then ok.ladder = false end            -- a ladder is a real climb, but not a chore
+    end
+    for _, p in ipairs(tw.platforms) do
+        if p.conveyor then
+            convN += 1
+            if math.abs(p.conveyor) > 6 then ok.belt = false end                  -- a belt must not out-run a walker (16 studs/s)
+        end
+    end
+    for _, sw in ipairs(tw.sweepers) do
+        sweepN += 1
+        if sw.period < 2.8 or sw.amp > 5 then ok.sweeper = false end              -- slow enough to time, narrow enough to dodge
+    end
+    for _, b in ipairs(tw.bounces) do
+        bounceN += 1
+        local apex = b.power * b.power / (2 * G)
+        local flight = (b.power + math.sqrt(math.max(0, b.power * b.power - 2 * G * b.rise))) / G
+        local range = b.hspeed * flight                                           -- the pad throws you forward at a fixed speed, so this does not depend on the player
+        local land
+        for _, p in ipairs(tw.platforms) do if p.level == b.level and p.viaBounce then land = p end end
+        local padHalf = b.sx / 2 + 1
+        if not land or apex < b.rise + 2.5 or range < padHalf + land.bounceGap + 1.5 or range > padHalf + land.bounceGap + land.sx - 2 then ok.bounce = false end
+    end
+end
+expect(ladderN > 0 and ok.ladder, "every ladder is a 10-30 stud climb (" .. ladderN .. " in 60 towers)")
+expect(convN > 0 and ok.belt, "every conveyor belt is slower than a walker (" .. convN .. ")")
+expect(sweepN > 0 and ok.sweeper, "every sweeper bar is slow enough to time and narrow enough to dodge (" .. sweepN .. ")")
+expect(bounceN > 0 and ok.bounce, "every bounce pad clears its landing and lands you on it, not short and not past it (" .. bounceN .. ")")
+
+print("== the designs")
+local DS = TL.Designs
+expect(#DS >= 24, "at least 24 distinct level designs (" .. #DS .. ")")
+local names, themes = {}, {}
+local dupe = false
+for _, d in ipairs(DS) do if names[d.name] then dupe = true end names[d.name] = true themes[d.theme] = true end
+local themeCount = 0 for _ in pairs(themes) do themeCount += 1 end
+expect(not dupe and themeCount >= 6, "each has its own name, and there are " .. themeCount .. " different looks")
+local tiers = { 0, 0, 0 }
+for _, d in ipairs(DS) do tiers[d.tier] += 1 end
+expect(tiers[1] >= 9 and tiers[2] >= 9 and tiers[3] >= 9, "designs at every difficulty (" .. tiers[1] .. " easy, " .. tiers[2] .. " medium, " .. tiers[3] .. " hard)")
+local seen, repeats = {}, 0
+for seed = 1, 20 do
+    local tw = build(seed * 3 + 2, 30)
+    for i = 1, #tw.levels do
+        seen[tw.levels[i].design] = true
+        if i > 1 and tw.levels[i].design == tw.levels[i - 1].design then repeats += 1 end
+    end
+end
+local variety = 0 for _ in pairs(seen) do variety += 1 end
+expect(variety == #DS, "every design turns up in the towers (" .. variety .. " of " .. #DS .. ")")
+expect(repeats == 0, "no design twice in a row")
+local diff = build(10, 30)
+local first = {}
+for i = 1, 30 do first[#first + 1] = diff.levels[i].design end
+local distinct = {} local n = 0
+for _, nme in ipairs(first) do if not distinct[nme] then distinct[nme] = true n += 1 end end
+expect(n >= 27, "one tower has " .. n .. " different kinds of level in its 30")
 
 print("== the levels connect")
 local bad = {}

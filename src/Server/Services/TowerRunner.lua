@@ -23,6 +23,8 @@ function TowerRunner.New(T, hooks, now)
     for i = 1, #T.levels do run.byLevel[i] = { spinners = {}, crushers = {} } end
     for _, s in ipairs(T.spinners) do table.insert(run.byLevel[s.level].spinners, s) end
     for _, c in ipairs(T.crushers) do table.insert(run.byLevel[c.level].crushers, c) end
+    for i = 1, #T.levels do run.byLevel[i].sweepers = {} end
+    for _, s in ipairs(T.sweepers or {}) do table.insert(run.byLevel[s.level].sweepers, s) end
     TowerRunner.StartLava(run, now)
     return run
 end
@@ -107,6 +109,12 @@ function TowerRunner.Step(run, now, px, py, pz)
         for _, sp in ipairs(run.byLevel[lv].spinners) do
             if math.abs(px - sp.x) <= sp.radius + 2 and CourierRunner.SpinnerHits(sp, now, px, py, pz) then
                 Respawn(run, now, "spun")
+                return
+            end
+        end
+        for _, sw in ipairs(run.byLevel[lv].sweepers) do
+            if math.abs(px - sw.x) <= 4 and CourierRunner.SweeperHits(sw, now, px, py, pz) then
+                Respawn(run, now, "swept")
                 return
             end
         end

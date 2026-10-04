@@ -8,6 +8,19 @@ local TowerArt = {}
 local P, Sign = CourierArt.P, CourierArt.Sign
 local TIMBER = Color3.fromRGB(100, 70, 44)
 
+-- Each level design has its own look: platform material and colours, and the glow colour of its edges
+TowerArt.Themes = {
+    wood      = { material = Enum.Material.Wood,         color = Color3.fromRGB(150, 104, 64),  rest = Color3.fromRGB(190, 140, 90),  accent = Color3.fromRGB(255, 190, 90) },
+    sandstone = { material = Enum.Material.Sandstone,    color = Color3.fromRGB(196, 150, 100), rest = Color3.fromRGB(220, 180, 120), accent = Color3.fromRGB(255, 220, 130) },
+    metal     = { material = Enum.Material.DiamondPlate, color = Color3.fromRGB(110, 116, 128), rest = Color3.fromRGB(150, 156, 168), accent = Color3.fromRGB(255, 160, 60) },
+    neon      = { material = Enum.Material.SmoothPlastic, color = Color3.fromRGB(70, 56, 110),  rest = Color3.fromRGB(96, 80, 150),   accent = Color3.fromRGB(120, 255, 230) },
+    ice       = { material = Enum.Material.Ice,          color = Color3.fromRGB(150, 205, 245), rest = Color3.fromRGB(190, 230, 255), accent = Color3.fromRGB(170, 235, 255) },
+    dark      = { material = Enum.Material.Basalt,       color = Color3.fromRGB(56, 48, 56),    rest = Color3.fromRGB(84, 72, 84),    accent = Color3.fromRGB(255, 120, 60) },
+    glass     = { material = Enum.Material.Glass,        color = Color3.fromRGB(120, 200, 230), rest = Color3.fromRGB(160, 225, 245), accent = Color3.fromRGB(200, 250, 255) },
+    slate     = { material = Enum.Material.Slate,        color = Color3.fromRGB(80, 84, 96),    rest = Color3.fromRGB(110, 114, 126), accent = Color3.fromRGB(200, 160, 255) },
+    lava      = { material = Enum.Material.Basalt,       color = Color3.fromRGB(70, 36, 30),    rest = Color3.fromRGB(110, 52, 40),   accent = Color3.fromRGB(255, 90, 40) },
+}
+
 -- A hue that climbs through the rainbow with height, so players can see how high they are by colour
 local function LevelColor(level, total)
     return Color3.fromHSV(0.02 + 0.72 * (level - 1) / math.max(1, total - 1), 0.75, 1)
@@ -25,14 +38,15 @@ local function LevelLayout(T, i, isLast)
     local lay = {
         platforms = Subset(T.platforms, i), movers = Subset(T.movers, i), crumbles = Subset(T.crumbles, i),
         spinners = Subset(T.spinners, i), crushers = Subset(T.crushers, i), checkpoints = Subset(T.checkpoints, i),
+        trusses = Subset(T.trusses, i), bounces = Subset(T.bounces, i), sweepers = Subset(T.sweepers, i),
         base = T.base,
     }
     if isLast then lay.finish = T.finish end
     return lay
 end
 
--- A glowing archway with a name, used for both portals
-function TowerArt.Portal(parent, position, facing, label, color)
+-- A glowing archway with a name: walk into the glow and `onEnter(player)` runs (no button). Used for the hub portal and the ways back.
+function TowerArt.Portal(parent, position, facing, label, color, onEnter)
     local unit = Instance.new("Model")
     unit.Name = "TowerPortal"
     local f = CFrame.lookAt(position, position + facing)
@@ -40,23 +54,24 @@ function TowerArt.Portal(parent, position, facing, label, color)
         P({ Name = "PortalPost", Material = Enum.Material.Basalt, Color = Color3.fromRGB(58, 42, 38), Size = Vector3.new(4, 26, 4), CFrame = f * CFrame.new(side * 9, 13, 0) }, unit)
     end
     P({ Name = "PortalArch", Material = Enum.Material.Basalt, Color = Color3.fromRGB(58, 42, 38), Size = Vector3.new(22, 4, 4), CFrame = f * CFrame.new(0, 27, 0) }, unit)
-    local gate = P({ Name = "PortalGlow", Material = Enum.Material.Neon, Color = color, Transparency = 0.45, Size = Vector3.new(14, 25, 0.6), CanCollide = false, CFrame = f * CFrame.new(0, 12.5, 0) }, unit)
+    local gate = P({ Name = "PortalGlow", Material = Enum.Material.Neon, Color = color, Transparency = 0.45, Size = Vector3.new(14, 25, 2.4), CanCollide = false, CFrame = f * CFrame.new(0, 12.5, 0) }, unit)
     local light = Instance.new("PointLight")
     light.Color, light.Range, light.Brightness = color, 50, 2.4
     light.Parent = gate
     local base = P({ Name = "PortalBase", Material = Enum.Material.Slate, Color = Color3.fromRGB(80, 64, 60), Size = Vector3.new(22, 1, 14), CFrame = f * CFrame.new(0, 0.5, 0) }, unit)
     Sign(unit, gate, label, UDim2.new(0, 280, 0, 60), Vector3.new(0, 18, 0), color, 150)
-    local prompt = Instance.new("ProximityPrompt")
-    prompt.Name = "PortalPrompt"
-    prompt.ActionText = "Enter"
-    prompt.ObjectText = label
-    prompt.HoldDuration = 0.3
-    prompt.MaxActivationDistance = 16
-    prompt.RequiresLineOfSight = false
-    prompt.Parent = gate
+    local recent = {}                                                 -- userId -> last time it fired (so one step through is one trip)
+    gate.Touched:Connect(function(hit)
+        local player = game:GetService("Players"):GetPlayerFromCharacter(hit.Parent)
+        if not player or not onEnter then return end
+        local now = os.clock()
+        if recent[player.UserId] and now - recent[player.UserId] < 3 then return end
+        recent[player.UserId] = now
+        onEnter(player)
+    end)
     unit.PrimaryPart = base
     unit.Parent = parent
-    return unit, prompt
+    return unit
 end
 
 -- Builds the whole tower for a layout T under `parent`. Returns the folder.
@@ -65,7 +80,8 @@ function TowerArt.Build(parent, T)
     folder.Name = "SkyTower"
     for i, lv in ipairs(T.levels) do
         local color = LevelColor(i, T.total)
-        local r = { id = "Tower", def = { tier = lv.tier, color = color }, layout = LevelLayout(T, i, i == T.total) }
+        local theme = TowerArt.Themes[lv.theme] or TowerArt.Themes.slate
+        local r = { id = "Tower", def = { tier = lv.tier, color = theme.accent, look = theme }, layout = LevelLayout(T, i, i == T.total) }
         local group = Instance.new("Folder")
         group.Name = "Level" .. i
         group.Parent = folder
@@ -75,7 +91,7 @@ function TowerArt.Build(parent, T)
         local cp = r.layout.checkpoints[1]
         if cp then
             local anchor = P({ Name = "LevelSignAnchor", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(cp.x, cp.y + 14, cp.z) }, group)
-            Sign(group, anchor, "LEVEL " .. i, UDim2.new(0, 260, 0, 70), Vector3.new(0, 0, 0), color, 220)
+            Sign(group, anchor, "LEVEL " .. i .. "\n" .. (lv.design or ""), UDim2.new(0, 280, 0, 84), Vector3.new(0, 0, 0), color, 220)
             local beam = P({ Name = "LevelBeam", Material = Enum.Material.Neon, Color = color, Transparency = 0.75, Size = Vector3.new(2, 40, 2), CanCollide = false,
                 CFrame = CFrame.new(cp.x, cp.y + 17, cp.z) }, group)
             local light = Instance.new("PointLight")

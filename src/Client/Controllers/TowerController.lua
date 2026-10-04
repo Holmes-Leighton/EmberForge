@@ -10,9 +10,52 @@ local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local Theme        = require(game.ReplicatedStorage.Shared.Modules.Theme)
 local TowerArtColors = nil
 
+local CollectionService = game:GetService("CollectionService")
+local LocalPlayer = Players.LocalPlayer
+
 local TowerController = {}
 
-local LocalPlayer = Players.LocalPlayer
+-- ── Bounce pads and sweeper bars ──────────────────────────────────────────────
+-- A bounce pad throws the local character up and forward (the character belongs to this client, so setting its velocity here is what moves it). A sweeper bar slides
+-- across its beam on the shared server clock, the same position for everyone; the server separately decides who it knocks off.
+local bounceCooldown = 0
+local sweepers = {}
+
+local function AddBounce(pad)
+    pad.Touched:Connect(function(hit)
+        local char = LocalPlayer.Character
+        if not (char and hit:IsDescendantOf(char)) then return end
+        local now = os.clock()
+        if now - bounceCooldown < 0.6 then return end
+        bounceCooldown = now
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        local dir = pad:GetAttribute("Dir") or 1
+        root.AssemblyLinearVelocity = Vector3.new(dir * (pad:GetAttribute("HSpeed") or 28), pad:GetAttribute("Power") or 78, 0)
+        local e = Instance.new("ParticleEmitter")
+        e.Color, e.Size, e.Lifetime, e.Speed = ColorSequence.new(Color3.fromRGB(120, 255, 170)), NumberSequence.new(1.2, 0), NumberRange.new(0.5, 1), NumberRange.new(10, 20)
+        e.SpreadAngle, e.LightEmission, e.Rate = Vector2.new(60, 60), 1, 0
+        e.Parent = root
+        e:Emit(30)
+        Debris:AddItem(e, 1.5)
+    end)
+end
+
+local function AddSweeper(bar)
+    sweepers[bar] = { amp = bar:GetAttribute("Amp") or 4, period = bar:GetAttribute("Period") or 3, phase = bar:GetAttribute("Phase") or 0,
+        x = bar:GetAttribute("X") or bar.Position.X, y = bar:GetAttribute("Y") or bar.Position.Y, z0 = bar:GetAttribute("Z0") or bar.Position.Z }
+end
+
+local function StepSweepers(now)
+    for bar, s in pairs(sweepers) do
+        if bar.Parent then
+            bar.CFrame = CFrame.new(s.x, s.y, s.z0 + s.amp * math.sin(2 * math.pi * (now + s.phase) / s.period))
+        else
+            sweepers[bar] = nil
+        end
+    end
+end
+
 local function ServerNow() return workspace:GetServerTimeNow() end
 
 local hud, levelLbl, clockLbl, infoLbl, lavaLbl, standingsFrame, standingsLbl, flash, banner
@@ -206,7 +249,7 @@ local function ShowSummary(s)
 end
 
 -- ── Events from the server ────────────────────────────────────────────────────
-local REASONS = { fell = "You fell!", lava = "The lava got you!", crushed = "Crushed!", spun = "Knocked off by the bar!" }
+local REASONS = { fell = "You fell!", lava = "The lava got you!", crushed = "Crushed!", spun = "Knocked off by the bar!", swept = "Swept off the beam!" }
 
 local function OnEvent(kind, p)
     p = p or {}
@@ -255,7 +298,15 @@ end
 
 function TowerController.Init()
     BuildHud()
-    RunService.RenderStepped:Connect(function() Update(ServerNow()) end)
+    for _, pad in ipairs(CollectionService:GetTagged("EFCourierBounce")) do AddBounce(pad) end
+    CollectionService:GetInstanceAddedSignal("EFCourierBounce"):Connect(AddBounce)
+    for _, bar in ipairs(CollectionService:GetTagged("EFCourierSweeper")) do AddSweeper(bar) end
+    CollectionService:GetInstanceAddedSignal("EFCourierSweeper"):Connect(AddSweeper)
+    RunService.RenderStepped:Connect(function()
+        local now = ServerNow()
+        StepSweepers(now)
+        Update(now)
+    end)
     RemoteEvents.TowerEvent.OnClientEvent:Connect(OnEvent)
 end
 

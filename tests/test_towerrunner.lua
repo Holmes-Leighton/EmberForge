@@ -28,6 +28,7 @@ local function walkTo(run, now, from, to, speed)
         local lv = to.level or run.highest                          -- hop only over the obstacles of the level being walked (a ledge below another level's crusher is not under it)
         for _, sp in ipairs(run.byLevel[lv].spinners) do if math.abs(x - sp.x) <= sp.radius + 2 then lift = 7 end end
         for _, c in ipairs(run.byLevel[lv].crushers) do if math.abs(x - c.x) <= c.sx then lift = 9 end end
+        for _, sw in ipairs(run.byLevel[lv].sweepers) do if math.abs(x - sw.x) <= 4 then lift = 8 end end
         Runner.Step(run, now, x, from.y + dy * f + lift, from.z + dz * f)
     end
     return now
@@ -159,6 +160,24 @@ Runner.Step(run, 7000, lvStart.x, lvStart.y, lvStart.z)
 local ang = sp.phase + sp.omega * 7000.1
 Runner.Step(run, 7000.1, sp.x + 5 * math.cos(ang), sp.y + 3, sp.z + 5 * math.sin(ang))
 expect(#log.respawns == 1 and log.respawns[1].reason == "spun", "a spinner bar knocks you back to the level start")
+
+print("== sweeper bars")
+local CRun = load("SSS/EmberForge/Services/CourierRunner")
+local sw = { x = 100, y = 20, z = 140, amp = 4, period = 3, phase = 0, thick = 1.6 }
+expect(math.abs(CRun.SweeperZ(sw, 0) - 140) < 1e-6 and math.abs(CRun.SweeperZ(sw, 0.75) - 144) < 1e-6 and math.abs(CRun.SweeperZ(sw, 2.25) - 136) < 1e-6, "the bar slides 4 studs either side of the middle")
+expect(CRun.SweeperHits(sw, 0, 100, 23, 140), "standing where the bar is, at ground level, is a hit")
+expect(not CRun.SweeperHits(sw, 0.75, 100, 23, 139), "the bar has moved away: safe (it is at the far edge)")
+expect(not CRun.SweeperHits(sw, 0, 100, 31, 140), "jumping clear over the bar is safe")
+expect(not CRun.SweeperHits(sw, 0, 110, 23, 140), "somewhere else along the beam is safe")
+expect(not CRun.SweeperHits(sw, 0, 100, 10, 140), "below the platform is safe")
+local swTower = TL.Build({ levels = 30, seed = 3, base = TD.BASE })
+local s1 = swTower.sweepers[1]
+local srun, slog = newRun(9000, swTower)
+srun.highest = s1.level
+local lvCp = swTower.checkpoints[swTower.levels[s1.level].firstCheckpoint]
+Runner.Step(srun, 9000, lvCp.x, lvCp.y, lvCp.z)
+Runner.Step(srun, 9000.1, s1.x, s1.y + 3, CRun.SweeperZ(s1, 9000.1))
+expect(#slog.respawns == 1 and slog.respawns[1].reason == "swept", "a sweeper bar sends a player it hits back to the level start")
 
 print("== cheats and drop-outs")
 run, log = newRun(1000)

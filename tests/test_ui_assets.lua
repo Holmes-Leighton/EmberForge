@@ -1,7 +1,7 @@
 QUIET = true
 -- ── fakes for the parts of Roblox the asset path needs ───────────────────────────────
 local CFmeta = getmetatable(CFrame.new(0, 0, 0))
-CFmeta.__index.ToObjectSpace = function(self) return setmetatable({ Position = self.Position }, CFmeta) end
+CFmeta.__index.ToObjectSpace = function(self) return setmetatable({ Position = self.Position, X = self.Position.X, Y = self.Position.Y, Z = self.Position.Z }, CFmeta) end
 CFmeta.__index.Inverse = function(self) return self end
 getmetatable(Vector3.new(0, 0, 0)).__index = function(_, k)
     if k == "Magnitude" then return 0 end

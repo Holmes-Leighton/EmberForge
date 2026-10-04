@@ -82,8 +82,10 @@ Recommendation: not yet. Six mining zones, the Quarry and pets already give plen
       4. [x] `TowerService` + `TowerController` HUD (level counter, round clock, live highest-level list, lava sea, level-up and fall effects, end summary), plugged into the
          main game: player XP (`ProgressionService.AddPlayerXP`), new daily/weekly/lifetime Quests (TowerLevel, TowerSummit, CourierDelivery, CourierGold), a "Tower" leaderboard
          tab, coin events, a per-round pay-once rule and a daily material cap. Verified in Studio: the portal starts a run and levels 1-7 paid 2, 9, 16, 24, 33, 42, 52 coins.
-      6. [ ] **The levels are all alike and too easy (user: "absolutely awful obstacle run").** Needs a real redesign of what a level is, with the user's say. Started: ladder,
-         conveyor, ice, bounce-pad and sweeper modules in `CourierLayout` (geometry only; no art, runner rules or tests yet).
+      6. [x] Level variety, round 1 (after "absolutely awful obstacle run"): 28 hand-named level designs in 3 difficulty tiers, each with its own look (9 themes) and a name on
+         its sign; ladders (real trusses), conveyor belts, slippery ice, bounce pads that throw you up and forward, sweeper bars, tiny islands, and combinations; a tower deals
+         from a shuffled deck (28 different designs in 30 levels). The tower stays compact. **Still needs the user's playtest**: which levels are fun, which are dull or unfair,
+         and what to add next (jump distances and difficulty are tuned by number, not by feel). The portal now triggers when you walk into it.
       5. [ ] Boards, daily challenge, Pro mode (60 levels, 2.5x), gear and mutators.
 - [ ] Courier Run: play it by hand at a real frame rate on a phone and a PC and tune the jump distances, platform sizes, speeds and lava pace.
 

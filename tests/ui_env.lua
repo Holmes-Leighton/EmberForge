@@ -155,14 +155,15 @@ Vector2 = { new = function(x, y) return { X = x, Y = y, Magnitude = 0 } end }
 Vector3 = { new = function(x, y, z) return setmetatable({ X = x or 0, Y = y or 0, Z = z or 0 }, V3) end }
 local CF = {}
 CF.__index = CF
+CF.GetComponents = function(t) local p = t.Position return p.X, p.Y, p.Z, 1, 0, 0, 0, 1, 0, 0, 0, 1 end        -- (a position-only CFrame has no rotation: the identity)
 CF.__mul = function(a, b)
     if getmetatable(b) == V3 then return b end
-    return setmetatable({ Position = a.Position }, CF)
+    return setmetatable({ Position = a.Position, X = a.Position.X, Y = a.Position.Y, Z = a.Position.Z }, CF)
 end
 CFrame = {
     new = function(x, y, z)
         local pos = type(x) == "table" and x or Vector3.new(x, y, z)
-        return setmetatable({ Position = pos }, CF)
+        return setmetatable({ Position = pos, X = pos.X, Y = pos.Y, Z = pos.Z }, CF)
     end,
     Angles = function() return setmetatable({ Position = Vector3.new(0, 0, 0) }, CF) end,
     lookAt = function(a) return setmetatable({ Position = a }, CF) end,

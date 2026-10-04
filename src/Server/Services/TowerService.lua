@@ -244,18 +244,14 @@ local function BuildTower(world, round)
 
     local b = TowerData.BASE
     CourierArt.P({ Name = "TowerLobby", Material = Enum.Material.Slate, Color = Color3.fromRGB(110, 76, 66), Size = Vector3.new(34, 2, 30), CFrame = CFrame.new(b.x - 17, b.y - 1, b.z) }, root)
-    local _, backPrompt = TowerArt.Portal(root, Vector3.new(b.x - 30, b.y, b.z - 6), Vector3.new(1, 0, 0), "Back to the cavern", Color3.fromRGB(120, 210, 255))
-    backPrompt.ActionText = "Leave the tower"
-    backPrompt.Triggered:Connect(function(player)
+    TowerArt.Portal(root, Vector3.new(b.x - 30, b.y, b.z - 6), Vector3.new(1, 0, 0), "Back to the cavern", Color3.fromRGB(120, 210, 255), function(player)
         local rec = runs[player.UserId]
         if rec then EndRun(rec, "left", true) end
         SendHome(player)
     end)
     local f = T.finish
     local dir = T.levels[T.total].dir
-    local _, topPrompt = TowerArt.Portal(root, Vector3.new(f.x + dir * 12, f.y - 3, f.z), Vector3.new(-dir, 0, 0), "Home", Color3.fromRGB(255, 215, 90))
-    topPrompt.ActionText = "Go home"
-    topPrompt.Triggered:Connect(function(player)
+    TowerArt.Portal(root, Vector3.new(f.x + dir * 12, f.y - 3, f.z), Vector3.new(-dir, 0, 0), "Home", Color3.fromRGB(255, 215, 90), function(player)
         local rec = runs[player.UserId]
         if rec then EndRun(rec, "home", true) end
         SendHome(player)
@@ -285,9 +281,7 @@ function TowerService.Init()
     BuildTower(world, state.round)
 
     local p = TowerData.PORTAL
-    local _, prompt = TowerArt.Portal(world, Vector3.new(p.x, 0, p.z), Vector3.new(0.92, 0, -0.38), "SKY TOWER", Color3.fromRGB(190, 120, 255))
-    prompt.ActionText = "Climb the Sky Tower"
-    prompt.Triggered:Connect(StartRun)
+    TowerArt.Portal(world, Vector3.new(p.x, 0, p.z), Vector3.new(0.92, 0, -0.38), "SKY TOWER", Color3.fromRGB(190, 120, 255), StartRun)       -- walk in to climb
 
     task.spawn(function()
         while true do

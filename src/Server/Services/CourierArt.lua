@@ -47,7 +47,7 @@ end
 -- ── Platforms ─────────────────────────────────────────────────────────────────
 local function BuildPlatforms(folder, r)
     local def, L = r.def, r.layout
-    local look = TIER_LOOK[def.tier]
+    local look = def.look or TIER_LOOK[def.tier]
     local accent = def.color or Color3.fromRGB(255, 190, 80)
     local group = Instance.new("Folder")
     group.Name = "Platforms"
@@ -61,8 +61,20 @@ local function BuildPlatforms(folder, r)
     for _, p in ipairs(L.platforms) do
         local top = p.y + p.sy / 2
         local isRest = p.sx >= 18
-        P({ Name = isRest and "RestPlatform" or "Platform", Material = look.material, Color = isRest and look.rest or look.color,
+        local part = P({ Name = isRest and "RestPlatform" or "Platform", Material = look.material, Color = isRest and look.rest or look.color,
             Size = Vector3.new(p.sx, p.sy, p.sz), CFrame = CFrame.new(p.x, p.y, p.z) }, group)
+        if p.ice then                                                -- slippery: almost no friction
+            part.Material, part.Color = Enum.Material.Ice, Color3.fromRGB(170, 225, 255)
+            part.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.02, 0, 100, 1)
+        elseif p.conveyor then                                       -- a belt: an anchored part with a velocity carries whatever stands on it
+            part.Name, part.Material, part.Color = "ConveyorBelt", Enum.Material.DiamondPlate, Color3.fromRGB(60, 60, 68)
+            part.AssemblyLinearVelocity = Vector3.new(p.conveyor, 0, 0)
+            for k = -1, 1 do                                         -- arrows showing which way it runs
+                P({ Name = "BeltArrow", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 190, 60), Size = Vector3.new(2.6, 0.2, 1.4), CanCollide = false,
+                    CFrame = CFrame.new(p.x + k * (p.sx / 3), p.y + p.sy / 2 + 0.12, p.z) }, group)
+            end
+            part:SetAttribute("BeltSpeed", p.conveyor)
+        end
         trim(p, top)
         if isRest and p.y < 150 then                                -- rest platforms stand on pillars (the Sky Tower, high up, floats); the small ones float
             for _, dz in ipairs({ -p.sz / 2 + 3, p.sz / 2 - 3 }) do
@@ -109,6 +121,36 @@ local function BuildObstacles(folder, r)
         bar:SetAttribute("CZ", sp.z)
         bar:SetAttribute("Y", sp.y + sp.barY)
         CollectionService:AddTag(bar, "EFCourierSpinner")
+    end
+    for _, tr in ipairs(L.trusses or {}) do                          -- a ladder: a real truss, which characters climb
+        local truss = Instance.new("TrussPart")
+        truss.Name = "Ladder"
+        truss.Anchored = true
+        truss.Size = Vector3.new(2, tr.height, 2)
+        truss.CFrame = CFrame.new(tr.x, tr.y + tr.height / 2, tr.z)
+        truss.Color = Color3.fromRGB(255, 200, 80)
+        truss.Parent = group
+        Sign(group, truss, "CLIMB!", UDim2.new(0, 110, 0, 28), Vector3.new(0, tr.height / 2 + 3, 0), Color3.fromRGB(255, 232, 150), 90)
+    end
+    for _, b in ipairs(L.bounces or {}) do
+        local pad = P({ Name = "BouncePad", Material = Enum.Material.Neon, Color = Color3.fromRGB(80, 255, 140), Size = Vector3.new(b.sx, 0.6, b.sz),
+            CFrame = CFrame.new(b.x, b.y + 0.3, b.z) }, group)
+        pad:SetAttribute("Power", b.power)
+        pad:SetAttribute("HSpeed", b.hspeed or 28)
+        pad:SetAttribute("Dir", b.dir or 1)
+        CollectionService:AddTag(pad, "EFCourierBounce")
+        Sign(group, pad, "BOUNCE", UDim2.new(0, 110, 0, 28), Vector3.new(0, 4, 0), Color3.fromRGB(150, 255, 190), 80)
+    end
+    for _, s in ipairs(L.sweepers or {}) do
+        local bar = P({ Name = "SweeperBar", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 70, 60), Size = Vector3.new(s.thick or 1.6, 3.2, 3.4),
+            CFrame = CFrame.new(s.x, s.y + 1.6, s.z) }, group)
+        bar:SetAttribute("Amp", s.amp)
+        bar:SetAttribute("Period", s.period)
+        bar:SetAttribute("Phase", s.phase)
+        bar:SetAttribute("Z0", s.z)
+        bar:SetAttribute("Y", s.y + 1.6)
+        bar:SetAttribute("X", s.x)
+        CollectionService:AddTag(bar, "EFCourierSweeper")
     end
     for i, c in ipairs(L.crushers) do
         -- the danger zone on the floor, and the block above it (closed = down on the floor, open = raised clear)
