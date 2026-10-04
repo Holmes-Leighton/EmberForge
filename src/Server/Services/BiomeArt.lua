@@ -93,14 +93,26 @@ local function Template(zoneKey, name)
     return zone and zone:FindFirstChild(name)
 end
 
--- opts: height | width (target size), yaw (radians), float (pos is the centre, not the ground), top (the piece's top surface goes at this height), hang (pos.Y is a ceiling: the piece hangs from it)
+-- The chunky landscape pieces a player must not be able to walk through. Everything else (things that hang or float, plants, the pads, the road frames, the anvil
+-- and carts that have their own colliders) stays walk-through. A solid piece collides through its mesh's own default collision (scripts can't change a mesh's collision fidelity).
+local SOLID_PIECES = {
+    RockCluster = true, CrystalCluster = true, OreCrates = true, Stalagmite = true, Boulder = true, GlowCluster = true,
+    Spires = true, WallPiece = true, IceSpires = true, SnowBoulder = true, SnowPine = true, IceCrystals = true, FrozenFalls = true, PadCrystals = true,
+}
+
+-- opts: height | width (target size), yaw (radians), float (pos is the centre, not the ground), top (the piece's top surface goes at this height), hang (pos.Y is a ceiling: the piece hangs from it),
+-- solid (true / false overrides whether it collides; by default the chunky pieces above do)
 local function MeshPiece(parent, zoneKey, name, pos, opts)
     local template = Template(zoneKey, name)
     if not template then return nil end
     local m = template:Clone()
     m.Name = name
+    local solid = opts.solid
+    if solid == nil then solid = SOLID_PIECES[name] == true and not opts.float and not opts.hang end
     for _, d in ipairs(m:GetDescendants()) do
-        if d:IsA("BasePart") then d.Anchored, d.CanCollide = true, false end
+        if d:IsA("BasePart") then
+            d.Anchored, d.CanCollide = true, solid and d:IsA("MeshPart") or false
+        end
     end
     local ext = m:GetExtentsSize()
     local factor = opts.height and (opts.height / math.max(ext.Y, 0.01)) or ((opts.width or 10) / math.max(math.max(ext.X, ext.Z), 0.01))

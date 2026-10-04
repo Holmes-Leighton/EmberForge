@@ -6,6 +6,10 @@
 - [ ] Golem animations (idle, mine, walk): the code is ready for them (`AssetData.Golem.*.animations`), none are uploaded yet.
 - [x] Game icon and 16:9 thumbnail made (`marketing/GameIcon.jpg`, `marketing/GameImageDisplay.jpg`; prompts and guide in `marketing/`).
 - [x] Upload the icon and thumbnail in Creator Hub (done). Product and pass ids are set in `ProductData.lua`.
+- [x] Landscape collision: the chunky scenery meshes (rock and crystal clusters, ore crates, stalagmites, boulders, glow clusters, spires, wall pieces, ice pieces) are solid
+      now (`SOLID_PIECES` in `BiomeArt.lua`); hanging, floating, plant, pad and road-frame pieces stay walk-through. Walk the caves and the hub once to look for any place that
+      now blocks a path or traps a player, and add `solid = false` to a piece if so.
+- [ ] **A real mesh for the Cart Run depot** (the stone hall at the end of each course is built from parts now): an entrance arch, hall and buffer wall as one piece.
 - [x] Cart Run depot: each course now ends in a stone hall (entrance frame and sign, roof, lanterns, a buffer wall) that the cart is pushed *into* and stops against
       (`CartCourseArt.BuildDepot`), built from parts.
 - [ ] **Cart Run meshes**: swap in real meshes for the depot hall, the crusher gate, tunnel mouths, bridge planks and checkpoint banners (`CartCourseArt.lua`: each is a
