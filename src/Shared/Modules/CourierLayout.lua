@@ -142,9 +142,8 @@ function CourierLayout.WalkOrder(L)
     local function add(x1, x2, top, z, w, kind) table.insert(out, { x1 = x1, x2 = x2, top = top, z = z, w = w, kind = kind }) end
     for _, p in ipairs(L.platforms) do add(p.x - p.sx / 2, p.x + p.sx / 2, p.y + p.sy / 2, p.z, p.sz, "platform") end
     for _, p in ipairs(L.crumbles) do add(p.x - p.sx / 2, p.x + p.sx / 2, p.y + p.sy / 2, p.z, p.sz, "crumble") end
-    for _, m in ipairs(L.movers) do
-        add(m.x0 - m.sx / 2, m.x0 + m.sx / 2, m.y + m.sy / 2, m.z, m.sz, "mover")
-        add(m.x1 - m.sx / 2, m.x1 + m.sx / 2, m.y + m.sy / 2, m.z, m.sz, "mover")
+    for _, m in ipairs(L.movers) do                      -- a mover is one piece from its near extreme to its far one (you ride it across)
+        add(m.x0 - m.sx / 2, m.x1 + m.sx / 2, m.y + m.sy / 2, m.z, m.sz, "mover")
     end
     table.sort(out, function(a, b) return a.x1 < b.x1 end)
     return out
