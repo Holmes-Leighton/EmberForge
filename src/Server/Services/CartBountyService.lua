@@ -84,7 +84,7 @@ local function Step(now)
                 if now - s.at >= CartBountyData.RETURN_AFTER then
                     body.AssemblyLinearVelocity = Vector3.zero
                     body.AssemblyAngularVelocity = Vector3.zero
-                    body.CFrame = CFrame.new(homeX, 3, homeZ)                 -- wheeled back, empty
+                    body.CFrame = CFrame.new(homeX, model:GetAttribute("HomeY") or 3, homeZ)                 -- wheeled back, empty
                     s.phase, s.at = "reloading", now
                     SetSign(model, "Reloading...")
                 end

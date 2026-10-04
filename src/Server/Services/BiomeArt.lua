@@ -560,14 +560,26 @@ local function BuildCart(parent, spot, index)
                 spot.ore or Color3.fromRGB(255, 200, 70), Enum.Material.Neon, Enum.PartType.Ball)
         end
     end
+    -- The collision block matches the cart you can see: as tall as it is (above a jump, about 7 studs) and as wide as it is, so a player pushing it
+    -- can't hop onto an invisible ledge that looks like standing inside an open cart. Its bottom stays where the art's is, and the cart is held at that
+    -- height by the rail constraint, so a taller block costs nothing. Mass stays what it was (the art is massless), so it pushes the same.
+    local artSize = model:FindFirstChild("CartArt") and select(2, model.CartArt:GetBoundingBox()) or Vector3.new(8.6, 5.6, 6.6)
+    local bodySize = Vector3.new(math.max(artSize.X * 0.92, 6), math.max(artSize.Y, 5.6), math.max(artSize.Z * 0.92, 5))
+    local centerY = 0.5 + bodySize.Y / 2
+    body.Size = bodySize
+    body.CFrame = CFrame.new(spot.x, centerY, spot.z)
+    if PhysicalProperties then
+        body.CustomPhysicalProperties = PhysicalProperties.new(math.max(0.01, 0.25 * (7.6 * 3.2 * 5.4) / (bodySize.X * bodySize.Y * bodySize.Z)), 0.25, 0.1, 1, 1)
+    end
     WeldAll(model, body)
     -- Mine Cart Delivery bounty (CartBountyService): the cart is tagged, remembers its start, says what to do, and the end of its rail has a glowing depot
     model:SetAttribute("HomeX", spot.x)
     model:SetAttribute("HomeZ", spot.z)
+    model:SetAttribute("HomeY", centerY)
     model:SetAttribute("Loaded", true)
     CollectionService:AddTag(model, "EFCart")
     local sign = Instance.new("BillboardGui")
-    sign.Name, sign.Adornee, sign.Size, sign.StudsOffset, sign.MaxDistance = "CartSign", body, UDim2.new(0, 190, 0, 34), Vector3.new(0, 5.5, 0), 55
+    sign.Name, sign.Adornee, sign.Size, sign.StudsOffset, sign.MaxDistance = "CartSign", body, UDim2.new(0, 190, 0, 34), Vector3.new(0, bodySize.Y / 2 + 1.5, 0), 55
     sign.Parent = body
     local text = Instance.new("TextLabel")
     text.Name, text.Size, text.BackgroundTransparency, text.Text = "Text", UDim2.new(1, 0, 1, 0), 1, "Push me to the depot for coins"
@@ -585,7 +597,7 @@ local function BuildCart(parent, spot, index)
     -- the rail: an invisible anchored post that the cart slides along (the track runs along X)
     local anchor = Instance.new("Part")
     anchor.Name, anchor.Size, anchor.Transparency, anchor.Anchored, anchor.CanCollide, anchor.CanQuery = "CartRailAnchor", Vector3.new(1, 1, 1), 1, true, false, false
-    anchor.CFrame = CFrame.new(spot.x, 3, spot.z)
+    anchor.CFrame = CFrame.new(spot.x, centerY, spot.z)
     anchor.Parent = model
     local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
     a0.Parent, a1.Parent = anchor, body
