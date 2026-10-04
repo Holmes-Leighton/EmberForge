@@ -76,6 +76,13 @@ function TowerData.PlayerXp(level)
 end
 TowerData.SUMMIT_PLAYER_XP = 300
 
+-- The daily challenge: one target level a day, in a weekly rotation (a gentle early week, a hard weekend). Reaching it earns a bonus chest, once a day.
+TowerData.DAILY_TARGETS = { 10, 14, 18, 22, 12, 26, 30 }
+TowerData.DAILY_COIN_MULT = 4          -- the chest pays this many times the target level's coins
+function TowerData.DailyTarget(day, total)
+    return math.min(total or TowerData.LEVELS, TowerData.DAILY_TARGETS[(day % #TowerData.DAILY_TARGETS) + 1])
+end
+
 -- A fresh seed for each round, the same on every server for the same clock time so friends in different servers can compare towers
 function TowerData.SeedForRound(roundIndex)
     return (roundIndex * 7919 + 104729) % 1000003

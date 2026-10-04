@@ -86,7 +86,9 @@ Recommendation: not yet. Six mining zones, the Quarry and pets already give plen
          its sign; ladders (real trusses), conveyor belts, slippery ice, bounce pads that throw you up and forward, sweeper bars, tiny islands, and combinations; a tower deals
          from a shuffled deck (28 different designs in 30 levels). The tower stays compact. **Still needs the user's playtest**: which levels are fun, which are dull or unfair,
          and what to add next (jump distances and difficulty are tuned by number, not by feel). The portal now triggers when you walk into it.
-      5. [ ] Boards, daily challenge, Pro mode (60 levels, 2.5x), gear and mutators.
+      5. [x] Daily challenge (`TowerData.DailyTarget`, `TowerRewards.PayDaily`): a target level that changes through the week; reaching it pays a 4x chest once a day; shown in the HUD
+         ("Daily: reach level N") with a banner when done. The leaderboard has a "Tower" tab (highest level ever) and the best summit time is saved.
+         [ ] Still to do: a fastest-summit board at the portal, Pro mode (60 levels, 2.5x; the code supports it, there is no way in yet), gear and mutators.
 - [ ] Courier Run: play it by hand at a real frame rate on a phone and a PC and tune the jump distances, platform sizes, speeds and lava pace.
 
 ## New feature ideas

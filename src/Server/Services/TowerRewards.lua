@@ -57,6 +57,26 @@ function TowerRewards.PayLevel(data, level, total, today, opts)
         capped = coins < wanted }
 end
 
+-- The daily challenge: the first time today a climb reaches the target level (TowerData.DailyTarget) it pays a bonus chest. Returns { coins, rare, target } or nil.
+function TowerRewards.PayDaily(data, level, total, today, opts)
+    opts = opts or {}
+    local c = TowerRewards.State(data, today)
+    local target = TowerData.DailyTarget(today, total)
+    if level < target or c.towerDailyDone == today then return nil end
+    c.towerDailyDone = today
+    local mult = opts.pro and TowerData.PRO_PAY_MULT or 1
+    local coins = math.floor(TowerData.LevelCoins(data.PlayerLevel, target) * TowerData.DAILY_COIN_MULT * mult * (opts.coinMultiplier or 1))
+    data.EmberCoins = (data.EmberCoins or 0) + coins
+    data.Inventory = data.Inventory or {}
+    local drop = TowerData.RareFor(target)
+    data.Inventory[drop.id] = (data.Inventory[drop.id] or 0) + drop.qty * 2
+    return { coins = coins, rare = { id = drop.id, qty = drop.qty * 2 }, target = target }
+end
+
+function TowerRewards.DailyDone(data, today)
+    return TowerRewards.State(data, today).towerDailyDone == today
+end
+
 -- The chest at the top. Returns { coins, materials, rare, firstToday }
 function TowerRewards.PayTop(data, total, today, opts)
     opts = opts or {}

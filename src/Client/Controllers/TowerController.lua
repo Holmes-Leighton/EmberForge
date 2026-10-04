@@ -60,6 +60,7 @@ local function ServerNow() return workspace:GetServerTimeNow() end
 
 local hud, levelLbl, clockLbl, infoLbl, lavaLbl, standingsFrame, standingsLbl, flash, banner
 local roundEnds, total = nil, 30
+local dailyTarget, dailyDone = nil, false
 local lava
 
 local function Clock(seconds)
@@ -255,6 +256,7 @@ local function OnEvent(kind, p)
     p = p or {}
     if kind == "start" then
         total, roundEnds = p.total or total, p.roundEnds
+        dailyTarget, dailyDone = p.dailyTarget, p.dailyDone
         hud.Enabled = true
         Banner("CLIMB!", Color3.fromRGB(255, 232, 120))
     elseif kind == "level" then
@@ -263,6 +265,14 @@ local function OnEvent(kind, p)
         Banner(string.format("LEVEL %d", p.level), col)
         Sparks(col, 40)
         Flash(col, 0.15)
+        if p.daily then
+            dailyDone = true
+            task.delay(1.2, function()
+                Banner(string.format("DAILY CHALLENGE!  +%d coins", p.daily.coins), Color3.fromRGB(255, 232, 120))
+                Flash(Color3.fromRGB(255, 232, 120), 0.3)
+                Sparks(Color3.fromRGB(255, 232, 120), 60)
+            end)
+        end
         if p.coins and p.level > 1 then
             task.delay(0.1, function()
                 local t = string.format("+%d coins  +%d XP", p.coins, p.xp or 0)
@@ -284,6 +294,7 @@ local function OnEvent(kind, p)
     elseif kind == "standings" then
         roundEnds = p.roundEnds or roundEnds
         local lines = { "HIGHEST" }
+        if dailyTarget then table.insert(lines, 1, dailyDone and "Daily: done!" or string.format("Daily: reach level %d", dailyTarget)) end
         for i, e in ipairs(p.list or {}) do
             if i > 6 then break end
             table.insert(lines, string.format("%d.  %s   L%d", i, e.name, e.level))

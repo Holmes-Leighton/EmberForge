@@ -91,6 +91,24 @@ expect(not second.firstToday and second.coins == base and second.rare.qty == TD.
 local next = TR.PayTop(d, 30, TODAY + 1, { rng = never })
 expect(next.firstToday, "the first-summit bonus is back the next day")
 
+print("== the daily challenge")
+local tgt = TD.DailyTarget(TODAY, 30)
+expect(tgt >= 10 and tgt <= 30, "today's target is a level of the tower (" .. tgt .. ")")
+local seenT = {}
+for day = TODAY, TODAY + 6 do seenT[TD.DailyTarget(day, 30)] = true end
+local nT = 0 for _ in pairs(seenT) do nT += 1 end
+expect(nT >= 6, "the target changes through the week (" .. nT .. " different targets)")
+expect(TD.DailyTarget(TODAY, 12) <= 12, "a shorter tower never asks for more levels than it has")
+d = player(10)
+expect(TR.PayDaily(d, tgt - 1, 30, TODAY) == nil, "below the target pays nothing")
+local dd = TR.PayDaily(d, tgt, 30, TODAY)
+expect(dd and dd.coins == TD.LevelCoins(10, tgt) * TD.DAILY_COIN_MULT and dd.rare.qty == TD.RareFor(tgt).qty * 2, "reaching it pays a bonus chest (" .. tostring(dd and dd.coins) .. " coins)")
+expect(d.EmberCoins == dd.coins, "the coins are added")
+expect(TR.PayDaily(d, 30, 30, TODAY) == nil and TR.DailyDone(d, TODAY), "only once a day")
+expect(TR.PayDaily(d, tgt, 30, TODAY + 1) ~= nil or TD.DailyTarget(TODAY + 1, 30) > tgt, "it is back the next day")
+local pro = TR.PayDaily(player(10), tgt, 60, TODAY, { pro = true })
+expect(pro and pro.coins == math.floor(TD.LevelCoins(10, tgt) * TD.DAILY_COIN_MULT * 2.5), "a Pro tower pays 2.5x")
+
 print("== the round clock")
 local T0 = 1000 * (TD.ROUND_SECONDS + TD.INTERMISSION)      -- the start of round 1000
 local rd = Round.New(T0 + 10)

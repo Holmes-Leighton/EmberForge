@@ -100,6 +100,8 @@ local function PayLevel(rec, level)
     end
     roundBest[player.UserId] = level
     local result = TowerRewards.PayLevel(data, level, total, Today(), { coinMultiplier = LiveOpsService.GetMultiplier("coins") })
+    local daily = TowerRewards.PayDaily(data, level, total, Today(), { coinMultiplier = LiveOpsService.GetMultiplier("coins") })
+    if daily then rec.totals.coins += daily.coins end
     local leveled, newLevel = Feed(player, level, result)
     rec.totals.coins += result.coins
     rec.totals.xp += TowerData.PlayerXp(level)
@@ -109,7 +111,7 @@ local function PayLevel(rec, level)
     Fire(player, "level", {
         level = level, total = total, coins = result.coins, xp = TowerData.PlayerXp(level), courierXp = result.xp, materials = result.materials, rare = result.rare,
         capped = result.capped, playerLevelUp = leveled and newLevel or nil, courierLevel = result.courierLevel, courierLevelUp = result.levelUps > 0,
-        seconds = TowerRunner.Elapsed(rec.run, ServerNow()),
+        seconds = TowerRunner.Elapsed(rec.run, ServerNow()), daily = daily,
     })
 end
 
@@ -201,7 +203,8 @@ local function StartRun(player)
     root.CFrame = LobbyPoint()
     root.AssemblyLinearVelocity = Vector3.zero
     PayLevel(rec, 1)                                              -- level 1 is yours the moment you arrive
-    Fire(player, "start", { total = T.total, roundEnds = state.round.endsAt, best = (TowerRewards.State(data, Today()).towerBest or 0), seed = state.round.seed })
+    Fire(player, "start", { total = T.total, roundEnds = state.round.endsAt, best = (TowerRewards.State(data, Today()).towerBest or 0), seed = state.round.seed,
+        dailyTarget = TowerData.DailyTarget(Today(), T.total), dailyDone = TowerRewards.DailyDone(data, Today()) })
 end
 
 local function Tick()
