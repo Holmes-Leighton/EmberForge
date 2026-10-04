@@ -5,6 +5,7 @@
 -- zone, and animates for free. BiomeArt.GlacialPeaks is the first zone done this way.
 
 local CollectionService = game:GetService("CollectionService")
+local CartCourseData = require(game.ReplicatedStorage.Shared.Data.CartCourseData)
 
 local BiomeArt = {}
 
@@ -516,20 +517,9 @@ local function WeldAll(model, body)
     end
 end
 
-local function BuildCart(parent, spot, index)
-    local model = Instance.new("Model")
-    model.Name = "MineCart"
-    local body = Instance.new("Part")
-    body.Name = "Body"
-    body.Size = Vector3.new(7.6, 3.2, 5.4)
-    body.Transparency = 1
-    body.Anchored = false
-    body.CanCollide = true
-    body.TopSurface, body.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
-    body.CFrame = CFrame.new(spot.x, 3, spot.z)
-    if PhysicalProperties then body.CustomPhysicalProperties = PhysicalProperties.new(0.25, 0.25, 0.1, 1, 1) end     -- light and slippery: a player can shove it along
-    body.Parent = model
-    model.PrimaryPart = body
+-- The cart you can see: a mesh when the World pack has loaded, otherwise built from parts. Placed at spot.x / spot.z with its base at height 0.5, as `CartArt`
+-- (a model) or as loose parts. Shared by the road carts below and the Cart Run carts (CartCourseService).
+local function MakeCartArt(model, spot, index)
     local template = Template("World", index % 2 == 0 and "CartCrystal" or "CartGold")
     if template then
         local m = template:Clone()
@@ -560,6 +550,23 @@ local function BuildCart(parent, spot, index)
                 spot.ore or Color3.fromRGB(255, 200, 70), Enum.Material.Neon, Enum.PartType.Ball)
         end
     end
+end
+
+local function BuildCart(parent, spot, index)
+    local model = Instance.new("Model")
+    model.Name = "MineCart"
+    local body = Instance.new("Part")
+    body.Name = "Body"
+    body.Size = Vector3.new(7.6, 3.2, 5.4)
+    body.Transparency = 1
+    body.Anchored = false
+    body.CanCollide = true
+    body.TopSurface, body.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+    body.CFrame = CFrame.new(spot.x, 3, spot.z)
+    if PhysicalProperties then body.CustomPhysicalProperties = PhysicalProperties.new(0.25, 0.25, 0.1, 1, 1) end     -- light and slippery: a player can shove it along
+    body.Parent = model
+    model.PrimaryPart = body
+    MakeCartArt(model, spot, index)
     -- The collision block matches the cart you can see: as tall as it is (above a jump, about 7 studs) and as wide as it is, so a player pushing it
     -- can't hop onto an invisible ledge that looks like standing inside an open cart. Its bottom stays where the art's is, and the cart is held at that
     -- height by the rail constraint, so a taller block costs nothing. Mass stays what it was (the art is massless), so it pushes the same.
@@ -680,8 +687,11 @@ local function BuildScatter(rec)
             for _ = 1, k[4] do
                 local r = pickRegion()
                 local pos = Vector3.new(rng:NextNumber(r.x1, r.x2), 0.2, rng:NextNumber(r.z1, r.z2))
-                local m = MeshPiece(group, "World", k[1], pos, { height = rng:NextNumber(k[2], k[3]), yaw = rng:NextNumber(0, math.pi * 2) })
-                if m and k[1] == "CrystalCluster" and rng:NextNumber(0, 1) < 0.4 then GlowLight(m, Color3.fromRGB(255, 200, 110), 22, 0.9, rng:NextNumber(0, 6)) end
+                local height, yaw, glow = rng:NextNumber(k[2], k[3]), rng:NextNumber(0, math.pi * 2), rng:NextNumber(0, 1) < 0.4
+                if not CartCourseData.NearRoute(pos.X, pos.Z, 24) then            -- never on a Cart Run road
+                    local m = MeshPiece(group, "World", k[1], pos, { height = height, yaw = yaw })
+                    if m and k[1] == "CrystalCluster" and glow then GlowLight(m, Color3.fromRGB(255, 200, 110), 22, 0.9, rng:NextNumber(0, 6)) end
+                end
             end
         end
     end
@@ -749,9 +759,16 @@ end
 
 function BiomeArt.AnvilHeight() return anvilRec and anvilRec.height or nil end
 
+BiomeArt.MakeCartArt = MakeCartArt
+
+-- Other systems (the Cart Run courses) that need to redraw when the World mesh pack has loaded register here
+local worldListeners = {}
+function BiomeArt.OnWorldRefresh(fn) table.insert(worldListeners, fn) end
+
 -- Called by GolemAssetLoader when a mesh pack has loaded: rebuild that area's art with the meshes
 function BiomeArt.Refresh(zoneKey)
     if zoneKey == "World" then
+        for _, fn in ipairs(worldListeners) do pcall(fn) end
         BuildAnvil()
         for _, rec in ipairs(padRecords) do BuildPadArt(rec) end
         if cartRec then BuildCarts(cartRec) end

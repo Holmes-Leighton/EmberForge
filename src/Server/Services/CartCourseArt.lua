@@ -1,0 +1,337 @@
+-- Builds the Cart Run courses out of parts: the road, rails, rock tunnels, crusher gates, retracting bridges, checkpoints, a start sign and the depot.
+-- Everything here is static. The moving pieces carry attributes and tags for the client (CartCourseController), which animates them on the shared clock:
+--   "EFCourseCart"    the cart (CourseId, PathS, PathV, PathT, Jump) -- drawn smoothly by each client from the server's numbers
+--   "EFCourseHazard"  a gate (Kind "Gate", a "Door" model that rises) or bridge (Kind "Bridge", a "Plate" model that sinks), with CourseId and HazardIndex
+-- Every piece is a separate named part, so a mesh can replace any of them later without touching the rules.
+local CollectionService = game:GetService("CollectionService")
+
+local CartCourseData = require(game.ReplicatedStorage.Shared.Data.CartCourseData)
+local CartPath       = require(game.ReplicatedStorage.Shared.Modules.CartPath)
+local BiomeArt       = require(script.Parent.BiomeArt)
+
+local CartCourseArt = {}
+
+local W        = CartCourseData.DECK_WIDTH
+local RAIL_TOP = CartCourseData.RAIL_TOP
+local DECK     = Color3.fromRGB(62, 50, 46)
+local RAIL     = Color3.fromRGB(150, 148, 154)
+local SLEEPER  = Color3.fromRGB(78, 54, 36)
+local ROCK     = Color3.fromRGB(58, 42, 38)
+local TIMBER   = Color3.fromRGB(100, 70, 44)
+local IRON     = Color3.fromRGB(52, 52, 58)
+
+local function P(props, parent)
+    local p = Instance.new("Part")
+    p.Anchored = true
+    p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+    for k, v in pairs(props) do p[k] = v end
+    p.Parent = parent
+    return p
+end
+
+-- horizontal "right" of a direction of travel
+local function Right(tx, tz)
+    local l = math.sqrt(tx * tx + tz * tz)
+    if l < 1e-4 then return 1, 0 end
+    return -tz / l, tx / l
+end
+
+local function Label(parent, adornee, text, size, offset, color, maxDistance)
+    local gui = Instance.new("BillboardGui")
+    gui.Name, gui.Adornee, gui.Size, gui.StudsOffset, gui.MaxDistance = "Sign", adornee, size, offset, maxDistance or 160
+    gui.AlwaysOnTop = false
+    gui.Parent = adornee                    -- (a billboard only draws from inside a part)
+    local lbl = Instance.new("TextLabel")
+    lbl.Name = "Text"
+    lbl.Size, lbl.BackgroundTransparency, lbl.Text = UDim2.new(1, 0, 1, 0), 1, text
+    lbl.TextColor3, lbl.TextStrokeTransparency, lbl.Font = color or Color3.fromRGB(255, 220, 120), 0.3, Enum.Font.GothamBold
+    lbl.TextScaled, lbl.TextWrapped = true, true
+    lbl.Parent = gui
+    return lbl
+end
+
+local function Lantern(parent, pos, color)
+    local lamp = P({ Name = "TunnelLamp", Material = Enum.Material.Neon, Color = color or Color3.fromRGB(255, 190, 100), Size = Vector3.new(1.4, 2, 1.4),
+        CFrame = CFrame.new(pos), CanCollide = false }, parent)
+    local l = Instance.new("PointLight")
+    l.Color, l.Range, l.Brightness = Color3.fromRGB(255, 190, 110), 40, 1.6
+    l.Parent = lamp
+end
+
+local function InRange(s, ranges, pad)
+    for _, r in ipairs(ranges) do
+        if s >= r[1] - (pad or 0) and s <= r[2] + (pad or 0) then return true end
+    end
+    return false
+end
+
+local function GapRanges(r)
+    local out = {}
+    for _, h in ipairs(r.hazards) do
+        if h.kind == "bridge" then table.insert(out, { h.s - h.length / 2, h.s + h.length / 2 }) end
+    end
+    return out
+end
+
+-- A timber frame across the road at distance s (tunnel mouths)
+local function Frame(parent, r, s)
+    local x, y, z, tx, ty, tz = CartPath.At(r.path, s)
+    local rx, rz = Right(tx, tz)
+    local dir = Vector3.new(tx, 0, tz)
+    local H = CartCourseData.TUNNEL_HEIGHT
+    for _, side in ipairs({ -1, 1 }) do
+        local c = Vector3.new(x + rx * side * (W / 2 + 2), y + H / 2, z + rz * side * (W / 2 + 2))
+        P({ Name = "FramePost", Material = Enum.Material.Wood, Color = TIMBER, Size = Vector3.new(3, H, 3), CFrame = CFrame.lookAt(c, c + dir) }, parent)
+    end
+    local c = Vector3.new(x, y + H + 1, z)
+    P({ Name = "FrameBeam", Material = Enum.Material.Wood, Color = TIMBER, Size = Vector3.new(W + 10, 3, 3.4), CFrame = CFrame.lookAt(c, c + dir) }, parent)
+end
+
+-- ── Road, rails, tunnels ───────────────────────────────────────────────────────
+local function BuildRoad(folder, r)
+    local samples = CartPath.Samples(r.path, 8)
+    local gaps = GapRanges(r)
+    local H = CartCourseData.TUNNEL_HEIGHT
+    local deckFolder, railFolder, rockFolder = Instance.new("Folder"), Instance.new("Folder"), Instance.new("Folder")
+    deckFolder.Name, railFolder.Name, rockFolder.Name = "Road", "Rails", "Tunnels"
+    deckFolder.Parent, railFolder.Parent, rockFolder.Parent = folder, folder, folder
+    local lampCount = 0
+    for i = 1, #samples - 1 do
+        local a, b = samples[i], samples[i + 1]
+        local va, vb = Vector3.new(a.x, a.y, a.z), Vector3.new(b.x, b.y, b.z)
+        local mid, span = (va + vb) / 2, vb - va
+        local len = span.Magnitude + 0.5
+        local dir = span.Unit
+        local midS = (a.s + b.s) / 2
+        local cf = CFrame.lookAt(mid, mid + dir)
+        local rx, rz = Right(dir.X, dir.Z)
+        local rightV = Vector3.new(rx, 0, rz)
+        if not InRange(midS, gaps) then
+            P({ Name = "Deck", Material = Enum.Material.Slate, Color = DECK, Size = Vector3.new(W, 1, len), CFrame = cf * CFrame.new(0, -0.5, 0) }, deckFolder)
+            if mid.Y > 3 and i % 3 == 0 then                                  -- a column holds up the raised road
+                P({ Name = "Pillar", Material = Enum.Material.Basalt, Color = ROCK, Size = Vector3.new(5, mid.Y - 1, 5),
+                    CFrame = CFrame.new(mid.X, (mid.Y - 1) / 2, mid.Z) }, deckFolder)
+            end
+            for _, off in ipairs({ -3, 3 }) do
+                P({ Name = "Rail", Material = Enum.Material.Metal, Color = RAIL, Size = Vector3.new(0.5, 0.5, len), CanCollide = false,
+                    CFrame = CFrame.lookAt(mid + rightV * off + Vector3.new(0, 0.4, 0), mid + rightV * off + Vector3.new(0, 0.4, 0) + dir) }, railFolder)
+            end
+            P({ Name = "Sleeper", Material = Enum.Material.Wood, Color = SLEEPER, Size = Vector3.new(10, 0.3, 1.2), CanCollide = false,
+                CFrame = cf * CFrame.new(0, 0.15, 0) }, railFolder)
+        end
+        if InRange(midS, r.tunnels) then
+            for _, side in ipairs({ -1, 1 }) do
+                P({ Name = "TunnelWall", Material = Enum.Material.Basalt, Color = ROCK, Size = Vector3.new(3, H, len),
+                    CFrame = cf * CFrame.new(side * (W / 2 + 1.5), H / 2, 0) }, rockFolder)
+            end
+            P({ Name = "TunnelRoof", Material = Enum.Material.Basalt, Color = ROCK, Size = Vector3.new(W + 8, 3, len),
+                CFrame = cf * CFrame.new(0, H + 1.5, 0) }, rockFolder)
+            lampCount += 1
+            if lampCount % 4 == 1 then Lantern(rockFolder, (cf * CFrame.new(0, H - 2, 0)).Position, nil) end
+        end
+    end
+    for _, t in ipairs(r.tunnels) do                                          -- timber frames at every tunnel mouth
+        Frame(rockFolder, r, t[1])
+        Frame(rockFolder, r, t[2])
+    end
+end
+
+-- ── Hazards ───────────────────────────────────────────────────────────────────
+local function Tag(unit, r, h, kind)
+    unit:SetAttribute("Kind", kind)
+    unit:SetAttribute("CourseId", r.id)
+    unit:SetAttribute("HazardIndex", h.index)
+    CollectionService:AddTag(unit, "EFCourseHazard")
+end
+
+local function BuildGate(folder, r, h)
+    local x, y, z, tx, _, tz = CartPath.At(r.path, h.s)
+    local rx, rz = Right(tx, tz)
+    local dir = Vector3.new(tx, 0, tz).Unit
+    local unit = Instance.new("Model")
+    unit.Name = "Gate" .. h.index
+    local function at(side, up) return Vector3.new(x + rx * side, y + up, z + rz * side) end
+    for _, side in ipairs({ -1, 1 }) do
+        local c = at(side * (W / 2 + 1.5), 17)
+        P({ Name = "GatePillar", Material = Enum.Material.Basalt, Color = ROCK, Size = Vector3.new(3, 34, 3.4), CFrame = CFrame.lookAt(c, c + dir) }, unit)
+        local lamp = P({ Name = "Lamp", Material = Enum.Material.Neon, Color = Color3.fromRGB(80, 255, 120), Size = Vector3.new(2, 2, 2), CanCollide = false,
+            CFrame = CFrame.lookAt(at(side * (W / 2 + 1.5), 27), at(side * (W / 2 + 1.5), 27) + dir) }, unit)
+        local l = Instance.new("PointLight")
+        l.Color, l.Range, l.Brightness = Color3.fromRGB(255, 255, 255), 24, 1.2
+        l.Parent = lamp
+    end
+    local lintelC = at(0, 34)
+    P({ Name = "GateLintel", Material = Enum.Material.Basalt, Color = IRON, Size = Vector3.new(W + 8, 4, 3.4), CFrame = CFrame.lookAt(lintelC, lintelC + dir) }, unit)
+    -- the door: a heavy slab with warning stripes. Closed it stands on the road; open it is raised clear of the cart (CartCourseController moves it).
+    local door = Instance.new("Model")
+    door.Name = "Door"
+    local doorC = at(0, 9)
+    local slab = P({ Name = "DoorSlab", Material = Enum.Material.Metal, Color = Color3.fromRGB(70, 66, 72), Size = Vector3.new(W, 18, 2.5), CFrame = CFrame.lookAt(doorC, doorC + dir) }, door)
+    for k = 0, 2 do
+        local c = at(0, 3 + k * 6)
+        P({ Name = "DoorStripe", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 150, 40), Size = Vector3.new(W - 1, 1.2, 2.7), CanCollide = false,
+            CFrame = CFrame.lookAt(c, c + dir) }, door)
+    end
+    door.PrimaryPart = slab
+    door.Parent = unit
+    unit:SetAttribute("Lift", CartCourseData.GATE_CLEARANCE)
+    Tag(unit, r, h, "Gate")
+    unit.Parent = folder
+end
+
+local function BuildBridge(folder, r, h)
+    local x, y, z, tx, ty, tz = CartPath.At(r.path, h.s)
+    local rx, rz = Right(tx, tz)
+    local dir = Vector3.new(tx, 0, tz).Unit
+    local mid = Vector3.new(x, y, z)
+    local cf = CFrame.lookAt(mid, mid + dir)
+    local unit = Instance.new("Model")
+    unit.Name = "Bridge" .. h.index
+    -- the pit: glowing lava just above the floor, so a missing bridge looks like a gap
+    local lava = P({ Name = "Lava", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 110, 30), Size = Vector3.new(W + 2, 0.3, h.length), CanCollide = false,
+        CFrame = CFrame.lookAt(Vector3.new(x, 0.2, z), Vector3.new(x, 0.2, z) + dir) }, unit)
+    local light = Instance.new("PointLight")
+    light.Color, light.Range, light.Brightness = Color3.fromRGB(255, 130, 50), 36, 1.6
+    light.Parent = lava
+    -- the bridge itself: a plate with its rails, which sinks into the floor when it is out of the way (the client moves the whole "Plate" model)
+    local plate = Instance.new("Model")
+    plate.Name = "Plate"
+    local deck = P({ Name = "PlateDeck", Material = Enum.Material.Slate, Color = DECK, Size = Vector3.new(W, 1, h.length), CFrame = cf * CFrame.new(0, -0.5, 0) }, plate)
+    local rightV = Vector3.new(rx, 0, rz)
+    for _, off in ipairs({ -3, 3 }) do
+        P({ Name = "Rail", Material = Enum.Material.Metal, Color = RAIL, Size = Vector3.new(0.5, 0.5, h.length), CanCollide = false,
+            CFrame = CFrame.lookAt(mid + rightV * off + Vector3.new(0, 0.4, 0), mid + rightV * off + Vector3.new(0, 0.4, 0) + dir) }, plate)
+    end
+    for k = 0, math.floor(h.length / 8) do
+        local local_z = -h.length / 2 + 4 + k * 8
+        if local_z < h.length / 2 then
+            P({ Name = "Sleeper", Material = Enum.Material.Wood, Color = SLEEPER, Size = Vector3.new(10, 0.3, 1.2), CanCollide = false, CFrame = cf * CFrame.new(0, 0.15, local_z) }, plate)
+        end
+    end
+    plate.PrimaryPart = deck
+    plate.Parent = unit
+    -- warning lamps at both ends
+    for _, end_ in ipairs({ -1, 1 }) do
+        local c = mid + dir * (end_ * (h.length / 2 + 2)) + rightV * (W / 2 + 1) + Vector3.new(0, 4, 0)
+        P({ Name = "Post", Material = Enum.Material.Wood, Color = TIMBER, Size = Vector3.new(1.4, 8, 1.4), CFrame = CFrame.new(c - Vector3.new(0, 2, 0)) }, unit)
+        P({ Name = "Lamp", Material = Enum.Material.Neon, Color = Color3.fromRGB(80, 255, 120), Size = Vector3.new(2, 2, 2), CanCollide = false, CFrame = CFrame.new(c + Vector3.new(0, 2.5, 0)) }, unit)
+    end
+    unit:SetAttribute("Sink", 3.5)
+    Tag(unit, r, h, "Bridge")
+    unit.Parent = folder
+end
+
+-- ── Checkpoints, start, depot ─────────────────────────────────────────────────
+local function BuildCheckpoint(folder, r, index, s)
+    local x, y, z, tx, _, tz = CartPath.At(r.path, s)
+    local rx, rz = Right(tx, tz)
+    local dir = Vector3.new(tx, 0, tz).Unit
+    local color = r.def.color or Color3.fromRGB(255, 220, 120)
+    local unit = Instance.new("Model")
+    unit.Name = "Checkpoint" .. index
+    for _, side in ipairs({ -1, 1 }) do
+        local c = Vector3.new(x + rx * side * (W / 2 + 1), y + 10, z + rz * side * (W / 2 + 1))
+        P({ Name = "CheckpointPost", Material = Enum.Material.Wood, Color = TIMBER, Size = Vector3.new(1.6, 20, 1.6), CanCollide = false, CFrame = CFrame.lookAt(c, c + dir) }, unit)
+    end
+    local top = Vector3.new(x, y + 20, z)
+    local banner = P({ Name = "CheckpointBanner", Material = Enum.Material.Neon, Color = color, Transparency = 0.15, Size = Vector3.new(W + 2, 3.2, 0.5), CanCollide = false,
+        CFrame = CFrame.lookAt(top, top + dir) }, unit)
+    Label(unit, banner, string.format("Checkpoint %d", index), UDim2.new(0, 170, 0, 34), Vector3.new(0, 3, 0), Color3.fromRGB(255, 255, 255), 140)
+    unit.Parent = folder
+end
+
+local function Stars(tier)
+    return string.rep("*", tier) .. string.rep("-", 3 - tier)
+end
+
+local function BuildStart(folder, r)
+    local x, y, z, tx, _, tz = CartPath.At(r.path, 0)
+    local rx, rz = Right(tx, tz)
+    local color = r.def.color or Color3.fromRGB(255, 220, 120)
+    local dir = Vector3.new(tx, 0, tz).Unit
+    local unit = Instance.new("Model")
+    unit.Name = "Start"
+    -- a signpost beside the road and a tall beam so the start can be seen from across the cavern
+    local post = Vector3.new(x + rx * (W / 2 + 6) - tx * 8, y + 9, z + rz * (W / 2 + 6) - tz * 8)
+    P({ Name = "SignPost", Material = Enum.Material.Wood, Color = TIMBER, Size = Vector3.new(2, 18, 2), CFrame = CFrame.new(post) }, unit)
+    local anchor = P({ Name = "SignAnchor", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(post + Vector3.new(0, 12, 0)) }, unit)
+    local text = string.format("CART RUN: %s\n%s  Level %d+  Par %s\nPush the cart to the depot!", r.name, Stars(r.def.tier), r.def.minLevel,
+        string.format("%d:%02d", math.floor(r.par) // 60, math.floor(r.par) % 60))
+    Label(unit, anchor, text, UDim2.new(0, 300, 0, 90), Vector3.new(0, 0, 0), color, 200)
+    P({ Name = "StartBeam", Material = Enum.Material.Neon, Color = color, Transparency = 0.65, Size = Vector3.new(3, 90, 3), CanCollide = false,
+        CFrame = CFrame.new(post + Vector3.new(0, 36, 0)) }, unit)
+    local light = Instance.new("PointLight")
+    light.Color, light.Range, light.Brightness = color, 50, 1.5
+    light.Parent = anchor
+    unit.Parent = folder
+end
+
+local function BuildDepot(folder, r)
+    local x, y, z, tx, _, tz = CartPath.At(r.path, r.length)
+    local color = r.def.color or Color3.fromRGB(255, 220, 120)
+    local dir = Vector3.new(tx, 0, tz).Unit
+    local unit = Instance.new("Model")
+    unit.Name = "Depot"
+    local disc = P({ Name = "DepotDisc", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Neon, Color = color, Transparency = 0.35, Size = Vector3.new(0.4, 18, 18),
+        CanCollide = false, CFrame = CFrame.new(x + tx * 6, y + 0.5, z + tz * 6) * CFrame.Angles(0, 0, math.pi / 2) }, unit)
+    local light = Instance.new("PointLight")
+    light.Color, light.Range, light.Brightness = color, 40, 1.8
+    light.Parent = disc
+    local anchor = P({ Name = "DepotAnchor", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(x + tx * 6, y + 16, z + tz * 6) }, unit)
+    Label(unit, anchor, "DEPOT", UDim2.new(0, 160, 0, 40), Vector3.new(0, 0, 0), color, 160)
+    local rx, rz = Right(tx, tz)
+    for _, side in ipairs({ -1, 1 }) do                                        -- the rail ends in a buffer stop
+        local c = Vector3.new(x + tx * 3 + rx * side * 3, y + 1.4, z + tz * 3 + rz * side * 3)
+        P({ Name = "Buffer", Material = Enum.Material.Metal, Color = IRON, Size = Vector3.new(1.6, 2.4, 1.6), CanCollide = false, CFrame = CFrame.lookAt(c, c + dir) }, unit)
+    end
+    unit.Parent = folder
+end
+
+-- Builds a course's whole static scenery under `parent`. Returns the folder.
+function CartCourseArt.Build(parent, r)
+    local folder = Instance.new("Folder")
+    folder.Name = "CartRun_" .. r.id
+    BuildRoad(folder, r)
+    for _, h in ipairs(r.hazards) do
+        if h.kind == "gate" then BuildGate(folder, r, h) else BuildBridge(folder, r, h) end
+    end
+    for i, s in ipairs(r.checkpoints) do BuildCheckpoint(folder, r, i, s) end
+    BuildStart(folder, r)
+    BuildDepot(folder, r)
+    folder.Parent = parent
+    return folder
+end
+
+-- ── The cart ──────────────────────────────────────────────────────────────────
+-- Where the cart's body sits (and how it is turned) at distance s along the course
+function CartCourseArt.CartCFrame(r, s)
+    local x, y, z, fx, fy, fz, ux, uy, uz = CartPath.Frame(r.path, s)
+    return CFrame.fromMatrix(Vector3.new(x, y + RAIL_TOP, z), Vector3.new(fx, fy, fz), Vector3.new(ux, uy, uz))
+end
+
+-- The cart for a course: art only (no physics: every client moves it from PathS / PathV / PathT), with its sign. Returns the model.
+function CartCourseArt.BuildCart(parent, r, index)
+    local model = Instance.new("Model")
+    model.Name = "CartRunCart_" .. r.id
+    local body = P({ Name = "Body", Transparency = 1, CanCollide = false, CanQuery = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(0, 0.5, 0) }, model)
+    model.PrimaryPart = body
+    BiomeArt.MakeCartArt(model, { x = 0, z = 0, ore = r.def.color }, index)
+    for _, d in ipairs(model:GetDescendants()) do
+        if d:IsA("BasePart") then d.Anchored, d.CanCollide, d.CanQuery = true, false, false end
+    end
+    local artHeight = 7
+    local art = model:FindFirstChild("CartArt")
+    if art then artHeight = select(2, art:GetBoundingBox()).Y end
+    Label(model, body, string.format("%s  (level %d+)  Push me to the depot!", r.name, r.def.minLevel), UDim2.new(0, 280, 0, 44), Vector3.new(0, artHeight + 2, 0), nil, 90)
+    model:SetAttribute("CourseId", r.id)
+    model:SetAttribute("PathS", 0)
+    model:SetAttribute("PathV", 0)
+    model:SetAttribute("PathT", 0)
+    model:SetAttribute("Jump", 0)
+    CollectionService:AddTag(model, "EFCourseCart")
+    model:PivotTo(CartCourseArt.CartCFrame(r, 0))
+    model.Parent = parent
+    return model
+end
+
+return CartCourseArt

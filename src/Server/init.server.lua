@@ -29,6 +29,7 @@ local GolemAssetLoader   = require(script.Services.GolemAssetLoader)
 local LiveOpsService     = require(script.Services.LiveOpsService)
 local AdminService       = require(script.Services.AdminService)
 local CartBountyService  = require(script.Services.CartBountyService)
+local CartCourseService  = require(script.Services.CartCourseService)
 local Utils              = require(game.ReplicatedStorage.Shared.Modules.Utils)
 local GameConfig         = require(game.ReplicatedStorage.Shared.Data.GameConfig)
 
@@ -40,6 +41,7 @@ PadService.Init()
 GolemAssetLoader.Init()           -- starts loading uploaded Golem art (if any ids are set) before Golems are shown
 GolemVisuals.Init()
 CartBountyService.Init()           -- the Mine Cart Delivery bounty
+CartCourseService.Init()           -- the Cart Run courses (CartCourseData): winding rails with tunnels, hills, gates and bridges
 
 -- Start periodic auto-save and leaderboard flush
 PlayerDataService.StartAutoSave()

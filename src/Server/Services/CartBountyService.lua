@@ -15,7 +15,7 @@ local function Counters(data)
     local today = CartBountyData.Today()
     local c = data.CartBounty
     if type(c) ~= "table" or c.day ~= today then
-        c = { day = today, earned = 0, deliveries = 0 }
+        c = { day = today, earned = 0, deliveries = 0, courseEarned = 0, runs = 0 }
         data.CartBounty = c
     end
     return c
@@ -35,6 +35,38 @@ function CartBountyService.Deliver(player)
     c.deliveries = c.deliveries + 1
     PlayerDataService.MarkDirty(player)
     return true, string.format("Delivery complete! +%d coins", coins), coins
+end
+
+-- Pays `player` coins for a Cart Run (a finished run or a checkpoint). `amount` is the coins before events; the course allowance counts the normal amount,
+-- and coin events pay extra on top, like Deliver. Returns ok, coinsPaid, message. A finished run counts toward `runs` when `finished` is true.
+function CartBountyService.PayCourse(player, amount, finished)
+    local data = PlayerDataService.Get(player)
+    if not data then return false, 0, "No player data" end
+    local c = Counters(data)
+    c.courseEarned = c.courseEarned or 0
+    local room = CartBountyData.CourseCap(data) - c.courseEarned
+    if room <= 0 then return false, 0, "You've earned all the Cart Run coins the depot will pay today. It resets at midnight UTC." end
+    local base = math.min(math.max(0, math.floor(amount)), room)
+    local coins = math.floor(base * LiveOpsService.GetMultiplier("coins"))
+    data.EmberCoins = (data.EmberCoins or 0) + coins
+    c.courseEarned = c.courseEarned + base
+    if finished then c.runs = (c.runs or 0) + 1 end
+    PlayerDataService.MarkDirty(player)
+    return true, coins, nil
+end
+
+-- Remembers a personal best time for a course (seconds). Returns true if this one beats the old best.
+function CartBountyService.RecordBest(player, courseId, seconds)
+    local data = PlayerDataService.Get(player)
+    if not data then return false end
+    data.CartBest = type(data.CartBest) == "table" and data.CartBest or {}
+    local old = data.CartBest[courseId]
+    if type(old) ~= "number" or seconds < old then
+        data.CartBest[courseId] = math.floor(seconds * 10 + 0.5) / 10
+        PlayerDataService.MarkDirty(player)
+        return true, old
+    end
+    return false, old
 end
 
 -- The player closest to `position` within `range` studs, or nil

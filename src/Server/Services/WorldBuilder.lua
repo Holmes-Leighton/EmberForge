@@ -7,6 +7,7 @@
 
 local Lighting = game:GetService("Lighting")
 local MiningZoneData = require(game.ReplicatedStorage.Shared.Data.MiningZoneData)
+local CartCourseData = require(game.ReplicatedStorage.Shared.Data.CartCourseData)
 
 local WorldBuilder = {}
 
@@ -570,7 +571,9 @@ local function BuildMine(world)
     local cartSpots = {}
     for k = 1, 12 do
         local x = x1 + 60 + (k - 1) * ((x2 - x1 - 120) / 11) + rng:NextInteger(-12, 12)
-        table.insert(cartSpots, { x = x, z = 60, ore = ore[rng:NextInteger(1, #ore)] })
+        if not CartCourseData.NearRoute(x, 60, 40) then              -- (the Cart Run courses have their own carts)
+            table.insert(cartSpots, { x = x, z = 60, ore = ore[rng:NextInteger(1, #ore)] })
+        end
     end
     require(script.Parent.BiomeArt).Carts(mine, cartSpots)
     require(script.Parent.BiomeArt).HubScatter(mine)
@@ -754,7 +757,8 @@ local function BuildScenery(world)
         local inPads    = math.abs(x) < 140 and z < -105 and z > -220
         local nearSpawn = math.abs(x) < 60 and z < -20 and z > -105
         local inTunnels = z > 100
-        if not (inPlots or onRoad or inPads or nearSpawn or inTunnels) then
+        local onCartRun = CartCourseData.NearRoute(x, z, 24)           -- the Cart Run courses (CartCourseData)
+        if not (inPlots or onRoad or inPads or nearSpawn or inTunnels or onCartRun) then
             local roll = rng:NextNumber()
             if roll < 0.45 then
                 -- tapered: four narrowing segments, like the stalactites above
@@ -879,6 +883,7 @@ local function BuildDressing(world)
         if math.abs(x + 45) < 10 and z < 70 and z > -90 then return false end               -- spawn road
         if z > -225 and z < -85 and math.abs(x) < 210 then return false end                 -- pad plaza
         if z > -40 and z < 55 and x > -60 then return false end                             -- forge plots
+        if CartCourseData.NearRoute(x, z, 24 + pad) then return false end                    -- the Cart Run courses
         return true
     end
     local function Boulder(x, z, size)

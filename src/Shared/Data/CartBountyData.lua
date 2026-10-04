@@ -19,6 +19,27 @@ function CartBountyData.Cap(data)
     return math.min(CartBountyData.CAP_MAX, CartBountyData.CAP_BASE + CartBountyData.CAP_PER_LEVEL * (data.PlayerLevel or 1))
 end
 
+-- Cart Run courses (CartCourseData) pay from their own daily allowance, so they never use up the quick hauls' (and the reverse).
+CartBountyData.COURSE_CAP_MULT = 4              -- the course allowance is this many times the quick-haul allowance
+CartBountyData.COURSE_CHECKPOINT_SHARE = 0.12   -- each checkpoint pays this share of the run's base reward
+CartBountyData.GOLD_BONUS, CartBountyData.SILVER_BONUS = 1.5, 1.2     -- finishing under par / under 1.35 x par
+
+function CartBountyData.CourseCap(data)
+    return CartBountyData.Cap(data) * CartBountyData.COURSE_CAP_MULT
+end
+
+-- What a finished run pays one player before bonuses: the quick-haul reward scaled by the course's multiplier
+function CartBountyData.CourseReward(data, course)
+    return math.floor(CartBountyData.Reward(data) * course.rewardMult)
+end
+
+-- "Gold" under par, "Silver" under 1.35 x par, otherwise nil. Returns the medal and its bonus multiplier.
+function CartBountyData.Medal(seconds, par)
+    if seconds <= par then return "Gold", CartBountyData.GOLD_BONUS end
+    if seconds <= par * 1.35 then return "Silver", CartBountyData.SILVER_BONUS end
+    return nil, 1
+end
+
 function CartBountyData.Today()
     return math.floor(os.time() / 86400)
 end

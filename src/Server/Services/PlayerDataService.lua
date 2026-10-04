@@ -49,7 +49,8 @@ local function DefaultData()
         SeenCosmetics   = {},          -- cosmetics/titles the player has already looked at
         SupplierPurchases = { day = 0, bought = {} },
         SupplierSales   = { day = 0, earned = 0 },   -- coins earned today by selling surplus to the Supplier
-        CartBounty      = { day = 0, earned = 0, deliveries = 0 },   -- Mine Cart Delivery bounty coins earned today (see CartBountyData)
+        CartBounty      = { day = 0, earned = 0, deliveries = 0, courseEarned = 0, runs = 0 },   -- Mine Cart Delivery bounty coins earned today (see CartBountyData)
+        CartBest        = {},          -- courseId -> best Cart Run time in seconds
         Funnel          = {},          -- onboarding steps already logged to analytics
         Equipped        = {},          -- slot → cosmetic id (Title is stored as its text)
         CraftedByTier   = {},          -- tier → how many Golems of that tier were ever crafted
