@@ -80,27 +80,34 @@ local guide = {}        -- the pieces of the guide window
 local stepIndex = 1
 local active = false
 local pageIndex = 1
+local CORE_STEPS = 4                -- steps 1-4 are the core loop (the welcome gift comes after step 4); the rest are bonus steps
+local QUICK_PAGES = { 1, 2 }        -- what a brand-new player sees: goal + first ten minutes. The Help button opens the full guide.
+local shownPages = {}               -- indexes into PAGES for the guide window as it is now open
 
 -- ── The guide ─────────────────────────────────────────────────────────────────
 local function ShowPage(n)
-    pageIndex = math.clamp(n, 1, #PAGES)
-    local page = PAGES[pageIndex]
+    pageIndex = math.clamp(n, 1, #shownPages)
+    local page = PAGES[shownPages[pageIndex]]
     guide.heading.Text = page.heading
     local lines = {}
     for _, line in ipairs(page.lines) do
         table.insert(lines, line:match("^<b>%d%.") and line or ("•  " .. line))      -- numbered steps keep their number, the rest get a bullet
     end
     guide.body.Text = table.concat(lines, "\n\n")
-    guide.counter.Text = string.format("%d / %d", pageIndex, #PAGES)
+    guide.counter.Text = string.format("%d / %d", pageIndex, #shownPages)
     guide.back.Visible = pageIndex > 1
-    guide.next.Text = pageIndex == #PAGES and "Let's go!" or "Next  ▶"
+    guide.next.Text = pageIndex == #shownPages and "Let's go!" or "Next  ▶"
     for i, dot in ipairs(guide.dots) do
+        dot.Visible = i <= #shownPages
         dot.BackgroundColor3 = i == pageIndex and Theme.Colors.AccentBright or Theme.Colors.PanelAlt
         dot.Size = i == pageIndex and UDim2.new(0, 22, 0, 8) or UDim2.new(0, 8, 0, 8)
     end
 end
 
-local function OpenGuide(page)
+local function OpenGuide(page, quick)
+    shownPages = {}
+    for i = 1, #PAGES do shownPages[i] = i end
+    if quick then shownPages = QUICK_PAGES end
     ShowPage(page or 1)
     howTo.Visible = true
 end
@@ -141,13 +148,27 @@ local function Build()
     trackerHint.TextYAlignment = Enum.TextYAlignment.Top
 
     local skip = Theme.Button(tracker, "Skip", Theme.Colors.PanelAlt, Theme.Colors.TextSecondary, "Skip")
-    skip.Size = UDim2.new(0, 48, 0, 22)
-    skip.Position = UDim2.new(1, -56, 0, 6)
-    skip.TextSize = 12
+    skip.Size = UDim2.new(0, 60, 0, 28)
+    skip.Position = UDim2.new(1, -68, 0, 4)
+    skip.TextSize = 13
     skip.MouseButton1Click:Connect(function()
         active = false
         tracker.Visible = false
     end)
+
+    -- the tip must not run into the player card (left) and the button column (right) on a narrow screen
+    local function FitTracker()
+        local cam = workspace.CurrentCamera
+        local vx = cam and cam.ViewportSize.X or 1280
+        local w = math.clamp(vx - 440, 240, 420)
+        local narrow = w < 340
+        tracker.Size = UDim2.new(0, w, 0, narrow and 108 or 92)
+        trackerHint.TextSize = narrow and 12 or 13
+        trackerHint.Size = UDim2.new(1, -24, 0, narrow and 72 or 54)
+        trackerTitle.Size = UDim2.new(1, -84, 0, 22)
+    end
+    FitTracker()
+    if workspace.CurrentCamera then workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(FitTracker) end
 
     -- Help button (bottom left)
     local help = Theme.Button(gui, "?  Help", Theme.Colors.Accent, Color3.fromRGB(255, 255, 255), "HelpButton")
@@ -242,7 +263,7 @@ local function Build()
     guide.next.Position = UDim2.new(1, -194, 1, -62)
     guide.next.TextSize = 17
     guide.next.MouseButton1Click:Connect(function()
-        if pageIndex >= #PAGES then howTo.Visible = false else ShowPage(pageIndex + 1) end
+        if pageIndex >= #shownPages then howTo.Visible = false else ShowPage(pageIndex + 1) end
     end)
 
     local close = Theme.Button(box, "Close", Theme.Colors.PanelAlt, Theme.Colors.TextSecondary, "CloseButton")
@@ -251,6 +272,7 @@ local function Build()
     close.TextSize = 15
     close.MouseButton1Click:Connect(function() howTo.Visible = false end)
 
+    shownPages = QUICK_PAGES
     ShowPage(1)
 end
 
@@ -298,7 +320,11 @@ local function ShowStep()
         return
     end
     TutorialPointer.Set(PointerFor(stepIndex))
-    trackerTitle.Text = string.format("Step %d/%d:  %s", stepIndex, #STEPS, step.title)
+    if stepIndex <= CORE_STEPS then
+        trackerTitle.Text = string.format("Step %d/%d:  %s", stepIndex, CORE_STEPS, step.title)
+    else
+        trackerTitle.Text = string.format("Bonus %d/%d:  %s", stepIndex - CORE_STEPS, #STEPS - CORE_STEPS, step.title)
+    end
     trackerHint.Text = step.hint
     tracker.Visible = true
 end
@@ -306,6 +332,9 @@ end
 local function Advance(fromStep)
     if not active or stepIndex ~= fromStep then return end
     stepIndex += 1
+    if fromStep == CORE_STEPS then
+        RemoteEvents.ClaimTutorialReward:FireServer()          -- the server checks it and pays the welcome gift once
+    end
     if stepIndex > #STEPS then
         active = false
         tracker.Visible = false
@@ -347,7 +376,7 @@ function TutorialController.Init(playerData)
     if playerData and playerData.Golems and #playerData.Golems > 0 then return end
 
     active = true
-    OpenGuide(1)
+    OpenGuide(1, true)       -- two short pages; the rest of the guide is behind the Help button
     ShowStep()
 
     -- Steps follow the server's events

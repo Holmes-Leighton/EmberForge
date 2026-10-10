@@ -38,7 +38,7 @@ accent.Parent = panel
 Theme.AddCorner(accent, Theme.Corner.Small)
 
 local visiting = Theme.Label(panel, "Visiting Quarry", Theme.TextSize.Small, Theme.Colors.TextDim, Theme.Fonts.Body, "VisitingLabel")
-visiting.Position, visiting.Size = UDim2.new(0, 10, 0, 10), UDim2.new(1, -20, 0, 16)
+visiting.Position, visiting.Size = UDim2.new(0, 10, 0, 6), UDim2.new(1, -20, 0, 20)
 
 local owner = Theme.Label(panel, "", Theme.TextSize.Heading, Theme.Colors.Gold, Theme.Fonts.Title, "OwnerLabel")
 owner.Position, owner.Size = UDim2.new(0, 10, 0, 26), UDim2.new(1, -20, 0, 26)

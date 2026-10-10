@@ -108,6 +108,12 @@ local function Apply()
             Wire(button)
             local ok, reason, label = FeatureGates.Check(id, lastData, place)
             if ok then Unlock(button) else Lock(button, label, reason) end
+            -- a feature that is still far off stays out of sight; it appears (locked, with its level) one level before it opens
+            local def2 = FeatureGates.List[id]
+            if def2 and button.Parent and button.Parent.Name == "Sidebar" then
+                local have = def2.kind == "forge" and (lastData.ForgeLevel or 1) or (lastData.PlayerLevel or 1)
+                button.Visible = have >= def2.level - 1
+            end
         end
     end
     for name in pairs(FeatureGates.Reveal) do

@@ -58,7 +58,7 @@ title.Position = UDim2.new(0, 18, 0, 6)
 title.Size = UDim2.new(1, -36, 0, 32)
 local locked = Theme.Label(banner, "LOCKED", 12, Color3.fromRGB(70, 40, 20), Enum.Font.GothamBold, "LockedTag")
 locked.Position = UDim2.new(0, 18, 0, 38)
-locked.Size = UDim2.new(1, -36, 0, 16)
+locked.Size = UDim2.new(1, -36, 0, 20)
 
 local gives = Theme.Label(card, "", 18, Color3.fromRGB(255, 244, 228), Enum.Font.GothamBold, "Gives")
 gives.Position = UDim2.new(0, 18, 0, 72)

@@ -33,6 +33,7 @@ local function DefaultData()
         ForgeLevel      = 1,
         ForgeXP         = 0,
         Golems          = {},          -- array of GolemObjects
+        TutorialRewarded = false,      -- the one-time welcome gift for finishing the core tutorial loop
         UnlockedZones   = {},          -- zoneId -> true once reached (see MiningZoneData.RememberUnlocked)
         Inventory       = {},          -- materialId → quantity
         Pending         = {},          -- materialId → quantity mined by Golems, waiting to be collected

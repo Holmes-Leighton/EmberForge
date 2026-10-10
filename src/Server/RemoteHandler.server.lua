@@ -126,6 +126,25 @@ RemoteEvents.CollectResources.OnServerEvent:Connect(function(player)
     end)
 end)
 
+-- ── ClaimTutorialReward ───────────────────────────────────────────────────────
+-- A one-time welcome gift once the core loop is done. The server checks the funnel flags it set itself (crafted, deployed and
+-- collected), so the client cannot simply ask for it.
+local TUTORIAL_REWARD = { coins = 150, speedUps = 1 }
+RemoteEvents.ClaimTutorialReward.OnServerEvent:Connect(function(player)
+    SafeCall(player, function()
+        local data = PlayerDataService.Get(player)
+        if not data or data.TutorialRewarded then return end
+        local f = data.Funnel or {}
+        if not (f.craft and f.deploy and f.collect) then return end
+        data.TutorialRewarded = true
+        data.EmberCoins = (data.EmberCoins or 0) + TUTORIAL_REWARD.coins
+        data.SpeedUps = (data.SpeedUps or 0) + TUTORIAL_REWARD.speedUps
+        PlayerDataService.MarkDirty(player)
+        Tell(player, "Welcome gift!", string.format("+%d Ember Coins and %d Speed-Up for getting your first Golem working.",
+            TUTORIAL_REWARD.coins, TUTORIAL_REWARD.speedUps))
+    end)
+end)
+
 -- ── UseSpeedUp ────────────────────────────────────────────────────────────────
 RemoteEvents.UseSpeedUp.OnServerEvent:Connect(function(player, jobId)
     SafeCall(player, function()

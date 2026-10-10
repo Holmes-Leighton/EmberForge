@@ -101,14 +101,14 @@ for i, item in ipairs(convItems) do
     Theme.AddStroke(card, item.color, 2, 0.5)
 
     local titleLbl = Theme.Label(card, item.emoji .. " " .. item.title, 13, item.color, Theme.Fonts.Heading)
-    titleLbl.Size = UDim2.new(1, -12, 0, 18)
-    titleLbl.Position = UDim2.new(0, 8, 0, 4)
+    titleLbl.Size = UDim2.new(1, -12, 0, 22)
+    titleLbl.Position = UDim2.new(0, 8, 0, 3)
     titleLbl.TextWrapped = false
     titleLbl.TextTruncate = Enum.TextTruncate.AtEnd
 
     local subLbl = Theme.Label(card, item.sub, Theme.TextSize.Small, Theme.Colors.TextSecondary)
     subLbl.Size = UDim2.new(1, -12, 0, 28)
-    subLbl.Position = UDim2.new(0, 8, 0, 22)
+    subLbl.Position = UDim2.new(0, 8, 0, 25)
     subLbl.TextYAlignment = Enum.TextYAlignment.Top
 
     local buyBtn = Theme.Button(card, item.price, item.color, Color3.fromRGB(255, 255, 255), item.name)
@@ -189,7 +189,7 @@ sectionLabel("⛏ Mining Pads  -  unlock forever, no grinding", 434)
 
 local padGrid = Instance.new("Frame")
 padGrid.Name = "PadGrid"
-padGrid.Size = UDim2.new(1, -16, 0, 86)
+padGrid.Size = UDim2.new(1, -16, 0, 100)          -- a little taller so the small lines have room to be readable
 padGrid.Position = UDim2.new(0, 8, 0, 462)
 padGrid.BackgroundTransparency = 1
 padGrid.Parent = container
@@ -213,16 +213,16 @@ for i, pad in ipairs(padItems) do
     Theme.AddStroke(card, pad.color, 2, 0.3)
 
     local big = Theme.Label(card, pad.mult, 26, pad.color, Enum.Font.GothamBlack, "Multiplier")
-    big.Size = UDim2.new(0, 84, 0, 34)
-    big.Position = UDim2.new(0, 10, 0, 4)
+    big.Size = UDim2.new(0, 84, 0, 30)
+    big.Position = UDim2.new(0, 10, 0, 2)
     big.TextXAlignment = Enum.TextXAlignment.Left
     local t = Theme.Label(card, pad.title, 13, Theme.Colors.TextPrimary, Theme.Fonts.Heading)
-    t.Size = UDim2.new(1, -16, 0, 16)
-    t.Position = UDim2.new(0, 10, 0, 38)
+    t.Size = UDim2.new(1, -16, 0, 20)
+    t.Position = UDim2.new(0, 10, 0, 32)
     t.TextWrapped = false
     local sub = Theme.Label(card, pad.sub, Theme.TextSize.Small, Theme.Colors.TextSecondary, Theme.Fonts.Body, "Sub")
-    sub.Size = UDim2.new(1, -16, 0, 14)
-    sub.Position = UDim2.new(0, 10, 0, 54)
+    sub.Size = UDim2.new(1, -16, 0, 20)
+    sub.Position = UDim2.new(0, 10, 0, 52)
 
     local buy = Theme.Button(card, pad.price, pad.color, Color3.fromRGB(255, 255, 255), pad.name)
     buy.Size = UDim2.new(1, -16, 0, 24)
