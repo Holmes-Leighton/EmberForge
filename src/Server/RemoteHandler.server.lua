@@ -53,6 +53,32 @@ local function SafeCall(player, fn)
     end
 end
 
+-- RemoteFunctions skip SafeCall, so a client could call the heavy ones in a loop (DataStore reads, deep copies).
+-- Throttled() answers a call that comes too soon with the player's previous answer instead of doing the work again.
+local throttleLast, throttleCache = {}, {}   -- "name:userId" -> os.clock() / last answer
+local function Throttled(name, minInterval, fn)
+    return function(player, ...)
+        local arg1 = ...
+        local key = name .. ":" .. player.UserId .. ":" .. tostring(arg1)
+        local now = os.clock()
+        if now - (throttleLast[key] or -1e9) < minInterval then
+            return throttleCache[key]
+        end
+        throttleLast[key] = now
+        local result = fn(player, ...)
+        throttleCache[key] = result
+        return result
+    end
+end
+Players.PlayerRemoving:Connect(function(player)
+    local suffix = ":" .. player.UserId .. ":"
+    for _, store in ipairs({ throttleLast, throttleCache }) do
+        for key in pairs(store) do
+            if key:find(suffix, 1, true) then store[key] = nil end
+        end
+    end
+end)
+
 local FeatureGates = require(game.ReplicatedStorage.Shared.Data.FeatureGates)
 
 local function Tell(player, title, message)
@@ -83,7 +109,7 @@ RemoteEvents.CollectResources.OnServerEvent:Connect(function(player)
         end
         data.Pending = {}
         for _, g in ipairs(data.Golems or {}) do
-            if g.deployed then g._carriedResources = 0 end   -- empty their bags
+            g._carriedResources = 0   -- empty their bags (recalled Golems too)
         end
         PlayerDataService.MarkDirty(player)
         RemoteEvents.PendingUpdate:FireClient(player, data.Pending)
@@ -123,14 +149,13 @@ RemoteEvents.StartSmelt.OnServerEvent:Connect(function(player, materialId, quant
 
         local job, err = ForgeService.StartSmelt(player, materialId, quantity)
         if job then
-            ProgressionService.AddPlayerXP(player, GameConfig.XP_PER_SMELT * quantity)
-            ChallengeService.TrackEvent(player, "SmeltComplete", { count = quantity })
+            -- XP and the SmeltComplete challenge are paid once, when the job finishes (FinishJob / the tick / a Speed-Up)
             -- Track SmeltRare if the material is Rare or higher
             local MaterialData_ = require(game.ReplicatedStorage.Shared.Data.MaterialData)
             local mat = MaterialData_.Get(materialId)
             local rarity = mat and mat.rarity or "Common"
             if rarity == "Rare" or rarity == "Epic" or rarity == "Legendary" then
-                ChallengeService.TrackEvent(player, "SmeltRare", { count = quantity })
+                ChallengeService.TrackEvent(player, "SmeltRare", { count = job.quantity })
             end
             RemoteEvents.SmeltQueued:FireClient(player, job)
         else
@@ -607,9 +632,10 @@ RemoteEvents.SendGuildChat.OnServerEvent:Connect(function(player, text)
     end)
 end)
 
-RemoteEvents.GetGuildChat.OnServerInvoke = function(player)
+RemoteEvents.GetGuildChat.OnServerInvoke = Throttled("GetGuildChat", 1, function(player)
     return require(script.Parent.Services.GuildService).GetChat(player)
-end
+end)
+
 
 RemoteEvents.GoToGuildHall.OnServerEvent:Connect(function(player)
     SafeCall(player, function()
@@ -629,11 +655,12 @@ RemoteEvents.ClaimGuildPrize.OnServerEvent:Connect(function(player)
     end)
 end)
 
-RemoteEvents.GetGuildInfo.OnServerInvoke = function(player)
+RemoteEvents.GetGuildInfo.OnServerInvoke = Throttled("GetGuildInfo", 0.5, function(player)
     local GuildService = require(script.Parent.Services.GuildService)
     local pdata = PlayerDataService.Get(player)
     return { mine = GuildService.GetMine(player), top = GuildService.Top(10), coins = pdata and pdata.EmberCoins or 0 }
-end
+end)
+
 
 -- ── Quarry ───────────────────────────────────────────────────────────────────
 RemoteEvents.QuarryAction.OnServerEvent:Connect(function(player, action, arg)
@@ -740,9 +767,10 @@ RemoteEvents.ClaimLadderPrize.OnServerEvent:Connect(function(player)
     end)
 end)
 
-RemoteEvents.GetLadderInfo.OnServerInvoke = function(player)
+RemoteEvents.GetLadderInfo.OnServerInvoke = Throttled("GetLadderInfo", 1, function(player)
     return require(script.Parent.Services.LadderService).GetInfo(player)
-end
+end)
+
 
 RemoteEvents.GetStreakInfo.OnServerInvoke = function(player)
     local data = PlayerDataService.Get(player)
@@ -943,7 +971,7 @@ RemoteEvents.ClaimSeasonReward.OnServerEvent:Connect(function(player, seasonId, 
 end)
 
 -- ── RemoteFunctions (synchronous data requests) ───────────────────────────────
-RemoteEvents.GetPlayerData.OnServerInvoke = function(player)
+RemoteEvents.GetPlayerData.OnServerInvoke = Throttled("GetPlayerData", 0.1, function(player)
     local data = PlayerDataService.Get(player)
     if not data then return nil end
     -- Return a safe read-only snapshot (strip transient fields)
@@ -965,17 +993,19 @@ RemoteEvents.GetPlayerData.OnServerInvoke = function(player)
         }
     end
     return snapshot
-end
+end)
+
 
 RemoteEvents.GetMarketListings.OnServerInvoke = function(player, filterType, filterElement)
     return TradingService.GetMarketListings(filterType, filterElement, 50)
 end
 
-RemoteEvents.GetLeaderboard.OnServerInvoke = function(player, category)
+RemoteEvents.GetLeaderboard.OnServerInvoke = Throttled("GetLeaderboard", 2, function(player, category)
     local validCategories = { ResourcesMined = true, GolemsCrafted = true, ForgeLevel = true, TradeCount = true, Ascensions = true, TowerBest = true }
     if not validCategories[category] then return {} end
     return LeaderboardService.GetTopEntries(category, 20)
-end
+end)
+
 
 RemoteEvents.GetForgeZoneData.OnServerInvoke = function(player, targetUserId)
     if type(targetUserId) ~= "number" then return nil end

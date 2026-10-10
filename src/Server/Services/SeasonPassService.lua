@@ -45,6 +45,10 @@ function SeasonPassService.ClaimWeekReward(player, seasonId, weekNumber, track)
     -- Only the live season can be claimed from (the client supplies seasonId, so verify it)
     local current = SeasonData.GetCurrentSeason()
     if not current or current.id ~= seasonId then return false, "That season isn't active" end
+    -- after the last season has ended GetCurrentSeason keeps returning it: nothing more to claim until a new one is added
+    if Utils.UnixTimestamp() >= (current.startTimestamp or 0) + current.durationWeeks * 7 * 86400 then
+        return false, "That season has ended"
+    end
 
     -- Verify week is a whole number and has started
     if weekNumber ~= math.floor(weekNumber) or weekNumber < 1 then return false, "Invalid week" end

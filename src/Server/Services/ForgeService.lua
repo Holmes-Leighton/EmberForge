@@ -95,6 +95,13 @@ function ForgeService.StartSmelt(player, materialId, quantity)
 
     quantity = math.max(1, math.floor(quantity))
 
+    -- Only whole batches smelt: a remainder smaller than the ratio would be used up and give nothing back
+    local ratio = mat.smeltRatio or 1
+    quantity = math.floor(quantity / ratio) * ratio
+    if quantity < ratio then
+        return nil, string.format("Needs at least %d to smelt", ratio)
+    end
+
     -- Check material availability
     local have = data.Inventory[materialId] or 0
     if have < quantity then return nil, "Insufficient material" end

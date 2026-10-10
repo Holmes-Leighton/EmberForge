@@ -50,6 +50,7 @@ function GolemService.CraftGolem(player, blueprintId, skinId)
     }
 
     table.insert(data.Golems, golem)
+    require(game.ReplicatedStorage.Shared.Data.MiningZoneData).RememberUnlocked(data)
     data.CraftedByTier = data.CraftedByTier or {}
     data.CraftedByTier[bp.tier] = (data.CraftedByTier[bp.tier] or 0) + 1
     PlayerDataService.MarkDirty(player)
@@ -85,8 +86,7 @@ function GolemService.DeployGolem(player, golemId, zoneId)
 
     targetGolem.deployed = true
     targetGolem.zoneId   = zoneId
-    targetGolem._carriedResources = 0
-    targetGolem._accumulatedResources = 0
+    -- its bag is NOT emptied here: only collecting empties it, otherwise recall + redeploy would dodge the carry cap
     PlayerDataService.MarkDirty(player)
 
     return true, nil
@@ -107,8 +107,7 @@ function GolemService.ReturnGolem(player, golemId)
 
     targetGolem.deployed  = false
     targetGolem.zoneId    = nil
-    local carried = targetGolem._carriedResources or 0
-    targetGolem._carriedResources = 0
+    local carried = targetGolem._carriedResources or 0   -- stays in its bag until collected (see DeployGolem)
     targetGolem._accumulatedResources = 0
 
     PlayerDataService.MarkDirty(player)
@@ -120,6 +119,8 @@ end
 function GolemService.FuseGolems(player, golem1Id, golem2Id)
     local data = PlayerDataService.Get(player)
     if not data then return false, "No player data" end
+
+    if golem1Id == golem2Id then return false, "Pick two different Golems" end
 
     local g1, g2, g1idx, g2idx
     for i, g in ipairs(data.Golems) do

@@ -33,6 +33,7 @@ local function DefaultData()
         ForgeLevel      = 1,
         ForgeXP         = 0,
         Golems          = {},          -- array of GolemObjects
+        UnlockedZones   = {},          -- zoneId -> true once reached (see MiningZoneData.RememberUnlocked)
         Inventory       = {},          -- materialId → quantity
         Pending         = {},          -- materialId → quantity mined by Golems, waiting to be collected
         Blueprints      = Utils.DeepCopy(RecipeData.StartingBlueprintIds),
@@ -156,6 +157,7 @@ function PlayerDataService.Load(player)
             data.CraftedByTier[g.tier] = (data.CraftedByTier[g.tier] or 0) + 1
         end
     end
+    require(game.ReplicatedStorage.Shared.Data.MiningZoneData).RememberUnlocked(data)   -- older saves: keep the zones they have now
     data._lock = { jobId = JOB_ID, time = Utils.UnixTimestamp() }
 
     cache[userId] = { data = data, dirty = true }
@@ -308,10 +310,20 @@ function PlayerDataService.StartAutoSave()
 
     -- Make sure everyone is saved (and unlocked) when the server shuts down
     game:BindToClose(function()
+        -- all at once: saving one player after another can overrun the 30 seconds a shutdown allows
+        local waiting = 0
         for userId in pairs(cache) do
             local player = Players:GetPlayerByUserId(tonumber(userId))
-            if player then PlayerDataService.Save(player, true, true) end
+            if player then
+                waiting += 1
+                task.spawn(function()
+                    PlayerDataService.Save(player, true, true)
+                    waiting -= 1
+                end)
+            end
         end
+        local deadline = os.clock() + 25
+        while waiting > 0 and os.clock() < deadline do task.wait(0.2) end
     end)
 end
 
@@ -332,7 +344,12 @@ end
 
 -- ── On player leave: force save, release the session lock, evict cache ───────
 function PlayerDataService.OnPlayerLeave(player)
-    PlayerDataService.Save(player, true, true)
+    if not cache[tostring(player.UserId)] then return end   -- never loaded (kicked at load): nothing to save
+    -- a failed save here would lose everything since the last autosave, so try a few times before giving up
+    for attempt = 1, 3 do
+        if PlayerDataService.Save(player, true, true) then break end
+        if attempt < 3 then task.wait(attempt * 2) end
+    end
     cache[tostring(player.UserId)] = nil
 end
 

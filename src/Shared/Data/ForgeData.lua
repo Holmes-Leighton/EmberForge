@@ -22,7 +22,7 @@ ForgeData.Levels = {
             smeltSlots = 5,
             materialSlots = 3,
             maxCraftTier = 1,
-            description = "Additional smelter slot, improved workflow",
+            description = "Faster smelting, 3 material slots",
         },
         visual = "Forge glow intensifies",
         smeltSpeedBonus = 0.05,

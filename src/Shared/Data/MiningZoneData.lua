@@ -74,12 +74,19 @@ function MiningZoneData.SampleDrop(zoneId, luckMultiplier)
 
     luckMultiplier = luckMultiplier or 1.0
 
-    -- Build weighted list with luck boosting rare entries
+    -- Build weighted list with luck boosting the entries rarer than the zone's everyday drop
+    -- (in a zone where every drop is Rare or better, luck used to scale them all equally and did nothing)
+    local RANK = { Common = 1, Uncommon = 2, Rare = 3, Epic = 4, Legendary = 5 }
+    local baseRank, topWeight = 1, -1
+    for _, entry in ipairs(zone.dropTable) do
+        if entry.weight > topWeight then topWeight, baseRank = entry.weight, RANK[entry.rarity] or 1 end
+    end
     local pool = {}
     local totalWeight = 0
     for _, entry in ipairs(zone.dropTable) do
         local w = entry.weight
-        if entry.rarity == "Rare" or entry.rarity == "Epic" or entry.rarity == "Legendary" then
+        local rank = RANK[entry.rarity] or 1
+        if rank >= 3 and rank > baseRank then
             w = math.floor(w * luckMultiplier)
         end
         totalWeight = totalWeight + w
@@ -100,11 +107,19 @@ function MiningZoneData.Get(zoneId)
 end
 
 -- Returns list of zone IDs that a player has unlocked given their state
+-- Server: remember every zone the player has reached, so trading or fusing away the Golem that opened it doesn't lock it again
+function MiningZoneData.RememberUnlocked(playerData)
+    playerData.UnlockedZones = playerData.UnlockedZones or {}
+    for _, id in ipairs(MiningZoneData.GetUnlocked(playerData)) do
+        playerData.UnlockedZones[id] = true
+    end
+end
+
 function MiningZoneData.GetUnlocked(playerData)
     local unlocked = {}
     for id, zone in pairs(MiningZoneData.Zones) do
         local req = zone.unlockRequirement
-        local met = false
+        local met = playerData.UnlockedZones ~= nil and playerData.UnlockedZones[id] == true   -- earned once, kept for good
 
         if req.type == "craft_golem" then
             -- check if player has ever crafted a golem of this element at the required tier

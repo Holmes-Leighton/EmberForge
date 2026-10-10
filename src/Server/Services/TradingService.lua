@@ -17,6 +17,9 @@ local TradingService = {}
 local MAX_ITEM_QTY          = 1000000
 local MAX_PRICE             = 1000000000
 local MAX_LISTINGS_PER_USER = 20
+-- All listings live in ONE DataStore record (4 MB limit, and every server writes it). A listing with a Golem is about 1 KB,
+-- so stop well short of the limit. If the market ever fills up, move to a record per seller / a MemoryStore index.
+local MAX_TOTAL_LISTINGS    = 1500
 local TRADE_REQUEST_TTL     = 300      -- seconds a trade window may stay open
 local MAX_HISTORY           = 50
 local CONFIRM_DELAY         = 5        -- seconds after ANY change to an offer before either side may confirm (stops last-second swaps)
@@ -588,6 +591,9 @@ function TradingService.ListOnMarket(player, rawItem, priceCoins)
     if young then return nil, young end
 
     if not PositiveInt(priceCoins, MAX_PRICE) then return nil, "Price must be a whole number of coins" end
+    local total = 0
+    for _ in pairs(marketListings) do total += 1 end
+    if total >= MAX_TOTAL_LISTINGS then return nil, "The market is full right now. Try again later." end
     if CountListings(player.UserId) >= MAX_LISTINGS_PER_USER then
         return nil, "You can have at most " .. MAX_LISTINGS_PER_USER .. " listings"
     end
@@ -687,8 +693,8 @@ function TradingService.BuyFromMarket(player, listingId)
     marketListings[listingId] = nil
     if not listing then return false, err or "Someone else just bought that" end
 
-    if (data.EmberCoins or 0) < listing.priceCoins then
-        -- spent the coins while we were waiting: put it back
+    if (data.EmberCoins or 0) < listing.priceCoins or PlayerDataService.Get(player) ~= data then
+        -- spent the coins (or left) while we were waiting: put it back
         EditMarket(function(listings) listings[listing.id] = listing return true end)
         marketListings[listing.id] = listing
         return false, "Not enough Ember Coins"

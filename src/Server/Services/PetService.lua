@@ -111,12 +111,15 @@ function PetService.Merge(player, petType, variant)
     if from and not from.next then return nil, "Supreme pets can't be merged any further" end
 
     data.EquippedPets = data.EquippedPets or {}
-    local candidates = {}
+    local candidates, named = {}, 0
     for _, pet in ipairs(data.OwnedPets or {}) do
-        if pet.type == petType and pet.variant == variant then table.insert(candidates, pet) end
+        if pet.type == petType and pet.variant == variant then
+            if pet.nickname ~= nil then named += 1 else table.insert(candidates, pet) end   -- a pet you named is never used up
+        end
     end
     if #candidates < PetData.MERGE_COUNT then
-        return nil, string.format("You need %d matching pets (you have %d)", PetData.MERGE_COUNT, #candidates)
+        return nil, string.format("You need %d matching pets (you have %d%s)", PetData.MERGE_COUNT, #candidates,
+            named > 0 and string.format(", and %d you have named stay safe", named) or "")
     end
     -- spare ones first, then worn ones; a pet its owner has named goes last of all
     table.sort(candidates, function(a, b)

@@ -81,11 +81,18 @@ local function OnPlayerAdded(player)
         return
     end
 
+    -- They left while the save was loading: PlayerRemoving had nothing to save then, so release the lock now
+    -- (otherwise rejoining within 15 minutes is refused)
+    if not player.Parent then
+        PlayerDataService.OnPlayerLeave(player)
+        return
+    end
+
     -- Pick up any pad game passes they already own (bought on the game page or another server)
     ShopService.OnPlayerAdded(player)
 
     -- Calculate and apply offline production
-    local gains, elapsed = IdleEngine.CalculateOfflineProduction(data)
+    local gains, elapsed, offlineByElement = IdleEngine.CalculateOfflineProduction(data)
     local capSeconds = IdleEngine.StorageCapSeconds(data.StorageTier or 0)
     if elapsed and elapsed > capSeconds and (data.StorageTier or 0) < 2 then
         task.delay(8, function()
@@ -98,10 +105,26 @@ local function OnPlayerAdded(player)
     end
     if elapsed and elapsed > 60 then
         -- Offline haul goes into the pending pool so the player collects it with the button
+        local minedAway = 0
         for matId, qty in pairs(gains) do
             if matId:sub(1, 12) ~= "__blueprint:" then
                 PlayerDataService.AddPending(player, matId, qty)
+                minedAway += qty
+            else
+                local bp = require(game.ReplicatedStorage.Shared.Data.RecipeData).Get(matId:sub(13))
+                task.delay(6, function()
+                    if player.Parent then
+                        RemoteEvents.Notify:FireClient(player, "Blueprint discovered!",
+                            bp and string.format("%s Golem (Tier %d), found while you were away", bp.element, bp.tier) or matId:sub(13))
+                    end
+                end)
             end
+        end
+        -- time away counts for mastery and the mining challenges (not the leaderboards: those stay for active play)
+        if minedAway > 0 then ChallengeService.TrackEvent(player, "ResourcesMined", { count = minedAway }) end
+        for element, mined in pairs(offlineByElement or {}) do
+            local lvl = ProgressionService.OnGolemMined(player, element, mined)
+            if lvl then RemoteEvents.MasteryLevelUp:FireClient(player, element, lvl) end
         end
         data.LastOnline = Utils.UnixTimestamp()
         PlayerDataService.MarkDirty(player)
@@ -167,13 +190,23 @@ end
 -- ── Online production tick ────────────────────────────────────────────────────
 -- Runs every 5 seconds for all active players
 local TICK_INTERVAL = 5
+local RESET_CHECK_EVERY = 12     -- ticks (a minute): players who leave the game open still get new daily / weekly challenges
+local tickCount = 0
 task.spawn(function()
     while true do
         task.wait(TICK_INTERVAL)
+        tickCount += 1
 
         for _, player in ipairs(Players:GetPlayers()) do
             local data = PlayerDataService.Get(player)
             if data then
+                if tickCount % RESET_CHECK_EVERY == 0 then
+                    local resets = ChallengeService.CheckResets(player)
+                    if resets.daily then
+                        RemoteEvents.DailyReward:FireClient(player, resets.coins or GameConfig.DAILY_COIN_REWARD)
+                    end
+                end
+
                 -- Tick idle production
                 local rawGains, byElement = IdleEngine.TickOnlineProduction(data, TICK_INTERVAL)
                 local gains = {}
