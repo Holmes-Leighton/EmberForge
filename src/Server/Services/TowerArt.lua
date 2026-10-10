@@ -88,7 +88,7 @@ local function Frame(folder, T)
     local group = Instance.new("Folder")
     group.Name = "ScaffoldFrame"
     group.Parent = folder
-    local STEEL, YELLOW = Color3.fromRGB(110, 116, 128), Color3.fromRGB(255, 200, 60)
+    local STEEL, YELLOW = Color3.fromRGB(255, 176, 40), Color3.fromRGB(255, 255, 255)
     local function pole(x, z)
         P({ Name = "ScaffoldPole", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, Color = STEEL, Size = Vector3.new(y1 - y0, 3, 3), CanCollide = false,
             CFrame = CFrame.new(x, (y0 + y1) / 2, z) * CFrame.Angles(0, 0, math.pi / 2) }, group)
@@ -119,15 +119,61 @@ local function Frame(folder, T)
     end
 end
 
+-- A giant rainbow ring, standing across the course (a gate you run through): `segs` colour blocks around a circle of `radius`, in the YZ plane at x
+function TowerArt.RainbowRing(parent, x, y, z, radius, segs)
+    local arc = 2 * math.pi * radius / segs
+    for k = 0, segs - 1 do
+        local t = 2 * math.pi * k / segs
+        P({ Name = "RingBlock", Material = Enum.Material.SmoothPlastic, Color = Color3.fromHSV(k / segs, 0.85, 1), Size = Vector3.new(3.2, arc + 0.5, 3.2), CanCollide = false,
+            CFrame = CFrame.new(x, y + radius * math.sin(t), z + radius * math.cos(t)) * CFrame.Angles(-t, 0, 0) }, parent)
+    end
+end
+
+-- Soft clouds all round the tower, and a sea of cloud below it hiding the cavern floor far underneath. Decorative: nothing is solid.
+local function Clouds(folder, T)
+    local lo, hi, zlo, zhi = 1e9, -1e9, 1e9, -1e9
+    for _, p in ipairs(T.platforms) do
+        lo, hi = math.min(lo, p.x), math.max(hi, p.x)
+        zlo, zhi = math.min(zlo, p.z), math.max(zhi, p.z)
+    end
+    local group = Instance.new("Folder")
+    group.Name = "Clouds"
+    group.Parent = folder
+    local rng = Random.new(T.seed + 17)
+    local top = (T.finish and T.finish.y or T.base.y)
+    for _ = 1, 110 do
+        local cx = rng:NextNumber(lo - 420, hi + 420)
+        local cz = rng:NextNumber(zlo - 420, zhi + 420)
+        local cy = rng:NextNumber(T.base.y - 110, top + 140)
+        if math.abs(cx - (lo + hi) / 2) > 130 or math.abs(cz - (zlo + zhi) / 2) > 60 then          -- (keep the climbing space itself clear)
+            local s = rng:NextNumber(26, 60)
+            for k = 1, 3 do
+                P({ Name = "Cloud", Shape = Enum.PartType.Ball, Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(252, 253, 255), Transparency = 0.08,
+                    Size = Vector3.new(s * rng:NextNumber(1, 1.6), s * 0.55, s), CanCollide = false, CastShadow = false,
+                    CFrame = CFrame.new(cx + (k - 2) * s * 0.7, cy + (k % 2) * 4, cz + rng:NextNumber(-8, 8)) }, group)
+            end
+        end
+    end
+    P({ Name = "CloudSea", Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(240, 247, 255), Transparency = 0.12, Size = Vector3.new(4000, 8, 4000), CanCollide = false, CastShadow = false,
+        CFrame = CFrame.new((lo + hi) / 2, T.base.y - 180, (zlo + zhi) / 2) }, group)
+end
+
 -- Builds the whole tower for a layout T under `parent`. Returns the folder.
 function TowerArt.Build(parent, T)
     local folder = Instance.new("Folder")
     folder.Name = "SkyTower"
     Frame(folder, T)
+    Clouds(folder, T)
     for i, lv in ipairs(T.levels) do
         local color = LevelColor(i, T.total)
         local theme = TowerArt.Themes[lv.theme] or TowerArt.Themes.slate
-        local r = { id = "Tower", def = { tier = lv.tier, color = theme.accent, look = theme }, layout = LevelLayout(T, i, i == T.total) }
+        -- the big obbies are bright: each level is a saturated rainbow colour (by height) in smooth plastic with glowing white-ish edges; the design's theme only decides the extras (scaffold, pipes)
+        local h = 0.02 + 0.82 * (i - 1) / math.max(1, T.total - 1)
+        local look = {
+            material = Enum.Material.SmoothPlastic, color = Color3.fromHSV(h, 0.82, 1), rest = Color3.fromHSV(h, 0.38, 1),
+            accent = Color3.fromHSV((h + 0.5) % 1, 0.35, 1), scaffold = theme.scaffold, beam = Color3.fromHSV(h, 0.9, 0.85),
+        }
+        local r = { id = "Tower", def = { tier = lv.tier, color = look.accent, look = look }, layout = LevelLayout(T, i, i == T.total) }
         local group = Instance.new("Folder")
         group.Name = "Level" .. i
         group.Parent = folder
@@ -136,6 +182,7 @@ function TowerArt.Build(parent, T)
         -- the level's number, big on a sign above its start platform (readable from the level below)
         local cp = r.layout.checkpoints[1]
         if cp then
+            TowerArt.RainbowRing(group, cp.x, cp.y - 3 + 13, cp.z, 17, 26)
             local anchor = P({ Name = "LevelSignAnchor", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(cp.x, cp.y + 14, cp.z) }, group)
             Sign(group, anchor, "LEVEL " .. i .. "\n" .. (lv.design or ""), UDim2.new(0, 280, 0, 84), Vector3.new(0, 0, 0), color, 220)
             local beam = P({ Name = "LevelBeam", Material = Enum.Material.Neon, Color = color, Transparency = 0.75, Size = Vector3.new(2, 40, 2), CanCollide = false,

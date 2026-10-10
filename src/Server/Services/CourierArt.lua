@@ -98,7 +98,7 @@ local function BuildPlatforms(folder, r)
         end
         if look.scaffold and not p.pipe and not p.conveyor then       -- scaffold-style: cross-beams under the planks, and on the big platforms pipe railings
             for k = 1, math.max(2, math.floor(p.sx / 6)) do
-                P({ Name = "CrossBeam", Material = Enum.Material.Metal, Color = Color3.fromRGB(96, 102, 114), Size = Vector3.new(0.9, 0.9, p.sz + 0.4), CanCollide = false,
+                P({ Name = "CrossBeam", Material = Enum.Material.SmoothPlastic, Color = look.beam or Color3.fromRGB(96, 102, 114), Size = Vector3.new(0.9, 0.9, p.sz + 0.4), CanCollide = false,
                     CFrame = CFrame.new(p.x - p.sx / 2 + (p.sx / (math.max(2, math.floor(p.sx / 6)) + 1)) * k, p.y - p.sy / 2 - 0.5, p.z) }, group)
             end
             if isRest then

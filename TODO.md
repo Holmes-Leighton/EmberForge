@@ -89,6 +89,10 @@ Recommendation: not yet. Six mining zones, the Quarry and pets already give plen
       7. [x] Look, round 2 (user: "so basic ... scaffolding pipes things to climb"): the tower sits inside a construction-scaffold frame (four steel corner poles the full height with
          braces, X-diagonals and yellow couplings); metal, dark, lava, slate and wood levels have scaffold-style platforms (cross-beams under the planks, pipe railings); "Pipe Walk" and
          "Pipe Run" levels and the beams in Ice Beam / Narrow Sweep are round steel pipes with flanges and hazard bands. 30 designs now. Still all built from plain parts.
+      7b. [x] Look, round 3, from the user's screenshot of the top obbies (Mega Easy Obby, oMega Obby, Ultimate Easy Obby): they are BRIGHT and chunky, not realistic. The tower now uses
+         saturated rainbow colours (a hue per level, by height) in smooth plastic with pale glowing edges, a giant rainbow ring you run through at every level start, soft clouds around the
+         tower and a cloud sea hiding the cavern floor far below, and a bright yellow scaffold. **Not yet looked at in Studio** (the place was closed): check the colours, ring size and clouds.
+         Next ideas from the same screenshot: huge rainbow spiral tunnels, wide striped ramps, hollow square frames to run round, bold zigzag slabs, bigger and fewer platforms.
       8. [ ] Real meshes for the hero pieces (the user wants scaffolding, pipes and girders to look like the top obbies): generate them with Studio's mesh generator, upload under the
          game's owner, and swap them in (`CourierArt` names every piece; prompts in `ART_BRIEF.md` part B). I cannot see other games, so the user should name or screenshot the look.
       5. [x] Daily challenge (`TowerData.DailyTarget`, `TowerRewards.PayDaily`): a target level that changes through the week; reaching it pays a 4x chest once a day; shown in the HUD
