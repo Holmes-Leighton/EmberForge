@@ -31,8 +31,8 @@ local p1, d1 = player(1, { ember() })
 local stats = GD.ComputeStats("Ember", 1)
 d1.LastOnline = os.time() - 1800          -- 30 minutes away
 local g30 = IE.CalculateOfflineProduction(d1)
-local expect30 = math.floor(stats.miningRate * 0.5)
-expect(math.abs(total(g30) - expect30) <= 2, "30 minutes away gives about half an hour of mining (" .. total(g30) .. " vs " .. expect30 .. ")")
+local expect30 = math.floor(stats.miningRate * 0.5 * (GC.OFFLINE_PRODUCTION_SPEED or 1))   -- offline speed-up applies
+expect(math.abs(total(g30) - expect30) <= 2, "30 minutes away gives half an hour of mining at the offline speed (" .. total(g30) .. " vs " .. expect30 .. ")")
 d1.LastOnline = os.time()
 expect(next((IE.CalculateOfflineProduction(d1))) == nil, "no time away gives nothing")
 local noGolem = select(2, player(2, {}))

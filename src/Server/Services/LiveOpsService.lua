@@ -25,6 +25,7 @@ local PUSH_TOPIC = "EmberForge_LiveOpsChanged"
 -- Only these numeric GameConfig values may be overridden remotely (bounds keep a typo from breaking the game)
 local ALLOWED = {
     ONLINE_PRODUCTION_SPEED   = { min = 1,    max = 600 },
+    OFFLINE_PRODUCTION_SPEED  = { min = 1,    max = 600 },
     DAILY_COIN_REWARD         = { min = 0,    max = 5000 },
     MARKET_LISTING_FEE_PERCENT = { min = 0,   max = 0.5 },
     XP_PER_SMELT              = { min = 0,    max = 500 },

@@ -156,14 +156,15 @@ local function GolemProduction(golem, seconds, storageTier, playerData, stormBoo
 
     local efficiency = stats.efficiency * (golem.element ~= "Storm" and (1 + (stormBoost or 0)) or 1) * (1 + auras.eff)
     local rawRate = miningRate * efficiency
-    local produced = math.floor(rawRate * (effectiveSeconds / 3600))
+    local offlineSpeed = GameConfig.OFFLINE_PRODUCTION_SPEED or 1
+    local produced = math.floor(rawRate * (effectiveSeconds * offlineSpeed / 3600))
     -- Woven's Net Haul: its doubled hauls, as the average over a long absence
     if skill and skill.doubleChance then produced = math.floor(produced * (1 + skill.doubleChance)) end
     -- A Golem can only hold so much (carry capacity). Offline storage is what lets it keep working while you are away,
     -- so the limit grows with the storage tier: base storage is the Golem's own capacity, 8h storage holds twice that,
     -- 24h storage six times (without this the upgrades would change nothing, as every Golem fills up in under 3 hours)
     local storageScale = capSeconds / (GameConfig.OFFLINE_STORAGE_BASE_HOURS * 3600)
-    local carryCapped = math.min(produced, math.floor(stats.carryCapacity * (1 + fp.carry) * (1 + auras.carry) * storageScale))
+    local carryCapped = math.min(produced, math.floor(stats.carryCapacity * (1 + fp.carry) * (1 + auras.carry) * storageScale * offlineSpeed))
 
     return {
         golemId   = golem.id,
@@ -203,6 +204,7 @@ function IdleEngine.CalculateOfflineProduction(playerData)
 
     local stormBoost = StormBoost(playerData)
     local auras = CrewAuras(playerData)
+    local byElement = {}   -- element -> resources its Golems mined while away (for mastery)
     for _, golem in ipairs(playerData.Golems or {}) do
         if golem.deployed then
             local production = GolemProduction(golem, elapsed, storageTier, playerData, stormBoost, auras)
@@ -213,6 +215,7 @@ function IdleEngine.CalculateOfflineProduction(playerData)
 
                 -- Distribute production across drops (apply event multiplier)
                 local remaining = math.floor(production.produced * eventMult * LiveOps.GetElementMultiplier(golem.element))
+                byElement[golem.element] = (byElement[golem.element] or 0) + remaining
                 while remaining > 0 do
                     local batch = math.min(remaining, 10)
                     -- Alchemist's Transmutation: some batches are brewed into something rarer
@@ -234,7 +237,7 @@ function IdleEngine.CalculateOfflineProduction(playerData)
         end
     end
 
-    return gains, elapsed
+    return gains, elapsed, byElement
 end
 
 -- Apply the offline gains to player data and update timestamp

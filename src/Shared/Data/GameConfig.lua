@@ -11,12 +11,16 @@ GameConfig.OFFLINE_STORAGE_PREMIUM_HOURS = 24    -- premium (Robux / Season Pass
 -- Offline production still uses real time. Set to 1 for true hourly rates.
 GameConfig.ONLINE_PRODUCTION_SPEED = 60
 
+-- Offline mining speed-up, the same idea: 1 real second away = this many seconds of the hourly rate. 12 means being away
+-- earns 20% of what the same time online does (most idle games pay 10-50%), so coming back to a full Storage Vault is
+-- worth having. The Golem's offline carry limit scales with it. Set to 1 for true hourly rates.
+GameConfig.OFFLINE_PRODUCTION_SPEED = 12
+
 -- Smelting: a job processes SMELT_BATCH_SIZE units per smelt-time cycle
 GameConfig.SMELT_BATCH_SIZE = 10
 
 -- Forge
 GameConfig.BASE_SMELT_SLOTS = 5
-GameConfig.MAX_SMELT_SLOTS = 10
 GameConfig.MAX_FORGE_LEVEL = 10
 GameConfig.FORGE_SMELT_TIME_REDUCTION_MAX = 0.40  -- 40% reduction at max level
 
@@ -25,15 +29,6 @@ GameConfig.BASE_GOLEM_SLOTS = 3
 GameConfig.MAX_GOLEM_SLOTS = 31           -- absolute ceiling (earned 12 + pass 3 + boost 1 + purchased 15)
 GameConfig.SLOT_PACK_SIZE = 5             -- Golem slots per "Slot Pack" purchase (stackable)
 GameConfig.MAX_PURCHASED_SLOTS = 15       -- up to three packs (Grow a Garden tops out at 8 equipped pets)
-
--- Economy rates
-GameConfig.MATERIAL_DROP_RATES = {
-    Common    = 0.60,
-    Uncommon  = 0.25,
-    Rare      = 0.10,
-    Epic      = 0.04,
-    Legendary = 0.01,
-}
 
 -- XP rewards
 GameConfig.XP_PER_SMELT = 10
