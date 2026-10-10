@@ -53,8 +53,8 @@ closeBtn.MouseButton1Click:Connect(function() gui.Enabled = false end)
 
 -- Material list scroll
 local scroll = Theme.ScrollFrame(container, "MaterialScroll")
-scroll.Size = UDim2.new(1, -16, 0, 360)
-scroll.Position = UDim2.new(0, 8, 0, 58)
+scroll.Size = UDim2.new(1, -16, 0, 326)
+scroll.Position = UDim2.new(0, 8, 0, 92)
 scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 
 local listLayout = Instance.new("UIListLayout")
@@ -63,10 +63,25 @@ listLayout.Padding = UDim.new(0, 4)
 listLayout.Parent = scroll
 Theme.AddPadding(scroll, 4, 4, 4, 4)
 
+-- Select all / clear row (handlers wired up below, once the helpers exist)
+local selectAllBtn = Theme.Button(container, "Select All", Theme.Colors.PanelAlt,
+    Theme.Colors.TextPrimary, "SelectAllButton")
+selectAllBtn.Size = UDim2.new(0.5, -12, 0, 28)
+selectAllBtn.Position = UDim2.new(0, 8, 0, 58)
+selectAllBtn.TextSize = 13
+
+local clearBtn = Theme.Button(container, "Clear Selection", Theme.Colors.PanelAlt,
+    Theme.Colors.TextPrimary, "ClearSelectionButton")
+clearBtn.Size = UDim2.new(0.5, -12, 0, 28)
+clearBtn.Position = UDim2.new(0.5, 4, 0, 58)
+clearBtn.TextSize = 13
+
 -- Selected state
 local qtyInput, maxQtyLbl   -- created further down; declared here so the material buttons can reach them
-local selectedMaterialId = nil
-local selectedCard = nil
+local selected = {}       -- materialId → owned qty (multi-select)
+local selectionRows = {}  -- materialId → { card, btn, qty }
+local selectionOrder = {} -- materialIds in display order
+local confirmBtn
 
 local RARITY_COLORS = {
     Common    = Theme.Colors.Common,
@@ -76,23 +91,64 @@ local RARITY_COLORS = {
     Legendary = Theme.Colors.Legendary,
 }
 
-local function deselectAll()
-    for _, child in ipairs(scroll:GetChildren()) do
-        if child:IsA("Frame") then
-            child.BackgroundColor3 = Theme.Colors.Panel
-        end
-    end
-    selectedMaterialId = nil
-    selectedCard = nil
+local function selectedCount()
+    local n = 0
+    for _ in pairs(selected) do n += 1 end
+    return n
 end
+
+-- Refresh card visuals, quantity row and confirm button from the selection
+local function refreshSelection()
+    for id, row in pairs(selectionRows) do
+        local on = selected[id] ~= nil
+        row.card.BackgroundColor3 = on and Color3.fromRGB(50, 40, 28) or Theme.Colors.Panel
+        row.btn.BackgroundColor3 = on and Theme.Colors.Accent or Theme.Colors.PanelAlt
+        row.btn.TextColor3 = on and Color3.fromRGB(255,255,255) or Theme.Colors.TextPrimary
+        row.btn.Text = on and "Selected" or "Select"
+    end
+    local n = selectedCount()
+    if n == 1 then
+        local _, q = next(selected)
+        qtyInput.Text = tostring(q)
+        maxQtyLbl.Text = "/ " .. q
+        qtyInput.TextEditable = true
+    elseif n > 1 then
+        qtyInput.Text = "All"
+        maxQtyLbl.Text = n .. " items"
+        qtyInput.TextEditable = false
+    else
+        qtyInput.Text = "1"
+        maxQtyLbl.Text = "/ ?"
+        qtyInput.TextEditable = true
+    end
+    if confirmBtn then
+        confirmBtn.Text = n > 1 and ("⚗  Smelt " .. n .. " Materials") or "⚗  Start Smelting"
+    end
+end
+
+local function deselectAll()
+    selected = {}
+    refreshSelection()
+end
+
+local function selectAll()
+    for _, id in ipairs(selectionOrder) do
+        selected[id] = selectionRows[id].qty
+    end
+    refreshSelection()
+end
+
+selectAllBtn.MouseButton1Click:Connect(selectAll)
+clearBtn.MouseButton1Click:Connect(deselectAll)
 
 -- Populate is called by SmeltDialog.Open(inventory)
 local function Populate(inventory)
     for _, child in ipairs(scroll:GetChildren()) do
         if child:IsA("Frame") then child:Destroy() end
     end
-    selectedMaterialId = nil
-    selectedCard = nil
+    selected = {}
+    selectionRows = {}
+    selectionOrder = {}
 
     local MaterialData = require(game.ReplicatedStorage.Shared.Data.MaterialData)
     local Utils        = require(game.ReplicatedStorage.Shared.Modules.Utils)
@@ -178,19 +234,20 @@ local function Populate(inventory)
         selBtn.Position = UDim2.new(1, -88, 0.5, -17)
         selBtn.TextSize = 13
 
+        selectionRows[item.id] = { card = card, btn = selBtn, qty = item.qty }
+        table.insert(selectionOrder, item.id)
+
+        -- Toggle: click again to unselect
         selBtn.MouseButton1Click:Connect(function()
-            deselectAll()
-            selectedMaterialId = item.id
-            selectedCard = card
-            card.BackgroundColor3 = Color3.fromRGB(50, 40, 28)
-            selBtn.BackgroundColor3 = Theme.Colors.Accent
-            selBtn.TextColor3 = Color3.fromRGB(255,255,255)
-            selBtn.Text = "OK"
-            -- Update qty spinner to max
-            qtyInput.Text = tostring(item.qty)
-            maxQtyLbl.Text = "/ " .. item.qty
+            if selected[item.id] then
+                selected[item.id] = nil
+            else
+                selected[item.id] = item.qty
+            end
+            refreshSelection()
         end)
     end
+    refreshSelection()
 end
 
 -- ── Quantity row ──────────────────────────────────────────────────────────────
@@ -238,21 +295,38 @@ plusBtn.Position = UDim2.new(0, 250, 0, 8)
 plusBtn.TextSize = 18
 
 local function getQty()   return math.max(1, tonumber(qtyInput.Text) or 1) end
-minusBtn.MouseButton1Click:Connect(function() qtyInput.Text = tostring(math.max(1, getQty() - 1)) end)
-plusBtn.MouseButton1Click:Connect(function()  qtyInput.Text = tostring(getQty() + 1) end)
+minusBtn.MouseButton1Click:Connect(function()
+    if selectedCount() > 1 then return end
+    qtyInput.Text = tostring(math.max(1, getQty() - 1))
+end)
+plusBtn.MouseButton1Click:Connect(function()
+    if selectedCount() > 1 then return end
+    local _, owned = next(selected)
+    qtyInput.Text = tostring(math.min(getQty() + 1, owned or math.huge))
+end)
 
 -- ── Confirm button ────────────────────────────────────────────────────────────
-local confirmBtn = Theme.Button(container, "⚗  Start Smelting", Theme.Colors.Accent,
+confirmBtn = Theme.Button(container, "⚗  Start Smelting", Theme.Colors.Accent,
     Color3.fromRGB(255,255,255), "ConfirmButton")
 confirmBtn.Size = UDim2.new(1, -16, 0, 42)
 confirmBtn.Position = UDim2.new(0, 8, 1, -50)
 confirmBtn.TextSize = 15
 
 confirmBtn.MouseButton1Click:Connect(function()
-    if not selectedMaterialId then return end
-    local qty = getQty()
+    local n = selectedCount()
+    if n == 0 then return end
     local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
-    RemoteEvents.StartSmelt:FireServer(selectedMaterialId, qty)
+    if n == 1 then
+        local id, owned = next(selected)
+        RemoteEvents.StartSmelt:FireServer(id, math.min(getQty(), owned))
+    else
+        -- Several materials: smelt everything owned of each, one job per material
+        for _, id in ipairs(selectionOrder) do
+            if selected[id] then
+                RemoteEvents.StartSmelt:FireServer(id, selected[id])
+            end
+        end
+    end
     gui.Enabled = false
 end)
 

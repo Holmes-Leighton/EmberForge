@@ -211,7 +211,9 @@ local GolemData = require(game.ReplicatedStorage.Shared.Data.GolemData)
         selBtn.TextSize = 13
 
         selBtn.MouseButton1Click:Connect(function()
+            local wasSelected = selectedGolemId == golem.id
             deselectAll()
+            if wasSelected then return end    -- click the chosen Golem again to unselect it
             selectedGolemId = golem.id
             card.BackgroundColor3 = Color3.fromRGB(45, 38, 28)
             selBtn.BackgroundColor3 = Theme.Colors.Accent
