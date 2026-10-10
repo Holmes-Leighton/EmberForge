@@ -120,6 +120,16 @@ local function OnPlayerAdded(player)
                 end)
             end
         end
+        -- tell them what they came back to (the screen offers to collect it)
+        if minedAway > 0 and elapsed > 300 then
+            local haul = {}
+            for matId, qty in pairs(gains) do if matId:sub(1, 12) ~= "__blueprint:" then haul[matId] = qty end end
+            task.delay(5, function()
+                if player.Parent then
+                    RemoteEvents.WelcomeBack:FireClient(player, elapsed, haul, capSeconds / 3600, elapsed > capSeconds)
+                end
+            end)
+        end
         -- time away counts for mastery and the mining challenges (not the leaderboards: those stay for active play)
         if minedAway > 0 then ChallengeService.TrackEvent(player, "ResourcesMined", { count = minedAway }) end
         for element, mined in pairs(offlineByElement or {}) do

@@ -212,6 +212,14 @@ RemoteEvents.ForgeZoneLeft.OnClientEvent:Connect(function()
     ForgeZoneController.OnZoneLeft()
 end)
 
+-- Confetti for the good moments
+local Celebrate = require(game.ReplicatedStorage.Shared.Modules.Celebrate)
+RemoteEvents.LevelUp.OnClientEvent:Connect(function() Celebrate.Burst({ count = 36, spread = 320 }) end)
+RemoteEvents.GolemCrafted.OnClientEvent:Connect(function(golem) if golem then Celebrate.Craft(golem.tier) end end)
+RemoteEvents.AchievementUnlocked.OnClientEvent:Connect(function() Celebrate.Burst({ count = 28 }) end)
+RemoteEvents.ForgeUpgraded.OnClientEvent:Connect(function() Celebrate.Burst({ count = 48, spread = 360 }) end)
+RemoteEvents.ChallengeCompleted.OnClientEvent:Connect(function() Celebrate.Burst({ count = 12, spread = 160 }) end)
+
 -- Anything that changes slots, durability, smelting or levels refreshes the HUD from the server
 for _, name in ipairs({ "GolemCrafted", "GolemDeployed", "GolemReturned", "GolemFused", "GolemRepaired", "SmeltQueued",
     "SmeltCompleted", "ForgeUpgraded", "LevelUp", "TradeCompleted", "PurchaseResult", "StorageVaultCrafted",

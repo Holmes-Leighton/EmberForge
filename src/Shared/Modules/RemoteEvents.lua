@@ -161,6 +161,8 @@ local DEFINITIONS = {
 
     -- Daily login reward
     DailyReward             = "event",  -- server → client (amount)
+    WelcomeBack             = "event",  -- server → client (secondsAway, { materialId = qty }, capHours, capped)
+    ClaimTutorialReward     = "event",  -- client → server: the first Golem is crafted, deployed and collected
 
     -- Forge zone visiting (world-based, like Adopt Me / Grow a Garden)
     ForgeZoneEntered        = "event",  -- server → client (ownerUserId, ownerName, forgeData)

@@ -132,6 +132,7 @@ function HUDController.Refresh(data)
         end
     end
 
+    setLabel("GoalLabel", "🎯 " .. require(game.ReplicatedStorage.Shared.Modules.NextGoal).For(data))
     setLabel("PlayerLevelLabel", tostring(data.PlayerLevel or 1))           -- sits in the gold level badge
     setLabel("ForgeLevelLabel",  "Forge " .. (data.ForgeLevel or 1))
     setLabel("CoinsLabel",       Utils.FormatNumber(data.EmberCoins or 0))   -- "EMBER COINS" is the caption under it

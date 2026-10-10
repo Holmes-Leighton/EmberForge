@@ -29,7 +29,7 @@ end
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
 mainFrame.AnchorPoint = Vector2.new(0, 0.5)
-mainFrame.Size = UDim2.new(0, CARD_W, 0, 318)
+mainFrame.Size = UDim2.new(0, CARD_W, 0, 352)
 mainFrame.Position = UDim2.new(0, 8, 0.5, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 mainFrame.BackgroundTransparency = 0.04
@@ -151,7 +151,7 @@ local masteryRow = Row("MasteryRow", 158, 30, Color3.fromRGB(160, 120, 220))
 local masteryLabel = Text(masteryRow, "MasteryLabel", "Mastery Lv 0", 14, Color3.fromRGB(196, 160, 245), Enum.Font.GothamBold, UDim2.new(0, 14, 0, 0), UDim2.new(1, -20, 1, 0))
 
 local golemRow = Row("GolemRow", 194, 56, Color3.fromRGB(90, 200, 110))
-local golemSlotsLabel = Text(golemRow, "GolemSlotsLabel", "Golems 0/3", 13, Theme.Colors.TextSecondary, Enum.Font.GothamBold, UDim2.new(0, 14, 0, 4), UDim2.new(1, -20, 0, 18))
+local golemSlotsLabel = Text(golemRow, "GolemSlotsLabel", "Golems 0/3", 13, Theme.Colors.TextSecondary, Enum.Font.GothamBold, UDim2.new(0, 14, 0, 3), UDim2.new(1, -20, 0, 23))
 local pips = Instance.new("Frame")
 pips.Name = "SlotPips"
 pips.BackgroundTransparency = 1
@@ -178,6 +178,25 @@ end
 
 local smeltRow = Row("SmeltRow", 256, 32, Color3.fromRGB(150, 140, 125))
 local smeltStatusLabel = Text(smeltRow, "SmeltStatusLabel", "Smelter idle", 13, Theme.Colors.TextSecondary, Enum.Font.GothamBold, UDim2.new(0, 14, 0, 0), UDim2.new(1, -20, 1, 0))
+
+-- On a short screen the small caption lines (LEVEL, EMBER COINS, the XP numbers) would be too tiny to read, and the badge, the coin
+-- icon and the bar already say the same thing, so they are dropped there.
+local function CompactCard()
+    local cam = workspace.CurrentCamera
+    local short = cam and cam.ViewportSize.Y < 520
+    for _, name in ipairs({ "LevelCaption", "CoinsCaption", "PanelXPText" }) do
+        local l = mainFrame:FindFirstChild(name, true)
+        if l then l.Visible = not short end
+    end
+end
+CompactCard()
+if workspace.CurrentCamera then workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(CompactCard) end
+
+-- What to do next: one line, kept up to date by HUDController from NextGoal
+local goalRow = Row("GoalRow", 294, 48, Theme.Colors.Gold)
+local goalLabel = Text(goalRow, "GoalLabel", "", 12, Color3.fromRGB(255, 230, 170), Enum.Font.GothamBold, UDim2.new(0, 14, 0, 0), UDim2.new(1, -20, 1, 0))
+goalLabel.TextWrapped = true
+goalLabel.TextTruncate = Enum.TextTruncate.None
 
 -- ── Navigation: big icon hotbar (bottom) + small icon column (right) ─────────
 local NAV = {
@@ -270,7 +289,8 @@ local function MakeTile(parent, nav, size)
     cap.TextStrokeTransparency = 0.3
     cap.Parent = btn
 
-    if nav.key then
+    local touchOnly = game:GetService("UserInputService").TouchEnabled and not game:GetService("UserInputService").KeyboardEnabled
+    if nav.key and not touchOnly then         -- keyboard hints mean nothing on a phone
         local hint = Instance.new("TextLabel")
         hint.Name = "KeyHint"
         hint.BackgroundColor3 = Color3.fromRGB(20, 14, 12)
@@ -334,25 +354,43 @@ local sidebar = Instance.new("Frame")
 sidebar.Name = "Sidebar"
 sidebar.AnchorPoint = Vector2.new(1, 0.5)
 sidebar.Position = UDim2.new(1, -12, 0.5, 0)
-sidebar.Size = UDim2.new(0, 56 + 16, 0, nSecondary * 64 + 8)          -- tall enough for every icon (it grows as tiles are added)
+sidebar.Size = UDim2.new(0, 56 + 16, 0, nSecondary * 64 + 8)
 sidebar.BackgroundColor3 = Theme.Colors.Panel
 sidebar.BackgroundTransparency = 0.25
 sidebar.BorderSizePixel = 0
 sidebar.Parent = gui
 Theme.AddCorner(sidebar, UDim.new(0, 20))
-do
-    -- like ApplyHud, but never taller than the screen (the column grows with every tile we add)
-    local scale = Instance.new("UIScale")
-    scale.Parent = sidebar
-    local function update()
-        local cam = workspace.CurrentCamera
-        local vy = cam and cam.ViewportSize.Y or 720
-        local fit = (vy - 36 - 16) / (nSecondary * 64 + 8)         -- 36 = Roblox top bar
-        scale.Scale = math.clamp(math.min(vy / 720, fit), 0.4, 1)
+local sidebarScale = Instance.new("UIScale")
+sidebarScale.Parent = sidebar
+local secondaryTiles = {}
+
+-- Lays out the tiles that are visible (locked-far-away and not-yet-revealed ones take no room). On a short screen the column
+-- becomes two columns so the buttons stay big enough to tap, instead of shrinking to a sliver.
+local relayoutQueued = false
+local function Relayout()
+    local shown = {}
+    for _, t in ipairs(secondaryTiles) do if t.Visible then table.insert(shown, t) end end
+    local n = math.max(#shown, 1)
+    local cam = workspace.CurrentCamera
+    local vy = cam and cam.ViewportSize.Y or 720
+    local avail = vy - 36 - 16                       -- 36 = Roblox top bar
+    local cols = 1                                   -- add columns until the tiles can stay (nearly) full size
+    while cols < 3 and avail / (math.ceil(n / cols) * 64 + 8) < 0.9 do cols += 1 end
+    local rows = math.ceil(n / cols)
+    for k, t in ipairs(shown) do
+        t.Position = UDim2.new(0, 8 + ((k - 1) % cols) * 64, 0, 8 + math.floor((k - 1) / cols) * 64)
     end
-    update()
-    if workspace.CurrentCamera then workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(update) end
+    local h = rows * 64 + 8
+    sidebar.Size = UDim2.new(0, cols * 64 + 8, 0, h)
+    sidebar.Visible = #shown > 0
+    sidebarScale.Scale = math.clamp(math.min(1, avail / h), 0.55, 1)       -- fit only: never shrunk just because the screen is small
 end
+local function QueueRelayout()                       -- several tiles can change in the same moment: lay out once
+    if relayoutQueued then return end
+    relayoutQueued = true
+    task.defer(function() relayoutQueued = false Relayout() end)
+end
+if workspace.CurrentCamera then workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(QueueRelayout) end
 
 -- On a short (landscape phone) screen the centred column runs into the jump button at the bottom right,
 -- so it sits at the top edge instead; on a tall screen it stays centred.
@@ -373,11 +411,14 @@ for _, nav in ipairs(NAV) do
         pi += 1
     else
         local btn = MakeTile(sidebar, nav, 56)
-        btn.Position = UDim2.new(0, 8, 0, 8 + si * 64)
         if nav.hidden then btn.Visible = false end
+        table.insert(secondaryTiles, btn)
+        btn:GetPropertyChangedSignal("Visible"):Connect(QueueRelayout)
         si += 1
     end
 end
+
+Relayout()
 
 -- Keyboard shortcuts for the hotbar (ignored while typing in a text box)
 local UserInputService = game:GetService("UserInputService")
