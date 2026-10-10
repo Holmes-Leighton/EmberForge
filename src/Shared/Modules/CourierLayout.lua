@@ -6,6 +6,8 @@
 --   crumbles   { x, y, z, sx, sy, sz, delay, respawn }       a platform that drops away after being stood on
 --   spinners   { x, y(top of the platform), z, radius, barY, thick, omega, phase }   a bar sweeping round, to jump over
 --   crushers   { x, y(top of the platform), z, sx, sz, height, open, closed, phase }   a block that slams down on a timer
+--   kills      { x, y(top of the floor), z, sx, sz }   a deadly red tile on a floor
+--   grids      { x1, x2, top, z, w }   a floor made of falling tiles (its tiles are in `crumbles` with grid = true), for the walk-order tests
 --   trusses    { x, y(foot), z, height }   a ladder you climb
 --   bounces    { x, y(top of the pad), z, sx, sz, power, hspeed, rise }   a pad that throws you up (Y speed `power`) and forward (`hspeed` along the course)
 --   sweepers   { x, y(top of the platform), z, amp, period, phase, thick }   a bar sliding across Z
@@ -82,7 +84,10 @@ end
 function Modules.spinner(L, cur, p)
     local x0 = cur.x + (p.gap or 3)
     Plat(L, x0, p.len, cur.y, cur.z, p.width)
-    table.insert(L.spinners, { x = x0 + p.len / 2, y = cur.y, z = cur.z, radius = p.radius, barY = 1.4, thick = 1.4, omega = p.omega, phase = p.phase or 0 })
+    local bars = p.bars or 1                                     -- 1 bar, 2 (a cross), 3 (a six-armed star): the bars share a hub and turn together
+    for b = 0, bars - 1 do
+        table.insert(L.spinners, { x = x0 + p.len / 2, y = cur.y, z = cur.z, radius = p.radius, barY = 1.4, thick = 1.4, omega = p.omega, phase = (p.phase or 0) + b * math.pi / bars })
+    end
     cur.x = x0 + p.len
 end
 
@@ -102,6 +107,42 @@ function Modules.beam(L, cur, p)
     local x0 = cur.x + (p.gap or 3)
     Plat(L, x0, p.len, cur.y, cur.z, p.width, p.pipe and { pipe = true } or nil)             -- (pipe = true: drawn as a round steel pipe you balance on)
     cur.x = x0 + p.len
+end
+
+-- A floor with deadly tiles. `pattern` is a list of rows (across the course) of characters, one per tile along the course: "." safe, "X" a red tile that sends you back to the start
+-- of the level. Hand-designed; the tests check a safe route always exists.
+function Modules.killfloor(L, cur, p)
+    local rows, cols = #p.pattern, #p.pattern[1]
+    local tile = p.tile or 5.4
+    local x0 = cur.x + (p.gap or 3)
+    local len, width = cols * tile, rows * tile
+    Plat(L, x0, len, cur.y, cur.z, width, { killfloor = true })
+    for r = 1, rows do
+        for c = 1, cols do
+            if p.pattern[r]:sub(c, c) == "X" then
+                table.insert(L.kills, { x = x0 + (c - 0.5) * tile, y = cur.y, z = cur.z + ((r - 0.5) - rows / 2) * tile, sx = tile - 0.3, sz = tile - 0.3 })
+            end
+        end
+    end
+    cur.x = x0 + len
+end
+
+-- A floor of tiles that each drop away shortly after you touch them. `pattern` rows as above: "." a tile, "o" a hole (no tile). Delays vary tile to tile.
+function Modules.tilefall(L, cur, p)
+    local rows, cols = #p.pattern, #p.pattern[1]
+    local tile = p.tile or 5.4
+    local x0 = cur.x + (p.gap or 3)
+    local len, width = cols * tile, rows * tile
+    for r = 1, rows do
+        for c = 1, cols do
+            if p.pattern[r]:sub(c, c) ~= "o" then
+                table.insert(L.crumbles, { x = x0 + (c - 0.5) * tile, y = cur.y - THICK / 2, z = cur.z + ((r - 0.5) - rows / 2) * tile, sx = tile - 0.4, sy = THICK, sz = tile - 0.4,
+                    delay = (p.delay or 0.5) + ((r * 3 + c * 5) % 4) * 0.12, respawn = p.respawn or 3.5, grid = true })
+            end
+        end
+    end
+    table.insert(L.grids, { x1 = x0, x2 = x0 + len, top = cur.y, z = cur.z, w = width })
+    cur.x = x0 + len
 end
 
 -- A vertical ladder (a truss you climb) from the platform you are on up to a small landing: `height` studs higher. Real climbing, so it can rise far more than a jump.
@@ -166,7 +207,7 @@ end
 function CourierLayout.Build(course)
     local L = {
         base = course.base, zRange = course.zRange or 14,
-        platforms = {}, movers = {}, crumbles = {}, spinners = {}, crushers = {}, checkpoints = {}, trusses = {}, bounces = {}, sweepers = {},
+        platforms = {}, movers = {}, crumbles = {}, spinners = {}, crushers = {}, checkpoints = {}, trusses = {}, bounces = {}, sweepers = {}, kills = {}, grids = {},
     }
     local cur = { x = course.base.x, y = course.base.y, z = course.base.z }
     for _, m in ipairs(course.modules) do

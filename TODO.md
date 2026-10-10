@@ -93,6 +93,10 @@ Recommendation: not yet. Six mining zones, the Quarry and pets already give plen
          saturated rainbow colours (a hue per level, by height) in smooth plastic with pale glowing edges, a giant rainbow ring you run through at every level start, soft clouds around the
          tower and a cloud sea hiding the cavern floor far below, and a bright yellow scaffold. **Not yet looked at in Studio** (the place was closed): check the colours, ring size and clouds.
          Next ideas from the same screenshot: huge rainbow spiral tunnels, wide striped ramps, hollow square frames to run round, bold zigzag slabs, bigger and fewer platforms.
+      7c. [x] Obstacles, round 2 (user: "it isn't just jumping: spinners, floors that fall, tiles that kill you and make you start again"): 9 new designs (39 now): death-tile floors
+         (hand-made patterns of red tiles: step on one and you go back to the start of the level; a test proves a safe route exists), falling floors (a grid of tiles that each drop
+         after you touch them, with holes), 2- and 3-bar spinners, and combinations (Kill & Fall, Fall & Spin, Kill Sweep). **Not yet seen in Studio.** Open question: should a kill tile on
+         the hardest levels send you back further than the level start (Tower of Hell sends you to the bottom)?
       8. [ ] Real meshes for the hero pieces (the user wants scaffolding, pipes and girders to look like the top obbies): generate them with Studio's mesh generator, upload under the
          game's owner, and swap them in (`CourierArt` names every piece; prompts in `ART_BRIEF.md` part B). I cannot see other games, so the user should name or screenshot the look.
       5. [x] Daily challenge (`TowerData.DailyTarget`, `TowerRewards.PayDaily`): a target level that changes through the week; reaching it pays a 4x chest once a day; shown in the HUD

@@ -250,7 +250,7 @@ local function ShowSummary(s)
 end
 
 -- ── Events from the server ────────────────────────────────────────────────────
-local REASONS = { fell = "You fell!", lava = "The lava got you!", crushed = "Crushed!", spun = "Knocked off by the bar!", swept = "Swept off the beam!" }
+local REASONS = { fell = "You fell!", lava = "The lava got you!", crushed = "Crushed!", spun = "Knocked off by the bar!", swept = "Swept off the beam!", burned = "You stepped on a death tile!" }
 
 local function OnEvent(kind, p)
     p = p or {}

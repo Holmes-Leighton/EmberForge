@@ -29,6 +29,7 @@ local function walkTo(run, now, from, to, speed)
         for _, sp in ipairs(run.byLevel[lv].spinners) do if math.abs(x - sp.x) <= sp.radius + 2 then lift = 7 end end
         for _, c in ipairs(run.byLevel[lv].crushers) do if math.abs(x - c.x) <= c.sx then lift = 9 end end
         for _, sw in ipairs(run.byLevel[lv].sweepers) do if math.abs(x - sw.x) <= 4 then lift = 8 end end
+        for _, k in ipairs(run.byLevel[lv].kills) do if math.abs(x - k.x) <= k.sx / 2 + 1 then lift = 7 end end
         Runner.Step(run, now, x, from.y + dy * f + lift, from.z + dz * f)
     end
     return now
@@ -160,6 +161,22 @@ Runner.Step(run, 7000, lvStart.x, lvStart.y, lvStart.z)
 local ang = sp.phase + sp.omega * 7000.1
 Runner.Step(run, 7000.1, sp.x + 5 * math.cos(ang), sp.y + 3, sp.z + 5 * math.sin(ang))
 expect(#log.respawns == 1 and log.respawns[1].reason == "spun", "a spinner bar knocks you back to the level start")
+
+print("== death tiles")
+local CRun2 = load("SSS/EmberForge/Services/CourierRunner")
+local tile = { x = 100, y = 20, z = 140, sx = 5.1, sz = 5.1 }
+expect(CRun2.KillTileHits(tile, 100, 23, 140), "standing on a death tile is a hit")
+expect(not CRun2.KillTileHits(tile, 100, 29, 140), "jumping over one is safe")
+expect(not CRun2.KillTileHits(tile, 106, 23, 140), "the tile next to it is safe")
+expect(not CRun2.KillTileHits(tile, 100, 10, 140), "below the floor is safe")
+local kTower = TL.Build({ levels = 30, seed = 3, base = TD.BASE })
+local k1 = kTower.kills[1]
+local krun, klog = newRun(9500, kTower)
+krun.highest = k1.level
+local kcp = kTower.checkpoints[kTower.levels[k1.level].firstCheckpoint]
+Runner.Step(krun, 9500, kcp.x, kcp.y, kcp.z)
+Runner.Step(krun, 9500.1, k1.x, k1.y + 3, k1.z)
+expect(#klog.respawns == 1 and klog.respawns[1].reason == "burned" and klog.respawns[1].level == k1.level, "stepping on a death tile sends you back to the start of the level, not lower")
 
 print("== sweeper bars")
 local CRun = load("SSS/EmberForge/Services/CourierRunner")

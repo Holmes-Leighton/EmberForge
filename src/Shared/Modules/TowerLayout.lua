@@ -135,6 +135,29 @@ local DESIGNS = {
                   { "crumble", { n = 3, gap = 5, len = 6.5, width = 7, delay = 0.55 } },
                   { "beam", { gap = 5, len = 22, width = 3.2, pipe = true } } },
       connector = { { "ladder", { gap = 3.5, height = 26, footLen = 8, landLen = 9, width = 11 } } } },
+
+    -- the floor fights you: death tiles, falling floors, multi-bar spinners
+    { name = "Red Tiles", theme = "dark", tier = 1,
+      modules = { { "killfloor", { gap = 3, pattern = { ".X.X..", "..X..X", "X..X.." } } } } },
+    { name = "Tile Maze", theme = "lava", tier = 2,
+      modules = { { "killfloor", { gap = 3, pattern = { "..XX.X.X", ".X..X.X.", "X.X..X..", ".X.X...X" } } } } },
+    { name = "Falling Floor", theme = "wood", tier = 2,
+      modules = { { "tilefall", { gap = 3.5, delay = 0.55, pattern = { "......", "......", "......" } } } } },
+    { name = "Double Spinner", theme = "neon", tier = 2,
+      modules = { { "spinner", { gap = 3.5, len = 36, width = 24, radius = 10, omega = 1.3, bars = 2 } } } },
+    { name = "Kill & Fall", theme = "dark", tier = 2,
+      modules = { { "killfloor", { gap = 3, pattern = { ".X..X.", "..X..X", "X..X.." } } },
+                  { "tilefall", { gap = 3.5, delay = 0.5, pattern = { ".....", ".....", "....." } } } } },
+    { name = "Death Floor", theme = "lava", tier = 3,
+      modules = { { "killfloor", { gap = 3, pattern = { "X.XX.X.XX", ".X..X..X.", "..X.X.X..", "X.X..XX.X" } } } } },
+    { name = "Fall & Spin", theme = "slate", tier = 3,
+      modules = { { "tilefall", { gap = 4, delay = 0.45, pattern = { ".o....", "......", "....o." } } },
+                  { "spinner", { gap = 4, len = 34, width = 22, radius = 9, omega = 1.7, bars = 2 } } } },
+    { name = "Triple Spinner", theme = "neon", tier = 3,
+      modules = { { "spinner", { gap = 4, len = 38, width = 26, radius = 11, omega = 1.5, bars = 3 } } } },
+    { name = "Kill Sweep", theme = "metal", tier = 3,
+      modules = { { "killfloor", { gap = 3, pattern = { ".X.X.X", "X.X..X", ".X..X." } } },
+                  { "sweeper", { gap = 4, len = 32, width = 5, n = 2, amp = 3.5, period = 3.0, stagger = 1.5 } } } },
 }
 TowerLayout.Designs = DESIGNS
 
@@ -166,7 +189,7 @@ function TowerLayout.Build(opts)
     local base = opts.base or { x = 0, y = 100, z = 0 }
     local rng = Rng(seed)
     local T = { levels = {}, platforms = {}, movers = {}, crumbles = {}, spinners = {}, crushers = {}, checkpoints = {}, levelOfCheckpoint = {},
-        trusses = {}, bounces = {}, sweepers = {}, base = base, seed = seed, total = total }
+        trusses = {}, bounces = {}, sweepers = {}, kills = {}, grids = {}, base = base, seed = seed, total = total }
 
     local startX, y, z, dir = base.x, base.y, base.z, 1
     local lastDesign = 0
@@ -216,6 +239,8 @@ function TowerLayout.Build(opts)
         put(T.trusses, layout.trusses, function(c, q) c.x = wx(q.x) end)
         put(T.bounces, layout.bounces, function(c, q) c.x = wx(q.x) c.dir = dir end)         -- (it throws you the way the level runs)
         put(T.sweepers, layout.sweepers, function(c, q) c.x = wx(q.x) end)
+        put(T.kills, layout.kills, function(c, q) c.x = wx(q.x) end)
+        put(T.grids, layout.grids, function(c, q) c.x1, c.x2 = wx(q.x1), wx(q.x2) end)
         local firstCp = #T.checkpoints + 1
         for _, cp in ipairs(layout.checkpoints) do
             T.checkpoints[#T.checkpoints + 1] = { x = wx(cp.x), y = cp.y, z = cp.z, level = i }
@@ -247,7 +272,8 @@ function TowerLayout.WalkOrder(T, level)
         out[#out + 1] = { x1 = math.min(x1, x2), x2 = math.max(x1, x2), top = top, z = z, w = w, kind = kind, viaTruss = src and src.viaTruss, viaBounce = src and src.viaBounce }
     end
     for _, p in ipairs(T.platforms) do if p.level == level then add(p.x - p.sx / 2, p.x + p.sx / 2, p.y + p.sy / 2, p.z, p.sz, "platform", p) end end
-    for _, p in ipairs(T.crumbles) do if p.level == level then add(p.x - p.sx / 2, p.x + p.sx / 2, p.y + p.sy / 2, p.z, p.sz, "crumble") end end
+    for _, p in ipairs(T.crumbles) do if p.level == level and not p.grid then add(p.x - p.sx / 2, p.x + p.sx / 2, p.y + p.sy / 2, p.z, p.sz, "crumble") end end
+    for _, g in ipairs(T.grids) do if g.level == level then add(g.x1, g.x2, g.top, g.z, g.w, "grid") end end        -- (a floor of falling tiles counts as one piece)
     for _, m in ipairs(T.movers) do if m.level == level then add(math.min(m.x0, m.x1) - m.sx / 2, math.max(m.x0, m.x1) + m.sx / 2, m.y + m.sy / 2, m.z, m.sz, "mover") end end
     return out
 end

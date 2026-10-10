@@ -110,9 +110,62 @@ expect(convN > 0 and ok.belt, "every conveyor belt is slower than a walker (" ..
 expect(sweepN > 0 and ok.sweeper, "every sweeper bar is slow enough to time and narrow enough to dodge (" .. sweepN .. ")")
 expect(bounceN > 0 and ok.bounce, "every bounce pad clears its landing and lands you on it, not short and not past it (" .. bounceN .. ")")
 
+print("== a safe route always exists through the tile floors")
+local function crossable(pattern, bad)
+    local rows, cols = #pattern, #pattern[1]
+    local function safe(r, c) return r >= 1 and r <= rows and c >= 1 and c <= cols and pattern[r]:sub(c, c) ~= bad end
+    local seen, queue = {}, {}
+    for r = 1, rows do if safe(r, 1) then seen[r .. "," .. 1] = true queue[#queue + 1] = { r, 1 } end end
+    local head = 1
+    while head <= #queue do
+        local r, c = queue[head][1], queue[head][2]
+        head += 1
+        if c == cols then return true end
+        for dr = -1, 1 do
+            for dc = -1, 1 do
+                local nr, nc = r + dr, c + dc
+                if (dr ~= 0 or dc ~= 0) and safe(nr, nc) and not seen[nr .. "," .. nc] then seen[nr .. "," .. nc] = true queue[#queue + 1] = { nr, nc } end
+            end
+        end
+    end
+    return false
+end
+local floors, killFloors, fallFloors = 0, 0, 0
+local allOk, hardEnough = true, true
+for _, d in ipairs(TL.Designs) do
+    for _, m in ipairs(d.modules) do
+        if m[1] == "killfloor" or m[1] == "tilefall" then
+            floors += 1
+            local bad = m[1] == "killfloor" and "X" or "o"
+            if not crossable(m[2].pattern, bad) then allOk = false end
+            if m[1] == "killfloor" then
+                killFloors += 1
+                local kills, tiles = 0, 0
+                for _, row in ipairs(m[2].pattern) do for c = 1, #row do tiles += 1 if row:sub(c, c) == "X" then kills += 1 end end end
+                local share = kills / tiles
+                local lo, hi = d.tier == 1 and 0.25 or (d.tier == 2 and 0.3 or 0.38), 0.6
+                if share < lo or share > hi then hardEnough = false end
+            else
+                fallFloors += 1
+            end
+        end
+    end
+end
+expect(floors >= 6 and allOk, "every death-tile floor and falling floor can be crossed (" .. floors .. " floors checked)")
+expect(killFloors >= 4 and hardEnough, "death tiles cover a real share of the floor, more on harder levels, never most of it (" .. killFloors .. " floors)")
+local tilesBuilt, killsBuilt = 0, 0
+for seed = 1, 20 do
+    local tw = build(seed * 7 + 3, 30)
+    for _, c in ipairs(tw.crumbles) do if c.grid then tilesBuilt += 1 end end
+    killsBuilt += #tw.kills
+end
+expect(tilesBuilt > 100 and killsBuilt > 100, "towers contain them (" .. tilesBuilt .. " falling tiles and " .. killsBuilt .. " death tiles in 20 towers)")
+local kk = build(4, 30).kills[1]
+expect(kk and kk.sx > 4 and kk.sz > 4, "a death tile is a tile-sized square")
+
 print("== the designs")
 local DS = TL.Designs
-expect(#DS >= 24, "at least 24 distinct level designs (" .. #DS .. ")")
+expect(#DS >= 33, "at least 33 distinct level designs (" .. #DS .. ")")
 local names, themes = {}, {}
 local dupe = false
 for _, d in ipairs(DS) do if names[d.name] then dupe = true end names[d.name] = true themes[d.theme] = true end
@@ -137,7 +190,7 @@ local first = {}
 for i = 1, 30 do first[#first + 1] = diff.levels[i].design end
 local distinct = {} local n = 0
 for _, nme in ipairs(first) do if not distinct[nme] then distinct[nme] = true n += 1 end end
-expect(n >= 27, "one tower has " .. n .. " different kinds of level in its 30")
+expect(n >= 28, "one tower has " .. n .. " different kinds of level in its 30")
 
 print("== the levels connect")
 local bad = {}

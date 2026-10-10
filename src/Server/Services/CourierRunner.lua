@@ -57,6 +57,11 @@ function CourierRunner.SpinnerHits(sp, t, px, py, pz)
     return math.abs(along) <= sp.radius and across <= sp.thick / 2 + BAR_BODY
 end
 
+-- Is the point standing on this deadly tile? (Jump over it and you are fine.)
+function CourierRunner.KillTileHits(k, px, py, pz)
+    return math.abs(px - k.x) <= k.sx / 2 and math.abs(pz - k.z) <= k.sz / 2 and py - k.y > -0.5 and py - k.y < 4.2
+end
+
 -- Where a sweeper's bar is along Z at time t (it slides back and forth across its beam)
 function CourierRunner.SweeperZ(sw, t)
     return sw.z + sw.amp * math.sin(2 * math.pi * (t + sw.phase) / sw.period)

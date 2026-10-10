@@ -159,6 +159,14 @@ local function BuildObstacles(folder, r)
         bar:SetAttribute("Y", sp.y + sp.barY)
         CollectionService:AddTag(bar, "EFCourierSpinner")
     end
+    for _, k in ipairs(L.kills or {}) do                              -- a deadly tile: glowing red with a dark cross, flush with the floor
+        P({ Name = "DeathTile", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 36, 36), Size = Vector3.new(k.sx, 0.4, k.sz), CanCollide = false,
+            CFrame = CFrame.new(k.x, k.y + 0.2, k.z) }, group)
+        for _, rot in ipairs({ math.pi / 4, -math.pi / 4 }) do
+            P({ Name = "DeathCross", Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(50, 0, 0), Size = Vector3.new(k.sx * 0.9, 0.45, 0.7), CanCollide = false,
+                CFrame = CFrame.new(k.x, k.y + 0.24, k.z) * CFrame.Angles(0, rot, 0) }, group)
+        end
+    end
     for _, tr in ipairs(L.trusses or {}) do                          -- a ladder: a real truss, which characters climb
         local truss = Instance.new("TrussPart")
         truss.Name = "Ladder"
