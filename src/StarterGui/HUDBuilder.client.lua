@@ -347,7 +347,7 @@ hotbar.BorderSizePixel = 0
 hotbar.Parent = gui
 Theme.AddCorner(hotbar, UDim.new(0, 24))
 Theme.AddStroke(hotbar, Color3.fromRGB(24, 17, 14), 3, 0.2)
-ScaleUI.ApplyHud(hotbar)
+local hotbarScale = ScaleUI.ApplyHud(hotbar)
 
 local nSecondary = #NAV - nPrimary
 local sidebar = Instance.new("Frame")
@@ -467,6 +467,18 @@ bottomBar.BackgroundTransparency = 0.1
 bottomBar.BorderSizePixel = 0
 bottomBar.Parent = gui
 Theme.AddCorner(bottomBar, Theme.Corner.Large)
+
+-- The guide bubble ("Your Golems need you") sits above its hotbar button, in the space the Collect bar would otherwise use. So the Collect bar
+-- is placed relative to the hotbar's real (scaled) size: just above the bubble's room. Full size puts it 228 px up, a phone's smaller
+-- hotbar (scale 0.6) puts it about 166 px up, and every size in between (tablets, large phones) clears the bubble too.
+local function PlaceCollectBar()
+    local s = hotbarScale.Scale
+    local up = 72 + 156 * s
+    bottomBar.Position = UDim2.new(0.5, -110, 1, -up)
+    pendingFrame.Position = UDim2.new(0.5, 0, 1, -(up + 8))
+end
+PlaceCollectBar()
+hotbarScale:GetPropertyChangedSignal("Scale"):Connect(PlaceCollectBar)
 
 -- Collect button
 local collectBtn = Theme.Button(bottomBar, "⛏  Collect Resources", Theme.Colors.Accent, Color3.fromRGB(255,255,255), "CollectButton")

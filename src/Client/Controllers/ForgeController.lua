@@ -663,11 +663,11 @@ function ForgeController._BuildDeployPanel()
             status.Text = "BROKEN - repair it to mine again"
             status.TextColor3 = Color3.fromRGB(230, 90, 70)
         end
-        if not g.deployed and frac < 1 then
+        if frac < 1 then          -- a Golem at work can be repaired from here too (the server allows it), so "BROKEN - repair it" always has a button
             local repair = Theme.Button(card, broken and "Repair!" or "Repair", broken and Theme.Colors.Danger or Theme.Colors.PanelAlt,
-                broken and Color3.fromRGB(255, 255, 255) or Theme.Colors.AccentBright)
+                broken and Color3.fromRGB(255, 255, 255) or Theme.Colors.AccentBright, "RepairButton")
             repair.Size = UDim2.new(0, 70, 0, 30)
-            repair.Position = UDim2.new(1, -184, 0.5, -15)
+            repair.Position = UDim2.new(1, g.deployed and -250 or -184, 0.5, -15)    -- (a deployed row has Go to and Recall to its right)
             repair.TextSize = 12
             repair.MouseButton1Click:Connect(function() RemoteEvents.RepairGolem:FireServer(g.id) end)
         end

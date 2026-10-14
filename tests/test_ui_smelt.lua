@@ -28,6 +28,16 @@ local function reopen(free)
 end
 local function find(name) return dialog:FindFirstChild(name, true) end
 
+print("== the list is shown rarest first, and Select All takes from the top")
+reopen(5)
+local orderOk, last = true, 0
+for _, c in ipairs(cards()) do
+    if c.LayoutOrder <= last then orderOk = false end
+    last = c.LayoutOrder
+end
+expect(orderOk and cards()[1].LayoutOrder == 1, "cards carry an increasing LayoutOrder")
+expect(find("MaterialScroll"):FindFirstChildOfClass("UIListLayout").SortOrder == Enum.SortOrder.LayoutOrder, "and the list obeys it")
+
 print("== select and unselect")
 reopen(5)
 local list = cards()

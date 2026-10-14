@@ -221,6 +221,19 @@ function GolemService.RepairGolem(player, golemId)
 
     local repairCost = GolemService.RepairCost(targetGolem)
 
+    -- say exactly what is missing, not just "insufficient"
+    local MaterialData = require(game.ReplicatedStorage.Shared.Data.MaterialData)
+    local missing = {}
+    for _, req in ipairs(repairCost) do
+        local have = data.Inventory[req.id] or 0
+        if have < req.qty then
+            local def = MaterialData.Get(req.id)
+            table.insert(missing, string.format("%d %s (you have %d)", req.qty, def and def.displayName or req.id, have))
+        end
+    end
+    if #missing > 0 then
+        return false, "Insufficient materials. Repair needs " .. table.concat(missing, ", ")
+    end
     if not PlayerDataService.ConsumeMaterials(player, repairCost) then
         return false, "Insufficient materials"
     end

@@ -8,22 +8,9 @@ local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local LeaderboardController = {}
 
 function LeaderboardController.Init(_playerData)
-    -- Nav button toggle is handled directly in LeaderboardMenu.client.lua.
-    -- This controller wires the HUD nav button to that Toggle function.
-    task.spawn(function()
-        local pg   = LocalPlayer:WaitForChild("PlayerGui")
-        local hud  = pg:WaitForChild("HUD", 10)
-        if not hud then return end
-
-        local lbBtn = hud:FindFirstChild("LeaderboardBtn", true)
-        if lbBtn then
-            lbBtn.MouseButton1Click:Connect(function()
-                local lbGui  = pg:FindFirstChild("LeaderboardMenu")
-                local toggle = lbGui and lbGui:FindFirstChild("Toggle")
-                if toggle then toggle:Invoke() end
-            end)
-        end
-    end)
+    -- Nothing to wire: the HUD's Leaders tile already toggles the LeaderboardMenu (HUDBuilder's OpenNav), and the menu loads its
+    -- own data when it is enabled. This controller used to add a second click handler that toggled it again, so the two cancelled
+    -- out and the Leaders button never opened the menu.
 end
 
 return LeaderboardController

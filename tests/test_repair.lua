@@ -19,7 +19,7 @@ expect(ok, "20% of the craft cost, rounded up")
 
 d.Inventory = {}
 local r, why = GS.RepairGolem(p, "g1")
-expect(r == false and why == "Insufficient materials", "can't repair without the materials (" .. tostring(why) .. ")")
+expect(r == false and why:find("^Insufficient materials") ~= nil and why:find("Repair needs") ~= nil and why:find("you have 0") ~= nil, "can't repair without the materials, and it says what is missing (" .. tostring(why) .. ")")
 expect(g._durabilitySeconds == 0, "and nothing changes")
 
 for _, req in ipairs(cost) do d.Inventory[req.id] = req.qty end

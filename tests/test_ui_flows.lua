@@ -257,6 +257,31 @@ local lb = gui("LeaderboardMenu")
 lb.Enabled = true
 expect(lb.Enabled == true, "leaderboard opens without errors")
 
+print("== a broken Golem at work can be repaired from the Deploy list")
+expect(gui("ForgeMenu"):FindFirstChild("RepairButton", true) ~= nil, "the broken deployed Golem has a Repair button")
+
+print("== every HUD button opens its menu with ONE click (and closes it with the next)")
+do
+    local TILES = { ForgeButton = "ForgeMenu", InventoryButton = "InventoryMenu", MarketButton = "MarketMenu", ChallengesButton = "ChallengesMenu",
+        ShopButton = "ShopMenu", TradeButton = "TradeMenu", SeasonButton = "SeasonMenu", StyleButton = "StyleMenu", PetsButton = "PetsMenu",
+        RewardsButton = "RewardsMenu", QuarryButton = "QuarryMenu", BuildButton = "BuildMenu", GuildButton = "GuildMenu", LeaderboardBtn = "LeaderboardMenu" }
+    local hudGui = gui("HUD")
+    local names = {}
+    for tile in pairs(TILES) do table.insert(names, tile) end
+    table.sort(names)
+    for _, tile in ipairs(names) do
+        local btn, menu = hudGui:FindFirstChild(tile, true), gui(TILES[tile])
+        if btn and menu and not btn:GetAttribute("GateReason") then
+            for _, other in pairs(TILES) do local o = gui(other) if o then o.Enabled = false end end
+            click(btn)
+            local opened = menu.Enabled == true
+            click(btn)
+            local closed = menu.Enabled == false
+            expect(opened and closed, tile .. " opens " .. TILES[tile] .. " and closes it again (open " .. tostring(opened) .. ", close " .. tostring(closed) .. ")")
+        end
+    end
+end
+
 print("== Shop: mining pad game passes")
 do
     local shop = gui("ShopMenu")

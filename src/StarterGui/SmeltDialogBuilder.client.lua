@@ -60,6 +60,7 @@ scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 local listLayout = Instance.new("UIListLayout")
 listLayout.FillDirection = Enum.FillDirection.Vertical
 listLayout.Padding = UDim.new(0, 4)
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder     -- (the default sorts by name, which hid the rarity order)
 listLayout.Parent = scroll
 Theme.AddPadding(scroll, 4, 4, 4, 4)
 
@@ -198,16 +199,18 @@ local function Populate(inventory, freeSlots)
     table.sort(items, function(a, b)
         local ra = rarityOrder[(a.mat and a.mat.rarity) or "Common"] or 5
         local rb = rarityOrder[(b.mat and b.mat.rarity) or "Common"] or 5
-        return ra < rb
+        if ra ~= rb then return ra < rb end
+        return a.id < b.id
     end)
 
-    for _, item in ipairs(items) do
+    for index, item in ipairs(items) do
         local mat    = item.mat
         local rColor = RARITY_COLORS[mat.rarity] or Theme.Colors.Common
         local smeltOut = MaterialData.Refined[mat.smeltOutput] or MaterialData.All[mat.smeltOutput]
 
         local card = Instance.new("Frame")
         card.Name = item.id
+        card.LayoutOrder = index                     -- the list shows this order (rarest first); Select All takes from the top
         card.Size = UDim2.new(1, -8, 0, 64)
         card.BackgroundColor3 = Theme.Colors.Panel
         card.BorderSizePixel = 0

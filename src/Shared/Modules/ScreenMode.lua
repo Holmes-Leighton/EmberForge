@@ -4,7 +4,9 @@ local UserInputService = game:GetService("UserInputService")
 
 local ScreenMode = {}
 
+-- Developer switch: set the Workspace attribute EFForceCompact to true to see the phone layout in a desktop window.
 function ScreenMode.Compact()
+    if workspace:GetAttribute("EFForceCompact") == true then return true end
     local cam = workspace.CurrentCamera
     local short = cam and cam.ViewportSize.Y < 520
     local touchOnly = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
