@@ -56,6 +56,23 @@ local function StepSweepers(now)
     end
 end
 
+-- ── Flickering flames ─────────────────────────────────────────────────────────
+-- Every light the world tags "EFFlicker" (the braziers and lanterns on the Sky Tower doorways) breathes: the brightness wanders around its normal level so the fire looks alive.
+-- Done here on each player's screen, so it costs the server nothing.
+local flickers = {}
+local function AddFlicker(light)
+    if light:IsA("PointLight") then flickers[light] = { base = light.Brightness, seed = math.random() * 100 } end
+end
+local function StepFlicker(now)
+    for light, s in pairs(flickers) do
+        if light.Parent then
+            light.Brightness = s.base * (0.78 + 0.5 * (math.noise(now * 7, s.seed) + 0.5) + 0.1 * math.sin(now * 23 + s.seed))
+        else
+            flickers[light] = nil
+        end
+    end
+end
+
 local function ServerNow() return workspace:GetServerTimeNow() end
 
 local hud, levelLbl, clockLbl, infoLbl, lavaLbl, standingsFrame, standingsLbl, flash, banner
@@ -161,8 +178,21 @@ local function LavaY(now)
     return y0 + rise * math.max(0, now - t0)
 end
 
+local noRunSince
 local function Update(now)
     if not (hud and hud.Enabled) then return end
+    -- safety net: if the server says there is no climb (no TowerLevel for a few seconds) the HUD must not stay up
+    if LocalPlayer:GetAttribute("TowerLevel") == nil then
+        noRunSince = noRunSince or now
+        if now - noRunSince > 3 then
+            hud.Enabled = false
+            if lava then lava:Destroy() lava = nil end
+            noRunSince = nil
+            return
+        end
+    else
+        noRunSince = nil
+    end
     local level = LocalPlayer:GetAttribute("TowerLevel") or 1
     levelLbl.Text = string.format("LEVEL %d / %d", level, total)
     levelLbl.TextColor3 = LevelColor(level)
@@ -205,7 +235,7 @@ local function ShowSummary(s)
     local scrim = Instance.new("Frame")
     scrim.Size, scrim.BackgroundColor3, scrim.BackgroundTransparency, scrim.BorderSizePixel = UDim2.new(1, 0, 1, 0), Color3.fromRGB(0, 0, 0), 0.5, 0
     scrim.Parent = gui
-    local W, H = 420, 360
+    local W, H = 420, 360          -- (H is replaced by the real height once the lines are laid out)
     local panel = Instance.new("Frame")
     panel.AnchorPoint, panel.Position, panel.Size = Vector2.new(0.5, 0.5), UDim2.new(0.5, 0, 0.5, 0), UDim2.new(0, W, 0, H)
     panel.BackgroundColor3, panel.BorderSizePixel = Color3.fromRGB(32, 22, 18), 0
@@ -213,10 +243,6 @@ local function ShowSummary(s)
     Theme.AddCorner(panel, Theme.Corner.Large)
     local color = s.summit and Color3.fromRGB(255, 215, 90) or LevelColor(s.best)
     Theme.AddStroke(panel, color, 3)
-    local scale = Instance.new("UIScale")
-    scale.Scale = 0.6
-    scale.Parent = panel
-    TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = math.min(1, (workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 700) / (H + 60)) }):Play()
     local y = 14
     local function line(text, size, col, font, height)
         local l = Theme.Label(panel, text, size, col, font or Theme.Fonts.Body)
@@ -241,6 +267,12 @@ local function ShowSummary(s)
     table.sort(items)
     if #items > 0 then line(table.concat(items, "    "), 14, Color3.fromRGB(235, 225, 205), nil, 40) end
     line(string.format("Falls: %d", s.respawns), 13, Color3.fromRGB(190, 180, 160))
+    H = y + 62                                                     -- as tall as its lines plus the button, no empty space
+    panel.Size = UDim2.new(0, W, 0, H)
+    local scale = Instance.new("UIScale")
+    scale.Scale = 0.6
+    scale.Parent = panel
+    TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = math.min(1, (workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 700) / (H + 60)) }):Play()
     local ok = Theme.Button(panel, "Nice!", Theme.Colors.Accent, Color3.fromRGB(255, 255, 255))
     ok.AnchorPoint, ok.Position, ok.Size = Vector2.new(0.5, 1), UDim2.new(0.5, 0, 1, -14), UDim2.new(0, 160, 0, 40)
     ok.MouseButton1Click:Connect(function() gui:Destroy() end)
@@ -303,7 +335,9 @@ local function OnEvent(kind, p)
     elseif kind == "roundover" or kind == "abandon" then
         hud.Enabled = false
         if lava then lava:Destroy() lava = nil end
-        if kind == "roundover" then ShowSummary(p) else Banner(({ left = "You wandered off.", speed = "That climb was stopped.", died = "You were knocked out." })[p.reason] or "Climb ended", Color3.fromRGB(255, 190, 120)) end
+        if kind == "roundover" and p.best <= 1 and (p.coins or 0) == 0 and not p.summit then
+            Banner("Climb ended", Color3.fromRGB(255, 190, 120))            -- just peeked in: no big summary card for nothing
+        elseif kind == "roundover" then ShowSummary(p) else Banner(({ left = "You wandered off.", speed = "That climb was stopped.", died = "You were knocked out." })[p.reason] or "Climb ended", Color3.fromRGB(255, 190, 120)) end
     end
 end
 
@@ -313,9 +347,12 @@ function TowerController.Init()
     CollectionService:GetInstanceAddedSignal("EFCourierBounce"):Connect(AddBounce)
     for _, bar in ipairs(CollectionService:GetTagged("EFCourierSweeper")) do AddSweeper(bar) end
     CollectionService:GetInstanceAddedSignal("EFCourierSweeper"):Connect(AddSweeper)
+    for _, light in ipairs(CollectionService:GetTagged("EFFlicker")) do AddFlicker(light) end
+    CollectionService:GetInstanceAddedSignal("EFFlicker"):Connect(AddFlicker)
     RunService.RenderStepped:Connect(function()
         local now = ServerNow()
         StepSweepers(now)
+        StepFlicker(now)
         Update(now)
     end)
     RemoteEvents.TowerEvent.OnClientEvent:Connect(OnEvent)

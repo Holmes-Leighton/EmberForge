@@ -19,6 +19,10 @@ local StartBoostCountdowns   -- forward declaration (defined below)
 -- ── Init ──────────────────────────────────────────────────────────────────────
 function HUDController.Init(playerData)
     HUDController._data = playerData
+    -- the list of mined items comes back when a climb ends
+    Players.LocalPlayer:GetAttributeChangedSignal("TowerLevel"):Connect(function()
+        if hudGui then HUDController.SetPending(HUDController._pending) end
+    end)
 
     -- The HUD ScreenGui is created in StarterGui
     -- We reference it here once the player's GUI loads
@@ -118,6 +122,7 @@ function HUDController.SetPending(pending)
     if frame and label then
         label.Text = table.concat(lines, "\n")
         frame.Visible = total > 0 and not require(game.ReplicatedStorage.Shared.Modules.ScreenMode).Compact()
+            and Players.LocalPlayer:GetAttribute("TowerLevel") == nil
     end
     local btn = hudGui:FindFirstChild("CollectButton", true)
     if btn then

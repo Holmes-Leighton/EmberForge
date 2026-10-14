@@ -104,6 +104,11 @@ RemoteEvents.CollectResources.OnServerEvent:Connect(function(player)
     SafeCall(player, function()
         local data  = PlayerDataService.Get(player)
         if not data then return end
+        -- no collecting mid-climb: the Collect button is hidden up there, and the server refuses it too
+        if require(script.Parent.Services.TowerService).InTower(player) then
+            Tell(player, "Sky Tower", "Finish your climb first. Your Golems keep what they mine until you are back.")
+            return
+        end
 
         -- Move everything the Golems have mined into the inventory
         local gains, total = {}, 0
@@ -692,6 +697,10 @@ end)
 RemoteEvents.QuarryAction.OnServerEvent:Connect(function(player, action, arg)
     SafeCall(player, function()
         if not Gate(player, "Quarry") then return end
+        if action == "collect" and require(script.Parent.Services.TowerService).InTower(player) then
+            Tell(player, "Sky Tower", "Finish your climb first.")
+            return
+        end
         local QS = require(script.Parent.Services.QuarryService)
         local ok, result, msg
         if action == "found" then

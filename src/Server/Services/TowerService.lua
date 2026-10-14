@@ -217,7 +217,8 @@ local function Tick()
             Fire(player, "abandon", { reason = "died" })
             EndRun(rec, "died", false)
         elseif not InTower(player) then
-            EndRun(rec, "left", false)                              -- walked through the way back (or was moved)
+            Fire(player, "abandon", { reason = "left" })            -- moved out another way (My Forge, a teleport): the client must close its tower HUD too
+            EndRun(rec, "left", false)
         else
             local p = root.Position
             TowerRunner.Step(rec.run, now, p.X, p.Y, p.Z)
@@ -284,7 +285,7 @@ function TowerService.Init()
     BuildTower(world, state.round)
 
     local p = TowerData.PORTAL
-    TowerArt.Portal(world, Vector3.new(p.x, 0, p.z), Vector3.new(0.92, 0, -0.38), "SKY TOWER", Color3.fromRGB(190, 120, 255), StartRun)       -- walk in to climb
+    TowerArt.Portal(world, Vector3.new(p.x, 0, p.z), Vector3.new(0.92, 0, -0.38), "SKY TOWER", Color3.fromRGB(190, 120, 255), StartRun, true)       -- walk in to climb
 
     task.spawn(function()
         while true do
@@ -323,6 +324,8 @@ function TowerService.Init()
     end)
 end
 
+-- True while this player is up in the tower (the rest of the game uses it to refuse things that make no sense mid-climb, like collecting mined resources)
+function TowerService.InTower(player) return InTower(player) end
 function TowerService.Layout() return state.layout end
 function TowerService.Round() return state.round end
 
