@@ -492,6 +492,10 @@ boostStrip.BackgroundTransparency = 1
 boostStrip.Parent = gui
 Theme.AddListLayout(boostStrip, Enum.FillDirection.Horizontal, 6)
 
+require(game.ReplicatedStorage.Shared.Modules.ScreenMode).Watch(function(compact)
+    boostStrip.Position = UDim2.new(0.5, -140, 0, compact and 36 or 90)
+end)
+
 local magnetLabel = Theme.Label(boostStrip, "", Theme.TextSize.Small,
     Color3.fromRGB(100, 220, 100), Theme.Fonts.Mono, "MagnetBoostLabel")
 magnetLabel.Size    = UDim2.new(0, 130, 0, 22)

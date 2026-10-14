@@ -8,6 +8,8 @@ local LocalPlayer = Players.LocalPlayer
 local Theme = require(game.ReplicatedStorage.Shared.Modules.Theme)
 local ScaleUI = require(game.ReplicatedStorage.Shared.Modules.ScaleUI)
 local Schedule = require(game.ReplicatedStorage.Shared.Data.EventScheduleData)
+local ScreenMode = require(game.ReplicatedStorage.Shared.Modules.ScreenMode)
+local compact = ScreenMode.Compact()
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "EventBanner"
@@ -33,7 +35,7 @@ pill.BorderSizePixel = 0
 pill.Parent = gui
 Theme.AddCorner(pill, UDim.new(0, 16))
 local stroke = Theme.AddStroke(pill, Theme.Colors.Gold, 2, 0.1)
-ScaleUI.ApplyHud(pill)
+local pillScale = ScaleUI.ApplyHud(pill, 720, function() return ScreenMode.Compact() and 1 or nil end)   -- a phone gets the slim banner at full size
 
 -- the tag: a small coloured chip that says which kind of event this is
 local chip = Instance.new("Frame")
@@ -115,27 +117,52 @@ local function Clock(seconds)
     return string.format("%d:%02d", math.floor(seconds / 60), seconds % 60)
 end
 
+local current
 local look = LOOKS.hourly
 local function Apply(kind)
     look = LOOKS[kind]
+    pill.BackgroundColor3 = look.fill
+    stroke.Color = look.colour
+    chip.BackgroundColor3 = look.colour
+    chipText.Text = look.tag
+    title.TextColor3 = look.colour
+    clock.TextColor3 = look.colour
+    if compact then return end
     -- the card is as tall as its contents: tag row, name, description, then padding under the description
     local nameY = 28
     local blurbY = nameY + look.nameSize + 4
     pill.Size = UDim2.new(0, 500, 0, blurbY + 18 + 12)
-    pill.BackgroundColor3 = look.fill
-    stroke.Color = look.colour
     stroke.Thickness = look.stroke
-    chip.BackgroundColor3 = look.colour
-    chipText.Text = look.tag
-    title.TextColor3 = look.colour
     title.TextSize = look.nameSize
     title.Position = UDim2.new(0, 14, 0, nameY)
     title.Size = UDim2.new(1, -170, 0, look.nameSize + 4)
     blurb.Position = UDim2.new(0, 14, 0, blurbY)
-    clock.TextColor3 = look.colour
 end
 
-local current
+-- A phone gets a slim one-line strip (name and countdown) in the top bar's free middle, so it never covers what you are walking towards.
+-- The longer description is dropped there; the server announces surges and jackpots, and the Help guide explains events.
+local function Layout(isCompact)
+    compact = isCompact
+    gui.IgnoreGuiInset = compact
+    chip.Visible, blurb.Visible, sub.Visible = not compact, not compact, not compact
+    if compact then
+        local cam = workspace.CurrentCamera
+        local vx = cam and cam.ViewportSize.X or 640
+        pill.Position = UDim2.new(0.5, 0, 0, 4)
+        pill.Size = UDim2.new(0, math.clamp(vx - 240, 200, 340), 0, 28)
+        stroke.Thickness = 2
+        title.Position, title.Size, title.TextSize = UDim2.new(0, 10, 0, 2), UDim2.new(1, -86, 0, 24), 13
+        title.TextTruncate = Enum.TextTruncate.AtEnd
+        title.TextWrapped = false
+        clock.Position, clock.Size, clock.TextSize = UDim2.new(1, -8, 0, 2), UDim2.new(0, 70, 0, 24), 15
+    else
+        pill.Position = UDim2.new(0.5, 0, 0, 6)
+        title.TextWrapped = true
+        clock.Position, clock.Size, clock.TextSize = UDim2.new(1, -14, 0, 8), UDim2.new(0, 140, 0, 32), 28
+        Apply(current or "hourly")
+    end
+end
+
 local last = 0
 RunService.Heartbeat:Connect(function()
     local now = workspace:GetServerTimeNow()
@@ -162,3 +189,5 @@ RunService.Heartbeat:Connect(function()
         sub.Text = "hourly: " .. cur.name
     end
 end)
+
+ScreenMode.Watch(function(c) Layout(c) if c then Apply(current or "hourly") end end)

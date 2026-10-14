@@ -95,10 +95,20 @@ function HUDController.SetPending(pending)
             total = total + qty
         end
     end
-    table.sort(ids)
+    table.sort(ids, function(a, b)                     -- the biggest piles first
+        if pending[a] ~= pending[b] then return pending[a] > pending[b] end
+        return a < b
+    end)
 
+    -- The Collect button already shows the total, and what was mined is in the Bag after collecting, so the list is only a short
+    -- summary (the top few) and is left out altogether on a phone, where a long list covered the middle of the screen.
+    local SHOWN = 3
     local lines = {}
-    for _, matId in ipairs(ids) do
+    for i, matId in ipairs(ids) do
+        if i > SHOWN then
+            table.insert(lines, string.format("+ %d more kinds", #ids - SHOWN))
+            break
+        end
         local def = (MaterialData.Raw and MaterialData.Raw[matId]) or (MaterialData.Refined and MaterialData.Refined[matId])
         table.insert(lines, string.format("%s  x%s", def and def.displayName or matId, Utils.FormatNumber(pending[matId])))
     end
@@ -107,7 +117,7 @@ function HUDController.SetPending(pending)
     local label = hudGui:FindFirstChild("PendingLabel", true)
     if frame and label then
         label.Text = table.concat(lines, "\n")
-        frame.Visible = total > 0
+        frame.Visible = total > 0 and not require(game.ReplicatedStorage.Shared.Modules.ScreenMode).Compact()
     end
     local btn = hudGui:FindFirstChild("CollectButton", true)
     if btn then

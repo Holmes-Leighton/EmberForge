@@ -167,6 +167,9 @@ local function Build()
         trackerHint.Size = UDim2.new(1, -24, 0, narrow and 72 or 54)
         trackerTitle.Size = UDim2.new(1, -84, 0, 22)
     end
+    require(game.ReplicatedStorage.Shared.Modules.ScreenMode).Watch(function(compact)
+        tracker.Position = UDim2.new(0.5, 0, 0, compact and 40 or 98)       -- the slim phone banner leaves room: sit right under it
+    end)
     FitTracker()
     if workspace.CurrentCamera then workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(FitTracker) end
 

@@ -54,17 +54,24 @@ local function SafeCall(player, fn)
 end
 
 -- RemoteFunctions skip SafeCall, so a client could call the heavy ones in a loop (DataStore reads, deep copies).
--- Throttled() answers a call that comes too soon with the player's previous answer instead of doing the work again.
-local throttleLast, throttleCache = {}, {}   -- "name:userId" -> os.clock() / last answer
-local function Throttled(name, minInterval, fn)
+-- Throttled() lets each player make `perSecond` calls a second; calls beyond that get the player's previous answer instead of
+-- doing the work again. Normal use stays under the limit, so it always gets a fresh answer (several actions in the same moment,
+-- like queuing five smelts, each trigger a refresh and every one must see the newest data).
+local throttleWindow, throttleCache = {}, {}   -- "name:userId:arg" -> { start, count } / last answer
+local function Throttled(name, perSecond, fn)
     return function(player, ...)
         local arg1 = ...
         local key = name .. ":" .. player.UserId .. ":" .. tostring(arg1)
         local now = os.clock()
-        if now - (throttleLast[key] or -1e9) < minInterval then
+        local w = throttleWindow[key]
+        if not w or now - w.start >= 1 then
+            w = { start = now, count = 0 }
+            throttleWindow[key] = w
+        end
+        w.count += 1
+        if w.count > perSecond and throttleCache[key] ~= nil then
             return throttleCache[key]
         end
-        throttleLast[key] = now
         local result = fn(player, ...)
         throttleCache[key] = result
         return result
@@ -72,7 +79,7 @@ local function Throttled(name, minInterval, fn)
 end
 Players.PlayerRemoving:Connect(function(player)
     local suffix = ":" .. player.UserId .. ":"
-    for _, store in ipairs({ throttleLast, throttleCache }) do
+    for _, store in ipairs({ throttleWindow, throttleCache }) do
         for key in pairs(store) do
             if key:find(suffix, 1, true) then store[key] = nil end
         end
@@ -651,7 +658,7 @@ RemoteEvents.SendGuildChat.OnServerEvent:Connect(function(player, text)
     end)
 end)
 
-RemoteEvents.GetGuildChat.OnServerInvoke = Throttled("GetGuildChat", 1, function(player)
+RemoteEvents.GetGuildChat.OnServerInvoke = Throttled("GetGuildChat", 2, function(player)
     return require(script.Parent.Services.GuildService).GetChat(player)
 end)
 
@@ -674,7 +681,7 @@ RemoteEvents.ClaimGuildPrize.OnServerEvent:Connect(function(player)
     end)
 end)
 
-RemoteEvents.GetGuildInfo.OnServerInvoke = Throttled("GetGuildInfo", 0.5, function(player)
+RemoteEvents.GetGuildInfo.OnServerInvoke = Throttled("GetGuildInfo", 4, function(player)
     local GuildService = require(script.Parent.Services.GuildService)
     local pdata = PlayerDataService.Get(player)
     return { mine = GuildService.GetMine(player), top = GuildService.Top(10), coins = pdata and pdata.EmberCoins or 0 }
@@ -786,7 +793,7 @@ RemoteEvents.ClaimLadderPrize.OnServerEvent:Connect(function(player)
     end)
 end)
 
-RemoteEvents.GetLadderInfo.OnServerInvoke = Throttled("GetLadderInfo", 1, function(player)
+RemoteEvents.GetLadderInfo.OnServerInvoke = Throttled("GetLadderInfo", 2, function(player)
     return require(script.Parent.Services.LadderService).GetInfo(player)
 end)
 
@@ -990,7 +997,7 @@ RemoteEvents.ClaimSeasonReward.OnServerEvent:Connect(function(player, seasonId, 
 end)
 
 -- ── RemoteFunctions (synchronous data requests) ───────────────────────────────
-RemoteEvents.GetPlayerData.OnServerInvoke = Throttled("GetPlayerData", 0.1, function(player)
+RemoteEvents.GetPlayerData.OnServerInvoke = Throttled("GetPlayerData", 12, function(player)
     local data = PlayerDataService.Get(player)
     if not data then return nil end
     -- Return a safe read-only snapshot (strip transient fields)

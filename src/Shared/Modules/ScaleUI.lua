@@ -83,13 +83,14 @@ function ScaleUI.Apply(frame, w, h, margin)
 end
 
 -- Shrinks always-visible HUD panels on short screens (landscape phones).
-function ScaleUI.ApplyHud(frame, referenceHeight)
+-- `override` (optional): a function returning a fixed scale to use instead, or nil for the usual height-based one
+function ScaleUI.ApplyHud(frame, referenceHeight, override)
     referenceHeight = referenceHeight or 720
     local scale = Instance.new("UIScale")
     scale.Parent = frame
     local function update()
         local _, vp = Viewport()
-        scale.Scale = math.clamp(vp.Y / referenceHeight, 0.6, 1)
+        scale.Scale = (override and override()) or math.clamp(vp.Y / referenceHeight, 0.6, 1)
     end
     update()
     local cam = Viewport()

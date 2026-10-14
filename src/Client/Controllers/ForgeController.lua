@@ -229,7 +229,9 @@ function ForgeController._OpenSmeltDialog()
     if not dialog then return end
     local openFn = dialog:FindFirstChild("Open")
     if openFn then
-        openFn:Invoke(data.Inventory or {})
+        local fd = ForgeData.Get(data.ForgeLevel or 1)
+        local free = math.max(0, (fd and fd.unlocks.smeltSlots or 5) - #(data.SmeltQueue or {}))
+        openFn:Invoke(data.Inventory or {}, free)
     end
 end
 

@@ -82,6 +82,8 @@ local selected = {}       -- materialId → owned qty (multi-select)
 local selectionRows = {}  -- materialId → { card, btn, qty }
 local selectionOrder = {} -- materialIds in display order
 local confirmBtn
+local slotLimit = nil      -- free smelter slots (each material takes one); nil = no limit known
+local limitLbl
 
 local RARITY_COLORS = {
     Common    = Theme.Colors.Common,
@@ -131,18 +133,37 @@ local function deselectAll()
     refreshSelection()
 end
 
+-- Shows how many slots are free, or why a pick was refused
+local function showLimit(warn)
+    if not limitLbl or not slotLimit then return end
+    limitLbl.TextColor3 = warn and Theme.Colors.Danger or Theme.Colors.TextSecondary
+    limitLbl.Text = warn or string.format("Free smelter slots: %d", slotLimit)
+end
+
+-- Select All stops at the free smelter slots (the first ones in the list, rarest first)
 local function selectAll()
+    selected = {}
+    local taken = 0
     for _, id in ipairs(selectionOrder) do
+        if slotLimit and taken >= slotLimit then break end
         selected[id] = selectionRows[id].qty
+        taken += 1
     end
     refreshSelection()
+    if slotLimit and taken < #selectionOrder then
+        showLimit(string.format("Only %d free slot%s: picked the first %d", slotLimit, slotLimit == 1 and "" or "s", taken))
+    else
+        showLimit()
+    end
 end
 
 selectAllBtn.MouseButton1Click:Connect(selectAll)
 clearBtn.MouseButton1Click:Connect(deselectAll)
 
--- Populate is called by SmeltDialog.Open(inventory)
-local function Populate(inventory)
+-- Populate is called by SmeltDialog.Open(inventory, freeSlots)
+local function Populate(inventory, freeSlots)
+    slotLimit = freeSlots
+    showLimit()
     for _, child in ipairs(scroll:GetChildren()) do
         if child:IsA("Frame") then child:Destroy() end
     end
@@ -241,8 +262,13 @@ local function Populate(inventory)
         selBtn.MouseButton1Click:Connect(function()
             if selected[item.id] then
                 selected[item.id] = nil
+                showLimit()
+            elseif slotLimit and selectedCount() >= slotLimit then
+                showLimit(slotLimit == 0 and "No free smelter slots" or string.format("Only %d free smelter slot%s", slotLimit, slotLimit == 1 and "" or "s"))
+                return
             else
                 selected[item.id] = item.qty
+                showLimit()
             end
             refreshSelection()
         end)
@@ -289,6 +315,11 @@ maxQtyLbl.Size = UDim2.new(0, 50, 0, 30)
 maxQtyLbl.Position = UDim2.new(0, 198, 0, 8)
 maxQtyLbl.TextXAlignment = Enum.TextXAlignment.Left
 
+limitLbl = Theme.Label(qtyRow, "", Theme.TextSize.Small, Theme.Colors.TextSecondary, Theme.Fonts.Body, "SlotLimitLabel")
+limitLbl.Size = UDim2.new(0, 190, 1, 0)
+limitLbl.Position = UDim2.new(1, -200, 0, 0)
+limitLbl.TextXAlignment = Enum.TextXAlignment.Right
+
 local plusBtn = Theme.Button(qtyRow, "+", Theme.Colors.PanelAlt, Theme.Colors.TextPrimary, "PlusBtn")
 plusBtn.Size = UDim2.new(0, 34, 0, 30)
 plusBtn.Position = UDim2.new(0, 250, 0, 8)
@@ -315,6 +346,7 @@ confirmBtn.TextSize = 15
 confirmBtn.MouseButton1Click:Connect(function()
     local n = selectedCount()
     if n == 0 then return end
+    if slotLimit and n > slotLimit then showLimit("Pick fewer: not enough free smelter slots") return end
     local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
     if n == 1 then
         local id, owned = next(selected)
@@ -333,8 +365,8 @@ end)
 -- ── Public API via BindableFunction ───────────────────────────────────────────
 local openFn = Instance.new("BindableFunction")
 openFn.Name = "Open"
-openFn.OnInvoke = function(inventory)
-    Populate(inventory)
+openFn.OnInvoke = function(inventory, freeSlots)
+    Populate(inventory, freeSlots)
     gui.Enabled = true
 end
 openFn.Parent = gui
