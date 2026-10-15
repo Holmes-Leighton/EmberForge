@@ -196,6 +196,18 @@ local function AdaptGenerated(model)
     end
     local torso = model:FindFirstChild("Torso")
     if torso and torso:IsA("BasePart") then model.PrimaryPart = torso end
+    -- The animator swings the pickaxe with ArmR. If the generator put it in the other hand, swap the arm names so the arm that really holds it is the one
+    -- that swings (otherwise the pickaxe would arc round the wrong shoulder and end up floating away from the hand).
+    local armL, armR, handle = model:FindFirstChild("ArmL"), model:FindFirstChild("ArmR"), model:FindFirstChild("PickHandle")
+    if armL and armR and handle and armL:IsA("BasePart") and armR:IsA("BasePart") and handle:IsA("BasePart") then
+        local function dist(a, b)
+            local dx, dy, dz = a.Position.X - b.Position.X, a.Position.Y - b.Position.Y, a.Position.Z - b.Position.Z
+            return math.sqrt(dx * dx + dy * dy + dz * dz)
+        end
+        if dist(handle, armL) < dist(handle, armR) then
+            armL.Name, armR.Name = "ArmR", "ArmL"
+        end
+    end
     for _, armName in ipairs({ "ArmL", "ArmR" }) do
         local arm = model:FindFirstChild(armName)
         if arm and arm:IsA("BasePart") then
@@ -214,6 +226,8 @@ local function LoadGeneratedStage(stage, element, assetId, cfg)
     else
         local model = Unwrap(result)
         AdaptGenerated(model)
+        local settings = AssetData.StageSettings and AssetData.StageSettings[stage] and AssetData.StageSettings[stage][element]
+        if settings and settings.walkSwing then model:SetAttribute("WalkSwing", settings.walkSwing) end      -- (read by GolemAnimator)
         Register(element .. "_" .. stage, model, cfg, assetId)
     end
     pending -= 1

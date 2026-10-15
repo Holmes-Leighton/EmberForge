@@ -224,6 +224,7 @@ local function Track(model)
         info.tempo = feel.tempo
         info.dustColor = feel.dust:Lerp(Color3.fromRGB(120, 112, 105), 0.45)         -- footprints: a dull dust colour, the element's glow once old
         info.stage = model:GetAttribute("Stage") or "Adult"
+        info.walkSwing = model:GetAttribute("WalkSwing")
         info.accent = model:GetAttribute("Accent")
         info.walkState = GolemWalk.New(math.floor((model:GetAttribute("Phase") or 0) * 1000) + 11)
         info.solid = {}
@@ -414,7 +415,9 @@ local function Step()
                     local ibob, ipitch, iroll, iyaw = IdleMoves.Body("golem", move, mk, t)
                     local w = move and math.sin(math.clamp(mk, 0, 1) * math.pi) or 0
                     w = math.min(1, w * 2.5)                                             -- quick in and out, holds in between
-                    local zL, zR, xL, xR = 0, 0, 0.2 - raise * 0.25 + stride, raise - (walking and stride * 1.6 or 0)
+                    -- a model with something attached to an arm (the Ancient Gargoyle's wing) walks with its arms nearly still (AssetData.StageSettings walkSwing)
+                    local sw = info.walkSwing or 1
+                    local zL, zR, xL, xR = 0, 0, 0.2 - raise * 0.25 + stride * sw, raise - (walking and stride * 1.6 * sw or 0)
                     if move == "flex" then zL, zR, xL, xR = -1.25 * w, 1.25 * w, xL + (0.4 - xL) * w, xR + (0.4 - xR) * w
                     elseif move == "stomp" or move == "look" then xL, xR = xL + (0.1 - xL) * w, xR + (0.1 - xR) * w
                     elseif move == "inspect" then xL, xR = xL + (0.1 - xL) * w, xR + (1.15 - xR) * w end

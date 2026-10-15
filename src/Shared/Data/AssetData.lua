@@ -87,6 +87,15 @@ AssetData.StageModels = {
         Frost = 127416852047379,       -- baby ice golem: icicle crown, frosty collar
         Storm = 84746662214065,        -- baby gunmetal golem: violet glow, exhaust pipes
         Void  = 123168681093153,       -- baby hooded void golem: purple eyes, shoulder crystals, crystal staff
+        Patchwork  = 118601811288943,   -- stitched fabric rag-doll: button eyes, thread
+        Woven      = 103950483499267,   -- knotted rope and reeds
+        Coral      = 112254032083811,   -- branching reef coral with a seashell
+        Clockwork  = 111666023672540,   -- brass automaton with gears and a wind-up key
+        Alchemist  = 108258527114640,   -- potbellied stone with glass vials of brews
+        Gargoyle   = 85360440614614,   -- stone guardian with wings and horns
+        StormJar   = 90127070400225,   -- glass jar of storm cloud on stone legs
+        Dragonbone = 124844006804174,   -- pale bone with ribcage, spine fins and dragon horns
+        All        = 97151946959544,   -- the event Primordial: white marble with gold
     },
     Young = {
         Ember = 104010269078604,       -- teenage armoured lava golem: small flame crest, glowing chest window
@@ -94,6 +103,15 @@ AssetData.StageModels = {
         Frost = 72851227271034,        -- teenage ice golem: small icicle crown, frost collar (regenerated: moderation flagged a mesh in the first one, 112831766869171)
         Storm = 79448496845941,        -- teenage gunmetal golem: violet strips, small exhaust pipes
         Void  = 134191012882976,       -- teenage hooded void golem: small shoulder crystals, crystal staff
+        Patchwork  = 74891539568121,   -- stitched fabric rag-doll: button eyes, thread
+        Woven      = 124067343464960,   -- knotted rope and reeds
+        Coral      = 116452271145528,   -- branching reef coral with a seashell
+        Clockwork  = 82725080220978,   -- brass automaton with gears and a wind-up key
+        Alchemist  = 89857740816876,   -- potbellied stone with glass vials of brews
+        Gargoyle   = 138577960470626,   -- stone guardian with wings and horns
+        StormJar   = 101466151344629,   -- glass jar of storm cloud on stone legs
+        Dragonbone = 123641423182564,   -- pale bone with ribcage, spine fins and dragon horns
+        All        = 112097798700099,   -- the event Primordial: white marble with gold
     },
     Elder = {
         Ember = 140330012269546,       -- scarred veteran lava golem: cracked basalt, lava fissures, carved face, hunched
@@ -101,6 +119,15 @@ AssetData.StageModels = {
         Frost = 128287318474889,       -- weathered veteran frost golem: cracked glacial ice, ice spikes
         Storm = 84243756303150,        -- battered veteran storm golem: dented gunmetal, rivets, lightning scars
         Void  = 102403356535230,       -- veteran void golem: cracked obsidian-purple under a tattered cloak, shoulder crystals
+        Patchwork  = 125755513476399,   -- stitched fabric rag-doll: button eyes, thread
+        Woven      = 115660624627300,   -- knotted rope and reeds
+        Coral      = 116813500967487,   -- branching reef coral with a seashell
+        Clockwork  = 130342029098358,   -- brass automaton with gears and a wind-up key
+        Alchemist  = 81650450930350,   -- potbellied stone with glass vials of brews
+        Gargoyle   = 134833935260971,   -- stone guardian with wings and horns
+        StormJar   = 137102980932096,   -- glass jar of storm cloud on stone legs
+        Dragonbone = 140066674708713,   -- pale bone with ribcage, spine fins and dragon horns
+        All        = 112622455588150,   -- the event Primordial: white marble with gold
     },
     Ancient = {
         Ember = 92964913353272,        -- lava elder: flame horns, grey stone beard, glowing runes
@@ -108,6 +135,24 @@ AssetData.StageModels = {
         Frost = 106028488407980,       -- ice elder: icicle crown and beard, frost collar
         Storm = 118919561871911,       -- gunmetal elder: wire beard, violet lightning, exhaust stacks
         Void  = 75333919674843,        -- hooded void elder: wispy beard, big purple crystals, crystal staff
+        Patchwork  = 73184511367765,   -- stitched fabric rag-doll: button eyes, thread
+        Woven      = 107172418198283,   -- knotted rope and reeds
+        Coral      = 137576219164670,   -- branching reef coral with a seashell
+        Clockwork  = 103602529394507,   -- brass automaton with gears and a wind-up key
+        Alchemist  = 115804801565762,   -- potbellied stone with glass vials of brews
+        Gargoyle   = 88893956980538,   -- stone guardian with wings and horns
+        StormJar   = 119408960303164,   -- glass jar of storm cloud on stone legs
+        Dragonbone = 82391878046515,   -- pale bone with ribcage, spine fins and dragon horns
+        All        = 136276480675150,   -- the event Primordial: white marble with gold
+    },
+}
+
+-- Per-model animation settings for a generated stage model, picked up by the animator through an attribute on the model.
+--   walkSwing   how much its arms swing while it walks, 0..1 (default 1). A model with something attached to an arm (the Ancient Gargoyle's wing is part
+--               of its arm mesh) uses a small value so that piece does not flail about as the Golem walks.
+AssetData.StageSettings = {
+    Ancient = {
+        Gargoyle = { walkSwing = 0.2 },
     },
 }
 

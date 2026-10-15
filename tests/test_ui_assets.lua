@@ -185,6 +185,46 @@ if gen then
     expect(GolemModel.FindAsset("Ember", "Infant") == gen and select(2, GolemModel.FindAsset("Ember", "Infant")) == true, "FindAsset picks it for an Ember Infant")
     expect(GolemModel.FindAsset("Ember", "Elder") ~= gen, "but not for other stages")
 end
+-- a pickaxe held in the left hand: the arm names swap so the arm that holds it is the one that swings
+do
+    insertResults[890] = function()
+        return container(newModel({ "Torso_geom", "Head_geom", "ArmL_geom", "ArmR_geom", "LegL_geom", "LegR_geom", "PickHandle_geom", "PickHead_geom" }, function(x)
+            local function put(n, px) local d = x:FindFirstChild(n) d.Position = Vector3.new(px, 3, 0) end
+            put("Torso_geom", 0) put("ArmL_geom", -2) put("ArmR_geom", 2) put("PickHandle_geom", -2.4) put("PickHead_geom", -2.6)
+        end))
+    end
+    AssetData.StageModels = { Infant = { Ember = 890 } }
+    reset()
+    Loader.Init()
+    local lefty = rs:FindFirstChild("GolemAssets"):FindFirstChild("Ember_Infant")
+    local swungArm = lefty and lefty:FindFirstChild("ArmR")
+    expect(swungArm ~= nil and swungArm.Position.X == -2, "a pickaxe in the left hand makes that arm the swinging ArmR")
+    insertResults[891] = function()
+        return container(newModel({ "Torso_geom", "Head_geom", "ArmL_geom", "ArmR_geom", "LegL_geom", "LegR_geom", "PickHandle_geom", "PickHead_geom" }, function(x)
+            local function put(n, px) local d = x:FindFirstChild(n) d.Position = Vector3.new(px, 3, 0) end
+            put("Torso_geom", 0) put("ArmL_geom", -2) put("ArmR_geom", 2) put("PickHandle_geom", 2.4) put("PickHead_geom", 2.6)
+        end))
+    end
+    AssetData.StageModels = { Infant = { Ember = 891 } }
+    reset()
+    Loader.Init()
+    local righty = rs:FindFirstChild("GolemAssets"):FindFirstChild("Ember_Infant")
+    expect(righty and righty:FindFirstChild("ArmR") and righty:FindFirstChild("ArmR").Position.X == 2, "a pickaxe in the right hand leaves the arms as they are")
+end
+-- per-model animation settings reach the model as an attribute for the animator
+AssetData.StageModels = { Ancient = { Gargoyle = 892 } }
+local realSettings = AssetData.StageSettings
+AssetData.StageSettings = { Ancient = { Gargoyle = { walkSwing = 0.2 } } }
+insertResults[892] = insertResults[888]
+reset()
+Loader.Init()
+local garg = rs:FindFirstChild("GolemAssets"):FindFirstChild("Gargoyle_Ancient")
+expect(garg and garg:GetAttribute("WalkSwing") == 0.2, "a model's walkSwing setting is stored on it for the animator")
+AssetData.StageModels = { Infant = { Ember = 888 } }
+reset()
+Loader.Init()
+expect(rs:FindFirstChild("GolemAssets"):FindFirstChild("Ember_Infant"):GetAttribute("WalkSwing") == nil, "a model with no setting swings its arms normally")
+AssetData.StageSettings = realSettings
 -- a stage that has its own mesh keeps the family-wide age cues but not the code-made mesh dressing
 AssetData.StageModels = { Ancient = { Ember = 889 }, Infant = { Ember = 888 } }
 insertResults[889] = insertResults[888]
