@@ -183,6 +183,42 @@ local function LoadStagePack(stage, packId, entries)
     pending -= 1
 end
 
+-- A model made by Studio's mesh generator arrives as "<Part>_geom" meshes plus a RootPart and rig leftovers. Make it a Golem model: the names the
+-- animator looks for, the torso as the primary part, and each arm pivoting at the shoulder (the top of the arm) so it swings rather than spins.
+local function AdaptGenerated(model)
+    for _, d in ipairs(model:GetChildren()) do
+        local name = d.Name:gsub("_geom$", "")
+        if d.Name == "RootPart" or d.ClassName == "AnimationController" or d.Name == "InitialPoses" then
+            d:Destroy()
+        else
+            d.Name = (name == "LegL" or name == "LegR") and "Leg" or name
+        end
+    end
+    local torso = model:FindFirstChild("Torso")
+    if torso and torso:IsA("BasePart") then model.PrimaryPart = torso end
+    for _, armName in ipairs({ "ArmL", "ArmR" }) do
+        local arm = model:FindFirstChild(armName)
+        if arm and arm:IsA("BasePart") then
+            arm.PivotOffset = arm.CFrame:ToObjectSpace(arm.CFrame * CFrame.new(0, arm.Size.Y / 2 - 0.15, 0))
+        end
+    end
+end
+
+-- One generated model per type and stage (AssetData.StageModels), published as <Type>_<Stage> like a pack entry
+local function LoadGeneratedStage(stage, element, assetId, cfg)
+    pending += 1
+    local ok, result = pcall(function() return InsertService:LoadAsset(assetId) end)
+    if not ok or not result then
+        warn(string.format("[GolemAssets] %s %s (asset %d) FAILED to load: %s. It uses the Adult mesh instead. "
+            .. "Check the id, and that the asset is owned by this game's creator or group.", stage, element, assetId, tostring(result)))
+    else
+        local model = Unwrap(result)
+        AdaptGenerated(model)
+        Register(element .. "_" .. stage, model, cfg, assetId)
+    end
+    pending -= 1
+end
+
 -- Pets: one asset holding every pet model (children named PET_<Type>) -> ReplicatedStorage.PetAssets
 local function LoadPetPack(packId, petFolder)
     pending += 1
@@ -597,7 +633,14 @@ function GolemAssetLoader.Init()
     for stage, pack in pairs(AssetData.StagePacks or {}) do
         if (pack.assetId or 0) > 0 then table.insert(stageJobs, { stage = stage, assetId = pack.assetId }) end
     end
-    if #jobs == 0 and packId <= 0 and petPackId <= 0 and crownPackId <= 0 and #stageJobs == 0 then
+    local generatedJobs = {}                        -- one generated model per type and stage (AssetData.StageModels)
+    local stageEntries = AssetData.StageEntries()
+    for stage, byType in pairs(AssetData.StageModels or {}) do
+        for element, assetId in pairs(byType) do
+            if (assetId or 0) > 0 and stageEntries[element] then table.insert(generatedJobs, { stage = stage, element = element, assetId = assetId, cfg = stageEntries[element] }) end
+        end
+    end
+    if #jobs == 0 and packId <= 0 and petPackId <= 0 and crownPackId <= 0 and #stageJobs == 0 and #generatedJobs == 0 then
         log("No Golem asset id is set in AssetData.lua: using the built-in block Golem.")
         return
     end
@@ -607,6 +650,7 @@ function GolemAssetLoader.Init()
     end
     if packId > 0 then task.spawn(LoadPack, packId, AssetData.PackEntries()) end
     for _, job in ipairs(stageJobs) do task.spawn(LoadStagePack, job.stage, job.assetId, AssetData.StageEntries()) end
+    for _, job in ipairs(generatedJobs) do task.spawn(LoadGeneratedStage, job.stage, job.element, job.assetId, job.cfg) end
     -- Not blocking: GolemVisuals rebuilds Golems when the version changes, so a slow asset just
     -- appears when it arrives. This only reports if it is taking long.
     task.delay(AssetData.LOAD_TIMEOUT, function()

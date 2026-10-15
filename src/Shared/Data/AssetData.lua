@@ -76,6 +76,20 @@ AssetData.StagePacks = {
     Ancient = { assetId = 0 },
 }
 
+-- Or one generated model per type and stage, with no pack to assemble: Studio's mesh generator publishes each result as its own Model asset
+-- (the `publishedAssetId` it reports). Generate it with the part names Torso, Head, ArmL, ArmR, LegL, LegR, PickHandle, PickHead; the loader
+-- renames them (Torso_geom -> Torso, LegL / LegR -> Leg), drops the generator's rig leftovers, and sets the arm pivots at the shoulders.
+-- StageModels.<Stage>.<Type> = asset id. Use either this or a StagePacks entry for a type and stage, not both (whichever loads last would win).
+AssetData.StageModels = {
+    Infant = {
+        Ember = 111539969041635,       -- baby armoured lava golem: big grin, flame tuft, glowing chest window
+        Stone = 134957530416757,       -- baby slate golem: green eyes, moss, teal crystals
+        Frost = 127416852047379,       -- baby ice golem: icicle crown, frosty collar
+        Storm = 84746662214065,        -- baby gunmetal golem: violet glow, exhaust pipes
+        Void  = 123168681093153,       -- baby hooded void golem: purple eyes, shoulder crystals, crystal staff
+    },
+}
+
 -- The same idea for pets (PetData): one Model whose children are named PET_<Type> (PET_Ember, PET_Coral ...).
 -- Each pet is shown at the size in PetData.Looks. Pets without a model show a mini Golem.
 AssetData.PetPack = { assetId = 136723892869054 }   -- segmented, animated pets (the old one-piece pack was 94911546053505)

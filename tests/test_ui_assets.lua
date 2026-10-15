@@ -81,6 +81,8 @@ local D = AssetData.Golem.Default
 AssetData.Golem.Default.assetId = 0
 AssetData.Golem.Default.mode = "Auto"          -- the live file pins "Parts"; these tests check the auto-detection
 AssetData.Pack.assetId, AssetData.PetPack.assetId, AssetData.CrownPack.assetId = 0, 0, 0
+local realStageModels = AssetData.StageModels
+AssetData.StageModels = {}                     -- (the live generated stage models are tested on their own below)
 print("== no asset ids: block Golem, clear log")
 Loader.Init()
 local m = GolemModel.Build("Frost", 2, {})
@@ -159,6 +161,35 @@ expect(gaf:FindFirstChild("Default") ~= nil, "the Adult models are unaffected")
 expect(GolemModel.Build("Frost", 1, { stage = "Infant" }):FindFirstChild("SproutStem") == nil, "a Golem on its stage's own mesh skips the code-made Infant sprout")
 expect(GolemModel.Build("Frost", 1, { stage = "Elder" }):FindFirstChild("Beard") ~= nil, "a stage with no mesh of its own is still dressed in code")
 AssetData.StagePacks.Infant.assetId = 0
+
+print("== a generated stage model is adapted: names, rig leftovers, shoulder pivots")
+AssetData.StageModels = { Infant = { Ember = 888 } }
+insertResults[888] = function()
+    return container(newModel({ "Torso_geom", "Head_geom", "ArmL_geom", "ArmR_geom", "LegL_geom", "LegR_geom", "PickHandle_geom", "PickHead_geom", "RootPart" }, function(x)
+        Instance.new("AnimationController").Parent = x
+        local poses = Instance.new("Folder"); poses.Name = "InitialPoses"; poses.Parent = x
+    end))
+end
+reset()
+Loader.Init()
+local gen = rs:FindFirstChild("GolemAssets"):FindFirstChild("Ember_Infant")
+expect(gen ~= nil, "the generated model is registered as Ember_Infant")
+if gen then
+    local names, legs = {}, 0
+    for _, d in ipairs(gen:GetChildren()) do names[d.Name] = true if d.Name == "Leg" then legs += 1 end end
+    expect(names.Torso and names.Head and names.ArmL and names.ArmR and names.PickHandle and names.PickHead and legs == 2, "the _geom suffix is dropped and LegL / LegR become two Legs")
+    expect(not names.RootPart and not names.InitialPoses and not names.AnimationController and not names.Torso_geom, "the generator's root part and rig leftovers are removed")
+    expect(gen.PrimaryPart ~= nil and gen.PrimaryPart.Name == "Torso", "the torso is the primary part")
+    expect(gen:FindFirstChild("ArmR").PivotOffset ~= nil and gen:FindFirstChild("ArmL").PivotOffset ~= nil, "each arm gets a pivot")
+    expect(gen:GetAttribute("RigMode") == "Parts" and gen:GetAttribute("OwnModel") == true, "it moves like the original Golems (Parts) and carries its own look")
+    expect(GolemModel.FindAsset("Ember", "Infant") == gen and select(2, GolemModel.FindAsset("Ember", "Infant")) == true, "FindAsset picks it for an Ember Infant")
+    expect(GolemModel.FindAsset("Ember", "Elder") ~= gen, "but not for other stages")
+end
+insertResults[888] = "HTTP 403 forbidden"
+reset()
+Loader.Init()
+expect(saw(warns, "Infant Ember") and saw(warns, "Adult mesh"), "a failed load is warned and falls back to the Adult mesh")
+AssetData.StageModels = realStageModels
 
 print("== single mesh becomes Static (bob and sway)")
 insertResults[111] = function() return container(newModel({ "Body" })) end
