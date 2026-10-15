@@ -410,6 +410,8 @@ local function ToastKind(title)
     return Theme.Colors.Info, "i"
 end
 
+local ScreenMode = require(game.ReplicatedStorage.Shared.Modules.ScreenMode)
+
 local function EnsureToastHolder()
     if toastHolder and toastHolder.Parent then return toastHolder end
     local sg = Instance.new("ScreenGui")
@@ -422,6 +424,10 @@ local function EnsureToastHolder()
     toastHolder.AnchorPoint = Vector2.new(1, 0)
     toastHolder.Position = UDim2.new(1, -108, 0, 16)           -- clear of the button column on the right
     toastHolder.Size = UDim2.new(0, 320, 1, -32)
+    if ScreenMode.Compact() then                               -- a phone: a slim strip of small toasts in the top corner, never a wall over the game
+        toastHolder.Position = UDim2.new(1, -92, 0, 6)
+        toastHolder.Size = UDim2.new(0, 210, 0, 110)
+    end
     toastHolder.BackgroundTransparency = 1
     toastHolder.Parent = sg
     local layout = Instance.new("UIListLayout")
@@ -466,23 +472,24 @@ function HUDController.ShowNotification(title, message)
         end
     end
 
+    local compact = ScreenMode.Compact()
     local color, glyph = ToastKind(title)
     toastOrder += 1
     local toast = Instance.new("Frame")
     toast.Name = "Toast"
     toast.LayoutOrder = toastOrder
-    toast.Size = UDim2.new(1, 0, 0, 76)           -- room for a two-line message
+    toast.Size = UDim2.new(1, 0, 0, compact and 40 or 76)           -- room for a two-line message (one slim line on a phone)
     toast.BackgroundColor3 = Theme.Colors.Panel
     toast.BorderSizePixel = 0
     toast:SetAttribute("Key", title .. "|" .. message)
-    toast:SetAttribute("Expires", os.clock() + TOAST_SECONDS)
+    toast:SetAttribute("Expires", os.clock() + (compact and 2.6 or TOAST_SECONDS))
     toast.Parent = holder
     Theme.AddCorner(toast, Theme.Corner.Medium)
     Theme.AddStroke(toast, color, 2)
 
     local badge = Instance.new("TextLabel")
-    badge.Size = UDim2.new(0, 38, 0, 38)
-    badge.Position = UDim2.new(0, 10, 0.5, -19)
+    badge.Size = compact and UDim2.new(0, 24, 0, 24) or UDim2.new(0, 38, 0, 38)
+    badge.Position = compact and UDim2.new(0, 6, 0.5, -12) or UDim2.new(0, 10, 0.5, -19)
     badge.BackgroundColor3 = color
     badge.Text = glyph
     badge.TextColor3 = Color3.fromRGB(30, 20, 14)
@@ -495,13 +502,15 @@ function HUDController.ShowNotification(title, message)
     if matId then MaterialIcon.Overlay(badge, matId) end        -- a toast about a material shows that material's spinning mesh
 
     local titleLbl = Theme.Label(toast, title, Theme.TextSize.Heading, color, Theme.Fonts.Heading, "Title")
-    titleLbl.Position = UDim2.new(0, 58, 0, 6)
-    titleLbl.Size = UDim2.new(1, -66, 0, 24)
+    titleLbl.Position = compact and UDim2.new(0, 36, 0, 2) or UDim2.new(0, 58, 0, 6)
+    titleLbl.Size = compact and UDim2.new(1, -42, 0, 16) or UDim2.new(1, -66, 0, 24)
+    if compact then titleLbl.TextSize = 12 end
     titleLbl.TextWrapped = false
     titleLbl.TextTruncate = Enum.TextTruncate.AtEnd
     local msgLbl = Theme.Label(toast, message, Theme.TextSize.Body, Theme.Colors.TextPrimary, Theme.Fonts.Body, "Message")
-    msgLbl.Position = UDim2.new(0, 58, 0, 30)
-    msgLbl.Size = UDim2.new(1, -66, 0, 40)
+    msgLbl.Position = compact and UDim2.new(0, 36, 0, 18) or UDim2.new(0, 58, 0, 30)
+    msgLbl.Size = compact and UDim2.new(1, -42, 0, 18) or UDim2.new(1, -66, 0, 40)
+    if compact then msgLbl.TextSize = 10 end
     msgLbl.TextWrapped = true
     msgLbl.TextYAlignment = Enum.TextYAlignment.Top
     msgLbl.TextTruncate = Enum.TextTruncate.AtEnd
@@ -520,7 +529,9 @@ function HUDController.ShowNotification(title, message)
         if t:IsA("Frame") then table.insert(kids, t) end
     end
     table.sort(kids, function(x, y) return x.LayoutOrder < y.LayoutOrder end)
-    for i = 1, #kids - MAX_TOASTS do kids[i]:SetAttribute("Expires", 0) end
+    for i = 1, #kids - (compact and 2 or MAX_TOASTS) do
+        if compact then kids[i]:Destroy() else kids[i]:SetAttribute("Expires", 0) end        -- (on a phone an extra toast goes at once)
+    end
 
     task.spawn(function()
         while toast.Parent and os.clock() < (toast:GetAttribute("Expires") or 0) do task.wait(0.2) end
