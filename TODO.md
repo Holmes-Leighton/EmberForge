@@ -18,7 +18,7 @@
       Wired in `ForgeBuilder.lua` with `MeshProp`/`Ghost` (part version stays as invisible collider / fallback); checked on the void forge in Studio.
 - [x] ~~Furnace, vault, banner, trophy, golem pedestal, wall gears, conveyor, floating crystals, side tower as meshes~~ done (furnace per look; the rest one shared design). Gears turn and
       crystals float via DecorAnimator. Checked in Studio on the live level-4 void forge and on level-10 storm, ancient and bronze forges: all sit and face correctly.
-- [ ] **Still plain parts in `ForgeBuilder.lua`:** lava channels, ForgeDesk/hearth, wing chimneys, conduits, rune circle, kiln dome/door, aura ring, path, courtyard, golem-gallery
+- [ ] **Still plain parts in `ForgeBuilder.lua`** (hearth slab and wing chimneys are meshes now): lava channels, ForgeDesk, conduits, rune circle, kiln dome/door, aura ring, path, courtyard, golem-gallery
       trim. Check the other 6 looks' anvil/bench/brazier/furnace on real forges too.
 - [x] ~~Forge house meshes~~ done: 28 meshes (7 looks x 4 tiers, each a different design: volcano, igloo palace, tesla foundry, floating shard sanctum, Greek temple, steampunk factory, plain),
       wired through `AssetData.ForgeSkinMeshes` House1-4 and checked in Studio (default/ember/frost/bronze/ancient seen on real forges). Original brief, kept for the interior pieces:

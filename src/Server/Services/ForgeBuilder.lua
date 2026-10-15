@@ -118,7 +118,9 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
     -- ── Courtyard ─────────────────────────────────────────────────────────────
     part("Courtyard", Vector3.new(54, 0.4, 54), at(0, GROUND - 0.2, 0), skin.color:Lerp(Color3.new(0, 0, 0), 0.15), Enum.Material.Slate)
     part("Path", Vector3.new(6, 0.45, 40), at(0, GROUND - 0.15, 8), Color3.fromRGB(150, 140, 125), Enum.Material.Cobblestone)
-    part("Hearth", Vector3.new(14, 0.5, 12), at(0, GROUND - 0.1, -12), Color3.fromRGB(45, 40, 40), Enum.Material.Basalt)
+    local hearth = part("Hearth", Vector3.new(14, 0.5, 12), at(0, GROUND - 0.1, -12), Color3.fromRGB(45, 40, 40), Enum.Material.Basalt)
+    local hearthMesh = ForgeSkinProps.Piece(ForgeSkinProps.Family(equipped.ForgeSkin) or "default", "Hearth", Vector3.new(14, 0.6, 12), at(0, GROUND - 0.05, -12), model)
+    if hearthMesh then hearth.Transparency = 1 end
 
     -- Fence with a gate gap on the visitor side (+z)
     local FENCE = 26
@@ -332,6 +334,7 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
     if level >= 6 then      -- side wing pillars + second chimney
         for _, sgn in ipairs({ -1, 1 }) do
             local c2 = part("WingChimney", Vector3.new(2, 9, 2), at(sgn * 13, GROUND + H + 3, bz - 2))
+            if MeshProp("Chimney", Vector3.new(2, 9, 2), at(sgn * 13, GROUND + H - 1.5, bz - 2)) then Ghost(c2) end
             local sm = Instance.new("Smoke")
             sm.Size, sm.RiseVelocity, sm.Opacity = 3, 5, 0.25
             sm.Parent = c2
