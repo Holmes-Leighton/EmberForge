@@ -116,8 +116,12 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
     end
 
     -- ── Courtyard ─────────────────────────────────────────────────────────────
-    part("Courtyard", Vector3.new(54, 0.4, 54), at(0, GROUND - 0.2, 0), skin.color:Lerp(Color3.new(0, 0, 0), 0.15), Enum.Material.Slate)
-    part("Path", Vector3.new(6, 0.45, 40), at(0, GROUND - 0.15, 8), Color3.fromRGB(150, 140, 125), Enum.Material.Cobblestone)
+    -- the ground is generated mesh (a courtyard slab and a cobbled path, per skin family where one exists); the plain slabs stay as the invisible solid floor / fallback
+    local groundFam = ForgeSkinProps.Family(equipped.ForgeSkin) or "default"
+    local courtyard = part("Courtyard", Vector3.new(54, 0.4, 54), at(0, GROUND - 0.2, 0), skin.color:Lerp(Color3.new(0, 0, 0), 0.15), Enum.Material.Slate)
+    if ForgeSkinProps.Piece(groundFam, "Courtyard", Vector3.new(54, 0.5, 54), at(0, GROUND - 0.5, 0), model) then courtyard.Transparency = 1 end
+    local pathway = part("Path", Vector3.new(6, 0.45, 40), at(0, GROUND - 0.15, 8), Color3.fromRGB(150, 140, 125), Enum.Material.Cobblestone)
+    if ForgeSkinProps.Piece(groundFam, "Path", Vector3.new(6, 0.5, 40), at(0, GROUND - 0.45, 8), model) then pathway.Transparency = 1 end
     local hearth = part("Hearth", Vector3.new(14, 0.5, 12), at(0, GROUND - 0.1, -12), Color3.fromRGB(45, 40, 40), Enum.Material.Basalt)
     local hearthMesh = ForgeSkinProps.Piece(ForgeSkinProps.Family(equipped.ForgeSkin) or "default", "Hearth", Vector3.new(14, 0.6, 12), at(0, GROUND - 0.05, -12), model)
     if hearthMesh then hearth.Transparency = 1 end
@@ -308,9 +312,12 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
     -- ── Level advancements ────────────────────────────────────────────────────
     if level >= 4 then      -- metal conduits along the back wall
         for _, x in ipairs({ -8, -4, 4, 8 }) do
-            part("Conduit", Vector3.new(0.7, H - 1, 0.7), at(x, GROUND + (H - 1) / 2, bz - D / 2 + 1), iron, Enum.Material.Metal)
+            local pipe = part("Conduit", Vector3.new(0.7, H - 1, 0.7), at(x, GROUND + (H - 1) / 2, bz - D / 2 + 1), iron, Enum.Material.Metal)
+            if MeshProp("Conduit", Vector3.new(0.9, H - 1, 0.9), at(x, GROUND, bz - D / 2 + 1)) then Ghost(pipe) end
         end
-        part("ConduitCross", Vector3.new(18, 0.7, 0.7), at(0, GROUND + 6, bz - D / 2 + 1), iron, Enum.Material.Metal)
+        local cross = part("ConduitCross", Vector3.new(18, 0.7, 0.7), at(0, GROUND + 6, bz - D / 2 + 1), iron, Enum.Material.Metal)
+        local crossMesh = MeshProp("Conduit", Vector3.new(0.9, 18, 0.9), at(0, GROUND + 6, bz - D / 2 + 1) * CFrame.Angles(0, 0, math.pi / 2))
+        if crossMesh then Ghost(cross) end
     end
 
     if level >= 5 then      -- elemental braziers + lava channels
@@ -327,7 +334,8 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
             light(flameAt, flameColors[i], 16, 1.4)
         end
         for _, x in ipairs({ -3, 0, 3 }) do
-            part("LavaChannel", Vector3.new(0.9, 0.2, 12), at(x, GROUND + 0.1, -4), Color3.fromRGB(255, 100, 20), Enum.Material.Neon)
+            local lava = part("LavaChannel", Vector3.new(0.9, 0.2, 12), at(x, GROUND + 0.1, -4), Color3.fromRGB(255, 100, 20), Enum.Material.Neon)
+            if MeshProp("LavaChannel", Vector3.new(1.4, 0.5, 12), at(x, GROUND - 0.1, -4)) then Ghost(lava) end
         end
     end
 
@@ -379,8 +387,9 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
     if level >= 9 then      -- runes glowing in the courtyard
         for i = 0, 5 do
             local a = i / 6 * math.pi * 2
-            part("Rune", Vector3.new(2.4, 0.15, 0.7), at(math.cos(a) * 11, GROUND + 0.25, 4 + math.sin(a) * 11)
-                * CFrame.Angles(0, -a, 0), skin.fire, Enum.Material.Neon)
+            local runeCF = at(math.cos(a) * 11, GROUND + 0.25, 4 + math.sin(a) * 11) * CFrame.Angles(0, -a, 0)
+            local rune = part("Rune", Vector3.new(2.4, 0.15, 0.7), runeCF, skin.fire, Enum.Material.Neon)
+            if MeshProp("Rune", Vector3.new(2.4, 0.3, 1.4), at(math.cos(a) * 11, GROUND, 4 + math.sin(a) * 11) * CFrame.Angles(0, -a, 0)) then Ghost(rune) end
         end
     end
 

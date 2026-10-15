@@ -24,8 +24,9 @@
       Wired in `ForgeBuilder.lua` with `MeshProp`/`Ghost` (part version stays as invisible collider / fallback); checked on the void forge in Studio.
 - [x] ~~Furnace, vault, banner, trophy, golem pedestal, wall gears, conveyor, floating crystals, side tower as meshes~~ done (furnace per look; the rest one shared design). Gears turn and
       crystals float via DecorAnimator. Checked in Studio on the live level-4 void forge and on level-10 storm, ancient and bronze forges: all sit and face correctly.
-- [ ] **Still plain parts in `ForgeBuilder.lua`** (hearth slab and wing chimneys are meshes now): lava channels, ForgeDesk, conduits, rune circle, kiln dome/door, aura ring, path, courtyard, golem-gallery
-      trim. Check the other 6 looks' anvil/bench/brazier/furnace on real forges too.
+- [x] ~~Forge ground and remaining plain parts as meshes~~ done: courtyard slab (a design per look), cobbled path, hearth, lava channels, conduits and rune tiles are meshes.
+      Left as parts on purpose: the glowing kiln door, aura ring and ForgeDesk (neon effects / invisible prompt anchor), the Golem-gallery trim and the skin-trim neon strips.
+      Seen on level-9 ember and void forges; frost, storm, ancient and bronze courtyards not yet viewed.
 - [x] ~~Forge house meshes~~ done: 28 meshes (7 looks x 4 tiers, each a different design: volcano, igloo palace, tesla foundry, floating shard sanctum, Greek temple, steampunk factory, plain),
       wired through `AssetData.ForgeSkinMeshes` House1-4 and checked in Studio (default/ember/frost/bronze/ancient seen on real forges). Original brief, kept for the interior pieces:
 - [ ] (original brief) The workshop building at the back of every plot (walls, pitched roof, chimney, furnace, workbench) is built from plain parts in
