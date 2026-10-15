@@ -252,34 +252,51 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
     smoke.Color = Color3.fromRGB(80, 80, 80)
     smoke.Parent = chimney
 
+    -- Props are generated meshes (anvil / workbench / brazier have a design per skin family, see AssetData.ForgeSkinMeshes). When one has loaded, the part-built
+    -- version stays as an invisible collider / prompt anchor; if it has not, the parts are what you see.
+    local function Ghost(...)
+        for _, p in ipairs({ ... }) do p.Transparency = 1 end
+    end
+    local function MeshProp(piece, size, cf)
+        return ForgeSkinProps.Piece(famKey, piece, size, cf, model) ~= nil
+    end
+
     -- Smelter (left) and anvil (right)
-    part("Smelter", Vector3.new(4.6, 5, 4.6), at(-11.5, GROUND + 2.5, bz - 2))
+    local smelterBody = part("Smelter", Vector3.new(4.6, 5, 4.6), at(-11.5, GROUND + 2.5, bz - 2))
     local hatch = part("SmelterHatch", Vector3.new(2, 1.8, 0.3), at(-11.5, GROUND + 2.4, bz + 0.4), Color3.fromRGB(255, 90, 20), Enum.Material.Neon)
     light(hatch, Color3.fromRGB(255, 120, 40), 12, 1.2)
-    part("SmelterPipe", Vector3.new(1, 5, 1), at(-11.5, GROUND + 7.5, bz - 3), iron, Enum.Material.Metal)
-    part("AnvilBase", Vector3.new(2.4, 1.8, 1.6), at(11, GROUND + 0.9, bz + 1), wood, Enum.Material.Wood)
-    part("AnvilTop", Vector3.new(4.2, 1, 1.9), at(11, GROUND + 2.3, bz + 1), Color3.fromRGB(105, 105, 115), Enum.Material.Metal)
+    local smelterPipe = part("SmelterPipe", Vector3.new(1, 5, 1), at(-11.5, GROUND + 7.5, bz - 3), iron, Enum.Material.Metal)
+    if MeshProp("Smelter", Vector3.new(4.6, 8, 4.6), at(-11.5, GROUND, bz - 2)) then Ghost(smelterBody, hatch, smelterPipe) end
+    local anvilBase = part("AnvilBase", Vector3.new(2.4, 1.8, 1.6), at(11, GROUND + 0.9, bz + 1), wood, Enum.Material.Wood)
+    local anvilTop = part("AnvilTop", Vector3.new(4.2, 1, 1.9), at(11, GROUND + 2.3, bz + 1), Color3.fromRGB(105, 105, 115), Enum.Material.Metal)
     Prompt(part("AnvilPromptPoint", Vector3.new(1, 1, 1), at(11, GROUND + 2.6, bz + 1), nil, nil, { Transparency = 1, CanCollide = false }),
         "AnvilPrompt", "Craft a Golem", "Anvil")
-    part("AnvilHorn", Vector3.new(1.8, 0.7, 1), at(13.2, GROUND + 2.3, bz + 1), Color3.fromRGB(105, 105, 115), Enum.Material.Metal)
+    local anvilHorn = part("AnvilHorn", Vector3.new(1.8, 0.7, 1), at(13.2, GROUND + 2.3, bz + 1), Color3.fromRGB(105, 105, 115), Enum.Material.Metal)
+    if MeshProp("Anvil", Vector3.new(4.6, 3.2, 2.2), at(11.4, GROUND, bz + 1)) then Ghost(anvilBase, anvilTop, anvilHorn) end
 
     -- Workbench with tools, barrels, coal pile, crates, fire pit
-    part("BenchTop", Vector3.new(7, 0.6, 2.6), at(-5, GROUND + 3, -5), wood, Enum.Material.WoodPlanks)
+    local benchParts = { part("BenchTop", Vector3.new(7, 0.6, 2.6), at(-5, GROUND + 3, -5), wood, Enum.Material.WoodPlanks) }
     for _, dx in ipairs({ -2.9, 2.9 }) do
-        part("BenchLeg", Vector3.new(0.6, 3, 2), at(-5 + dx, GROUND + 1.5, -5), wood, Enum.Material.Wood)
+        table.insert(benchParts, part("BenchLeg", Vector3.new(0.6, 3, 2), at(-5 + dx, GROUND + 1.5, -5), wood, Enum.Material.Wood))
     end
+    local benchMesh = MeshProp("Bench", Vector3.new(7, 4.2, 2.8), at(-5, GROUND, -5))
     Prompt(part("BenchPromptPoint", Vector3.new(1, 1, 1), at(-5, GROUND + 3.6, -5), nil, nil, { Transparency = 1, CanCollide = false }),
         "OpenMenu_StyleMenu", "Customise", "Workbench")
-    part("Hammer", Vector3.new(0.4, 0.4, 2), at(-6.5, GROUND + 3.5, -5), wood, Enum.Material.Wood)
-    part("HammerHead", Vector3.new(1.2, 0.8, 0.8), at(-6.5, GROUND + 3.6, -6), iron, Enum.Material.Metal)
+    local hammer = part("Hammer", Vector3.new(0.4, 0.4, 2), at(-6.5, GROUND + 3.5, -5), wood, Enum.Material.Wood)
+    local hammerHead = part("HammerHead", Vector3.new(1.2, 0.8, 0.8), at(-6.5, GROUND + 3.6, -6), iron, Enum.Material.Metal)
+    if benchMesh then Ghost(hammer, hammerHead, table.unpack(benchParts)) end
     for i, pos in ipairs({ { 15, -8 }, { 17, -6.5 }, { 16, -4 } }) do
-        part("Barrel", Vector3.new(2.2, 3, 2.2), at(pos[1], GROUND + 1.5, pos[2]), wood, Enum.Material.Wood, { Shape = i == 2 and Enum.PartType.Cylinder or Enum.PartType.Block })
+        local barrel = part("Barrel", Vector3.new(2.2, 3, 2.2), at(pos[1], GROUND + 1.5, pos[2]), wood, Enum.Material.Wood, { Shape = i == 2 and Enum.PartType.Cylinder or Enum.PartType.Block })
+        if MeshProp("Barrel", Vector3.new(2.2, 3, 2.2), at(pos[1], GROUND, pos[2]) * CFrame.Angles(0, i * 1.7, 0)) then Ghost(barrel) end
     end
+    local coalMesh = MeshProp("Coal", Vector3.new(3.2, 1.8, 3.2), at(-16.2, GROUND, -5.2))
     for i = 1, 5 do
-        part("Coal", Vector3.new(1.4 + (i % 2), 1 + (i % 3) * 0.4, 1.4), at(-17 + (i % 3) * 1.4, GROUND + 0.6 + (i > 3 and 0.9 or 0), -6 + (i % 2) * 1.6),
+        local coal = part("Coal", Vector3.new(1.4 + (i % 2), 1 + (i % 3) * 0.4, 1.4), at(-17 + (i % 3) * 1.4, GROUND + 0.6 + (i > 3 and 0.9 or 0), -6 + (i % 2) * 1.6),
             Color3.fromRGB(28, 26, 26), Enum.Material.Slate, { Shape = Enum.PartType.Ball })
+        if coalMesh then Ghost(coal) end
     end
-    part("Crate", Vector3.new(3, 3, 3), at(-19, GROUND + 1.5, -10), wood, Enum.Material.WoodPlanks)
+    local crate = part("Crate", Vector3.new(3, 3, 3), at(-19, GROUND + 1.5, -10), wood, Enum.Material.WoodPlanks)
+    if MeshProp("Crate", Vector3.new(3, 3, 3), at(-19, GROUND, -10) * CFrame.Angles(0, 0.3, 0)) then Ghost(crate) end
     local pit = part("FirePit", Vector3.new(0.8, 4, 4), at(0, GROUND + 0.5, 3) * CFrame.Angles(0, 0, math.pi / 2),
         Color3.fromRGB(35, 30, 28), Enum.Material.Basalt, { Shape = Enum.PartType.Cylinder })
     fireOn(pit, 5 + level * 0.3, 8)
@@ -297,8 +314,14 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
         local flameColors = { Color3.fromRGB(255, 120, 30), Color3.fromRGB(90, 180, 255), Color3.fromRGB(180, 110, 255) }
         for i, x in ipairs({ -10, 0, 10 }) do
             local brazier = part("Brazier", Vector3.new(2, 2.6, 2), at(x, GROUND + 1.3, 14), Color3.fromRGB(45, 40, 40), Enum.Material.Metal)
-            fireOn(brazier, 5, 8, flameColors[i])
-            light(brazier, flameColors[i], 16, 1.4)
+            local flameAt = brazier
+            if MeshProp("Brazier", Vector3.new(2.6, 3.6, 2.6), at(x, GROUND, 14)) then
+                Ghost(brazier)
+                -- the fire burns in the mesh's bowl: a small invisible part carries it
+                flameAt = part("BrazierFlame", Vector3.new(1.4, 0.4, 1.4), at(x, GROUND + 3.4, 14), nil, nil, { Transparency = 1, CanCollide = false, CanQuery = false })
+            end
+            fireOn(flameAt, 5, 8, flameColors[i])
+            light(flameAt, flameColors[i], 16, 1.4)
         end
         for _, x in ipairs({ -3, 0, 3 }) do
             part("LavaChannel", Vector3.new(0.9, 0.2, 12), at(x, GROUND + 0.1, -4), Color3.fromRGB(255, 100, 20), Enum.Material.Neon)

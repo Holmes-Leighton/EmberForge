@@ -49,6 +49,10 @@ function ForgeSkinProps.Piece(familyKey, pieceName, size, baseCFrame, parent)
     local root = ServerStorage:FindFirstChild("ForgeSkinAssets")
     local fam = root and (root:FindFirstChild(familyKey or "default") or root:FindFirstChild("default"))
     local template = fam and fam:FindFirstChild(pieceName)
+    if not template then                                                -- a family without this piece (a shared prop like the Barrel) uses the plain one
+        local plain = root and root:FindFirstChild("default")
+        template = plain and plain:FindFirstChild(pieceName)
+    end
     if not template then return nil end
     local m = template:Clone()
     local meshes = {}
