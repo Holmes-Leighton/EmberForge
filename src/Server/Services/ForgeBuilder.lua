@@ -237,10 +237,20 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
         part("ShedBack", Vector3.new(20, 8, 1), at(0, GROUND + 4, bz - 6), skin.color)
     end
 
-    -- Furnace with mouth and chimney (always)
-    part("Furnace", Vector3.new(9, 7, 6), at(0, GROUND + 3.5, bz - 3.5))
+    -- Props are generated meshes (anvil / workbench / brazier have a design per skin family, see AssetData.ForgeSkinMeshes). When one has loaded, the part-built
+    -- version stays as an invisible collider / prompt anchor; if it has not, the parts are what you see.
+    local function Ghost(...)
+        for _, p in ipairs({ ... }) do p.Transparency = 1 end
+    end
+    local function MeshProp(piece, size, cf)           -- returns the placed model (truthy) or nil
+        return ForgeSkinProps.Piece(famKey, piece, size, cf, model)
+    end
+
+    -- Furnace with mouth and chimney (always); the mesh furnace is a design per look, its glowing mouth stays a part in front of the opening
+    local furnaceBody = part("Furnace", Vector3.new(9, 7, 6), at(0, GROUND + 3.5, bz - 3.5))
     Prompt(part("ForgeDesk", Vector3.new(1, 1, 1), at(0, GROUND + 0.5, bz + 2), nil, nil, { Transparency = 1, CanCollide = false }),
         "OpenMenu_ForgeMenu", "Open Forge", "Your Forge")
+    if MeshProp("Furnace", Vector3.new(9, 7, 6), at(0, GROUND, bz - 3.5) * CFrame.Angles(0, math.pi, 0)) then Ghost(furnaceBody) end
     local mouth = part("ForgeMouth", Vector3.new(3.6, 2.8, 0.3), at(0, GROUND + 2.6, bz - 0.4), Color3.fromRGB(255, 120, 30), Enum.Material.Neon)
     light(mouth, skin.fire, 20 + level * 2, 1.5 + level * 0.12)
     fireOn(mouth, 4 + level * 0.3, 8)
@@ -251,15 +261,6 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
     smoke.Size, smoke.RiseVelocity, smoke.Opacity = 3 + level * 0.4, 6, 0.3
     smoke.Color = Color3.fromRGB(80, 80, 80)
     smoke.Parent = chimney
-
-    -- Props are generated meshes (anvil / workbench / brazier have a design per skin family, see AssetData.ForgeSkinMeshes). When one has loaded, the part-built
-    -- version stays as an invisible collider / prompt anchor; if it has not, the parts are what you see.
-    local function Ghost(...)
-        for _, p in ipairs({ ... }) do p.Transparency = 1 end
-    end
-    local function MeshProp(piece, size, cf)
-        return ForgeSkinProps.Piece(famKey, piece, size, cf, model) ~= nil
-    end
 
     -- Smelter (left) and anvil (right)
     local smelterBody = part("Smelter", Vector3.new(4.6, 5, 4.6), at(-11.5, GROUND + 2.5, bz - 2))
@@ -338,10 +339,11 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
     end
 
     if level >= 7 then
-        part("Conveyor", Vector3.new(26, 0.6, 2.2), at(0, GROUND + 0.5, bz + 5.5), Color3.fromRGB(45, 45, 52), Enum.Material.Metal)
+        local belt = { part("Conveyor", Vector3.new(26, 0.6, 2.2), at(0, GROUND + 0.5, bz + 5.5), Color3.fromRGB(45, 45, 52), Enum.Material.Metal) }
         for i = -5, 5 do
-            part("ConveyorRoller", Vector3.new(0.5, 0.5, 2.4), at(i * 2.4, GROUND + 0.95, bz + 5.5), Color3.fromRGB(150, 150, 160), Enum.Material.Metal)
+            table.insert(belt, part("ConveyorRoller", Vector3.new(0.5, 0.5, 2.4), at(i * 2.4, GROUND + 0.95, bz + 5.5), Color3.fromRGB(150, 150, 160), Enum.Material.Metal))
         end
+        if MeshProp("Conveyor", Vector3.new(26, 1.6, 2.6), at(0, GROUND, bz + 5.5)) then Ghost(table.unpack(belt)) end
     end
 
     if level >= 8 then      -- gears on the wall + an upper tower
@@ -352,10 +354,22 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
             local hub = part("GearHub", Vector3.new(1.2, 2, 2), at(x, GROUND + 7, bz + D / 2 + 1.5) * CFrame.Angles(0, math.pi / 2, 0),
                 Color3.fromRGB(255, 190, 80), Enum.Material.Neon, { Shape = Enum.PartType.Cylinder })
             spin(hub, x < 0 and 1.2 or -1.2)
+            local gm = ForgeSkinProps.Piece(famKey, "Gear", Vector3.new(7, 7, 1.2), at(x, GROUND + 3.5, bz + D / 2 + 1.5), model)
+            if gm then
+                Ghost(gear, hub)
+                for _, mp in ipairs(gm:GetDescendants()) do                -- the mesh gear turns with the rest of the decor (DecorAnimator)
+                    if mp:IsA("MeshPart") then
+                        mp:SetAttribute("SpinSpeed", x < 0 and 1.2 or -1.2)
+                        mp:SetAttribute("SpinAxis", "Z")
+                        CollectionService:AddTag(mp, "EFDecorSpin")
+                    end
+                end
+            end
         end
-        part("TowerBase", Vector3.new(6, 8, 6), at(-W / 2 - 2, GROUND + 4, bz), wallC)
-        part("TowerCap", Vector3.new(7.4, 1, 7.4), at(-W / 2 - 2, GROUND + 8.5, bz), roofC, Enum.Material.Slate)
+        local towerBase = part("TowerBase", Vector3.new(6, 8, 6), at(-W / 2 - 2, GROUND + 4, bz), wallC)
+        local towerCap = part("TowerCap", Vector3.new(7.4, 1, 7.4), at(-W / 2 - 2, GROUND + 8.5, bz), roofC, Enum.Material.Slate)
         local beacon = ball("TowerBeacon", 2, at(-W / 2 - 2, GROUND + 10, bz), Color3.fromRGB(255, 170, 60), Enum.Material.Neon)
+        if MeshProp("Tower", Vector3.new(7, 12, 7), at(-W / 2 - 2, GROUND, bz)) then Ghost(towerBase, towerCap, beacon) end
         light(beacon, Color3.fromRGB(255, 170, 60), 30, 2)
     end
 
@@ -379,6 +393,19 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
                 skin.fire, Enum.Material.Neon, { Transparency = 0.2 })
             spin(crystal, 0.8)
             light(crystal, skin.fire, 14, 1)
+            local cm = ForgeSkinProps.Piece(famKey, "Crystal", Vector3.new(1.8, 3.6, 1.8), at(math.cos(a) * 16, GROUND + 7.2, 4 + math.sin(a) * 16), model)
+            if cm then
+                Ghost(crystal)
+                for _, mp in ipairs(cm:GetDescendants()) do                -- floats up and down, turning (DecorAnimator)
+                    if mp:IsA("MeshPart") then
+                        mp:SetAttribute("BobAmp", 0.5)
+                        mp:SetAttribute("BobSpeed", 1.1)
+                        mp:SetAttribute("BobPhase", i)
+                        mp:SetAttribute("SpinSpeed", 0.8)
+                        CollectionService:AddTag(mp, "EFBob")
+                    end
+                end
+            end
         end
         local sparkle = Instance.new("ParticleEmitter")
         sparkle.Color = ColorSequence.new(skin.fire)
@@ -393,11 +420,12 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
 
     -- ── Storage Vault building ────────────────────────────────────────────────
     if (extra.storageTier or 0) >= 1 then
-        part("VaultBody", Vector3.new(9, 7, 7), at(21, GROUND + 3.5, -20), iron:Lerp(Color3.new(1, 1, 1), 0.15), Enum.Material.Metal)
-        part("VaultRoof", Vector3.new(10, 1, 8), at(21, GROUND + 7.5, -20), roofC, Enum.Material.Slate)
+        local vaultBody = part("VaultBody", Vector3.new(9, 7, 7), at(21, GROUND + 3.5, -20), iron:Lerp(Color3.new(1, 1, 1), 0.15), Enum.Material.Metal)
+        local vaultRoof = part("VaultRoof", Vector3.new(10, 1, 8), at(21, GROUND + 7.5, -20), roofC, Enum.Material.Slate)
         local vd = part("VaultDoor", Vector3.new(0.5, 4.4, 4.4), at(16.4, GROUND + 3.4, -20), Color3.fromRGB(200, 165, 60), Enum.Material.Metal, { Shape = Enum.PartType.Cylinder })
         light(vd, Color3.fromRGB(255, 220, 120), 10, 0.8)
         Prompt(vd, "OpenMenu_InventoryMenu", "Open Storage", "Storage Vault")
+        if MeshProp("Vault", Vector3.new(9, 8, 7), at(21, GROUND, -20) * CFrame.Angles(0, math.pi / 2, 0)) then Ghost(vaultBody, vaultRoof) end
     end
 
     -- ── Player-level banners and trophies (cosmetic only) ─────────────────────
@@ -405,13 +433,15 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
     local banners = pl >= 30 and 4 or pl >= 20 and 3 or pl >= 10 and 2 or pl >= 5 and 1 or 0
     for i = 1, banners do
         local x = (i % 2 == 0 and 1 or -1) * (6 + math.floor((i - 1) / 2) * 6)
-        part("BannerPole", Vector3.new(0.5, 9, 0.5), at(x, GROUND + 4.5, 21), wood, Enum.Material.Wood)
-        part("Banner", Vector3.new(3, 5, 0.25), at(x + 1.7, GROUND + 6.5, 21), Color3.fromRGB(190, 45, 40):Lerp(skin.fire, 0.3), Enum.Material.Fabric)
+        local pole = part("BannerPole", Vector3.new(0.5, 9, 0.5), at(x, GROUND + 4.5, 21), wood, Enum.Material.Wood)
+        local flag = part("Banner", Vector3.new(3, 5, 0.25), at(x + 1.7, GROUND + 6.5, 21), Color3.fromRGB(190, 45, 40):Lerp(skin.fire, 0.3), Enum.Material.Fabric)
+        if MeshProp("Banner", Vector3.new(3.6, 9, 0.6), at(x + 1.2, GROUND, 21) * CFrame.Angles(0, math.pi, 0)) then Ghost(pole, flag) end
     end
     if pl >= 25 then
-        part("TrophyBase", Vector3.new(2.4, 1.4, 2.4), at(-22, GROUND + 0.7, -22), Color3.fromRGB(80, 75, 72), Enum.Material.Marble)
+        local trophyBase = part("TrophyBase", Vector3.new(2.4, 1.4, 2.4), at(-22, GROUND + 0.7, -22), Color3.fromRGB(80, 75, 72), Enum.Material.Marble)
         local cup = ball("Trophy", 2.2, at(-22, GROUND + 2.6, -22), Color3.fromRGB(255, 205, 70), Enum.Material.Neon)
         light(cup, Color3.fromRGB(255, 205, 70), 12, 1)
+        if MeshProp("Trophy", Vector3.new(2.6, 4, 2.6), at(-22, GROUND, -22)) then Ghost(trophyBase, cup) end
     end
 
     -- ── Golem gallery: your idle Golems on pedestals ──────────────────────────
@@ -420,7 +450,8 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
         if shown >= 5 then break end
         shown += 1
         local x = -16 + (shown - 1) * 8
-        part("Pedestal", Vector3.new(4.4, 1.4, 4.4), at(x, GROUND + 0.7, 18), Color3.fromRGB(85, 80, 78), Enum.Material.Marble)
+        local pedestal = part("Pedestal", Vector3.new(4.4, 1.4, 4.4), at(x, GROUND + 0.7, 18), Color3.fromRGB(85, 80, 78), Enum.Material.Marble)
+        if MeshProp("Pedestal", Vector3.new(4.4, 1.4, 4.4), at(x, GROUND, 18)) then Ghost(pedestal) end
         local ok, gm = pcall(function()
             return GolemModel.Build(g.element, g.tier or 1, { variant = g.variant })
         end)
