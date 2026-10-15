@@ -17,8 +17,7 @@
 - [x] ~~Forge props as meshes~~ done (first pass): anvil, workbench and brazier have a different design per look (7 each); barrel, crate, coal pile and smelter are shared (plain set).
       Wired in `ForgeBuilder.lua` with `MeshProp`/`Ghost` (part version stays as invisible collider / fallback); checked on the void forge in Studio.
 - [x] ~~Furnace, vault, banner, trophy, golem pedestal, wall gears, conveyor, floating crystals, side tower as meshes~~ done (furnace per look; the rest one shared design). Gears turn and
-      crystals float via DecorAnimator. Seen on the live level-4 void forge: furnace, vault, banners, trophy, pedestal. **Not yet seen on a real forge: conveyor (L7+), wall gears and tower
-      (L8+), crystals (L10)** - build a high-level forge and check their size and facing.
+      crystals float via DecorAnimator. Checked in Studio on the live level-4 void forge and on level-10 storm, ancient and bronze forges: all sit and face correctly.
 - [ ] **Still plain parts in `ForgeBuilder.lua`:** lava channels, ForgeDesk/hearth, wing chimneys, conduits, rune circle, kiln dome/door, aura ring, path, courtyard, golem-gallery
       trim. Check the other 6 looks' anvil/bench/brazier/furnace on real forges too.
 - [x] ~~Forge house meshes~~ done: 28 meshes (7 looks x 4 tiers, each a different design: volcano, igloo palace, tesla foundry, floating shard sanctum, Greek temple, steampunk factory, plain),
