@@ -504,6 +504,20 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
             em.LightEmission = 1
             em.Size = NumberSequence.new(0.8, 0)
             em.Parent = orb
+            local effectName = equipped.ForgeEffect:gsub("^ForgeEffect_", "")
+            local fxMesh = ForgeSkinProps.Piece("effects", effectName, Vector3.new(2.6, 3, 2.6), at(math.cos(a) * 20, GROUND + 1.6, math.sin(a) * 20), model)
+            if fxMesh then
+                orb.Transparency = 1                                       -- the glow and particles stay on the invisible orb; the mesh floats and turns
+                for _, mp in ipairs(fxMesh:GetDescendants()) do
+                    if mp:IsA("MeshPart") then
+                        mp:SetAttribute("BobAmp", 0.6)
+                        mp:SetAttribute("BobSpeed", 1.3)
+                        mp:SetAttribute("BobPhase", i)
+                        mp:SetAttribute("SpinSpeed", 0.7)
+                        CollectionService:AddTag(mp, "EFBob")
+                    end
+                end
+            end
         end
         local ringFx = part("EffectRing", Vector3.new(0.3, 40, 40), at(0, GROUND + 0.5, 0) * CFrame.Angles(0, 0, math.pi / 2), c,
             Enum.Material.Neon, { Shape = Enum.PartType.Cylinder, Transparency = 0.5, CanCollide = false })

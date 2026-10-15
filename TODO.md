@@ -16,6 +16,8 @@
       separate named part). Prompts for the mesh generator are in `ART_BRIEF.md` part B.
 - [x] ~~Premium Golem skins: signature back mesh~~ done: MagmaTitan, CrystalWraith, ThunderColossus, VoidWalker, PrimordialGolem each wear a mesh on the back (`Back_<Skin>` in
       `AssetData.GolemAccessoryMeshes`, placed in `GolemModel`) on top of their code-made material/detail. Seen on block Golems; check on an uploaded Golem model.
+- [x] ~~Forge effects as meshes~~ done: the 6 floating pieces of an equipped forge effect are meshes per effect (AncientFlame, ArcLightning, IceFlow, MagmaFlow, VoidRift; `effects` in
+      `AssetData.ForgeSkinMeshes`) that float and turn via DecorAnimator; the glow and particles stay. Seen on VoidRift; check the other four.
 - [x] ~~Golem accessories as meshes~~ done: all 10 (`AssetData.GolemAccessoryMeshes`, loaded into `ReplicatedStorage.AccessoryAssets`, placed by `CrownModel.AttachAccessory` in `GolemModel`);
       the block crown / helm / hat / orb stays as the fallback. Seen on 10 Golems side by side in Studio; check fit on an uploaded Golem model with a different head size.
 - [x] ~~Forge props as meshes~~ done (first pass): anvil, workbench and brazier have a different design per look (7 each); barrel, crate, coal pile and smelter are shared (plain set).
