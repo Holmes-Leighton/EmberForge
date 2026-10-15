@@ -118,6 +118,9 @@ AssetData.GolemAccessoryMeshes = {
     Back_VoidWalker = 139069642941237, Back_PrimordialGolem = 93782867502032,
 }
 
+-- Frames and posts for the world's text boards and signs (SignArt): NoticeFrame = big notice board, PlankFrame = wide plank sign, SignPost = upright post.
+AssetData.SignMeshes = { NoticeFrame = 109410470926629, PlankFrame = 136746390001122, SignPost = 71436887776527 }
+
 AssetData.BuildExtras = {
     RailTrack = 98515694214823,
 }

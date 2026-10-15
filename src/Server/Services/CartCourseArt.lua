@@ -8,6 +8,7 @@ local CollectionService = game:GetService("CollectionService")
 local CartCourseData = require(game.ReplicatedStorage.Shared.Data.CartCourseData)
 local CartPath       = require(game.ReplicatedStorage.Shared.Modules.CartPath)
 local BiomeArt       = require(script.Parent.BiomeArt)
+local SignArt        = require(script.Parent.SignArt)
 
 local CartCourseArt = {}
 
@@ -351,7 +352,7 @@ function CartCourseArt.BuildSignpost(parent)
     local boardPos = base + Vector3.new(0, 15, 0)
     local face = CFrame.lookAt(boardPos, boardPos + Vector3.new(-1, 0, 0))
     for _, dz in ipairs({ -6, 6 }) do
-        P({ Name = "SignPost", Material = Enum.Material.Wood, Color = TIMBER, Size = Vector3.new(2, 14, 2), CFrame = CFrame.new(base + Vector3.new(2.2, 7, dz)) }, unit)
+        SignArt.Post(P({ Name = "SignPost", Material = Enum.Material.Wood, Color = TIMBER, Size = Vector3.new(2, 14, 2), CFrame = CFrame.new(base + Vector3.new(2.2, 7, dz)) }, unit))
     end
     local board = P({ Name = "SignBoard", Material = Enum.Material.Wood, Color = Color3.fromRGB(120, 84, 52), Size = Vector3.new(18, 8, 1), CFrame = face }, unit)
     local stripe = P({ Name = "SignStripe", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 190, 80), Size = Vector3.new(18.4, 0.6, 1.1), CanCollide = false,
@@ -365,6 +366,7 @@ function CartCourseArt.BuildSignpost(parent)
     local gui = Instance.new("SurfaceGui")
     gui.Name, gui.Face, gui.SizingMode, gui.PixelsPerStud = "Lettering", Enum.NormalId.Front, Enum.SurfaceGuiSizingMode.PixelsPerStud, 50
     gui.Parent = panel
+    if SignArt.Frame("Plank", panel).art then board.Transparency = 1 end      -- a plank-sign frame mesh replaces the plain board
     local text = Instance.new("TextLabel")
     text.Size, text.Position, text.BackgroundTransparency = UDim2.new(1, -40, 1, -30), UDim2.new(0, 20, 0, 15), 1
     text.Text = table.concat(lines, "\n")

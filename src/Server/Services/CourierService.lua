@@ -12,6 +12,7 @@ local SafeDataStore   = require(script.Parent.SafeDataStore)
 local CourierRunner   = require(script.Parent.CourierRunner)
 local CourierRewards  = require(script.Parent.CourierRewards)
 local CourierArt      = require(script.Parent.CourierArt)
+local SignArt         = require(script.Parent.SignArt)
 
 local CourierService = {}
 
@@ -264,6 +265,7 @@ function CourierService.Init()
         local gui = Instance.new("SurfaceGui")
         gui.Name, gui.Face, gui.SizingMode, gui.PixelsPerStud = "BoardGui", Enum.NormalId.Front, Enum.SurfaceGuiSizingMode.PixelsPerStud, 40
         gui.Parent = part
+        SignArt.Frame("Notice", part)
         local label = Instance.new("TextLabel")
         label.Name = "Rows"
         label.Size, label.Position, label.BackgroundTransparency = UDim2.new(1, -30, 1, -30), UDim2.new(0, 15, 0, 15), 1

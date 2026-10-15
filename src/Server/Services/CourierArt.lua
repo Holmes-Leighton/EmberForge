@@ -7,6 +7,8 @@
 -- Every piece is a separate named part, so a mesh can replace it later without touching the rules.
 local CollectionService = game:GetService("CollectionService")
 
+local SignArt = require(script.Parent.SignArt)
+
 local CourierArt = {}
 
 local TIER_LOOK = {
@@ -260,7 +262,7 @@ local function BuildStart(folder, r)
     prompt.Parent = main
     -- the sign
     local post = Vector3.new(cp.x - 6, floorY, cp.z - 8)
-    P({ Name = "SignPost", Material = Enum.Material.Wood, Color = TIMBER, Size = Vector3.new(2, 14, 2), CFrame = CFrame.new(post + Vector3.new(0, 7, 0)) }, folder)
+    SignArt.Post(P({ Name = "SignPost", Material = Enum.Material.Wood, Color = TIMBER, Size = Vector3.new(2, 14, 2), CFrame = CFrame.new(post + Vector3.new(0, 7, 0)) }, folder))
     local anchor = P({ Name = "SignAnchor", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(post + Vector3.new(0, 16, 0)) }, folder)
     local text = string.format("COURIER RUN: %s\n%s  Player level %d+   Courier Level %d+\nPar %s%s", def.name, string.rep("*", def.tier) .. string.rep("-", 3 - def.tier),
         def.minLevel, def.minCourier, Clock(r.par), def.lava and "   Lava chase!" or "")

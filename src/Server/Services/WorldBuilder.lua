@@ -9,6 +9,7 @@ local Lighting = game:GetService("Lighting")
 local MiningZoneData = require(game.ReplicatedStorage.Shared.Data.MiningZoneData)
 local CartCourseData = require(game.ReplicatedStorage.Shared.Data.CartCourseData)
 local TowerData = require(game.ReplicatedStorage.Shared.Data.TowerData)
+local SignArt = require(script.Parent.SignArt)
 
 local WorldBuilder = {}
 
@@ -817,8 +818,9 @@ local function BuildDiscoveryBoard(world)
     local board = Part({ Name = "DiscoveryBoard", Material = Enum.Material.WoodPlanks, Color = Color3.fromRGB(70, 48, 32),
         Size = Vector3.new(1.4, 17, 27), CFrame = CFrame.new(-66, 10, -66) }, world)
     for _, dz in ipairs({ -12, 12 }) do
-        Part({ Name = "Post", Material = Enum.Material.Wood, Color = Color3.fromRGB(50, 34, 22), Size = Vector3.new(1.6, 8, 1.6),
+        local post = Part({ Name = "Post", Material = Enum.Material.Wood, Color = Color3.fromRGB(50, 34, 22), Size = Vector3.new(1.6, 8, 1.6),
             CFrame = CFrame.new(-66, 3, -66 + dz) }, world)
+        SignArt.Post(post)
     end
 
     local gui = Instance.new("SurfaceGui")
@@ -826,6 +828,7 @@ local function BuildDiscoveryBoard(world)
     gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
     gui.PixelsPerStud = 40
     gui.Parent = board
+    SignArt.Frame("Notice", board)                    -- a carved frame mesh around the board (the lettering stays on the board itself)
 
     local function label(text, y, h, size, color)
         local l = Instance.new("TextLabel")

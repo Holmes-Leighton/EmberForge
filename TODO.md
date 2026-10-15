@@ -24,6 +24,9 @@
       Wired in `ForgeBuilder.lua` with `MeshProp`/`Ghost` (part version stays as invisible collider / fallback); checked on the void forge in Studio.
 - [x] ~~Furnace, vault, banner, trophy, golem pedestal, wall gears, conveyor, floating crystals, side tower as meshes~~ done (furnace per look; the rest one shared design). Gears turn and
       crystals float via DecorAnimator. Checked in Studio on the live level-4 void forge and on level-10 storm, ancient and bronze forges: all sit and face correctly.
+- [x] ~~Boards and signs as meshes~~ done (`SignArt.lua`, `AssetData.SignMeshes`): a carved frame mesh around the Top Forges notice board and the Courier boards, a plank-sign frame around the
+      Cart Runs signpost, and a mesh post for each. The lettering stays on the original panel so text still works; the plain parts stay as fallback. Seen in Studio on the Top Forges board and
+      the Cart Runs sign. Not yet framed: the Cart Run depot panels and the Tower portal plank (already a mesh), and billboard-only signs (Welcome, pad names) which have no board.
 - [x] ~~Forge ground and remaining plain parts as meshes~~ done: courtyard slab (a design per look), cobbled path, hearth, lava channels, conduits and rune tiles are meshes.
       Left as parts on purpose: the glowing kiln door, aura ring and ForgeDesk (neon effects / invisible prompt anchor), the Golem-gallery trim and the skin-trim neon strips.
       Seen on level-9 ember and void forges; frost, storm, ancient and bronze courtyards not yet viewed.

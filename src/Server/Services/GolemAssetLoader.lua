@@ -504,6 +504,21 @@ function GolemAssetLoader.Init()
     local buildPackId = AssetData.BuildPack and AssetData.BuildPack.assetId or 0
     if buildPackId > 0 then task.spawn(LoadBuildPack, buildPackId, buildFolder) end
     task.spawn(LoadBuildExtras, AssetData.BuildExtras or {}, buildFolder)
+    -- board / sign frames and posts (SignArt): ServerStorage.SignAssets; boards built before this finishes pick their mesh up in SignArt.Refresh
+    local ServerStorage = game:GetService("ServerStorage")
+    if ServerStorage.FindFirstChild then
+        local signFolder = ServerStorage:FindFirstChild("SignAssets")
+        if not signFolder then
+            signFolder = Instance.new("Folder")
+            signFolder.Name = "SignAssets"
+            signFolder.Parent = ServerStorage
+        end
+        task.spawn(function()
+            LoadBuildExtras(AssetData.SignMeshes or {}, signFolder)
+            local okArt, art = pcall(function() return require(script.Parent.SignArt) end)
+            if okArt then pcall(art.Refresh) end
+        end)
+    end
     local accessoryFolder = ReplicatedStorage:FindFirstChild("AccessoryAssets")
     if not accessoryFolder then
         accessoryFolder = Instance.new("Folder")
