@@ -11,6 +11,9 @@ CartSim.MAX_RUN       = 26      -- top speed rolling downhill
 CartSim.BACK_MAX      = 14      -- top speed rolling backwards
 CartSim.FRICTION      = 2.2     -- studs/s^2 slowing a moving cart
 CartSim.GRAVITY       = 22      -- studs/s^2 per unit of slope
+CartSim.BRAKE         = 11      -- studs/s^2 when someone walks against the cart to hold it back
+CartSim.CORNER_G      = 16      -- sideways pull a bend can take: the fastest safe speed round a bend of radius R is sqrt(CORNER_G * R)
+CartSim.CORNER_SLACK  = 1.08    -- a little give before it actually tips
 CartSim.STATIC        = 4.8     -- a parked cart stays put while the slope pulls it with less than this (so slopes above ~0.22 roll it back)
 
 -- speeds: the forward speeds (studs/s, each > 0) of the players pushing. Returns the pace the cart is dragged towards, or nil when nobody pushes.
@@ -25,7 +28,14 @@ function CartSim.PushTarget(speeds)
 end
 
 -- Advances st by dt seconds. slope: the route's rise at the cart (+ uphill). pushV: from PushTarget, or nil.
-function CartSim.Step(st, dt, slope, pushV)
+-- The fastest the cart can take a bend of the given curvature (1 / radius) without tipping over
+function CartSim.CornerLimit(curvature)
+    if curvature < 1e-4 then return math.huge end
+    return math.sqrt(CartSim.CORNER_G / curvature) * CartSim.CORNER_SLACK
+end
+
+-- brake: someone is holding the cart back (walking against it): it slows hard but is never pushed into reverse by the brake
+function CartSim.Step(st, dt, slope, pushV, brake)
     local a = -CartSim.GRAVITY * slope
     if pushV and pushV > st.v then a += (pushV - st.v) * CartSim.PUSH_RESPONSE end
     local free = a                                           -- the pull before friction
@@ -41,7 +51,9 @@ function CartSim.Step(st, dt, slope, pushV)
         a -= CartSim.FRICTION * (v > 0 and 1 or -1)
     end
 
+    if brake and v > 0 then a -= CartSim.BRAKE end
     local nv = math.clamp(v + a * dt, -CartSim.BACK_MAX, CartSim.MAX_RUN)
+    if brake and v > 0 and nv < 0 then nv = 0 end
     if v ~= 0 and (nv > 0) ~= (v > 0) and math.abs(free) <= CartSim.STATIC then nv = 0 end      -- friction stops a cart, it never reverses it
     st.v = nv
     st.s += nv * dt

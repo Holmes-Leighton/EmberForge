@@ -309,6 +309,12 @@ local function BuildDepot(folder, r)
     word.Size, word.BackgroundTransparency, word.Text = UDim2.new(1, 0, 1, 0), 1, "DEPOT"
     word.TextColor3, word.Font, word.TextScaled = color, Enum.Font.GothamBlack, true
     word.Parent = gui
+    -- the hall is a carved mesh (AssetData.SignMeshes.Depot); the plain walls, roof, back wall, posts and lintel go invisible but stay as the solid collision
+    local hide = {}
+    for _, c in ipairs(unit:GetChildren()) do
+        if c.Name == "DepotWall" or c.Name == "DepotRoof" or c.Name == "DepotBackWall" or c.Name == "DepotPost" or c.Name == "DepotLintel" then table.insert(hide, c) end
+    end
+    SignArt.Piece("Depot", Vector3.new(W + 8, H + 5, len), f * CFrame.new(0, (H + 5) / 2 - 0.5, cz) * CFrame.Angles(0, math.pi, 0), unit, hide)
     -- the buffer stop at the end of the rail, where the cart's front comes to rest
     block("DepotBuffer", Vector3.new(W - 3, 4, 2), CFrame.new(0, 2, -5.4), { Material = Enum.Material.Metal, Color = IRON })
     for _, off in ipairs({ -5, 0, 5 }) do

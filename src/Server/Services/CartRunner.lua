@@ -2,7 +2,7 @@
 -- gates, the retracting bridges, derailing, and the finish. CartCourseService feeds it real players and reacts to what it reports through `hooks`:
 --   onCheckpoint(index, pushers)        a checkpoint was reached (pushers = the players pushing right now)
 --   onFinish(seconds, contributors)     the depot was reached (contributors = userIds that pushed long enough)
---   onDerail(reason, checkpointIndex)   "crushed" or "fell"; the cart waits, then goes back to the checkpoint
+--   onDerail(reason, checkpointIndex)   "crushed", "fell" or "toppled" (too fast round a bend); the cart waits, then goes back to the checkpoint
 --   onBump()                            it hit a shut gate and stopped
 --   onReset(reason)                     the cart went back (reason: "derail" | "delivered" | "abandoned") so clients should snap to the new place
 local CartCourseData = require(game.ReplicatedStorage.Shared.Data.CartCourseData)
@@ -72,17 +72,27 @@ function CartRunner.Step(runner, dt, now, pushers)
     end
 
     -- idle or running: pushers move it
-    local speeds = {}
+    local speeds, braking = {}, false
     for _, p in ipairs(pushers) do
-        table.insert(speeds, p.speed)
-        runner.pushTime[p.userId] = (runner.pushTime[p.userId] or 0) + dt
+        if p.speed > 0 then
+            table.insert(speeds, p.speed)
+            runner.pushTime[p.userId] = (runner.pushTime[p.userId] or 0) + dt
+        else
+            braking = true                                          -- walking against the cart holds it back
+        end
     end
     local pushV = CartSim.PushTarget(speeds)
-    if pushV then runner.lastPushAt = now end
+    if pushV or braking then runner.lastPushAt = now end
 
     local prevS = st.s
     local _, _, _, _, slope = CartPath.At(r.path, st.s)
-    CartSim.Step(st, dt, slope, pushV)
+    CartSim.Step(st, dt, slope, pushV, braking)
+
+    -- too fast round a bend and it tips over
+    if st.s > 12 and st.v > 0 and st.v > CartSim.CornerLimit(CartPath.Curvature(r.path, st.s)) then
+        Derail(runner, now, "toppled")
+        return
+    end
 
     -- hazards, judged on the same shared clock the clients draw
     local half = CartSim.LENGTH / 2

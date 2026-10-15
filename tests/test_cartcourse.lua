@@ -79,7 +79,7 @@ for _, c in ipairs(CD.Courses) do
     expect(r.path.pts[1][1] > 150, c.name .. " starts well clear of the spawn and forge")
     local steepest = 0
     for _, sm in ipairs(CP.Samples(r.path, 4)) do steepest = math.max(steepest, math.abs(sm.ty)) end
-    expect(steepest < 0.35, c.name .. " has no cliffs (steepest " .. string.format("%.2f", steepest) .. ")")
+    expect(steepest < 0.45, c.name .. " has no cliffs (steepest " .. string.format("%.2f", steepest) .. ")")
     local prevS = 0
     for i, cp in ipairs(r.checkpoints) do
         expect(cp > prevS and cp < r.length, c.name .. " checkpoint " .. i .. " is in order")
@@ -98,6 +98,24 @@ for _, c in ipairs(CD.Courses) do
         expect(flat, c.name .. " " .. h.kind .. " " .. h.index .. " sits on level track")
     end
 end
+
+print("== difficulty: bends, hills and length")
+local lastLen, lastR = 0, math.huge
+for _, c in ipairs(CD.Courses) do
+    local r = CD.Resolve(c.id)
+    local minR = CP.MinRadius(r.path)
+    expect(r.length > lastLen, c.name .. " is longer than the one before (" .. math.floor(r.length) .. " studs)")
+    expect(minR <= lastR, c.name .. " has bends at least as tight as the one before (tightest radius " .. math.floor(minR) .. ")")
+    lastLen, lastR = r.length, minR
+    expect(minR >= 5, c.name .. " has no impossible kink")
+end
+expect(CP.MinRadius(CD.Resolve("EasyHaul").path) >= 11, "Easy Haul's bends can all be taken at a steady push")
+expect(CP.MinRadius(CD.Resolve("CaveRun").path) < 10 and CP.MinRadius(CD.Resolve("DeepRun").path) < 8, "Cave and Deep have tight turns")
+local deepPath = CD.Resolve("DeepRun").path
+local climb = 0
+for _, sm in ipairs(CP.Samples(deepPath, 4)) do climb = math.max(climb, sm.y) end
+expect(climb > 45, "Deep Run climbs a real mountain (" .. math.floor(climb) .. " studs up)")
+expect(Sim.CornerLimit(0) == math.huge and Sim.CornerLimit(1 / 10) < 14 and Sim.CornerLimit(1 / 40) > 25, "the safe bend speed falls as the bend tightens")
 
 print("== gates and bridges run on a shared clock")
 local gate = { open = 4, closed = 3, phase = 0 }

@@ -46,7 +46,8 @@ local function FindPushers(c)
             if along >= -PUSH_REACH_BEHIND and along <= PUSH_REACH_AHEAD and side <= PUSH_REACH_SIDE and math.abs(rel.Y) <= 16 then
                 local vel = root.AssemblyLinearVelocity
                 local speed = vel.X * hx + vel.Z * hz
-                if speed >= MIN_PUSH_SPEED then table.insert(out, { userId = player.UserId, speed = speed, player = player }) end
+                -- forward = pushing; backward (walking against it) = braking
+                if math.abs(speed) >= MIN_PUSH_SPEED then table.insert(out, { userId = player.UserId, speed = speed, player = player }) end
             end
         end
     end
@@ -125,7 +126,7 @@ local function MakeHooks(c)
             end
         end,
         onDerail = function(reason, checkpointIndex)
-            local text = reason == "crushed" and "The gate crushed the cart!" or "The cart fell into the pit!"
+            local text = reason == "crushed" and "The gate crushed the cart!" or reason == "toppled" and "Too fast round the bend - it tipped over! Slow down (walk against the cart to brake)." or "The cart fell into the pit!"
             local pos = CartPosition(c)
             for _, player in ipairs(Players:GetPlayers()) do
                 local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")

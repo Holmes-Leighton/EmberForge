@@ -35,7 +35,7 @@ print("== an easy run, start to finish")
 local run, log = newRun("EasyHaul")
 local t = push(run, 100, 120, 14)
 expect(run.phase == "delivered" and log.finish ~= nil, "pushing the whole way delivers the cart (" .. run.phase .. ")")
-expect(log.finish.seconds > 25 and log.finish.seconds < 60, "an Easy Haul takes about " .. math.floor(log.finish.seconds) .. " s of steady pushing")
+expect(log.finish.seconds > 25 and log.finish.seconds < 90, "an Easy Haul takes about " .. math.floor(log.finish.seconds) .. " s of steady pushing")
 expect(log.finish.who[1] == 1 and #log.finish.who == 1, "the pusher is credited")
 expect(table.concat(log, ",") == "cp1,finish", "one checkpoint on the way, then the finish (" .. table.concat(log, ",") .. ")")
 local par = run.r.par
@@ -70,7 +70,7 @@ print("== a team is faster")
 local solo = newRun("EasyHaul")
 local team = newRun("EasyHaul")
 local ts, tt = 100, 100
-for _ = 1, 20 * 12 do
+for _ = 1, 20 * 5 do
     ts += 0.05 Runner.Step(solo, 0.05, ts, { { userId = 1, speed = 14 } })
     tt += 0.05 Runner.Step(team, 0.05, tt, { { userId = 1, speed = 14 }, { userId = 2, speed = 14 }, { userId = 3, speed = 14 } })
 end
@@ -113,6 +113,27 @@ expect(crushed and log.derail == "crushed", "a cart under the door when it shuts
 Runner.Step(run, 0.05, tc + CD.DERAIL_TIME + 0.2, {})
 expect(run.phase == "running" and run.st.s == 0, "it is put back at the start (no checkpoint yet)")
 expect(run.derails == 1, "the derail is counted")
+
+print("== too fast round a bend")
+local tight = CD.Resolve("CaveRun")
+local bendS = 0.15 * tight.length
+run, log = newRun("CaveRun")
+run.phase, run.startedAt, run.lastPushAt = "running", 90, 100
+run.st.s, run.st.v = bendS - 6, 20
+Runner.Step(run, 0.05, 100, { { userId = 1, speed = 14 } })
+for _ = 1, 20 * 2 do Runner.Step(run, 0.05, 100.05 + _ * 0.05, { { userId = 1, speed = 22 } }) if run.phase == "derailed" then break end end
+expect(run.phase == "derailed" and log.derail == "toppled", "a fast cart tips over in a tight bend (" .. tostring(log.derail) .. ")")
+run, log = newRun("CaveRun")
+run.phase, run.startedAt, run.lastPushAt = "running", 90, 100
+run.st.s, run.st.v = bendS - 20, 8
+for _ = 1, 20 * 4 do Runner.Step(run, 0.05, 100 + _ * 0.05, { { userId = 1, speed = 8 } }) end
+expect(run.phase == "running" and run.st.s > bendS, "a slow cart takes the same bend safely")
+print("== braking")
+run, log = newRun("EasyHaul")
+run.phase, run.startedAt, run.lastPushAt = "running", 90, 100
+run.st.s, run.st.v = 50, 14
+for _ = 1, 20 * 2 do Runner.Step(run, 0.05, 100 + _ * 0.05, { { userId = 1, speed = -6 } }) end
+expect(run.st.v < 4 and run.st.s > 50, "walking against the cart holds it back, without throwing it into reverse (" .. string.format("%.1f", run.st.v) .. ")")
 
 print("== bridges")
 local deep = CD.Resolve("DeepRun")

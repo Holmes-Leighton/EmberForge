@@ -71,6 +71,27 @@ function CartPath.Frame(path, s)
     return x, y, z, fx, fy, fz, ux / len, uy / len, uz / len
 end
 
+-- How sharply the route turns at distance s: 1 / radius (studs), measured over 14 studs of flat heading change. 0 on a straight.
+function CartPath.Curvature(path, s)
+    local a0, a1 = math.max(0, s - 7), math.min(path.length, s + 7)
+    local _, _, _, ax, _, az = CartPath.At(path, a0)
+    local _, _, _, bx, _, bz = CartPath.At(path, a1)
+    local la, lb = math.sqrt(ax * ax + az * az), math.sqrt(bx * bx + bz * bz)
+    if la < 1e-4 or lb < 1e-4 or a1 <= a0 then return 0 end
+    local ang = math.acos(math.clamp((ax * bx + az * bz) / (la * lb), -1, 1))
+    return ang / (a1 - a0)
+end
+
+-- The tightest bend on the route: its radius in studs (math.huge on a straight route) and the distance where it is
+function CartPath.MinRadius(path)
+    local worst, at = 0, 0
+    for s = 0, path.length, 2 do
+        local k = CartPath.Curvature(path, s)
+        if k > worst then worst, at = k, s end
+    end
+    return worst > 1e-6 and 1 / worst or math.huge, at
+end
+
 -- Points every `spacing` studs (for building art along the route): { { s, x, y, z, tx, ty, tz }... }
 function CartPath.Samples(path, spacing)
     local out = {}

@@ -24,6 +24,7 @@
       Wired in `ForgeBuilder.lua` with `MeshProp`/`Ghost` (part version stays as invisible collider / fallback); checked on the void forge in Studio.
 - [x] ~~Furnace, vault, banner, trophy, golem pedestal, wall gears, conveyor, floating crystals, side tower as meshes~~ done (furnace per look; the rest one shared design). Gears turn and
       crystals float via DecorAnimator. Checked in Studio on the live level-4 void forge and on level-10 storm, ancient and bronze forges: all sit and face correctly.
+- [x] ~~Cart Runs harder~~ done: courses redesigned (Easy 600 / Cave 1040 / Deep 1480 studs; tight S-bends and hairpins down to radius 6-7, steeper hills, a 54-stud mountain with a drop), cart tips over if it takes a bend too fast (`CartSim.CornerLimit`), walk against the cart to brake (`CartSim.BRAKE`), depot hall is a mesh (`SignMeshes.Depot`).
 - [ ] **Play-through findings still open** (Studio, real input): (1) the **Sky Tower obby levels are all plain parts** - flat coloured pads, tile fields, rainbow rings, a huge lattice of wooden
       cables across the sky and a bare grey floor; they need meshes (platforms, rings, ladders, spinners, a sky backdrop). (2) The **Cart Run depot/tunnel mouth is a big plain brown block** (already
       listed above for CartCourseArt). (3) Not yet seen in Studio: Courier runs, and the Storm / Ancient / Bronze / plain forge looks on a real plot. (4) Camera near the forge gate is hard to place
