@@ -109,7 +109,7 @@ AssetData.StageModels = {
         Clockwork  = 82725080220978,   -- brass automaton with gears and a wind-up key
         Alchemist  = 89857740816876,   -- potbellied stone with glass vials of brews
         Gargoyle   = 138577960470626,   -- stone guardian with wings and horns
-        StormJar   = 101466151344629,   -- glass jar of storm cloud on stone legs
+        StormJar   = 76449428466688,   -- glass jar of storm cloud on stone legs
         Dragonbone = 123641423182564,   -- pale bone with ribcage, spine fins and dragon horns
         All        = 112097798700099,   -- the event Primordial: white marble with gold
     },
