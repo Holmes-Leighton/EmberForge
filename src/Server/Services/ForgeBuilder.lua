@@ -182,7 +182,7 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
     end
 
     -- Gate arch
-    local meshGate = ForgeSkinProps.Piece(famKey, "Gate", Vector3.new(14, 12, 3.5), at(0, GROUND, FENCE), model)
+    local meshGate = ForgeSkinProps.Piece(famKey, "Gate", Vector3.new(12, 9.5, 3.2), at(0, GROUND, FENCE), model)
     if meshGate then
         local gateGlow = part("GateLight", Vector3.new(0.4, 0.4, 0.4), at(0, GROUND + 8.4, FENCE), skin.fire, Enum.Material.Neon, { Transparency = 1, CanCollide = false })
         light(gateGlow, skin.fire, 14, 1.2)
@@ -256,8 +256,11 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
     local furnaceBody = part("Furnace", Vector3.new(9, 7, 6), at(0, GROUND + 3.5, bz - 3.5))
     Prompt(part("ForgeDesk", Vector3.new(1, 1, 1), at(0, GROUND + 0.5, bz + 2), nil, nil, { Transparency = 1, CanCollide = false }),
         "OpenMenu_ForgeMenu", "Open Forge", "Your Forge")
-    if MeshProp("Furnace", Vector3.new(9, 7, 6), at(0, GROUND, bz - 3.5) * CFrame.Angles(0, math.pi, 0)) then Ghost(furnaceBody) end
+    local furnaceMesh = MeshProp("Furnace", Vector3.new(9, 7, 6), at(0, GROUND, bz - 3.5) * CFrame.Angles(0, math.pi, 0))
+    if furnaceMesh then Ghost(furnaceBody) end
     local mouth = part("ForgeMouth", Vector3.new(3.6, 2.8, 0.3), at(0, GROUND + 2.6, bz - 0.4), Color3.fromRGB(255, 120, 30), Enum.Material.Neon)
+    -- a mesh furnace has its own firebox: the flat glowing square would sit in front of it like a sticker, so it goes invisible and only the fire and light remain
+    if furnaceMesh then mouth.Transparency = 1 mouth.CanCollide = false end
     light(mouth, skin.fire, 20 + level * 2, 1.5 + level * 0.12)
     fireOn(mouth, 4 + level * 0.3, 8)
     -- (a mesh house has its own chimney / smokestacks / crater, so this one is invisible and only carries the smoke)
@@ -437,7 +440,7 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
         local vd = part("VaultDoor", Vector3.new(0.5, 4.4, 4.4), at(16.4, GROUND + 3.4, -20), Color3.fromRGB(200, 165, 60), Enum.Material.Metal, { Shape = Enum.PartType.Cylinder })
         light(vd, Color3.fromRGB(255, 220, 120), 10, 0.8)
         Prompt(vd, "OpenMenu_InventoryMenu", "Open Storage", "Storage Vault")
-        if MeshProp("Vault", Vector3.new(9, 8, 7), at(21, GROUND, -20) * CFrame.Angles(0, math.pi / 2, 0)) then Ghost(vaultBody, vaultRoof) end
+        if MeshProp("Vault", Vector3.new(9, 8, 7), at(21, GROUND, -20) * CFrame.Angles(0, math.pi / 2, 0)) then Ghost(vaultBody, vaultRoof, vd) end    -- (the door part stays as the invisible prompt anchor and light)
     end
 
     -- ── Player-level banners and trophies (cosmetic only) ─────────────────────

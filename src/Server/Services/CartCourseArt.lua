@@ -349,15 +349,15 @@ function CartCourseArt.BuildSignpost(parent)
     unit.Name = "CartRunSignpost"
     local base = Vector3.new(48, 0, -74)
     -- the board faces west, towards the spawn; the posts stand BEHIND it (so nothing covers the lettering) and the words sit on a dark panel
-    local boardPos = base + Vector3.new(0, 15, 0)
+    local boardPos = base + Vector3.new(0, 16, 0)
     local face = CFrame.lookAt(boardPos, boardPos + Vector3.new(-1, 0, 0))
-    for _, dz in ipairs({ -6, 6 }) do
-        SignArt.Post(P({ Name = "SignPost", Material = Enum.Material.Wood, Color = TIMBER, Size = Vector3.new(2, 14, 2), CFrame = CFrame.new(base + Vector3.new(2.2, 7, dz)) }, unit))
+    for _, dz in ipairs({ -8, 8 }) do
+        SignArt.Post(P({ Name = "SignPost", Material = Enum.Material.Wood, Color = TIMBER, Size = Vector3.new(2, 15, 2), CFrame = CFrame.new(base + Vector3.new(2.2, 7.5, dz)) }, unit))
     end
-    local board = P({ Name = "SignBoard", Material = Enum.Material.Wood, Color = Color3.fromRGB(120, 84, 52), Size = Vector3.new(18, 8, 1), CFrame = face }, unit)
-    local stripe = P({ Name = "SignStripe", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 190, 80), Size = Vector3.new(18.4, 0.6, 1.1), CanCollide = false,
-        CFrame = face * CFrame.new(0, 4.3, 0) }, unit)
-    local panel = P({ Name = "SignPanel", Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(34, 22, 18), Size = Vector3.new(17, 7, 0.2), CanCollide = false,
+    local board = P({ Name = "SignBoard", Material = Enum.Material.Wood, Color = Color3.fromRGB(120, 84, 52), Size = Vector3.new(24, 10.5, 1), CFrame = face }, unit)
+    local stripe = P({ Name = "SignStripe", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 190, 80), Size = Vector3.new(24.4, 0.6, 1.1), CanCollide = false,
+        CFrame = face * CFrame.new(0, 5.6, 0) }, unit)
+    local panel = P({ Name = "SignPanel", Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(34, 22, 18), Size = Vector3.new(23, 9.5, 0.2), CanCollide = false,
         CFrame = face * CFrame.new(0, 0, -0.6) }, unit)
     local lines = { "CART RUNS  >>>" }
     for _, c in ipairs(CartCourseData.Courses) do

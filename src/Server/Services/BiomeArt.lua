@@ -452,6 +452,12 @@ local function BuildMeshZone(rec)
         if g then GlowLight(g, cfg.glow, 20, 1.4, rng:NextNumber(0, 6)) end
     end)
     Scatter(9, 30, 66, rng, function(dx, dz) MeshPiece(group, zone, "Boulder", at(dx, dz), { height = rng:NextNumber(5, 9), yaw = rng:NextNumber(0, math.pi * 2) }) end)
+    -- mine floor clutter (the hub's World pieces, solid): rubble heaps, planks, ore sacks, barrels and glowing mushrooms, so the zone floor is not bare
+    for _, k in ipairs({ { "Rubble", 5, 3, 6 }, { "OreSacks", 3, 3, 4.2 }, { "BrokenPlanks", 3, 2, 3.2 }, { "BarrelStack", 2, 4.5, 6.5 }, { "CaveMushrooms", 4, 3.5, 7 } }) do
+        Scatter(k[2], 22, 64, rng, function(dx, dz)
+            MeshPiece(group, "World", k[1], at(dx, dz), { height = rng:NextNumber(k[3], k[4]), yaw = rng:NextNumber(0, math.pi * 2) })
+        end)
+    end
     Scatter(9, 14, 60, rng, function(dx, dz)
         local s = MeshPiece(group, zone, "FloatingPiece", at(dx, dz, rng:NextNumber(14, 34)), { height = rng:NextNumber(8, 12), yaw = rng:NextNumber(0, math.pi * 2), float = true })
         if s then
