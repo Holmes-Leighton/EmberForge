@@ -142,6 +142,8 @@ local ELEMENT_LOOK = {
     All   = { material = Enum.Material.Marble,   accent = Color3.fromRGB(255, 215, 90),  accentMaterial = Enum.Material.Neon,  transparency = 0    },
 }
 
+local BACK_WIDTH = { MagmaTitan = 3.8, CrystalWraith = 4.4, ThunderColossus = 3.8, VoidWalker = 7.5, PrimordialGolem = 5.5 }    -- studs wide, block Golem
+
 function GolemModel.Build(element, tier, options)
     options = options or {}
     tier = tier or 1
@@ -636,6 +638,14 @@ function GolemModel.Build(element, tier, options)
         end
         part("SkinBelt", Vector3.new(3.3, 0.35, 2.1), skinColor, Enum.Material.Neon, at(0, 3.3, 0), 0.15)
     end
+    if options.skin then                               -- premium skin: a signature mesh on the back (AssetData.GolemAccessoryMeshes.Back_<Skin>)
+        local skinName = options.skin:gsub("^GolemSkin_", ""):gsub("_Premium$", "")
+        local width = BACK_WIDTH[skinName]
+        if width then
+            local backCF = A and CFrame.new(A.T.X, A.T.Y - A.hy * 0.55, A.T.Z + A.hz + 0.05 * s) or at(0, 3.1, 1.15)
+            CrownModel.AttachAccessory(model, "Back_" .. skinName, A and (width / 3.3 * A.hx * 2) or width * s, backCF * CFrame.Angles(0, math.pi, 0))
+        end
+    end
     if options.accessory then
         local d = CosmeticData.Describe(options.accessory)
         local id = options.accessory
@@ -649,7 +659,7 @@ function GolemModel.Build(element, tier, options)
         local function wide(v) return Vector3.new(v.X * aw, v.Y, v.Z * aw) end
         local accName = id:gsub("^GolemAccessory_", "")
         local seatY = (id:find("Helm") and 8.2 or 9.4) + (A and 0 or 0)
-        if CrownModel.AttachAccessory(model, accName, 2.9 * aw, hat(0, seatY, 0) * CFrame.Angles(0, math.pi, 0)) then
+        if CrownModel.AttachAccessory(model, accName, A and (A.hhx * 2.4) or 2.9 * s, hat(0, seatY, 0) * CFrame.Angles(0, math.pi, 0)) then
             -- a generated mesh is on the head
         elseif id:find("Crown") then
             part("CrownBand", wide(Vector3.new(2.6, 0.4, 2.6)), c, Enum.Material.Neon, hat(0, 9.5, 0), 0.1)

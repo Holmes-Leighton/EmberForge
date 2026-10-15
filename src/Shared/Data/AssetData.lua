@@ -112,6 +112,9 @@ AssetData.GolemAccessoryMeshes = {
     StormCrown = 125168510926458, ThunderHelm = 85452206245205,
     VoidCrown = 96426446641776, VoidHelm = 133062122250030,
     PrimordialHelm = 127117349777244, MinerHelm = 108545169935730,
+    -- premium Golem skins: a signature piece on the back (placed by GolemModel; a skin without one keeps its code-made detail)
+    Back_MagmaTitan = 70503951278705, Back_CrystalWraith = 99175317148481, Back_ThunderColossus = 72488345640248,
+    Back_VoidWalker = 139069642941237, Back_PrimordialGolem = 93782867502032,
 }
 
 AssetData.BuildExtras = {
