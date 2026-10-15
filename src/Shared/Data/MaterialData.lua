@@ -185,4 +185,28 @@ function MaterialData.Get(id)
     return MaterialData.All[id]
 end
 
+-- What each material looks like, for the "+N Basic Ore" pick-up text: ore is grey, coal is charcoal, ember things are orange, frost is icy blue...
+local C = Color3.fromRGB
+MaterialData.Colors = {
+    BasicOre = C(176, 182, 194),    Coal = C(88, 90, 100),
+    IgniteOre = C(255, 122, 52),    MoltenCore = C(255, 90, 30),
+    GraniteShard = C(184, 158, 124), AncientBedrock = C(130, 108, 90),
+    GlacialCrystal = C(130, 215, 255), EternalIce = C(196, 240, 255),
+    ChargedFlint = C(255, 222, 80), ThunderShard = C(120, 180, 255),
+    ShadowDust = C(150, 110, 210),  VoidEssence = C(176, 64, 235),
+    PrimordialOre = C(255, 176, 60),
+    RefinedOre = C(208, 218, 228),  EmberDust = C(255, 150, 82),
+    ElementalIngot = C(218, 186, 120), CrystalFragment = C(150, 228, 250),
+    EssenceShard = C(120, 232, 204), PureIngot = C(238, 240, 255),
+    PrimordialIngot = C(255, 204, 72),
+    EventCatalyst = C(255, 100, 180),
+    TemperedEmber = C(255, 104, 56), Stormglass = C(110, 200, 255),
+    FrostfireGem = C(112, 214, 232), Voidstone = C(154, 72, 214), PrismaticShard = C(255, 132, 222),
+}
+
+-- The material's own colour, or nil when it has none (callers fall back to the rarity colour)
+function MaterialData.Color(id)
+    return MaterialData.Colors[id]
+end
+
 return MaterialData

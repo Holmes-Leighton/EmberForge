@@ -314,8 +314,11 @@ function HUDController.PadPop(gains)
         lbl.Position = UDim2.new(0, origin.X + popRandom:NextNumber(-12, 12), 0, origin.Y + popRandom:NextNumber(-8, 8))
         lbl.BackgroundTransparency = 1
         lbl.Text = "+" .. Utils.FormatNumber(gains[matId]) .. " " .. (mat and mat.displayName or matId)
-        lbl.TextColor3 = (mat and Theme.Colors[mat.rarity]) or Color3.fromRGB(255, 220, 60)
-        lbl.TextStrokeColor3 = Color3.fromRGB(10, 6, 4)
+        local colour = MaterialData.Color(matId) or (mat and Theme.Colors[mat.rarity]) or Color3.fromRGB(255, 220, 60)
+        lbl.TextColor3 = colour
+        -- a dark material (coal) gets a light outline so it still reads against the cavern
+        local h, s, v = colour:ToHSV()
+        lbl.TextStrokeColor3 = v < 0.5 and Color3.fromRGB(235, 235, 240) or Color3.fromRGB(10, 6, 4)
         lbl.TextStrokeTransparency = 0.15
         lbl.Font = Enum.Font.GothamBlack
         lbl.TextSize = popRandom:NextInteger(18, 24)
@@ -351,7 +354,10 @@ function HUDController.OnResourceUpdate(gains, elapsed)
     for matId, qty in pairs(gains) do
         if qty >= 1 and not tostring(matId):find("^__") then
             local mat = MaterialData.Get(matId)
-            table.insert(lines, "+" .. Utils.FormatNumber(qty) .. " " .. (mat and mat.displayName or matId))
+            local text = "+" .. Utils.FormatNumber(qty) .. " " .. (mat and mat.displayName or matId)
+            local colour = MaterialData.Color(matId) or (mat and Theme.Colors[mat.rarity])
+            if colour then text = string.format('<font color="#%s">%s</font>', colour:ToHex(), text) end   -- each line in its material's colour
+            table.insert(lines, text)
         end
     end
     table.sort(lines)
@@ -370,6 +376,7 @@ function HUDController._FloatText(text, lineCount)
     lbl.Size = UDim2.new(0, 260, 0, 30 * lineCount)
     lbl.Position = UDim2.new(0.5, -130, 0.6, 0)
     lbl.BackgroundTransparency = 1
+    lbl.RichText = true
     lbl.Text = text
     lbl.TextColor3 = Color3.fromRGB(255, 220, 60)
     lbl.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
