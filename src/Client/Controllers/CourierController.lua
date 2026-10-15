@@ -84,12 +84,29 @@ local function AddCrumble(part)
     end)
 end
 
+-- A platform moved by setting its CFrame does not carry the character standing on it sideways (only up and down happens by itself), so the local player is
+-- carried here: if they are standing on the platform, they move by exactly what it moved. Sets the platform's new position and returns nothing.
+local function MoveCarrying(part, newCF)
+    local old = part.Position
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    part.CFrame = newCF
+    if not root then return end
+    local d = part.Position - old
+    if d.X == 0 and d.Z == 0 then return end
+    local rel = root.Position - old                                   -- where the player stood relative to the platform before it moved
+    local half = part.Size / 2
+    if math.abs(rel.X) <= half.X + 0.6 and math.abs(rel.Z) <= half.Z + 0.6 and rel.Y > half.Y - 0.5 and rel.Y < half.Y + 6 then
+        root.CFrame = root.CFrame + Vector3.new(d.X, 0, d.Z)
+    end
+end
+
 local function StepWorld(dt, now)
     for part, m in pairs(movers) do
         if part.Parent then
             local f = 0.5 - 0.5 * math.cos(2 * math.pi * (now + m.phase) / m.period)
             local p = part.Position
-            part.CFrame = CFrame.new(m.x0 + (m.x1 - m.x0) * f, p.Y, p.Z)
+            MoveCarrying(part, CFrame.new(m.x0 + (m.x1 - m.x0) * f, p.Y, p.Z))
         else movers[part] = nil end
     end
     for part, s in pairs(spinners) do
@@ -98,15 +115,15 @@ local function StepWorld(dt, now)
         else spinners[part] = nil end
     end
     for part, l in pairs(lifts) do
-        if part.Parent then part.CFrame = CFrame.new(l.x, CourierLayout.LiftY(l, now), l.z) else lifts[part] = nil end
+        if part.Parent then MoveCarrying(part, CFrame.new(l.x, CourierLayout.LiftY(l, now), l.z)) else lifts[part] = nil end
     end
     for part, m in pairs(zmovers) do
-        if part.Parent then part.CFrame = CFrame.new(m.x, m.y, CourierLayout.ZMoverZ(m, now)) else zmovers[part] = nil end
+        if part.Parent then MoveCarrying(part, CFrame.new(m.x, m.y, CourierLayout.ZMoverZ(m, now))) else zmovers[part] = nil end
     end
     for part, o in pairs(orbiters) do
         if part.Parent then
             local x, z = CourierLayout.OrbitPos(o, now)
-            part.CFrame = CFrame.new(x, o.y, z)
+            MoveCarrying(part, CFrame.new(x, o.y, z))
         else orbiters[part] = nil end
     end
     for part, p in pairs(pendulums) do

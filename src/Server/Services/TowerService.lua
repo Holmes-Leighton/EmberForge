@@ -207,7 +207,32 @@ local function StartRun(player)
         dailyTarget = TowerData.DailyTarget(Today(), T.total), dailyDone = TowerRewards.DailyDone(data, Today()) })
 end
 
+-- Studio only, for testing: set workspace attribute DevTowerLevel to N (from the Server console) and every climber is put at the start of level N as if they had climbed there.
+-- (Teleporting a player yourself would trip the climb's cheat checks and end the run.) Does nothing outside Studio.
+local function DevJump()
+    local n = workspace:GetAttribute("DevTowerLevel")
+    if not n then return end
+    workspace:SetAttribute("DevTowerLevel", nil)
+    if not state.layout then return end
+    n = math.clamp(math.floor(n), 1, #state.layout.levels)
+    local now = ServerNow()
+    for _, rec in pairs(runs) do
+        local run = rec.run
+        run.highest, run.levelAt, run.lastPos, run.lastT, run.strikes = n, now - 60, nil, nil, 0
+        TowerRunner.StartLava(run, now)
+        local cp = state.layout.checkpoints[state.layout.levels[n].firstCheckpoint]
+        local root = Root(rec.player)
+        if root and cp then
+            root.CFrame = CFrame.lookAt(Vector3.new(cp.x, cp.y + 2, cp.z), Vector3.new(cp.x + state.layout.levels[n].dir, cp.y + 2, cp.z))
+            root.AssemblyLinearVelocity = Vector3.zero
+        end
+        rec.player:SetAttribute("TowerLevel", n)
+        SetLavaAttributes(rec.player, run)
+    end
+end
+
 local function Tick()
+    if game:GetService("RunService"):IsStudio() then DevJump() end
     local now = ServerNow()
     for _, rec in pairs(runs) do
         local player = rec.player
