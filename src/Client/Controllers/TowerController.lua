@@ -8,6 +8,7 @@ local Debris       = game:GetService("Debris")
 local TowerData    = require(game.ReplicatedStorage.Shared.Data.TowerData)
 local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local Theme        = require(game.ReplicatedStorage.Shared.Modules.Theme)
+local ScreenMode = require(game.ReplicatedStorage.Shared.Modules.ScreenMode)
 local TowerArtColors = nil
 
 local CollectionService = game:GetService("CollectionService")
@@ -75,7 +76,8 @@ end
 
 local function ServerNow() return workspace:GetServerTimeNow() end
 
-local hud, levelLbl, clockLbl, infoLbl, lavaLbl, standingsFrame, standingsLbl, flash, banner
+local hud, levelLbl, clockLbl, infoLbl, lavaLbl, standingsFrame, standingsLbl, flash, banner, badge
+local badgeCompact = nil
 local roundEnds, total = nil, 30
 local dailyTarget, dailyDone = nil, false
 local lava
@@ -96,6 +98,7 @@ local function BuildHud()
     hud.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
     local panel = Instance.new("Frame")
+    badge = panel
     panel.AnchorPoint, panel.Position, panel.Size = Vector2.new(0.5, 0), UDim2.new(0.5, 0, 0, 118), UDim2.new(0, 300, 0, 96)
     panel.BackgroundColor3, panel.BackgroundTransparency, panel.BorderSizePixel = Color3.fromRGB(26, 18, 14), 0.15, 0
     panel.Parent = hud
@@ -124,6 +127,35 @@ local function BuildHud()
     banner = Theme.Label(hud, "", 36, Color3.fromRGB(255, 255, 255), Theme.Fonts.Title)
     banner.AnchorPoint, banner.Position, banner.Size = Vector2.new(0.5, 0.5), UDim2.new(0.5, 0, 0.32, 0), UDim2.new(0.8, 0, 0, 64)
     banner.TextXAlignment, banner.TextTransparency, banner.TextStrokeTransparency, banner.TextStrokeColor3, banner.ZIndex = Enum.TextXAlignment.Center, 1, 1, Color3.fromRGB(20, 10, 6), 21
+end
+
+-- On a phone the badge does not sit in the middle of the screen (where you are looking): it goes in the left column, just above the player card, as wide as that card.
+-- (The card itself is hidden while climbing, but its frame still has its place and size, which is what this follows.)
+local function PlaceBadge()
+    if not badge then return end
+    local compact = ScreenMode.Compact()
+    local card = LocalPlayer.PlayerGui:FindFirstChild("HUD") and LocalPlayer.PlayerGui.HUD:FindFirstChild("MainFrame")
+    if compact and card then
+        local inset = (LocalPlayer.PlayerGui.HUD.IgnoreGuiInset and 0 or game:GetService("GuiService"):GetGuiInset().Y)
+        local w = math.max(card.AbsoluteSize.X, 140)
+        badge.AnchorPoint = Vector2.new(0, 1)
+        badge.Position = UDim2.fromOffset(card.AbsolutePosition.X, card.AbsolutePosition.Y + inset - 6)
+        badge.Size = UDim2.fromOffset(w, 66)
+        if badgeCompact ~= true then
+            badgeCompact = true
+            levelLbl.Position, levelLbl.Size, levelLbl.TextSize = UDim2.new(0, 4, 0, 2), UDim2.new(1, -8, 0, 22), 18
+            clockLbl.Position, clockLbl.Size, clockLbl.TextSize = UDim2.new(0, 4, 0, 24), UDim2.new(1, -8, 0, 16), 14
+            infoLbl.Position, infoLbl.Size, infoLbl.TextSize = UDim2.new(0, 4, 0, 40), UDim2.new(1, -8, 0, 12), 10
+            lavaLbl.Position, lavaLbl.Size, lavaLbl.TextSize = UDim2.new(0, 4, 0, 52), UDim2.new(1, -8, 0, 12), 10
+        end
+    elseif badgeCompact ~= false then
+        badgeCompact = false
+        badge.AnchorPoint, badge.Position, badge.Size = Vector2.new(0.5, 0), UDim2.new(0.5, 0, 0, 118), UDim2.new(0, 300, 0, 96)
+        levelLbl.Position, levelLbl.Size, levelLbl.TextSize = UDim2.new(0, 10, 0, 4), UDim2.new(1, -20, 0, 32), 26
+        clockLbl.Position, clockLbl.Size, clockLbl.TextSize = UDim2.new(0, 10, 0, 38), UDim2.new(1, -20, 0, 24), 20
+        infoLbl.Position, infoLbl.Size, infoLbl.TextSize = UDim2.new(0, 10, 0, 62), UDim2.new(1, -20, 0, 16), Theme.TextSize.Small
+        lavaLbl.Position, lavaLbl.Size, lavaLbl.TextSize = UDim2.new(0, 10, 0, 78), UDim2.new(1, -20, 0, 16), Theme.TextSize.Small
+    end
 end
 
 local function Flash(color, strength)
@@ -353,6 +385,7 @@ function TowerController.Init()
         local now = ServerNow()
         StepSweepers(now)
         StepFlicker(now)
+        PlaceBadge()
         Update(now)
     end)
     RemoteEvents.TowerEvent.OnClientEvent:Connect(OnEvent)
