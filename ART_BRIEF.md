@@ -228,3 +228,18 @@ Variants: replace the rock and glow:
 - If it comes out too detailed, lower the triangle limit and add "low poly, simple shapes".
 - You can pick a Part in your scene to act as a **bounding box** so the result fits the size you want.
 - The AI can't reliably make separate arms and legs. If you need `ArmL`/`ArmR` parts, either hire an artist or try splitting the mesh into parts afterwards.
+
+---
+
+# Part C: Forge Skin scenery meshes
+
+Each skin family stands three generated meshes around the plot: **Tall** (gate and plot-side landmark, scaled to 12 studs), **Mid** (6 studs) and **Small** (2.6 studs, scattered). Generate them with Studio's Assistant (Part B settings, about 2,000 to 6,000 triangles), publish each as a Model under the game's group, and paste the ids into `AssetData.ForgeSkinMeshes.<family>`. Players walk through all of them (the game turns collision off). A piece left at 0 stays part-built. Stand the model upright with its base on the ground.
+
+| Family | Tall | Mid | Small |
+|---|---|---|---|
+| ember | A jagged obsidian spire split by glowing orange lava cracks, a small flame on top, chunky cartoon, low poly | A black volcanic boulder with a glowing lava pool beside it, cartoon, low poly | A small dark rock with a glowing ember coal, cartoon, low poly |
+| frost | A tall cluster of translucent blue ice crystals of different heights, glowing core, cartoon, low poly | A snow drift with two small ice crystals, cartoon, low poly | A small snow mound with one ice shard, cartoon, low poly |
+| storm | A tall metal tesla pylon with glowing violet coil rings and a crackling white orb on top, cartoon, low poly | A short capacitor tower with a glowing violet band and a lightning rod, cartoon, low poly | A thin metal stake with a spark on the tip, cartoon, low poly |
+| void | Floating dark purple obsidian shards circling a glowing purple rift eye on a stone plinth, cartoon, low poly | Three crooked dark crystal spikes with a floating purple orb, cartoon, low poly | A small dark crystal sliver with a glowing purple edge, cartoon, low poly |
+| ancient | A tall marble column with gold bands and a floating gold relic above it, cartoon, low poly | A broken marble column stump beside its fallen gold-banded piece, cartoon, low poly | A small pile of marble rubble with a gold coin, cartoon, low poly |
+| bronze | A bronze cog on a dark iron post, chunky cartoon, low poly | A stack of bronze ingots, cartoon, low poly | A small piece of bronze scrap metal, cartoon, low poly |

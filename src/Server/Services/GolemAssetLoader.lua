@@ -251,6 +251,74 @@ local function LoadBuildPack(packId, buildFolder)
     pending -= 1
 end
 
+-- Forge decorations: AssetData.ForgeDecorationMeshes[<cosmetic id>] -> ServerStorage.ForgeDecorAssets.<cosmetic id>; ForgeBuilder clones them, a missing one is built from parts.
+local function LoadForgeDecorations(list)
+    pending += 1
+    local ServerStorage = game:GetService("ServerStorage")
+    local folder = ServerStorage:FindFirstChild("ForgeDecorAssets")
+    if folder then folder:ClearAllChildren() else
+        folder = Instance.new("Folder")
+        folder.Name = "ForgeDecorAssets"
+        folder.Parent = ServerStorage
+    end
+    local total, finished, found = 0, 0, 0
+    for cosmeticId, assetId in pairs(list) do
+        if assetId and assetId > 0 then
+            total += 1
+            task.spawn(function()
+                local ok, result = pcall(function() return InsertService:LoadAsset(assetId) end)
+                if ok and result then
+                    local model = result:FindFirstChildWhichIsA("Model") or result
+                    Sanitise(model)
+                    if CountParts(model) > 0 then
+                        model.Name = cosmeticId
+                        model.Parent = folder
+                        found += 1
+                    end
+                else
+                    warn(string.format("[GolemAssets] Forge decoration %s (asset %d) FAILED to load: %s. It stays built from parts.", cosmeticId, assetId, tostring(result)))
+                end
+                finished += 1
+            end)
+        end
+    end
+    while finished < total do task.wait(0.1) end
+    if total > 0 then log(string.format("Forge decorations: %d of %d loaded", found, total)) end
+    pending -= 1
+end
+
+-- Extra Forge Builder pieces (AssetData.BuildExtras): single pieces added to ReplicatedStorage.BuildAssets next to the Build Pack's
+local function LoadBuildExtras(list, buildFolder)
+    pending += 1
+    local total, finished, found = 0, 0, 0
+    for pieceName, assetId in pairs(list) do
+        if assetId and assetId > 0 then
+            total += 1
+            task.spawn(function()
+                local ok, result = pcall(function() return InsertService:LoadAsset(assetId) end)
+                if ok and result then
+                    local model = result:FindFirstChildWhichIsA("Model") or result
+                    Sanitise(model)
+                    if CountParts(model) > 0 then
+                        local old = buildFolder:FindFirstChild(pieceName)
+                        if old then old:Destroy() end
+                        model.Name = pieceName
+                        model.Parent = buildFolder
+                        found += 1
+                    end
+                else
+                    warn(string.format("[GolemAssets] Build piece %s (asset %d) FAILED to load: %s", pieceName, assetId, tostring(result)))
+                end
+                finished += 1
+            end)
+        end
+    end
+    while finished < total do task.wait(0.1) end
+    if found > 0 then buildFolder:SetAttribute("Version", (buildFolder:GetAttribute("Version") or 0) + found) end
+    if total > 0 then log(string.format("Build extras: %d of %d loaded", found, total)) end
+    pending -= 1
+end
+
 -- Quarry pieces: one asset holding every piece (children named after QuarryData ids) -> ReplicatedStorage.QuarryAssets
 local function LoadQuarryPack(packId, folder)
     pending += 1
@@ -322,6 +390,48 @@ local function LoadBiomeMeshes(zoneKey, pieces)
     pending -= 1
 end
 
+-- Forge Skin scenery meshes: AssetData.ForgeSkinMeshes.<family>.<Tall|Mid|Small> -> ServerStorage.ForgeSkinAssets.<family>.<piece>.
+-- ForgeSkinProps clones them when a forge is built; a piece with no id (or a failed load) is built from parts.
+local function LoadForgeSkinMeshes(familyKey, pieces)
+    pending += 1
+    local ServerStorage = game:GetService("ServerStorage")
+    local root = ServerStorage:FindFirstChild("ForgeSkinAssets")
+    if not root then
+        root = Instance.new("Folder")
+        root.Name = "ForgeSkinAssets"
+        root.Parent = ServerStorage
+    end
+    local fam = root:FindFirstChild(familyKey)
+    if fam then fam:Destroy() end
+    fam = Instance.new("Folder")
+    fam.Name = familyKey
+    fam.Parent = root
+    local total, finished, found = 0, 0, 0
+    for pieceName, assetId in pairs(pieces) do
+        if assetId and assetId > 0 then
+            total += 1
+            task.spawn(function()
+                local ok, result = pcall(function() return InsertService:LoadAsset(assetId) end)
+                if ok and result then
+                    local model = result:FindFirstChildWhichIsA("Model") or result
+                    Sanitise(model)
+                    if CountParts(model) > 0 then
+                        model.Name = pieceName
+                        model.Parent = fam
+                        found += 1
+                    end
+                else
+                    warn(string.format("[GolemAssets] Forge skin %s.%s (asset %d) FAILED to load: %s. That piece stays built from parts.", familyKey, pieceName, assetId, tostring(result)))
+                end
+                finished += 1
+            end)
+        end
+    end
+    while finished < total do task.wait(0.1) end
+    if total > 0 then log(string.format("Forge skin %s meshes: %d of %d loaded", familyKey, found, total)) end
+    pending -= 1
+end
+
 -- Material meshes: one small asset per material (AssetData.MaterialMeshes) -> ReplicatedStorage.MaterialAssets.<MaterialId>
 local function LoadMaterialMeshes(list, folder)
     pending += 1
@@ -378,6 +488,9 @@ function GolemAssetLoader.Init()
     end
     local quarryPackId = AssetData.QuarryPack and AssetData.QuarryPack.assetId or 0
     if quarryPackId > 0 then task.spawn(LoadQuarryPack, quarryPackId, quarryFolder) end
+    for familyKey, pieces in pairs(AssetData.ForgeSkinMeshes or {}) do
+        task.spawn(LoadForgeSkinMeshes, familyKey, pieces)
+    end
     for zoneKey, pieces in pairs(AssetData.BiomeMeshes or {}) do
         task.spawn(LoadBiomeMeshes, zoneKey, pieces)
     end
@@ -390,6 +503,8 @@ function GolemAssetLoader.Init()
     buildFolder:SetAttribute("Version", 0)
     local buildPackId = AssetData.BuildPack and AssetData.BuildPack.assetId or 0
     if buildPackId > 0 then task.spawn(LoadBuildPack, buildPackId, buildFolder) end
+    task.spawn(LoadBuildExtras, AssetData.BuildExtras or {}, buildFolder)
+    task.spawn(LoadForgeDecorations, AssetData.ForgeDecorationMeshes or {})
 
     local crownFolder = ReplicatedStorage:FindFirstChild("CrownAssets")
     if not crownFolder then

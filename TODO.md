@@ -14,6 +14,22 @@
       (`CartCourseArt.BuildDepot`), built from parts.
 - [ ] **Cart Run meshes**: swap in real meshes for the depot hall, the crusher gate, tunnel mouths, bridge planks and checkpoint banners (`CartCourseArt.lua`: each is a
       separate named part). Prompts for the mesh generator are in `ART_BRIEF.md` part B.
+- [ ] **Everything in the forge should be a mesh (do this next; user request).** The house shells are now meshes (below), but these are still plain parts in `ForgeBuilder.lua`:
+      the three elemental braziers (L5+, orange/blue/pink flames; `DoorAssets.brazier` mesh exists from the tower door), lava channels, furnace, anvil, workbench, crates, ore piles, wing
+      chimneys, conduits and path. Replace each with a mesh (per look where it differs) and keep the part version as the fallback.
+- [x] ~~Forge house meshes~~ done: 28 meshes (7 looks x 4 tiers, each a different design: volcano, igloo palace, tesla foundry, floating shard sanctum, Greek temple, steampunk factory, plain),
+      wired through `AssetData.ForgeSkinMeshes` House1-4 and checked in Studio (default/ember/frost/bronze/ancient seen on real forges). Original brief, kept for the interior pieces:
+- [ ] (original brief) The workshop building at the back of every plot (walls, pitched roof, chimney, furnace, workbench) is built from plain parts in
+      `ForgeBuilder.lua`. Make it generated meshes with a **different design per skin family**, so skins differ in shape, not only colour, the same way the Gate and Fence now do
+      (`ForgeSkinProps.Piece`, `AssetData.ForgeSkinMeshes`). Plan: 4 house tiers x 7 looks (plain/Basic, ember, frost, storm, void, ancient, bronze) = 28 meshes.
+      Tiers (from `ForgeData` / ART_BRIEF section 5): **1-2** open lean-to shed over the forge; **3-5** enclosed stone workshop with pitched roof and chimney; **6-9** the same with a second wing
+      (wider); **10** the Ancient Forge with kiln dome and aura ring. Each tier needs its own roof so levels visibly grow. Keep a wide open doorway at the front so the forge and Golems
+      show from the courtyard, and add an invisible collider for the walls. Also give the furnace, anvil and workbench inside the house a mesh per look. Then wire a `House` piece
+      per tier into `AssetData.ForgeSkinMeshes` and have `ForgeBuilder` use it (part-built house stays as the fallback, like the gate).
+- [x] ~~Forge decorations as meshes with animations~~ done: all 10 (`AssetData.ForgeDecorationMeshes`, built and animated by `ForgeDecorFx.lua` + `DecorAnimator.lua`): living flames,
+      orbiting and floating pieces, a swirling portal, flashing lightning arcs, mist, glitter and embers. The missing Forge Builder piece RailTrack is also done (`AssetData.BuildExtras`).
+- [x] ~~Forge skin gate and fence meshes~~ done: a different gateway and fence section for every skin family.
+- [ ] Look at the **Ancient** forge skin and the 10 decorations once on a real forge (your save only owns the Anvil decoration); tune the animation spots (flame positions, orbit radii) in `ForgeDecorFx.lua`.
 - [ ] **My Forge needs a lot of visual work**: real meshes for the forge buildings and furniture (shed and workshop levels 1-10, furnace, anvil, workbench, vault,
       fences, banners, the Forge Builder pieces) in place of the plain parts, and every solid piece must **collide** (no walking through walls, furnaces,
       barrels, pedestals or fences; check each forge level and every Forge Builder piece). Includes the **Forge Skins** (Basic, Ember, Frost, Storm, Void: each

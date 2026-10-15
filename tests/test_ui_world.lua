@@ -73,6 +73,14 @@ expect(#fx:GetChildren() > #plain:GetChildren() and fx:FindFirstChild("EffectRin
 local basic = ForgeBuilder.Build(folder, Vector3.new(0, 10, 0), 1, { ForgeSkin = "ForgeSkin_Ember_Basic" })
 local std = ForgeBuilder.Build(folder, Vector3.new(0, 10, 0), 1, { ForgeSkin = "ForgeSkin_Ember_Standard" })
 expect(std:FindFirstChild("TrimFront") ~= nil and basic:FindFirstChild("TrimFront") == nil, "Standard skins add glowing trim over Basic")
+for _, id in ipairs({ "ForgeSkin_Ember_Basic", "ForgeSkin_Ember_Standard", "ForgeSkin_Frost_Standard", "ForgeSkin_Storm_Standard", "ForgeSkin_Void_Standard", "ForgeSkin_Ancient_Standard", "ForgeSkin_Bronze" }) do
+    local f = ForgeBuilder.Build(folder, Vector3.new(0, 10, 0), 10, { ForgeSkin = id })
+    local scenery = f:FindFirstChild("SkinScenery")
+    local solid = 0
+    if scenery then for _, d in ipairs(scenery:GetDescendants()) do if d:IsA("BasePart") and d.CanCollide then solid += 1 end end end
+    expect(scenery ~= nil and #scenery:GetChildren() > 10 and solid == 0, id .. " has walk-through scenery (" .. (scenery and #scenery:GetChildren() or 0) .. " parts, " .. solid .. " solid)")
+end
+expect(ForgeBuilder.Build(folder, Vector3.new(0, 10, 0), 1, {}):FindFirstChild("SkinScenery") == nil, "no skin, no scenery")
 local GM = load("game/ReplicatedStorage/Shared/Modules/GolemModel")
 expect(GM.Build("Stone", 2, { skin = "GolemSkin_Shimmer" }):FindFirstChild("SkinTrim") ~= nil, "plain-colour Golem skins add trim")
 local magma = GM.Build("Stone", 2, { skin = "GolemSkin_MagmaTitan_Premium" })

@@ -54,6 +54,7 @@ GolemAnimator.Init()
 require(script.Controllers.CartCourseController).Init()
 require(script.Controllers.CourierController).Init()
 require(script.Controllers.TowerController).Init()
+require(script.Controllers.DecorAnimator).Init()            -- the forge decorations' orbiting, floating, spinning and flashing pieces
 SoundController.Init()
 BadgeController.Init()
 OfferController.Init()

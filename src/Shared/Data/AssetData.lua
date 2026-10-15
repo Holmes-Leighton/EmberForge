@@ -78,6 +78,36 @@ AssetData.CrownPack = { assetId = 133428041942823 }
 -- named after ForgeBuildData items (MineCart, Hearth ...), each a model of mesh parts.
 -- The Quarry's nodes and buildings: one Model whose children are named after QuarryData pieces (EmberNode, DrillRig ...).
 AssetData.QuarryPack = { assetId = 89170227615937 }
+-- Forge Skin scenery meshes: per skin family three generated meshes (plus Gate and Fence: the forge's own gateway and fence section, each a different design per skin) published as Model assets. Tall = the landmark at the gate and plot sides,
+-- Mid = the medium piece, Small = the scatter piece. House1-4 = the workshop building for Forge levels 1-2 / 3-5 / 6-9 / 10 (a different architecture per family). GolemAssetLoader loads them into ServerStorage.ForgeSkinAssets.<family> and ForgeSkinProps
+-- stands them around the plot (always walk-through). 0 = not made yet, that piece is built from parts instead. Prompts: ART_BRIEF.md part C.
+AssetData.ForgeSkinMeshes = {
+    ember   = { Tall = 113286426348095, Mid = 82598483901973, Small = 94530198177129, Gate = 104718511127042, Fence = 100754788871174, House1 = 114749316544634, House2 = 80573107536079, House3 = 81934643493013, House4 = 113671754580944 },
+    frost   = { Tall = 72153475431516, Mid = 105669868402606, Small = 139041116592338, Gate = 120098805760549, Fence = 83671943199913, House1 = 115824682366838, House2 = 106376199155123, House3 = 119709333379027, House4 = 87131250472409 },
+    storm   = { Tall = 109199962977202, Mid = 126294315938392, Small = 136655038933529, Gate = 112731620934057, Fence = 137054566927411, House1 = 115737089558443, House2 = 121032286078054, House3 = 122778162702391, House4 = 96977364280944 },
+    void    = { Tall = 106112007239651, Mid = 86444841246092, Small = 134293612945890, Gate = 127969678018833, Fence = 77253272581309, House1 = 124781063255529, House2 = 86966525819712, House3 = 97986333051746, House4 = 106953915293869 },
+    ancient = { Tall = 108095459175142, Mid = 98276002414634, Small = 77227356398565, Gate = 137798871163806, Fence = 119688125488967, House1 = 122155731345822, House2 = 124425291467617, House3 = 130463838393931, House4 = 85948259936647 },
+    default = { Gate = 86112927033841, Fence = 91415998090317, House1 = 102129495011002, House2 = 116063025716877, House3 = 110747979355307, House4 = 126339780868000 },   -- no skin family (plain / Basic): a timber mining-camp gate and fence
+    bronze  = { Tall = 139002811098879, Mid = 131030556850095, Small = 113563159092596, Gate = 120756347546288, Fence = 131841480987914, House1 = 134617096948644, House2 = 111322231438729, House3 = 111513605926638, House4 = 75225411864069 },
+}
+-- Forge decorations (CosmeticData ForgeDecoration_*): one generated mesh each, published as a Model asset. GolemAssetLoader loads them into
+-- ServerStorage.ForgeDecorAssets.<cosmetic id>; ForgeBuilder stands the chosen one in the forge and ForgeDecorFx animates it. 0 / missing = built from parts.
+AssetData.ForgeDecorationMeshes = {
+    ForgeDecoration_EmberStatue    = 85571771855085,
+    ForgeDecoration_AncientAltar   = 85524620480235,
+    ForgeDecoration_IceStatue      = 106012056674039,
+    ForgeDecoration_GlacialPillar  = 100628353043835,
+    ForgeDecoration_LavaRiver      = 115682648637382,
+    ForgeDecoration_LightningRod   = 74194546856970,
+    ForgeDecoration_StormPillar    = 101507058893718,
+    ForgeDecoration_VoidObelisk    = 86344530175839,
+    ForgeDecoration_VoidPortal     = 131396096897669,
+    ForgeDecoration_PrimordialPillar = 103304628149392,
+}
+-- Extra Forge Builder pieces that are not in the Build Pack yet: one asset per piece (named after the ForgeBuildData id), loaded into ReplicatedStorage.BuildAssets.
+AssetData.BuildExtras = {
+    RailTrack = 98515694214823,
+}
 -- Mining-zone and hub scenery meshes, one asset id per piece (each is a generated mesh published as a Model asset; GolemAssetLoader loads them into
 -- ServerStorage.BiomeAssets.<Zone> and BiomeArt places them). A zone with no ids, or a piece that fails to load, falls back to pieces built from parts.
 -- Every zone but Glacial Peaks uses the same seven piece names; Glacial Peaks keeps the names BiomeArt's Glacial builder uses.

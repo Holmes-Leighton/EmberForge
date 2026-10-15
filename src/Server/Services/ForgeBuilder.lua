@@ -18,6 +18,8 @@ local CollectionService = game:GetService("CollectionService")
 
 local CosmeticData = require(game.ReplicatedStorage.Shared.Data.CosmeticData)
 local GolemModel   = require(game.ReplicatedStorage.Shared.Modules.GolemModel)
+local ForgeSkinProps = require(script.Parent.ForgeSkinProps)
+local ForgeDecorFx = require(script.Parent.ForgeDecorFx)
 
 local ForgeBuilder = {}
 
@@ -120,34 +122,72 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
 
     -- Fence with a gate gap on the visitor side (+z)
     local FENCE = 26
-    for i = -4, 4 do
-        local x = i * 6.4
-        for _, z in ipairs({ -FENCE, FENCE }) do
-            if not (z == FENCE and math.abs(x) < 5) then
-                local post = part("FencePost", Vector3.new(1, 4, 1), at(x, GROUND + 2, z), wood, Enum.Material.Wood)
-                if level >= 2 and i % 2 == 0 then
-                    local lamp = ball("Lantern", 1.1, at(x, GROUND + 4.6, z), Color3.fromRGB(255, 200, 120), Enum.Material.Neon)
-                    light(lamp, Color3.fromRGB(255, 190, 110), 16, 1)
+    -- The fence and the gate are generated meshes with a different design for every skin family (ForgeSkinProps.Piece), so skins differ in shape and not only in
+    -- colour. If a mesh has not loaded, the part-built wooden fence and block gate below are used instead.
+    local famKey = ForgeSkinProps.Family(equipped.ForgeSkin) or "default"
+    local SECTION = 6.75                                                 -- 8 sections along each 54-stud side
+    local function fenceSection(x, z, yaw)
+        local cf = at(x, GROUND, z) * CFrame.Angles(0, yaw, 0)
+        local piece = ForgeSkinProps.Piece(famKey, "Fence", Vector3.new(SECTION, 4, 1.2), cf, model)
+        if piece then                                                    -- the mesh is decoration; a thin invisible wall keeps the plot's edge solid
+            part("FenceCollider", Vector3.new(SECTION, 4, 0.5), at(x, GROUND + 2, z) * CFrame.Angles(0, yaw, 0), skin.color, Enum.Material.Plastic,
+                { Transparency = 1, CanQuery = false })
+        end
+        return piece ~= nil
+    end
+    local meshFence = fenceSection(-FENCE + SECTION / 2, -FENCE, 0)     -- the first one tells us whether the fence meshes are available
+    if meshFence then
+        for k = 0, 7 do
+            local c = -FENCE + SECTION / 2 + SECTION * k
+            if k > 0 then fenceSection(c, -FENCE, 0) end                 -- back
+            if math.abs(c) >= 7 then fenceSection(c, FENCE, 0) end       -- front, leaving the gate gap
+            fenceSection(-FENCE, c, math.pi / 2)                         -- left
+            fenceSection(FENCE, c, math.pi / 2)                          -- right
+            if level >= 2 and k % 2 == 0 then                            -- lamps on the fence joints
+                for _, z in ipairs({ -FENCE, FENCE }) do
+                    if not (z == FENCE and math.abs(c - SECTION / 2) < 7) then
+                        local lamp = ball("Lantern", 1.1, at(c - SECTION / 2, GROUND + 4.6, z), Color3.fromRGB(255, 200, 120), Enum.Material.Neon)
+                        light(lamp, Color3.fromRGB(255, 190, 110), 16, 1)
+                    end
                 end
             end
         end
-        for _, xx in ipairs({ -FENCE, FENCE }) do
-            part("FencePost", Vector3.new(1, 4, 1), at(xx, GROUND + 2, x), wood, Enum.Material.Wood)
+    else
+        for i = -4, 4 do
+            local x = i * 6.4
+            for _, z in ipairs({ -FENCE, FENCE }) do
+                if not (z == FENCE and math.abs(x) < 5) then
+                    local post = part("FencePost", Vector3.new(1, 4, 1), at(x, GROUND + 2, z), wood, Enum.Material.Wood)
+                    if level >= 2 and i % 2 == 0 then
+                        local lamp = ball("Lantern", 1.1, at(x, GROUND + 4.6, z), Color3.fromRGB(255, 200, 120), Enum.Material.Neon)
+                        light(lamp, Color3.fromRGB(255, 190, 110), 16, 1)
+                    end
+                end
+            end
+            for _, xx in ipairs({ -FENCE, FENCE }) do
+                part("FencePost", Vector3.new(1, 4, 1), at(xx, GROUND + 2, x), wood, Enum.Material.Wood)
+            end
         end
+        part("FenceRailBack", Vector3.new(54, 0.6, 0.6), at(0, GROUND + 3, -FENCE), wood, Enum.Material.Wood)
+        part("FenceRailL", Vector3.new(0.6, 0.6, 54), at(-FENCE, GROUND + 3, 0), wood, Enum.Material.Wood)
+        part("FenceRailR", Vector3.new(0.6, 0.6, 54), at(FENCE, GROUND + 3, 0), wood, Enum.Material.Wood)
+        part("FenceRailFrontL", Vector3.new(20.5, 0.6, 0.6), at(-15.75, GROUND + 3, FENCE), wood, Enum.Material.Wood)
+        part("FenceRailFrontR", Vector3.new(20.5, 0.6, 0.6), at(15.75, GROUND + 3, FENCE), wood, Enum.Material.Wood)
     end
-    part("FenceRailBack", Vector3.new(54, 0.6, 0.6), at(0, GROUND + 3, -FENCE), wood, Enum.Material.Wood)
-    part("FenceRailL", Vector3.new(0.6, 0.6, 54), at(-FENCE, GROUND + 3, 0), wood, Enum.Material.Wood)
-    part("FenceRailR", Vector3.new(0.6, 0.6, 54), at(FENCE, GROUND + 3, 0), wood, Enum.Material.Wood)
-    part("FenceRailFrontL", Vector3.new(20.5, 0.6, 0.6), at(-15.75, GROUND + 3, FENCE), wood, Enum.Material.Wood)
-    part("FenceRailFrontR", Vector3.new(20.5, 0.6, 0.6), at(15.75, GROUND + 3, FENCE), wood, Enum.Material.Wood)
 
     -- Gate arch
-    for _, x in ipairs({ -5, 5 }) do
-        part("GatePillar", Vector3.new(2, 9, 2), at(x, GROUND + 4.5, FENCE), wallC, skin.material)
+    local meshGate = ForgeSkinProps.Piece(famKey, "Gate", Vector3.new(14, 12, 3.5), at(0, GROUND, FENCE), model)
+    if meshGate then
+        local gateGlow = part("GateLight", Vector3.new(0.4, 0.4, 0.4), at(0, GROUND + 8.4, FENCE), skin.fire, Enum.Material.Neon, { Transparency = 1, CanCollide = false })
+        light(gateGlow, skin.fire, 14, 1.2)
+    else
+        for _, x in ipairs({ -5, 5 }) do
+            part("GatePillar", Vector3.new(2, 9, 2), at(x, GROUND + 4.5, FENCE), wallC, skin.material)
+        end
+        part("GateBeam", Vector3.new(12, 1.4, 2.2), at(0, GROUND + 9.5, FENCE), roofC, skin.material)
+        local gateGlow = ball("GateEmber", 1.6, at(0, GROUND + 8.4, FENCE), skin.fire, Enum.Material.Neon)
+        light(gateGlow, skin.fire, 14, 1.2)
     end
-    part("GateBeam", Vector3.new(12, 1.4, 2.2), at(0, GROUND + 9.5, FENCE), roofC, skin.material)
-    local gateGlow = ball("GateEmber", 1.6, at(0, GROUND + 8.4, FENCE), skin.fire, Enum.Material.Neon)
-    light(gateGlow, skin.fire, 14, 1.2)
 
     -- ── Workshop building (back of the plot) ──────────────────────────────────
     local enclosed = level >= 3
@@ -156,7 +196,19 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
     local D, H = 14, 10
     local bz = -16
 
-    if enclosed then
+    -- The building is a generated mesh with a different architecture for every skin family (a timber workshop, a volcano, an ice palace, a tesla foundry, a void
+    -- sanctum, a marble temple, a steampunk factory), growing with the Forge level: House1 = level 1-2, House2 = 3-5, House3 = 6-9, House4 = 10. Its front faces the
+    -- courtyard. It is decoration only; thin invisible walls keep it solid. If the mesh has not loaded, the part-built shed / workshop below is used.
+    local houseTier = level >= 10 and 4 or level >= 6 and 3 or level >= 3 and 2 or 1
+    local HOUSE_SIZE = { Vector3.new(22, 10, 13), Vector3.new(22, 17, 14), Vector3.new(34, 17, 14), Vector3.new(34, 22, 14) }
+    local hs = HOUSE_SIZE[houseTier]
+    local meshHouse = ForgeSkinProps.Piece(famKey, "House" .. houseTier, hs, at(0, GROUND, bz) * CFrame.Angles(0, math.pi, 0), model)
+    if meshHouse then
+        local ch = math.min(hs.Y, 9)
+        part("HouseWallBack", Vector3.new(hs.X * 0.92, ch, 1.4), at(0, GROUND + ch / 2, bz - hs.Z / 2 + 0.7), skin.color, Enum.Material.Plastic, { Transparency = 1, CanQuery = false })
+        part("HouseWallL", Vector3.new(1.4, ch, hs.Z * 0.9), at(-hs.X / 2 + 1.2, GROUND + ch / 2, bz), skin.color, Enum.Material.Plastic, { Transparency = 1, CanQuery = false })
+        part("HouseWallR", Vector3.new(1.4, ch, hs.Z * 0.9), at(hs.X / 2 - 1.2, GROUND + ch / 2, bz), skin.color, Enum.Material.Plastic, { Transparency = 1, CanQuery = false })
+    elseif enclosed then
         part("WallBack", Vector3.new(W, H, 1.4), at(0, GROUND + H / 2, bz - D / 2), wallC)
         part("WallL", Vector3.new(1.4, H, D), at(-W / 2, GROUND + H / 2, bz), wallC)
         part("WallR", Vector3.new(1.4, H, D), at(W / 2, GROUND + H / 2, bz), wallC)
@@ -192,7 +244,9 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
     local mouth = part("ForgeMouth", Vector3.new(3.6, 2.8, 0.3), at(0, GROUND + 2.6, bz - 0.4), Color3.fromRGB(255, 120, 30), Enum.Material.Neon)
     light(mouth, skin.fire, 20 + level * 2, 1.5 + level * 0.12)
     fireOn(mouth, 4 + level * 0.3, 8)
-    local chimney = part("Chimney", Vector3.new(2.4, 12, 2.4), at(0, GROUND + 12, bz - 4.5))
+    -- (a mesh house has its own chimney / smokestacks / crater, so this one is invisible and only carries the smoke)
+    local chimney = part("Chimney", Vector3.new(2.4, 12, 2.4), at(0, meshHouse and (GROUND + hs.Y - 2) or (GROUND + 12), bz - 4.5), nil, nil,
+        meshHouse and { Transparency = 1, CanCollide = false, CanQuery = false } or nil)
     local smoke = Instance.new("Smoke")
     smoke.Size, smoke.RiseVelocity, smoke.Opacity = 3 + level * 0.4, 6, 0.3
     smoke.Color = Color3.fromRGB(80, 80, 80)
@@ -366,6 +420,16 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
         part("TrimBeam", Vector3.new(12.2, 0.3, 2.4), at(0, GROUND + 8.7, FENCE), skin.fire, Enum.Material.Neon)
     end
 
+    -- ── Skin scenery: themed structures (spires, crystals, pylons...) you can walk through ──
+    local family = ForgeSkinProps.Family(equipped.ForgeSkin)
+    if family then
+        local isBasic = equipped.ForgeSkin:find("Basic") ~= nil or equipped.ForgeSkin:find("Bronze") ~= nil
+        ForgeSkinProps.Build(model, family, {
+            part = part, at = at, light = light, fireOn = fireOn, spin = spin,
+            ground = GROUND, skin = skin, tier = isBasic and 1 or 2,
+        })
+    end
+
     -- ── Equipped forge effect: animated glow around the forge ─────────────────
     if equipped.ForgeEffect then
         local d = CosmeticData.Describe(equipped.ForgeEffect)
@@ -396,6 +460,11 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
         local c = d.color
         local dark = c:Lerp(Color3.new(0, 0, 0), 0.45)
         local X, Z = 21, 21
+        -- the real mesh, with its own animation (flames, orbiting pieces, swirling portal...), when it has loaded; otherwise the part-built one below
+        local placed = ForgeDecorFx.Place(id, at(X, GROUND, Z), model)
+        if placed then
+            part("DecorBase", Vector3.new(6, 0.5, 6), at(X, GROUND + 0.25, Z), Color3.fromRGB(70, 65, 65), Enum.Material.Slate, { CanCollide = false })
+        else
         part("DecorBase", Vector3.new(5, 1, 5), at(X, GROUND + 0.5, Z), Color3.fromRGB(70, 65, 65), Enum.Material.Slate)
         local top
         if id:find("Statue") then                                   -- a figure: legs, torso, head, raised arm
@@ -437,6 +506,7 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
             top = ball("DecorOrb", 2.6, at(X, GROUND + 8.4, Z), c, Enum.Material.Neon)
         end
         light(top, c, 20, 1.5)
+        end
     end
 
     model.Parent = parent

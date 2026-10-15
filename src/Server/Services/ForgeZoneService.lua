@@ -54,10 +54,13 @@ local function BuildZone(player, plotIndex)
     part.CFrame           = CFrame.new(PlotCentre(plotIndex))
     part.Anchored         = true
     part.CanCollide        = false
-    part.Transparency      = 0.85
+    -- This box is only the trigger volume that notices when someone walks into the plot (Touched / TouchEnded). It used to be drawn as a glowing
+    -- orange Neon box over the whole forge; it is fully invisible now (it still detects touches, and can't be hit by raycasts or the camera).
+    part.Transparency      = 1
     part.Color             = ZONE_COLOR
-    part.Material          = Enum.Material.Neon
+    part.Material          = Enum.Material.SmoothPlastic
     part.CastShadow        = false
+    part.CanQuery          = false
     part.Parent            = zonesFolder
 
     -- Visible ground platform so the plot is easy to see
