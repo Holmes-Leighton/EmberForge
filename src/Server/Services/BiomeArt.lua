@@ -98,6 +98,8 @@ end
 local SOLID_PIECES = {
     RockCluster = true, CrystalCluster = true, OreCrates = true, Stalagmite = true, Boulder = true, GlowCluster = true,
     Spires = true, WallPiece = true, IceSpires = true, SnowBoulder = true, SnowPine = true, IceCrystals = true, FrozenFalls = true, PadCrystals = true,
+    -- the hub's floor clutter is solid too: you cannot walk through a heap of rubble or a stack of barrels (they keep to the road edges and quiet corners)
+    Rubble = true, BrokenPlanks = true, OreSacks = true, Wheelbarrow = true, BarrelStack = true, ToolRack = true, CaveMushrooms = true, FloorLantern = true,
 }
 
 -- opts: height | width (target size), yaw (radians), float (pos is the centre, not the ground), top (the piece's top surface goes at this height), hang (pos.Y is a ceiling: the piece hangs from it),
@@ -700,7 +702,7 @@ local function BuildScatter(rec)
                 local r = pickRegion()
                 local pos = Vector3.new(rng:NextNumber(r.x1, r.x2), 0.2, rng:NextNumber(r.z1, r.z2))
                 local height, yaw, glow = rng:NextNumber(k[2], k[3]), rng:NextNumber(0, math.pi * 2), rng:NextNumber(0, 1) < 0.4
-                if not CartCourseData.NearRoute(pos.X, pos.Z, 24) then            -- never on a Cart Run road
+                if not CartCourseData.NearRoute(pos.X, pos.Z, 24) and math.abs(pos.Z - 60) > 10 then            -- never on a Cart Run road or the minecart track (z = 60)
                     local m = MeshPiece(group, "World", k[1], pos, { height = height, yaw = yaw })
                     if m and k[1] == "CrystalCluster" and glow then GlowLight(m, Color3.fromRGB(255, 200, 110), 22, 0.9, rng:NextNumber(0, 6)) end
                 end
@@ -713,8 +715,8 @@ local function BuildScatter(rec)
             MeshPiece(group, "World", "Stalactite", pos, { height = rng:NextNumber(14, 30), yaw = rng:NextNumber(0, math.pi * 2), hang = true })
         end
     end
-    -- Floor clutter: rubble, broken planks, ore sacks, barrels, tool racks, wheelbarrows, glowing mushrooms and floor lanterns. All walk-through (none of them is in
-    -- SOLID_PIECES), so nothing snags a player, a pet or a cart. They also line the edges of the main road, where the rest of the scenery keeps clear.
+    -- Floor clutter: rubble, broken planks, ore sacks, barrels, tool racks, wheelbarrows, glowing mushrooms and floor lanterns. All solid (they are in SOLID_PIECES), like
+    -- the rest of the scenery. They line the edges of the main road but stay at least 9 studs off the track, so nothing blocks the road, the carts or the Cart Run roads.
     local clutterRegions = { table.unpack(regions) }
     table.insert(clutterRegions, { x1 = -420, x2 = 2050, z1 = 26, z2 = 46 })          -- along the main road (z = 60), either side
     table.insert(clutterRegions, { x1 = -420, x2 = 2050, z1 = 74, z2 = 94 })
@@ -739,8 +741,8 @@ local function BuildScatter(rec)
             for _ = 1, k[4] do
                 local r = pickClutterRegion()
                 local pos = Vector3.new(rng:NextNumber(r.x1, r.x2), 0.2, rng:NextNumber(r.z1, r.z2))
-                if not CartCourseData.NearRoute(pos.X, pos.Z, 24) then
-                    local m = MeshPiece(group, "World", k[1], pos, { height = rng:NextNumber(k[2], k[3]), yaw = rng:NextNumber(0, math.pi * 2), solid = false })
+                if not CartCourseData.NearRoute(pos.X, pos.Z, 24) and math.abs(pos.Z - 60) > 10 then          -- (the minecart track runs along z = 60: keep it clear)
+                    local m = MeshPiece(group, "World", k[1], pos, { height = rng:NextNumber(k[2], k[3]), yaw = rng:NextNumber(0, math.pi * 2) })
                     if m and k[5] and rng:NextNumber(0, 1) < (k[6] or 1) then GlowLight(m, k[5], 24, 0.9, rng:NextNumber(0, 6)) end
                 end
             end
