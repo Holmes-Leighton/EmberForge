@@ -117,8 +117,11 @@ local function StepWorld(dt, now)
     end
     for part, b in pairs(beams) do
         if part.Parent then
-            local idx, state, k = CourierLayout.BeamState(b.f, now)
-            local mine = idx == b.circle
+            local state, k = nil, 0
+            for _, s in ipairs(CourierLayout.BeamState(b.f, now)) do
+                if s.idx == b.circle and (state ~= "fire") then state, k = s.state, s.k end
+            end
+            local mine = state ~= nil
             if b.role == "column" then
                 part.Transparency = (mine and state == "fire") and 0.12 or (mine and state == "warn") and (0.9 - 0.15 * k) or 1
             else                                                    -- the glowing disc on the floor: faint at rest, pulsing as it charges, blazing as it fires

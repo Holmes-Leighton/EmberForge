@@ -206,7 +206,7 @@ do
     local CR = load("SSS/EmberForge/Services/CourierRunner")
     local L = CL.Build({ base = { x = 0, y = 100, z = 0 }, zRange = 0, modules = {
         { "rest", {} }, { "lift", { rise = 12, period = 6 } }, { "zmover", { amp = 5, period = 6 } }, { "orbit", { radius = 8 } },
-        { "pendulum", { len = 34, n = 3 } }, { "beams", { len = 36, cols = 3, rows = 2 } }, { "finish", {} } } })
+        { "pendulum", { len = 34, n = 3 } }, { "beams", { len = 36, count = 8 } }, { "finish", {} } } })
     local lift = L.lifts[1]
     expect(math.abs(CL.LiftY(lift, 0) - lift.y0) < 1e-6 and math.abs(CL.LiftY(lift, lift.period / 2) - lift.y1) < 1e-6, "a lift rides between its two heights")
     local zm = L.zmovers[1]
@@ -224,33 +224,70 @@ do
     expect(hit, "a swinging blade hits whoever stands in its path")
     expect(not CR.PendulumHits(pd, 0, pd.x, pd.y + 40, pd.z), "but not someone far above it")
     local f = L.beamfields[1]
-    local seen, last, repeats, fires, warns = {}, nil, 0, 0, 0
-    for slot = 0, 199 do
-        local t = slot * f.period + 0.1
-        local idx, st = CL.BeamState(f, t)
-        if st == "warn" then warns += 1 end
-        seen[idx] = true
-        if last == idx then repeats += 1 end
-        last = idx
-        local tf = slot * f.period + f.warn + 0.1
-        local i2, s2 = CL.BeamState(f, tf)
-        if s2 == "fire" then
-            fires += 1
-            local c = f.circles[i2]
-            if not CR.BeamHits(f, tf, c.x, f.y + 3, c.z) then expect(false, "a firing beam kills someone standing in its circle") break end
-            for k, c2 in ipairs(f.circles) do
-                if k ~= i2 and CR.BeamHits(f, tf, c2.x, f.y + 3, c2.z) then expect(false, "only the charged circle kills") break end
-            end
+    local ok, overlap, off = true, false, false
+    for i, c in ipairs(f.circles) do
+        if c.r > 3.2 then ok = false end
+        if c.x - c.r < f.x1 or c.x + c.r > f.x2 then off = true end
+        for j = i + 1, #f.circles do
+            local d = math.sqrt((c.x - f.circles[j].x) ^ 2 + (c.z - f.circles[j].z) ^ 2)
+            if d < c.r + f.circles[j].r then overlap = true end
         end
     end
+    expect(ok and #f.circles >= 6, "the circles are small and there are plenty (" .. #f.circles .. ")")
+    expect(not overlap and not off, "scattered, none overlapping, all on the pad")
+    local xs = {}
+    for _, c in ipairs(f.circles) do xs[#xs + 1] = c.z end
+    table.sort(xs)
+    local evenSpacing = true
+    for i = 3, #xs do if math.abs((xs[i] - xs[i - 1]) - (xs[i - 1] - xs[i - 2])) > 1e-6 then evenSpacing = false end end
+    expect(not evenSpacing, "and not laid out on a grid")
+    local seen, shots, warnFirst, bad = {}, 0, true, nil
+    local starts = {}
+    local prev = {}
+    for t = 0, 600, 0.05 do
+        local st = CL.BeamState(f, t)
+        local cur = {}
+        for _, s in ipairs(st) do
+            seen[s.idx] = true
+            local key = s.idx
+            cur[key] = s.state
+            if s.state == "fire" and prev[key] == nil then warnFirst = false end          -- a circle must never fire without having charged first
+            if s.state == "warn" and prev[key] == nil then shots += 1 table.insert(starts, t) end
+            if s.state == "fire" then
+                local c = f.circles[s.idx]
+                if not CR.BeamHits(f, t, c.x, f.y + 3, c.z) then bad = "a firing circle does not kill" end
+                for k, c2 in ipairs(f.circles) do
+                    local firing = false
+                    for _, o in ipairs(st) do if o.idx == k and o.state == "fire" then firing = true end end
+                    if not firing and CR.BeamHits(f, t, c2.x, f.y + 3, c2.z) and (c2.x ~= c.x or c2.z ~= c.z) then
+                        -- (a circle that is not firing must be safe, unless a firing one covers the same spot)
+                        local near = false
+                        for _, o in ipairs(st) do
+                            local oc = f.circles[o.idx]
+                            if o.state == "fire" and (c2.x - oc.x) ^ 2 + (c2.z - oc.z) ^ 2 <= (oc.r + 0.8) ^ 2 then near = true end
+                        end
+                        if not near then bad = "a circle that is not firing kills" end
+                    end
+                end
+            end
+        end
+        prev = cur
+    end
+    expect(bad == nil, bad or "only a firing circle kills")
+    expect(warnFirst, "every shot warns before it fires")
     local count = 0 for _ in pairs(seen) do count += 1 end
     expect(count == #f.circles, "every circle gets used over time (" .. count .. " of " .. #f.circles .. ")")
-    expect(repeats == 0, "never the same circle twice in a row")
-    expect(fires == 200 and warns == 200, "every shot warns first, then fires")
-    local idx, st = CL.BeamState(f, 0 * f.period + f.warn + f.fire + 0.1)
-    expect(st == nil, "between shots every circle is safe")
-    local c = f.circles[1]
-    expect(not CR.BeamHits(f, f.warn + f.fire + 0.1, c.x, f.y + 3, c.z), "nobody is hurt between shots")
+    expect(shots > 150, "shots keep coming (" .. shots .. " in 10 minutes)")
+    local gaps, distinct = {}, {}
+    for i = 2, #starts do local g = math.floor((starts[i] - starts[i - 1]) * 4) / 4 gaps[#gaps + 1] = g distinct[g] = true end
+    local n = 0 for _ in pairs(distinct) do n += 1 end
+    expect(n >= 8, "the gaps between shots all differ - no rhythm to learn (" .. n .. " different gaps)")
+    local quiet = false
+    for t = 0, 120, 0.05 do if #CL.BeamState(f, t) == 0 then quiet = true break end end
+    expect(quiet, "there are quiet moments too")
+    local twoAtOnce = false
+    for t = 0, 600, 0.05 do if #CL.BeamState(f, t) >= 2 then twoAtOnce = true break end end
+    expect(twoAtOnce, "sometimes two circles are live at once")
 end
 
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")

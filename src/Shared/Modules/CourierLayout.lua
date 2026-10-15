@@ -249,15 +249,30 @@ function Modules.beams(L, cur, p)
     local x0 = cur.x + (p.gap or 3)
     local len, width = p.len or 36, p.width or 24
     Plat(L, x0, len, cur.y, cur.z, width)
-    local cols, rows, r = p.cols or 3, p.rows or 2, p.radius or 4.2
+    -- small circles scattered at random (the same every time for a seed): sizes vary a little, none overlap, all stay on the pad
+    local seed = p.seed or (#L.beamfields * 31 + math.floor(cur.y) % 97 + 7)
+    local state = (seed * 2654435761 + 12345) % 4294967296
+    local function rnd()
+        state = (state * 1664525 + 1013904223) % 4294967296
+        return (state // 256) / 16777216
+    end
+    local count, rmin, rmax = p.count or 9, p.rmin or 2.0, p.rmax or 3.0
     local circles = {}
-    for c = 1, cols do
-        for rw = 1, rows do
-            table.insert(circles, { x = x0 + len * (c - 0.5) / cols, z = cur.z + ((rw - 0.5) / rows - 0.5) * width * 0.8, r = r })
+    for _ = 1, count do
+        for _ = 1, 60 do
+            local r = rmin + (rmax - rmin) * rnd()
+            local cx = x0 + r + 2 + (len - 2 * r - 4) * rnd()
+            local cz = cur.z + (rnd() - 0.5) * (width - 2 * r - 3)
+            local ok = true
+            for _, o in ipairs(circles) do
+                local dx, dz = cx - o.x, cz - o.z
+                if dx * dx + dz * dz < (r + o.r + 2.5) * (r + o.r + 2.5) then ok = false break end
+            end
+            if ok then table.insert(circles, { x = cx, z = cz, r = r }) break end
         end
     end
     table.insert(L.beamfields, { x1 = x0, x2 = x0 + len, y = cur.y, circles = circles, period = p.period or 3, warn = p.warn or 1.2, fire = p.fire or 0.7,
-        phase = p.phase or 0, seed = p.seed or (#L.beamfields * 31 + math.floor(cur.y) % 97 + 7) })
+        phase = p.phase or 0, seed = seed })
     cur.x = x0 + len
 end
 
@@ -311,21 +326,35 @@ function CourierLayout.PendulumBlade(p, t)
     local a = p.amp * math.sin(2 * math.pi * (t + p.phase) / p.period)
     return p.x + p.length * math.sin(a), p.pivotY - p.length * math.cos(a), a
 end
--- Which circle of a beam field is charging at time t: index, "warn" | "fire", or nil between shots. Chosen pseudo-randomly per shot, never the same circle twice running.
-local function Pick(f, slot)
-    local h = ((slot % 100003) * 2654435 + f.seed * 7919) % 1000003
-    h = (h * h) % 1000033
-    return h % #f.circles + 1
+-- Which circles of a beam field are charging or firing at time t: a list of { idx, state = "warn" | "fire", k = how far through the charge 0..1 } (empty between shots).
+-- Several independent "lanes" each shoot on their own irregular clock: a shot starts at a random moment inside its slot, some slots stay silent, and which circle is
+-- chosen is random, so there is no pattern to learn. Every shot still warns for `warn` seconds before it fires, so it is always dodgeable.
+local function H(seed, slot, salt)
+    local h = ((slot % 100003) * 2654435 + seed * 7919 + salt * 104729) % 1000003
+    return ((h * h) % 1000033) / 1000033
 end
 function CourierLayout.BeamState(f, t)
-    local u = t + f.phase
-    local slot = math.floor(u / f.period)
-    local into = u - slot * f.period
-    local idx = Pick(f, slot)
-    if #f.circles > 1 and idx % 2 ~= slot % 2 then idx = idx % #f.circles + 1 end   -- even shots use the even circles, odd shots the odd ones: never the same circle twice running
-    if into < f.warn then return idx, "warn", into / f.warn end
-    if into < f.warn + f.fire then return idx, "fire", 1 end
-    return nil
+    local out = {}
+    local lanes = f.lanes or 2
+    for lane = 1, lanes do
+        local period = f.period * (1 + 0.43 * (lane - 1))
+        local salt = lane * 17
+        local u = t + f.phase + lane * 1.37
+        local slot = math.floor(u / period)
+        local into = u - slot * period
+        if H(f.seed, slot, salt + 1) > 0.22 then                                   -- (about one slot in five stays quiet)
+            local slack = math.max(0, period - f.warn - f.fire)
+            local start = H(f.seed, slot, salt + 2) * slack
+            local idx = math.floor(H(f.seed, slot, salt + 3) * #f.circles) + 1
+            local e = into - start
+            if e >= 0 and e < f.warn then
+                table.insert(out, { idx = idx, state = "warn", k = e / f.warn })
+            elseif e >= f.warn and e < f.warn + f.fire then
+                table.insert(out, { idx = idx, state = "fire", k = 1 })
+            end
+        end
+    end
+    return out
 end
 
 -- The solid pieces a player walks on, in course order (platforms, crumbles and the extremes of movers), as { x1, x2, y(top), z, w }

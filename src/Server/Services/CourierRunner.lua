@@ -86,12 +86,16 @@ end
 -- Is the point inside the circle that is firing right now? (a beam of light shoots up out of it)
 function CourierRunner.BeamHits(f, t, px, py, pz)
     if px < f.x1 - 6 or px > f.x2 + 6 then return false end
-    local idx, state = CourierLayout.BeamState(f, t)
-    if state ~= "fire" then return false end
-    local c = f.circles[idx]
-    local dx, dz = px - c.x, pz - c.z
     local h = py - f.y
-    return dx * dx + dz * dz <= (c.r + 0.8) * (c.r + 0.8) and h > -1 and h < 70
+    if h <= -1 or h >= 70 then return false end
+    for _, s in ipairs(CourierLayout.BeamState(f, t)) do
+        if s.state == "fire" then
+            local c = f.circles[s.idx]
+            local dx, dz = px - c.x, pz - c.z
+            if dx * dx + dz * dz <= (c.r + 0.8) * (c.r + 0.8) then return true end
+        end
+    end
+    return false
 end
 
 -- Is the point under this crusher while it is shut?
