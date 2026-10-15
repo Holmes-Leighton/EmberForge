@@ -6,7 +6,8 @@
 --   onFinish(seconds, respawns)     delivered (seconds already includes the penalty for each respawn)
 --   onAbandon(reason)               "left" | "idle" | "speed": the run is dropped
 local CourierData = require(game.ReplicatedStorage.Shared.Data.CourierData)
-local CartCourseData = require(game.ReplicatedStorage.Shared.Data.CartCourseData)     -- (its shared gate clock drives the crushers)
+local CartCourseData = require(game.ReplicatedStorage.Shared.Data.CartCourseData)
+local CourierLayout  = require(game.ReplicatedStorage.Shared.Modules.CourierLayout)     -- (its shared gate clock drives the crushers)
 
 local CourierRunner = {}
 
@@ -72,6 +73,25 @@ function CourierRunner.SweeperHits(sw, t, px, py, pz)
     local h = py - sw.y
     if h > 3.2 + STAND_HEIGHT - 0.4 or h < -2 then return false end
     return math.abs(px - sw.x) <= (sw.thick or 1.6) / 2 + BAR_BODY and math.abs(pz - CourierRunner.SweeperZ(sw, t)) <= 1.7 + BAR_BODY
+end
+
+-- Is the point touching this swinging blade? (jump it, or time it; it hangs over the whole width of its platform)
+function CourierRunner.PendulumHits(p, t, px, py, pz)
+    if math.abs(pz - p.z) > p.width / 2 + 1 or math.abs(px - p.x) > p.length + 4 then return false end
+    local bx, by = CourierLayout.PendulumBlade(p, t)
+    local dx, dy = px - bx, py - by
+    return dx * dx + dy * dy <= 3.8 * 3.8
+end
+
+-- Is the point inside the circle that is firing right now? (a beam of light shoots up out of it)
+function CourierRunner.BeamHits(f, t, px, py, pz)
+    if px < f.x1 - 6 or px > f.x2 + 6 then return false end
+    local idx, state = CourierLayout.BeamState(f, t)
+    if state ~= "fire" then return false end
+    local c = f.circles[idx]
+    local dx, dz = px - c.x, pz - c.z
+    local h = py - f.y
+    return dx * dx + dz * dz <= (c.r + 0.8) * (c.r + 0.8) and h > -1 and h < 70
 end
 
 -- Is the point under this crusher while it is shut?
@@ -158,6 +178,12 @@ function CourierRunner.Step(run, now, px, py, pz)
             Respawn(run, now, "crushed")
             return
         end
+    end
+    for _, pd in ipairs(L.pendulums or {}) do
+        if CourierRunner.PendulumHits(pd, now, px, py, pz) then Respawn(run, now, "swung") return end
+    end
+    for _, f in ipairs(L.beamfields or {}) do
+        if CourierRunner.BeamHits(f, now, px, py, pz) then Respawn(run, now, "zapped") return end
     end
 
     -- progress: the next checkpoint, in order, then the finish

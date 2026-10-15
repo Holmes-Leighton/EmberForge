@@ -194,6 +194,73 @@ function Modules.sweeper(L, cur, p)
     cur.x = x0 + p.len
 end
 
+-- A lift: a platform that rides up and down between the start platform's height and a higher landing (sine-eased, on the shared clock). Step on at the bottom, off at the top.
+function Modules.lift(L, cur, p)
+    local len, rise = p.len or 8, p.rise or 12
+    local x0 = cur.x + (p.gap or 2)
+    table.insert(L.lifts, { x = x0 + len / 2, z = cur.z, y0 = cur.y - THICK / 2, y1 = cur.y + rise - THICK / 2, sx = len, sy = THICK, sz = p.width or 9,
+        period = p.period or 7, phase = p.phase or 0 })
+    local lx = x0 + len + (p.gap or 2)
+    Plat(L, lx, p.landing or 10, cur.y + rise, cur.z, p.landingWidth or p.width or 10, { viaTruss = true })      -- (the lift carries the height)
+    cur.y += rise
+    cur.x = lx + (p.landing or 10)
+end
+
+-- A platform that slides toward you and away (along Z) across the gap: hop on when it comes near, off at the far side. The wide entry and landing platforms cover its whole sweep.
+function Modules.zmover(L, cur, p)
+    local len, width, amp = p.len or 8, p.width or 9, p.amp or 5
+    local wide = width + 2 * amp + 2
+    local e0 = cur.x + (p.gap or 2)
+    Plat(L, e0, p.entry or 6, cur.y, cur.z, wide)
+    local x0 = e0 + (p.entry or 6) + 2
+    table.insert(L.zmovers, { x = x0 + len / 2, y = cur.y - THICK / 2, z0 = cur.z - amp, z1 = cur.z + amp, sx = len, sy = THICK, sz = width, period = p.period or 6, phase = p.phase or 0 })
+    local lx = x0 + len + 2
+    Plat(L, lx, p.landing or 10, cur.y, cur.z, wide)
+    cur.x = lx + (p.landing or 10)
+end
+
+-- A platform that travels round in a circle across the gap: step on from the entry side, ride half a turn, step off to the landing
+function Modules.orbit(L, cur, p)
+    local r, len, width = p.radius or 9, p.len or 8, p.width or 8
+    local wide = 2 * r + width + 2
+    local e0 = cur.x + (p.gap or 2)
+    Plat(L, e0, p.entry or 6, cur.y, cur.z, wide)
+    local cx = e0 + (p.entry or 6) + 2 + r + len / 2
+    table.insert(L.orbiters, { x = cx, y = cur.y - THICK / 2, z = cur.z, radius = r, sx = len, sy = THICK, sz = width, omega = p.omega or 0.55, phase = p.phase or math.pi })
+    local lx = cx + r + len / 2 + 2
+    Plat(L, lx, p.landing or 10, cur.y, cur.z, wide)
+    cur.x = lx + (p.landing or 10)
+end
+
+-- A long platform with swinging blades hung over it: time the swing or jump the blade
+function Modules.pendulum(L, cur, p)
+    local x0 = cur.x + (p.gap or 3)
+    Plat(L, x0, p.len, cur.y, cur.z, p.width or 9)
+    local n, length = p.n or 3, p.length or 12
+    for i = 1, n do
+        table.insert(L.pendulums, { x = x0 + (p.len / (n + 1)) * i, z = cur.z, y = cur.y, length = length, pivotY = cur.y + length + 3.5, amp = p.amp or 0.95,
+            period = p.period or 3.2, phase = (p.phase or 0) + (i - 1) * (p.stagger or 1.1), width = p.width or 9 })
+    end
+    cur.x = x0 + p.len
+end
+
+-- A big pad with glowing circles: every few seconds one circle charges (warning), then a beam of light shoots up out of it, killing anything standing in it
+function Modules.beams(L, cur, p)
+    local x0 = cur.x + (p.gap or 3)
+    local len, width = p.len or 36, p.width or 24
+    Plat(L, x0, len, cur.y, cur.z, width)
+    local cols, rows, r = p.cols or 3, p.rows or 2, p.radius or 4.2
+    local circles = {}
+    for c = 1, cols do
+        for rw = 1, rows do
+            table.insert(circles, { x = x0 + len * (c - 0.5) / cols, z = cur.z + ((rw - 0.5) / rows - 0.5) * width * 0.8, r = r })
+        end
+    end
+    table.insert(L.beamfields, { x1 = x0, x2 = x0 + len, y = cur.y, circles = circles, period = p.period or 3, warn = p.warn or 1.2, fire = p.fire or 0.7,
+        phase = p.phase or 0, seed = p.seed or (#L.beamfields * 31 + math.floor(cur.y) % 97 + 7) })
+    cur.x = x0 + len
+end
+
 -- The drop-off: a wide platform with the finish zone on it
 function Modules.finish(L, cur, p)
     local x0 = cur.x + (p.gap or 3)
@@ -208,6 +275,7 @@ function CourierLayout.Build(course)
     local L = {
         base = course.base, zRange = course.zRange or 14,
         platforms = {}, movers = {}, crumbles = {}, spinners = {}, crushers = {}, checkpoints = {}, trusses = {}, bounces = {}, sweepers = {}, kills = {}, grids = {},
+        lifts = {}, zmovers = {}, orbiters = {}, pendulums = {}, beamfields = {},
     }
     local cur = { x = course.base.x, y = course.base.y, z = course.base.z }
     for _, m in ipairs(course.modules) do
@@ -230,6 +298,36 @@ end
 CourierLayout.JUMP_REACH_FLAT = 8.6
 CourierLayout.JUMP_HEIGHT     = 7.2
 
+-- ── Shared motion rules (server and clients both call these on the shared clock) ──
+local function Ease(t, period, phase) return 0.5 - 0.5 * math.cos(2 * math.pi * (t + (phase or 0)) / period) end
+function CourierLayout.LiftY(l, t) return l.y0 + (l.y1 - l.y0) * Ease(t, l.period, l.phase) end
+function CourierLayout.ZMoverZ(m, t) return m.z0 + (m.z1 - m.z0) * Ease(t, m.period, m.phase) end
+function CourierLayout.OrbitPos(o, t)
+    local a = o.phase + o.omega * t
+    return o.x + o.radius * math.cos(a), o.z + o.radius * math.sin(a)
+end
+-- The blade's centre (x, y) at time t: it hangs `length` below its pivot and swings through +-amp radians along the course
+function CourierLayout.PendulumBlade(p, t)
+    local a = p.amp * math.sin(2 * math.pi * (t + p.phase) / p.period)
+    return p.x + p.length * math.sin(a), p.pivotY - p.length * math.cos(a), a
+end
+-- Which circle of a beam field is charging at time t: index, "warn" | "fire", or nil between shots. Chosen pseudo-randomly per shot, never the same circle twice running.
+local function Pick(f, slot)
+    local h = ((slot % 100003) * 2654435 + f.seed * 7919) % 1000003
+    h = (h * h) % 1000033
+    return h % #f.circles + 1
+end
+function CourierLayout.BeamState(f, t)
+    local u = t + f.phase
+    local slot = math.floor(u / f.period)
+    local into = u - slot * f.period
+    local idx = Pick(f, slot)
+    if #f.circles > 1 and idx % 2 ~= slot % 2 then idx = idx % #f.circles + 1 end   -- even shots use the even circles, odd shots the odd ones: never the same circle twice running
+    if into < f.warn then return idx, "warn", into / f.warn end
+    if into < f.warn + f.fire then return idx, "fire", 1 end
+    return nil
+end
+
 -- The solid pieces a player walks on, in course order (platforms, crumbles and the extremes of movers), as { x1, x2, y(top), z, w }
 function CourierLayout.WalkOrder(L)
     local out = {}
@@ -239,6 +337,9 @@ function CourierLayout.WalkOrder(L)
     for _, m in ipairs(L.movers) do                      -- a mover is one piece from its near extreme to its far one (you ride it across)
         add(m.x0 - m.sx / 2, m.x1 + m.sx / 2, m.y + m.sy / 2, m.z, m.sz, "mover")
     end
+    for _, l in ipairs(L.lifts) do add(l.x - l.sx / 2, l.x + l.sx / 2, l.y0 + l.sy / 2, l.z, l.sz, "lift") end
+    for _, m in ipairs(L.zmovers) do add(m.x - m.sx / 2, m.x + m.sx / 2, m.y + m.sy / 2, (m.z0 + m.z1) / 2, m.sz + math.abs(m.z1 - m.z0), "zmover") end
+    for _, o in ipairs(L.orbiters) do add(o.x - o.radius - o.sx / 2, o.x + o.radius + o.sx / 2, o.y + o.sy / 2, o.z, 2 * o.radius + o.sz, "orbit") end
     table.sort(out, function(a, b) return a.x1 < b.x1 end)
     return out
 end

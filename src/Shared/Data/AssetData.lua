@@ -126,6 +126,7 @@ AssetData.SignMeshes = { NoticeFrame = 109410470926629, PlankFrame = 13674639000
 AssetData.TowerMeshes = {
     Platform = 74638111743775, Rest = 130909452112747, Crumble = 70614088193274, Mover = 92745299589030, Spinner = 88751484752289, Crusher = 139253370426718,
     DeathTile = 138462734309138, Bounce = 124685272887092, Ring = 91475482649523, Girder = 93266726839537, Cloud = 102244566507695,
+    Blade = 120155553107921, BeamPad = 131637819605325,
 }
 
 AssetData.BuildExtras = {

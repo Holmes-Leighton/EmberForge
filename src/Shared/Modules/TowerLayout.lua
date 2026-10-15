@@ -155,6 +155,35 @@ local DESIGNS = {
                   { "spinner", { gap = 4, len = 34, width = 22, radius = 9, omega = 1.7, bars = 2 } } } },
     { name = "Triple Spinner", theme = "neon", tier = 3,
       modules = { { "spinner", { gap = 4, len = 38, width = 26, radius = 11, omega = 1.5, bars = 3 } } } },
+    -- moving platforms in every direction, swinging blades and beam pads
+    { name = "Lift Shaft", theme = "metal", tier = 2,
+      modules = { { "lift", { gap = 2, len = 9, rise = 10, period = 7, landing = 9, width = 10 } },
+                  { "steps", { n = 2, gap = 4.5, len = 8, width = 9, rises = { 0, 1 }, zigs = { 0, 0 } } } } },
+    { name = "Elevator Hop", theme = "neon", tier = 3,
+      modules = { { "lift", { gap = 2, len = 8, rise = 12, period = 6, landing = 7, width = 9 } },
+                  { "lift", { gap = 2, len = 8, rise = 12, period = 5.4, phase = 2.7, landing = 8, width = 9 } } } },
+    { name = "Side Swipe", theme = "wood", tier = 2,
+      modules = { { "zmover", { len = 8, width = 8, amp = 5, period = 6, landing = 8 } },
+                  { "steps", { n = 2, gap = 4.5, len = 8, width = 9, rises = { 0, 1 }, zigs = { 0, 0 } } } } },
+    { name = "Back & Forth", theme = "slate", tier = 3,
+      modules = { { "zmover", { len = 7, width = 7, amp = 6, period = 5, landing = 6 } },
+                  { "zmover", { len = 7, width = 7, amp = 6, period = 4.6, phase = 2.3, landing = 8 } } } },
+    { name = "Carousel", theme = "neon", tier = 2,
+      modules = { { "orbit", { radius = 8, len = 8, width = 8, omega = 0.5, landing = 9 } },
+                  { "steps", { n = 2, gap = 4.5, len = 8, width = 9, rises = { 0, 1 }, zigs = { 0, 0 } } } } },
+    { name = "Orbit Ring", theme = "lava", tier = 3,
+      modules = { { "orbit", { radius = 10, len = 7, width = 7, omega = 0.75, landing = 8 } },
+                  { "orbit", { radius = 8, len = 7, width = 7, omega = -0.85, landing = 8 } } } },
+    { name = "Blade Swing", theme = "metal", tier = 2,
+      modules = { { "pendulum", { gap = 3, len = 34, width = 9, n = 3, period = 3.4, amp = 0.9 } } } },
+    { name = "Axe Alley", theme = "dark", tier = 3,
+      modules = { { "pendulum", { gap = 3, len = 40, width = 8, n = 4, period = 2.8, amp = 1.0, stagger = 0.9 } },
+                  { "mover", { span = 26, len = 8, width = 9, period = 5, landing = 9, landingWidth = 10 } } } },
+    { name = "Beam Pads", theme = "neon", tier = 2,
+      modules = { { "beams", { gap = 3, len = 36, width = 24, cols = 3, rows = 2, radius = 4.2, period = 3.2, warn = 1.4, fire = 0.7 } } } },
+    { name = "Laser Grid", theme = "dark", tier = 3,
+      modules = { { "beams", { gap = 3, len = 44, width = 26, cols = 4, rows = 2, radius = 4.2, period = 2.6, warn = 1.0, fire = 0.7 } },
+                  { "steps", { n = 2, gap = 4.5, len = 8, width = 9, rises = { 0, 1 }, zigs = { 0, 0 } } } } },
     { name = "Kill Sweep", theme = "metal", tier = 3,
       modules = { { "killfloor", { gap = 3, pattern = { ".X.X.X", "X.X..X", ".X..X." } } },
                   { "sweeper", { gap = 4, len = 32, width = 5, n = 2, amp = 3.5, period = 3.0, stagger = 1.5 } } } },
@@ -189,7 +218,7 @@ function TowerLayout.Build(opts)
     local base = opts.base or { x = 0, y = 100, z = 0 }
     local rng = Rng(seed)
     local T = { levels = {}, platforms = {}, movers = {}, crumbles = {}, spinners = {}, crushers = {}, checkpoints = {}, levelOfCheckpoint = {},
-        trusses = {}, bounces = {}, sweepers = {}, kills = {}, grids = {}, base = base, seed = seed, total = total }
+        trusses = {}, bounces = {}, sweepers = {}, kills = {}, grids = {}, lifts = {}, zmovers = {}, orbiters = {}, pendulums = {}, beamfields = {}, base = base, seed = seed, total = total }
 
     local startX, y, z, dir = base.x, base.y, base.z, 1
     local lastDesign = 0
@@ -240,6 +269,15 @@ function TowerLayout.Build(opts)
         put(T.bounces, layout.bounces, function(c, q) c.x = wx(q.x) c.dir = dir end)         -- (it throws you the way the level runs)
         put(T.sweepers, layout.sweepers, function(c, q) c.x = wx(q.x) end)
         put(T.kills, layout.kills, function(c, q) c.x = wx(q.x) end)
+        put(T.lifts, layout.lifts, function(c, q) c.x = wx(q.x) end)
+        put(T.zmovers, layout.zmovers, function(c, q) c.x = wx(q.x) end)
+        put(T.orbiters, layout.orbiters, function(c, q) c.x = wx(q.x) end)
+        put(T.pendulums, layout.pendulums, function(c, q) c.x = wx(q.x) end)
+        put(T.beamfields, layout.beamfields, function(c, q)
+            c.x1, c.x2 = wx(q.x1), wx(q.x2)
+            c.circles = {}
+            for k, ci in ipairs(q.circles) do c.circles[k] = { x = wx(ci.x), z = ci.z, r = ci.r } end
+        end)
         put(T.grids, layout.grids, function(c, q) c.x1, c.x2 = wx(q.x1), wx(q.x2) end)
         local firstCp = #T.checkpoints + 1
         for _, cp in ipairs(layout.checkpoints) do
@@ -275,6 +313,9 @@ function TowerLayout.WalkOrder(T, level)
     for _, p in ipairs(T.crumbles) do if p.level == level and not p.grid then add(p.x - p.sx / 2, p.x + p.sx / 2, p.y + p.sy / 2, p.z, p.sz, "crumble") end end
     for _, g in ipairs(T.grids) do if g.level == level then add(g.x1, g.x2, g.top, g.z, g.w, "grid") end end        -- (a floor of falling tiles counts as one piece)
     for _, m in ipairs(T.movers) do if m.level == level then add(math.min(m.x0, m.x1) - m.sx / 2, math.max(m.x0, m.x1) + m.sx / 2, m.y + m.sy / 2, m.z, m.sz, "mover") end end
+    for _, l in ipairs(T.lifts) do if l.level == level then add(l.x - l.sx / 2, l.x + l.sx / 2, l.y0 + l.sy / 2, l.z, l.sz, "lift") end end
+    for _, m in ipairs(T.zmovers) do if m.level == level then add(m.x - m.sx / 2, m.x + m.sx / 2, m.y + m.sy / 2, (m.z0 + m.z1) / 2, m.sz + math.abs(m.z1 - m.z0), "zmover") end end
+    for _, o in ipairs(T.orbiters) do if o.level == level then add(o.x - o.radius - o.sx / 2, o.x + o.radius + o.sx / 2, o.y + o.sy / 2, o.z, 2 * o.radius + o.sz, "orbit") end end
     return out
 end
 

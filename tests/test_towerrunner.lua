@@ -30,6 +30,8 @@ local function walkTo(run, now, from, to, speed)
         for _, c in ipairs(run.byLevel[lv].crushers) do if math.abs(x - c.x) <= c.sx then lift = 9 end end
         for _, sw in ipairs(run.byLevel[lv].sweepers) do if math.abs(x - sw.x) <= 4 then lift = 8 end end
         for _, k in ipairs(run.byLevel[lv].kills) do if math.abs(x - k.x) <= k.sx / 2 + 1 then lift = 7 end end
+        for _, p in ipairs(run.byLevel[lv].pendulums) do if math.abs(x - p.x) <= 12 then lift = 11 end end                         -- (jump the blades; the bot just ignores the beam pads: it is above them)
+        for _, f in ipairs(run.byLevel[lv].beamfields) do if x >= f.x1 - 6 and x <= f.x2 + 6 then lift = 75 end end
         Runner.Step(run, now, x, from.y + dy * f + lift, from.z + dz * f)
     end
     return now
@@ -75,7 +77,7 @@ expect(run.highest == 30 and #log.levels == 29, "a steady climber reaches every 
 local inOrder = true
 for k, l in ipairs(log.levels) do if l ~= k + 1 then inOrder = false end end
 expect(inOrder, "the levels are reported in order")
-expect(#log.respawns == 0, "with no falls and no lava hits (" .. #log.respawns .. ")")
+expect(#log.respawns == 0, "with no falls and no lava hits (" .. #log.respawns .. (log.respawns[1] and (" first: " .. log.respawns[1].reason .. " on level " .. log.respawns[1].level) or "") .. ")")
 now = walkTo(run, now, pos, T.finish, 6)
 expect(log.summit ~= nil and run.finished, "walking to the finish is the summit")
 expect(log.summit.s > TD.TOP_MIN_TIME and log.summit.s < 1500, "a believable summit time (" .. string.format("%.0f", log.summit.s) .. " s)")

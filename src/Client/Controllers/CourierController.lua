@@ -10,6 +10,7 @@ local Debris            = game:GetService("Debris")
 local CartCourseData = require(game.ReplicatedStorage.Shared.Data.CartCourseData)     -- (the shared gate clock)
 local CourierData    = require(game.ReplicatedStorage.Shared.Data.CourierData)
 local RemoteEvents   = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
+local CourierLayout  = require(game.ReplicatedStorage.Shared.Modules.CourierLayout)
 local Theme          = require(game.ReplicatedStorage.Shared.Modules.Theme)
 
 local CourierController = {}
@@ -28,6 +29,34 @@ local function AddSpinner(part)
     spinners[part] = { omega = part:GetAttribute("Omega") or 1, phase = part:GetAttribute("Phase") or 0, cx = part:GetAttribute("CX") or part.Position.X,
         cz = part:GetAttribute("CZ") or part.Position.Z, y = part:GetAttribute("Y") or part.Position.Y }
 end
+-- lifts (up and down), depth movers (toward and away), orbiting platforms, swinging blades and the beam pads' circles: all driven by the same shared clock and
+-- the same functions (CourierLayout) the server judges with
+local lifts, zmovers, orbiters, pendulums, beams = {}, {}, {}, {}, {}
+local function AddLift(part)
+    lifts[part] = { x = part:GetAttribute("X") or part.Position.X, z = part:GetAttribute("Z") or part.Position.Z, y0 = part:GetAttribute("Y0") or part.Position.Y,
+        y1 = part:GetAttribute("Y1") or part.Position.Y, period = part:GetAttribute("Period") or 6, phase = part:GetAttribute("Phase") or 0 }
+end
+local function AddZMover(part)
+    zmovers[part] = { x = part:GetAttribute("X") or part.Position.X, y = part:GetAttribute("Y") or part.Position.Y, z0 = part:GetAttribute("Z0") or part.Position.Z,
+        z1 = part:GetAttribute("Z1") or part.Position.Z, period = part:GetAttribute("Period") or 6, phase = part:GetAttribute("Phase") or 0 }
+end
+local function AddOrbiter(part)
+    orbiters[part] = { x = part:GetAttribute("CX") or part.Position.X, y = part:GetAttribute("Y") or part.Position.Y, z = part:GetAttribute("CZ") or part.Position.Z,
+        radius = part:GetAttribute("Radius") or 8, omega = part:GetAttribute("Omega") or 0.5, phase = part:GetAttribute("Phase") or 0 }
+end
+local function AddPendulum(part)
+    pendulums[part] = { x = part:GetAttribute("PX") or part.Position.X, pivotY = part:GetAttribute("PY") or part.Position.Y, z = part:GetAttribute("PZ") or part.Position.Z,
+        length = part:GetAttribute("Length") or 12, amp = part:GetAttribute("Amp") or 0.9, period = part:GetAttribute("Period") or 3, phase = part:GetAttribute("Phase") or 0,
+        off = part:GetAttribute("Off") or (part:GetAttribute("Length") or 12) }
+end
+local function AddBeam(part)
+    local n = part:GetAttribute("N") or 1
+    local circles = {}
+    for i = 1, n do circles[i] = true end
+    beams[part] = { f = { seed = part:GetAttribute("Seed") or 1, circles = circles, period = part:GetAttribute("Period") or 3, warn = part:GetAttribute("Warn") or 1,
+        fire = part:GetAttribute("Fire") or 0.7, phase = part:GetAttribute("Phase") or 0 }, circle = part:GetAttribute("Circle") or 1, role = part:GetAttribute("Role") or "column" }
+end
+
 local function AddCrusher(unit)
     crushers[unit] = { base = nil, o = 0 }
 end
@@ -67,6 +96,35 @@ local function StepWorld(dt, now)
         if part.Parent then
             part.CFrame = CFrame.new(s.cx, s.y, s.cz) * CFrame.Angles(0, -(s.phase + s.omega * now), 0)
         else spinners[part] = nil end
+    end
+    for part, l in pairs(lifts) do
+        if part.Parent then part.CFrame = CFrame.new(l.x, CourierLayout.LiftY(l, now), l.z) else lifts[part] = nil end
+    end
+    for part, m in pairs(zmovers) do
+        if part.Parent then part.CFrame = CFrame.new(m.x, m.y, CourierLayout.ZMoverZ(m, now)) else zmovers[part] = nil end
+    end
+    for part, o in pairs(orbiters) do
+        if part.Parent then
+            local x, z = CourierLayout.OrbitPos(o, now)
+            part.CFrame = CFrame.new(x, o.y, z)
+        else orbiters[part] = nil end
+    end
+    for part, p in pairs(pendulums) do
+        if part.Parent then
+            local a = p.amp * math.sin(2 * math.pi * (now + p.phase) / p.period)
+            part.CFrame = CFrame.new(p.x, p.pivotY, p.z) * CFrame.Angles(0, 0, a) * CFrame.new(0, -p.off, 0)
+        else pendulums[part] = nil end
+    end
+    for part, b in pairs(beams) do
+        if part.Parent then
+            local idx, state, k = CourierLayout.BeamState(b.f, now)
+            local mine = idx == b.circle
+            if b.role == "column" then
+                part.Transparency = (mine and state == "fire") and 0.12 or (mine and state == "warn") and (0.9 - 0.15 * k) or 1
+            else                                                    -- the glowing disc on the floor: faint at rest, pulsing as it charges, blazing as it fires
+                part.Transparency = (mine and state == "fire") and 0 or (mine and state == "warn") and (0.55 - 0.45 * k * (0.6 + 0.4 * math.sin(now * 18))) or 0.8
+            end
+        else beams[part] = nil end
     end
     for unit, c in pairs(crushers) do
         if unit.Parent then
@@ -315,7 +373,7 @@ local function ShowResults(s)
 end
 
 -- ── Events from the server ────────────────────────────────────────────────────
-local REASONS = { fell = "You fell!", lava = "The lava got you!", crushed = "Crushed!", spun = "Knocked off by the bar!" }
+local REASONS = { fell = "You fell!", lava = "The lava got you!", crushed = "Crushed!", spun = "Knocked off by the bar!", swung = "Hit by a swinging blade!", zapped = "Zapped by a beam of light!" }
 
 local function OnEvent(kind, p)
     p = p or {}
@@ -351,6 +409,10 @@ function CourierController.Init()
     for _, p in ipairs(CollectionService:GetTagged("EFCourierSpinner")) do AddSpinner(p) end
     CollectionService:GetInstanceAddedSignal("EFCourierSpinner"):Connect(AddSpinner)
     for _, u in ipairs(CollectionService:GetTagged("EFCourierCrusher")) do AddCrusher(u) end
+    for tag, add in pairs({ EFCourierLift = AddLift, EFCourierZMover = AddZMover, EFCourierOrbit = AddOrbiter, EFCourierPendulum = AddPendulum, EFCourierBeam = AddBeam }) do
+        for _, p in ipairs(CollectionService:GetTagged(tag)) do add(p) end
+        CollectionService:GetInstanceAddedSignal(tag):Connect(add)
+    end
     CollectionService:GetInstanceAddedSignal("EFCourierCrusher"):Connect(AddCrusher)
     for _, p in ipairs(CollectionService:GetTagged("EFCourierCrumble")) do AddCrumble(p) end
     CollectionService:GetInstanceAddedSignal("EFCourierCrumble"):Connect(AddCrumble)

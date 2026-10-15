@@ -200,4 +200,57 @@ run, log = newRun("RookieRun", 1000)
 run.respawns = 2
 expect(Runner.Elapsed(run, 1030) == 30 + 2 * CD.RESPAWN_PENALTY, "each fall adds the penalty")
 
+print("== lifts, depth movers, orbiters, blades and beam pads")
+do
+    local CL = load("game/ReplicatedStorage/Shared/Modules/CourierLayout")
+    local CR = load("SSS/EmberForge/Services/CourierRunner")
+    local L = CL.Build({ base = { x = 0, y = 100, z = 0 }, zRange = 0, modules = {
+        { "rest", {} }, { "lift", { rise = 12, period = 6 } }, { "zmover", { amp = 5, period = 6 } }, { "orbit", { radius = 8 } },
+        { "pendulum", { len = 34, n = 3 } }, { "beams", { len = 36, cols = 3, rows = 2 } }, { "finish", {} } } })
+    local lift = L.lifts[1]
+    expect(math.abs(CL.LiftY(lift, 0) - lift.y0) < 1e-6 and math.abs(CL.LiftY(lift, lift.period / 2) - lift.y1) < 1e-6, "a lift rides between its two heights")
+    local zm = L.zmovers[1]
+    expect(math.abs(CL.ZMoverZ(zm, 0) - zm.z0) < 1e-6 and math.abs(CL.ZMoverZ(zm, zm.period / 2) - zm.z1) < 1e-6, "a depth mover slides toward and away")
+    local o = L.orbiters[1]
+    local x1, z1 = CL.OrbitPos(o, 0)
+    local x2, z2 = CL.OrbitPos(o, math.pi / o.omega)
+    expect(math.abs((x1 + x2) / 2 - o.x) < 1e-6 and math.abs((z1 + z2) / 2 - o.z) < 1e-6, "an orbiting platform circles its centre")
+    local pd = L.pendulums[2]
+    local hit = false
+    for t = 0, pd.period, 0.05 do
+        local bx, by = CL.PendulumBlade(pd, t)
+        if CR.PendulumHits(pd, t, bx, by, pd.z) then hit = true end
+    end
+    expect(hit, "a swinging blade hits whoever stands in its path")
+    expect(not CR.PendulumHits(pd, 0, pd.x, pd.y + 40, pd.z), "but not someone far above it")
+    local f = L.beamfields[1]
+    local seen, last, repeats, fires, warns = {}, nil, 0, 0, 0
+    for slot = 0, 199 do
+        local t = slot * f.period + 0.1
+        local idx, st = CL.BeamState(f, t)
+        if st == "warn" then warns += 1 end
+        seen[idx] = true
+        if last == idx then repeats += 1 end
+        last = idx
+        local tf = slot * f.period + f.warn + 0.1
+        local i2, s2 = CL.BeamState(f, tf)
+        if s2 == "fire" then
+            fires += 1
+            local c = f.circles[i2]
+            if not CR.BeamHits(f, tf, c.x, f.y + 3, c.z) then expect(false, "a firing beam kills someone standing in its circle") break end
+            for k, c2 in ipairs(f.circles) do
+                if k ~= i2 and CR.BeamHits(f, tf, c2.x, f.y + 3, c2.z) then expect(false, "only the charged circle kills") break end
+            end
+        end
+    end
+    local count = 0 for _ in pairs(seen) do count += 1 end
+    expect(count == #f.circles, "every circle gets used over time (" .. count .. " of " .. #f.circles .. ")")
+    expect(repeats == 0, "never the same circle twice in a row")
+    expect(fires == 200 and warns == 200, "every shot warns first, then fires")
+    local idx, st = CL.BeamState(f, 0 * f.period + f.warn + f.fire + 0.1)
+    expect(st == nil, "between shots every circle is safe")
+    local c = f.circles[1]
+    expect(not CR.BeamHits(f, f.warn + f.fire + 0.1, c.x, f.y + 3, c.z), "nobody is hurt between shots")
+end
+
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")

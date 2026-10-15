@@ -1,7 +1,7 @@
 -- The rules of one player's Sky Tower climb, with no Roblox objects in it (so tests can climb whole towers). TowerService feeds it the player's position about ten
 -- times a second and reacts through `hooks`:
 --   onLevel(level, seconds)          a new level was reached (the first is level 1, on arrival)
---   onRespawn(reason, level, cp)     "fell" | "lava" | "crushed" | "spun": back to the start of the highest level reached (never lower)
+--   onRespawn(reason, level, cp)     "fell" | "lava" | "crushed" | "spun" | "swung" | "zapped": back to the start of the highest level reached (never lower)
 --   onSummit(seconds, respawns)      the top; seconds already includes the penalty for each respawn
 --   onAbandon(reason)                "left" | "speed": the climb is dropped
 local TowerData    = require(game.ReplicatedStorage.Shared.Data.TowerData)
@@ -23,7 +23,9 @@ function TowerRunner.New(T, hooks, now)
     for i = 1, #T.levels do run.byLevel[i] = { spinners = {}, crushers = {} } end
     for _, s in ipairs(T.spinners) do table.insert(run.byLevel[s.level].spinners, s) end
     for _, c in ipairs(T.crushers) do table.insert(run.byLevel[c.level].crushers, c) end
-    for i = 1, #T.levels do run.byLevel[i].sweepers = {} run.byLevel[i].kills = {} end
+    for i = 1, #T.levels do run.byLevel[i].sweepers = {} run.byLevel[i].kills = {} run.byLevel[i].pendulums = {} run.byLevel[i].beamfields = {} end
+    for _, p in ipairs(T.pendulums or {}) do table.insert(run.byLevel[p.level].pendulums, p) end
+    for _, f in ipairs(T.beamfields or {}) do table.insert(run.byLevel[f.level].beamfields, f) end
     for _, k in ipairs(T.kills or {}) do table.insert(run.byLevel[k.level].kills, k) end
     for _, s in ipairs(T.sweepers or {}) do table.insert(run.byLevel[s.level].sweepers, s) end
     TowerRunner.StartLava(run, now)
@@ -124,6 +126,12 @@ function TowerRunner.Step(run, now, px, py, pz)
                 Respawn(run, now, "swept")
                 return
             end
+        end
+        for _, pd in ipairs(run.byLevel[lv].pendulums) do
+            if CourierRunner.PendulumHits(pd, now, px, py, pz) then Respawn(run, now, "swung") return end
+        end
+        for _, f in ipairs(run.byLevel[lv].beamfields) do
+            if CourierRunner.BeamHits(f, now, px, py, pz) then Respawn(run, now, "zapped") return end
         end
         for _, c in ipairs(run.byLevel[lv].crushers) do
             if math.abs(px - c.x) <= c.sx and CourierRunner.CrusherHits(c, now, px, py, pz) then

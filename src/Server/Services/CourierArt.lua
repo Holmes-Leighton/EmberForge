@@ -209,6 +209,57 @@ local function BuildObstacles(folder, r)
         bar:SetAttribute("X", s.x)
         CollectionService:AddTag(bar, "EFCourierSweeper")
     end
+    -- ── lifts, depth movers, orbiting platforms (all driven by the client on the shared clock) ──
+    local function moving(name, size, cf, tag, attrs, color)
+        local part = P({ Name = name, Material = Enum.Material.Metal, Color = color or (r.def.color or Color3.fromRGB(255, 190, 80)), Size = size, CFrame = cf }, group)
+        for k, v in pairs(attrs) do part:SetAttribute(k, v) end
+        part:SetAttribute("CourseId", r.id)
+        CollectionService:AddTag(part, tag)
+        TowerSkin.Fit(part, "Mover", color or r.def.color)
+        return part
+    end
+    for _, l in ipairs(L.lifts or {}) do
+        moving("LiftPlatform", Vector3.new(l.sx, l.sy, l.sz), CFrame.new(l.x, l.y0, l.z), "EFCourierLift", { X = l.x, Z = l.z, Y0 = l.y0, Y1 = l.y1, Period = l.period, Phase = l.phase })
+        P({ Name = "LiftRail", Material = Enum.Material.Metal, Color = Color3.fromRGB(70, 70, 78), Size = Vector3.new(0.6, l.y1 - l.y0 + 6, 0.6), CanCollide = false,
+            CFrame = CFrame.new(l.x - l.sx / 2 - 0.6, (l.y0 + l.y1) / 2 + 2, l.z) }, group)
+    end
+    for _, m in ipairs(L.zmovers or {}) do
+        moving("DepthPlatform", Vector3.new(m.sx, m.sy, m.sz), CFrame.new(m.x, m.y, m.z0), "EFCourierZMover", { X = m.x, Y = m.y, Z0 = m.z0, Z1 = m.z1, Period = m.period, Phase = m.phase })
+    end
+    for _, o in ipairs(L.orbiters or {}) do
+        moving("OrbitPlatform", Vector3.new(o.sx, o.sy, o.sz), CFrame.new(o.x + o.radius, o.y, o.z), "EFCourierOrbit", { CX = o.x, CZ = o.z, Y = o.y, Radius = o.radius, Omega = o.omega, Phase = o.phase })
+        P({ Name = "OrbitHub", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Neon, Color = r.def.color or Color3.fromRGB(255, 190, 80), Transparency = 0.5, Size = Vector3.new(0.3, o.radius * 2, o.radius * 2),
+            CanCollide = false, CFrame = CFrame.new(o.x, o.y - 0.6, o.z) * CFrame.Angles(0, 0, math.pi / 2) }, group)      -- the track the platform circles on
+    end
+    -- ── swinging blades ──
+    for _, p in ipairs(L.pendulums or {}) do
+        P({ Name = "PendulumGantry", Material = Enum.Material.Metal, Color = Color3.fromRGB(60, 58, 66), Size = Vector3.new(2, 1.6, p.width + 6), CanCollide = false,
+            CFrame = CFrame.new(p.x, p.pivotY + 0.8, p.z) }, group)
+        local function swing(name, size, off, color, mesh)
+            local part = P({ Name = name, Material = Enum.Material.Metal, Color = color, Size = size, CanCollide = false, CFrame = CFrame.new(p.x, p.pivotY - off, p.z) }, group)
+            for k, v in pairs({ PX = p.x, PY = p.pivotY, PZ = p.z, Length = p.length, Amp = p.amp, Period = p.period, Phase = p.phase, Off = off }) do part:SetAttribute(k, v) end
+            CollectionService:AddTag(part, "EFCourierPendulum")
+            if mesh then TowerSkin.Fit(part, mesh) end
+            return part
+        end
+        swing("PendulumRod", Vector3.new(0.8, p.length - 3, 0.8), (p.length - 3) / 2, Color3.fromRGB(90, 90, 100))
+        swing("PendulumBlade", Vector3.new(1.4, 7, 7.5), p.length, Color3.fromRGB(255, 70, 60), "Blade")
+    end
+    -- ── beam pads: circles that charge, then fire a beam of light ──
+    for i, f in ipairs(L.beamfields or {}) do
+        for k, c in ipairs(f.circles) do
+            local attrs = { N = #f.circles, Seed = f.seed, Period = f.period, Warn = f.warn, Fire = f.fire, Phase = f.phase, Circle = k }
+            TowerSkin.Piece("BeamPad", Vector3.new(c.r * 2 + 1.2, 0.8, c.r * 2 + 1.2), CFrame.new(c.x, f.y + 0.4, c.z), group)
+            local disc = P({ Name = "BeamDisc", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 90, 40), Transparency = 0.8, CanCollide = false, CanQuery = false,
+                Size = Vector3.new(0.25, c.r * 2, c.r * 2), CFrame = CFrame.new(c.x, f.y + 0.95, c.z) * CFrame.Angles(0, 0, math.pi / 2) }, group)
+            local col = P({ Name = "BeamColumn", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 190, 90), Transparency = 1, CanCollide = false, CanQuery = false, CanTouch = false,
+                Size = Vector3.new(70, c.r * 1.7, c.r * 1.7), CFrame = CFrame.new(c.x, f.y + 35, c.z) * CFrame.Angles(0, 0, math.pi / 2) }, group)
+            for key, v in pairs(attrs) do disc:SetAttribute(key, v) col:SetAttribute(key, v) end
+            disc:SetAttribute("Role", "disc") col:SetAttribute("Role", "column")
+            CollectionService:AddTag(disc, "EFCourierBeam")
+            CollectionService:AddTag(col, "EFCourierBeam")
+        end
+    end
     for i, c in ipairs(L.crushers) do
         -- the danger zone on the floor, and the block above it (closed = down on the floor, open = raised clear)
         P({ Name = "CrusherZone", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 150, 40), Transparency = 0.45, Size = Vector3.new(c.sx, 0.15, c.sz), CanCollide = false,
