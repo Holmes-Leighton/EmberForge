@@ -482,12 +482,13 @@ hotbarScale:GetPropertyChangedSignal("Scale"):Connect(PlaceCollectBar)
 
 -- While climbing the Sky Tower the mining panels (player card, Collect bar and its list) only get in the way of the view: the tower has its own HUD
 local function SyncTower()
-    local climbing = LocalPlayer:GetAttribute("TowerLevel") ~= nil
+    local climbing = LocalPlayer:GetAttribute("TowerLevel") ~= nil or LocalPlayer:GetAttribute("MazeSection") ~= nil
     mainFrame.Visible = not climbing
     bottomBar.Visible = not climbing
     if climbing then pendingFrame.Visible = false end
 end
 LocalPlayer:GetAttributeChangedSignal("TowerLevel"):Connect(SyncTower)
+LocalPlayer:GetAttributeChangedSignal("MazeSection"):Connect(SyncTower)
 SyncTower()
 
 -- Collect button

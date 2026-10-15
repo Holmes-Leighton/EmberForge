@@ -196,6 +196,7 @@ task.defer(function() if not compact then PlaceCard() end end)           -- once
 
 -- The hourly event bonus does nothing in the Sky Tower, so the card is hidden while climbing
 -- (the server sets the TowerLevel attribute for the length of a climb)
-local function SyncTower() gui.Enabled = LocalPlayer:GetAttribute("TowerLevel") == nil end
+local function SyncTower() gui.Enabled = LocalPlayer:GetAttribute("TowerLevel") == nil and LocalPlayer:GetAttribute("MazeSection") == nil end
 LocalPlayer:GetAttributeChangedSignal("TowerLevel"):Connect(SyncTower)
+LocalPlayer:GetAttributeChangedSignal("MazeSection"):Connect(SyncTower)
 SyncTower()

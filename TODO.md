@@ -179,5 +179,14 @@ Recommendation: not yet. Six mining zones, the Quarry and pets already give plen
 - [ ] Admin panel, still open: economy dashboard (coins in circulation, faucet/sink totals), gifting Season Pass items.
 - [x] 3D icons: toasts about a material now show its spinning mesh (trade window and quest rewards already did).
 
+- [x] **Hollow Maze** (user request: a maze with a head start before a Zombie Golem hunts you, one section per Golem family, mesh floors/walls/decor, a new Zombie Golem). Design in `MAZE_DESIGN.md`. Built:
+      `MazeData`/`MazeLayout`/`MazeZombie` (shared, seeded from the wall clock so every server has the same maze), `MazeRound`/`MazeRewards` (server rules, tested in `tests/test_maze.lua`), `MazeArt`/`MazeSkin`
+      (5 themed sections Stone, Ember, Frost, Storm, Void with mesh floors, walls and decorations; lobby with the coffin; victory room with the exit arch), `MazeService` (portal in the cavern, run, catches,
+      rewards, escape speed-up) and `MazeController` (HUD, danger glow, summary card, and the Zombie Golem's walk, drawn on each client). Played through in Studio: all five sections, a full escape (gold time,
+      coins, XP, material bundle, summary card) and the zombie waking and catching a player in the lobby. Meshes are generated (`AssetData.MazeMeshes`, `MazeZombie`); the maze works as plain blocks if they do not load.
+- [ ] Hollow Maze, still open: the Zombie's chase and the walk animation have only been seen standing still (watch a real hunt with the walk and the red edge glow); the Stone section's mesh reads pink and green
+      (consider a duller tint); after an escape speed-up the next round still starts on the fixed schedule, so there is a wait of up to about 4 minutes (rounds are clock-aligned across servers);
+      `MazeMeshes.Gate` is unused (the gate is a neon barrier); balance numbers (`SectionCoins`, `ESCAPE_CHEST_MULT`) are first guesses (a level 27 escape paid about 1,000 coins).
+
 ## Running the tests
 `python tests/run_tests.py` needs the `luau` runtime (https://github.com/luau-lang/luau/releases) on PATH or in the `LUAU` environment variable.

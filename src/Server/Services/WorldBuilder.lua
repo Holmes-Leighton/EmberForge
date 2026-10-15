@@ -9,6 +9,7 @@ local Lighting = game:GetService("Lighting")
 local MiningZoneData = require(game.ReplicatedStorage.Shared.Data.MiningZoneData)
 local CartCourseData = require(game.ReplicatedStorage.Shared.Data.CartCourseData)
 local TowerData = require(game.ReplicatedStorage.Shared.Data.TowerData)
+local MazeData  = require(game.ReplicatedStorage.Shared.Data.MazeData)
 local SignArt = require(script.Parent.SignArt)
 
 local WorldBuilder = {}
@@ -768,6 +769,7 @@ local function BuildScenery(world)
         local inTunnels = z > 100
         local onCartRun = CartCourseData.NearRoute(x, z, 24)           -- the Cart Run courses (CartCourseData)
         local atPortal = (x - TowerData.PORTAL.x) ^ 2 + (z - TowerData.PORTAL.z) ^ 2 < TowerData.PORTAL_CLEAR ^ 2        -- the Sky Tower portal
+            or (x - MazeData.PORTAL.x) ^ 2 + (z - MazeData.PORTAL.z) ^ 2 < MazeData.PORTAL_CLEAR ^ 2                 -- the Hollow Maze portal
         if not (inPlots or onRoad or inPads or nearSpawn or inTunnels or onCartRun or atPortal) then
             local roll = rng:NextNumber()
             if roll < 0.45 then
@@ -897,6 +899,7 @@ local function BuildDressing(world)
         if z > -40 and z < 55 and x > -60 then return false end                             -- forge plots
         if CartCourseData.NearRoute(x, z, 24 + pad) then return false end                    -- the Cart Run courses
         if (x - TowerData.PORTAL.x) ^ 2 + (z - TowerData.PORTAL.z) ^ 2 < (TowerData.PORTAL_CLEAR + pad) ^ 2 then return false end      -- the Sky Tower portal
+        if (x - MazeData.PORTAL.x) ^ 2 + (z - MazeData.PORTAL.z) ^ 2 < (MazeData.PORTAL_CLEAR + pad) ^ 2 then return false end         -- the Hollow Maze portal
         return true
     end
     local function Boulder(x, z, size)

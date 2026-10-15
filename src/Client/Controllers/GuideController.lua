@@ -83,7 +83,7 @@ function GuideController.Show(counts, hasGolem)
     local pg = Players.LocalPlayer and Players.LocalPlayer:FindFirstChild("PlayerGui")
     local hud = pg and pg:FindFirstChild("HUD")
     if not hud then return end
-    if Players.LocalPlayer:GetAttribute("TowerLevel") ~= nil then ClearMarker() return end        -- nothing to guide towards while climbing
+    if Players.LocalPlayer:GetAttribute("TowerLevel") ~= nil or Players.LocalPlayer:GetAttribute("MazeSection") ~= nil then ClearMarker() return end        -- nothing to guide towards while climbing
     local step = GuideController.Pick(counts or {}, hasGolem)
     if not step then ClearMarker() return end
     local button = hud:FindFirstChild(step.button, true)

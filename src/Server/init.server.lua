@@ -32,6 +32,7 @@ local CartBountyService  = require(script.Services.CartBountyService)
 local CartCourseService  = require(script.Services.CartCourseService)
 local CourierService     = require(script.Services.CourierService)
 local TowerService       = require(script.Services.TowerService)
+local MazeService        = require(script.Services.MazeService)
 local Utils              = require(game.ReplicatedStorage.Shared.Modules.Utils)
 local GolemNames         = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
 local GolemData          = require(game.ReplicatedStorage.Shared.Data.GolemData)
@@ -48,6 +49,7 @@ CartBountyService.Init()           -- the Mine Cart Delivery bounty
 CartCourseService.Init()           -- the Cart Run courses (CartCourseData): winding rails with tunnels, hills, gates and bridges
 CourierService.Init()              -- the Courier Run obstacle courses (CourierData): carry a crate to the drop-off
 TowerService.Init()                -- the Sky Tower (TOWER_DESIGN.md): a new tower to climb every round
+MazeService.Init()                 -- the Hollow Maze (MAZE_DESIGN.md): a new maze, and a Zombie Golem to outrun, every round
 
 -- Start periodic auto-save and leaderboard flush
 PlayerDataService.StartAutoSave()

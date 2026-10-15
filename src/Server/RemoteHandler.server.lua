@@ -109,6 +109,10 @@ RemoteEvents.CollectResources.OnServerEvent:Connect(function(player)
             Tell(player, "Sky Tower", "Finish your climb first. Your Golems keep what they mine until you are back.")
             return
         end
+        if require(script.Parent.Services.MazeService).InMaze(player) then
+            Tell(player, "Hollow Maze", "Get out of the maze first. Your Golems keep what they mine until you are back.")
+            return
+        end
 
         -- Move everything the Golems have mined into the inventory
         local gains, total = {}, 0
@@ -703,6 +707,10 @@ RemoteEvents.QuarryAction.OnServerEvent:Connect(function(player, action, arg)
         if not Gate(player, "Quarry") then return end
         if action == "collect" and require(script.Parent.Services.TowerService).InTower(player) then
             Tell(player, "Sky Tower", "Finish your climb first.")
+            return
+        end
+        if action == "collect" and require(script.Parent.Services.MazeService).InMaze(player) then
+            Tell(player, "Hollow Maze", "Get out of the maze first.")
             return
         end
         local QS = require(script.Parent.Services.QuarryService)

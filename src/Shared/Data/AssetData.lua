@@ -221,6 +221,22 @@ AssetData.TowerMeshes = {
     Blade = 120155553107921, BeamPad = 131637819605325,
 }
 
+-- Meshes for the Hollow Maze (MazeSkin; see MAZE_DESIGN.md). Each is a generated model published as a Model asset; GolemAssetLoader loads them into ServerStorage.MazeAssets and
+-- MazeSkin draws them on the maze's plain parts, so the maze works (as plain blocks) even if one fails to load. Floor_ is a floor tile, Wall_ a wall piece, the rest decorations.
+AssetData.MazeMeshes = {
+    Floor_Stone = 116301876437735, Floor_Ember = 98013816587843, Floor_Frost = 132233262200580, Floor_Storm = 77351753539817, Floor_Void = 108775162916473,
+    Wall_Stone = 98832026807407, Wall_Ember = 137282095049004, Wall_Frost = 113348642756004, Wall_Storm = 89213533436453, Wall_Void = 97695946912166,
+    Coffin = 79995476710788, Gate = 131025798194399, ExitArch = 104124325491080,
+    Stone_Pillar = 87583280689702, Stone_Crystals = 87750532897059, Stone_Lantern = 89918830030367, Stone_Rocks = 109309233482525,
+    Ember_LavaPool = 79553626351660, Ember_Brazier = 74995747674256, Ember_Spikes = 137529258726374, Ember_Coals = 131198470126860,
+    Frost_Crystals = 129164262897675, Frost_Drift = 134625650927605, Frost_Torch = 122124936932387, Frost_Pillar = 115847711705712,
+    Storm_Tesla = 105413539781317, Storm_Rod = 105948781705444, Storm_Cables = 110173882948518, Storm_Generator = 86959267037442,
+    Void_Shards = 124215681873370, Void_Rift = 134217299564382, Void_Spire = 123915002741977, Void_Altar = 82540900597973,
+}
+-- The Zombie Golem: a generated model with the Golem part names (Torso, Head, ArmL, ArmR, LegL, LegR). GolemAssetLoader adapts it like a stage model and keeps it as
+-- ReplicatedStorage.GolemAssets.Zombie_Maze; `height` is how tall it stands in studs. (Its first, rounder version, 70885855813899, was not used.)
+AssetData.MazeZombie = { assetId = 123766477167126, height = 11 }
+
 AssetData.BuildExtras = {
     RailTrack = 98515694214823,
 }

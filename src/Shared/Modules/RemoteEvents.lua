@@ -36,6 +36,7 @@ local DEFINITIONS = {
 
     -- Courier Run
     TowerEvent          = "event",   -- server → client (kind: start | level | respawn | summit | standings | roundover | abandon | speedup, payload table)
+    MazeEvent           = "event",   -- server → client (kind: start | gateopen | wake | section | caught | escape | standings | roundover | abandon | speedup, payload table)
     CourierEvent        = "event",   -- server → client (kind: start | checkpoint | respawn | finish | abandon, payload table)
 
     -- Trading

@@ -78,7 +78,7 @@ local function Step(dt)
     local t = os.clock()
     for player, state in pairs(states) do
         local types = Parse(player:GetAttribute("EFPets"))
-        if player:GetAttribute("TowerLevel") ~= nil then types = {} end        -- no pets in the Sky Tower: they would block jumps and clutter the climb (they come back when it ends)
+        if player:GetAttribute("TowerLevel") ~= nil or player:GetAttribute("MazeSection") ~= nil then types = {} end        -- no pets in the Sky Tower: they would block jumps and clutter the climb (they come back when it ends)
         local key = table.concat(types, ",")
         if key ~= state.key or (#types > 0 and state.assetVersion ~= GolemModel.AssetVersion() + PetModel.AssetVersion() * 1000) then
             Rebuild(player, state, types)

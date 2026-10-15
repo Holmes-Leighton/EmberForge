@@ -604,6 +604,20 @@ function GolemAssetLoader.Init()
             if okSkin then pcall(skin.Refresh) end
         end)
     end
+    -- Hollow Maze meshes (MazeSkin): ServerStorage.MazeAssets; a maze built before this finishes picks its meshes up in MazeSkin.Refresh
+    if game:GetService("ServerStorage").FindFirstChild then
+        local mazeFolder = game:GetService("ServerStorage"):FindFirstChild("MazeAssets")
+        if not mazeFolder then
+            mazeFolder = Instance.new("Folder")
+            mazeFolder.Name = "MazeAssets"
+            mazeFolder.Parent = game:GetService("ServerStorage")
+        end
+        task.spawn(function()
+            LoadBuildExtras(AssetData.MazeMeshes or {}, mazeFolder)
+            local okSkin, skin = pcall(function() return require(script.Parent.MazeSkin) end)
+            if okSkin then pcall(skin.Refresh) end
+        end)
+    end
     local accessoryFolder = ReplicatedStorage:FindFirstChild("AccessoryAssets")
     if not accessoryFolder then
         accessoryFolder = Instance.new("Folder")
@@ -653,6 +667,13 @@ function GolemAssetLoader.Init()
         for element, assetId in pairs(byType) do
             if (assetId or 0) > 0 and stageEntries[element] then table.insert(generatedJobs, { stage = stage, element = element, assetId = assetId, cfg = stageEntries[element] }) end
         end
+    end
+    local zombie = AssetData.MazeZombie
+    if zombie and (zombie.assetId or 0) > 0 then                      -- the Hollow Maze's Zombie Golem: adapted like a stage model, kept as GolemAssets.Zombie_Maze
+        local cfg = {}
+        for k, v in pairs(stageEntries.Default) do cfg[k] = v end
+        cfg.elementTint, cfg.height = 0, zombie.height
+        table.insert(generatedJobs, { stage = "Maze", element = "Zombie", assetId = zombie.assetId, cfg = cfg })
     end
     if #jobs == 0 and packId <= 0 and petPackId <= 0 and crownPackId <= 0 and #stageJobs == 0 and #generatedJobs == 0 then
         log("No Golem asset id is set in AssetData.lua: using the built-in block Golem.")
