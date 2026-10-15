@@ -91,16 +91,16 @@ AssetData.StageModels = {
     Young = {
         Ember = 104010269078604,       -- teenage armoured lava golem: small flame crest, glowing chest window
         Stone = 86951893097205,        -- teenage slate golem: green eyes, a few moss patches
-        Frost = 139452753023307,       -- teenage ice golem: small icicle crown, frost collar
+        -- Frost: removed, moderation flagged a mesh in the first one (112831766869171); regenerate
         Storm = 79448496845941,        -- teenage gunmetal golem: violet strips, small exhaust pipes
         Void  = 134191012882976,       -- teenage hooded void golem: small shoulder crystals, crystal staff
     },
     Elder = {
-        Ember = 128823136807317,       -- lava elder: small flame horns, short stone beard
-        Stone = 107485065253344,       -- slate elder: short mossy beard, green runes
-        Frost = 108264972857536,       -- ice elder: small icicle crown, frost collar
-        Storm = 135032398823463,       -- gunmetal elder: wire beard, exhaust stacks
-        Void  = 100819886623220,       -- hooded void elder: short wispy beard, shoulder crystals
+        Ember = 140330012269546,       -- scarred veteran lava golem: cracked basalt, lava fissures, carved face, hunched
+        Stone = 137589488564405,       -- weathered veteran stone golem: craggy boulders, runes, moss
+        Frost = 128287318474889,       -- weathered veteran frost golem: cracked glacial ice, ice spikes
+        Storm = 84243756303150,        -- battered veteran storm golem: dented gunmetal, rivets, lightning scars
+        Void  = 102403356535230,       -- veteran void golem: cracked obsidian-purple under a tattered cloak, shoulder crystals
     },
     Ancient = {
         Ember = 92964913353272,        -- lava elder: flame horns, grey stone beard, glowing runes
