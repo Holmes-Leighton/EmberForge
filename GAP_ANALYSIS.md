@@ -35,6 +35,7 @@ challenges) · forge-milestone blueprints · tier unlock rules (3x T1 → T2, 2x
 |---|---|
 | Core loop, offline production, storage 4/8/24h | Done |
 | Golem tiers, stats, slots, durability, repair, fusion | Done (fusion: any elements, same tier) |
+| **Golem growth: Infant to Ancient** (added at your request; tier = what it was crafted as, stage = how long it has worked) | Done in code (stats, size, trading, UI, fusion); per-stage meshes optional, see TODO.md |
 | **Rarity + Neon / Mega Neon** (added at your request; rarity comes from tier, never a dice roll) | Done |
 | Material-quality stat bonus, Storm boosting other Golems | Done |
 | Forge levels: unlocks, material slots, 5 smelt slots at base, batch smelting times, Player XP from smelting | Done |

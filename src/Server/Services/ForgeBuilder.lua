@@ -18,6 +18,7 @@ local CollectionService = game:GetService("CollectionService")
 
 local CosmeticData = require(game.ReplicatedStorage.Shared.Data.CosmeticData)
 local GolemModel   = require(game.ReplicatedStorage.Shared.Modules.GolemModel)
+local GolemData    = require(game.ReplicatedStorage.Shared.Data.GolemData)
 local ForgeSkinProps = require(script.Parent.ForgeSkinProps)
 local ForgeDecorFx = require(script.Parent.ForgeDecorFx)
 
@@ -468,14 +469,14 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
         local pedestal = part("Pedestal", Vector3.new(4.4, 1.4, 4.4), at(x, GROUND + 0.7, 18), Color3.fromRGB(85, 80, 78), Enum.Material.Marble)
         if MeshProp("Pedestal", Vector3.new(4.4, 1.4, 4.4), at(x, GROUND, 18)) then Ghost(pedestal) end
         local ok, gm = pcall(function()
-            return GolemModel.Build(g.element, g.tier or 1, { variant = g.variant })
+            return GolemModel.Build(g.element, g.tier or 1, { variant = g.variant, stage = GolemData.StageOf(g).id })
         end)
         if ok and gm then
             gm.Name = "GalleryGolem"
             for _, d in ipairs(gm:GetDescendants()) do
                 if d:IsA("BasePart") then d.Anchored = true d.CanCollide = false end
             end
-            pcall(function() gm:ScaleTo(0.42) end)
+            pcall(function() gm:ScaleTo(0.42 * GolemData.StageOf(g).scale) end)       -- an Infant stands smaller on its pedestal than an Ancient
             pcall(function() gm:PivotTo(at(x, GROUND + 1.4 + 2.4, 18) * CFrame.Angles(0, math.pi, 0)) end)
             gm.Parent = model
         end

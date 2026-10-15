@@ -33,7 +33,9 @@ local CartCourseService  = require(script.Services.CartCourseService)
 local CourierService     = require(script.Services.CourierService)
 local TowerService       = require(script.Services.TowerService)
 local Utils              = require(game.ReplicatedStorage.Shared.Modules.Utils)
-local GameConfig         = require(game.ReplicatedStorage.Shared.Data.GameConfig)
+local GolemNames         = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
+local GolemData          = require(game.ReplicatedStorage.Shared.Data.GolemData)
+local GameConfig        = require(game.ReplicatedStorage.Shared.Data.GameConfig)
 
 -- Build the world (ground, spawn, mining-zone landmarks) before anyone joins
 LiveOpsService.Init()
@@ -92,7 +94,18 @@ local function OnPlayerAdded(player)
     ShopService.OnPlayerAdded(player)
 
     -- Calculate and apply offline production
-    local gains, elapsed, offlineByElement = IdleEngine.CalculateOfflineProduction(data)
+    local gains, elapsed, offlineByElement, grewAway = IdleEngine.CalculateOfflineProduction(data)
+    if grewAway and #grewAway > 0 then                                -- Golems that reached a new life stage while the player was away
+        local bits = {}
+        for _, g in ipairs(grewAway) do GolemData.NoteSeen(data, g.golem) end
+        for i, g in ipairs(grewAway) do
+            if i > 3 then table.insert(bits, string.format("and %d more", #grewAway - 3)) break end
+            table.insert(bits, string.format("%s is now %s", GolemNames.Describe(g.golem).shortName, g.stage.id))
+        end
+        task.delay(9, function()
+            if player.Parent then RemoteEvents.Notify:FireClient(player, "Your Golems grew while you were away!", table.concat(bits, ", ")) end
+        end)
+    end
     local capSeconds = IdleEngine.StorageCapSeconds(data.StorageTier or 0)
     if elapsed and elapsed > capSeconds and (data.StorageTier or 0) < 2 then
         task.delay(8, function()
@@ -218,7 +231,13 @@ task.spawn(function()
                 end
 
                 -- Tick idle production
-                local rawGains, byElement = IdleEngine.TickOnlineProduction(data, TICK_INTERVAL)
+                local rawGains, byElement, grew = IdleEngine.TickOnlineProduction(data, TICK_INTERVAL)
+                for _, g in ipairs(grew or {}) do                              -- a Golem reached a new life stage
+                    GolemData.NoteSeen(data, g.golem)                          -- (it goes in the collection)
+                    local name = GolemNames.Describe(g.golem).shortName
+                    RemoteEvents.Notify:FireClient(player, "Your Golem grew up!", string.format("%s is now %s: bigger and stronger.", name, g.stage.id))
+                    PlayerDataService.MarkDirty(player)
+                end
                 local gains = {}
                 local totalGained = 0
                 for matId, qty in pairs(rawGains) do

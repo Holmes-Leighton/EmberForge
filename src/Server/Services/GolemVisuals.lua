@@ -5,6 +5,7 @@
 local Players = game:GetService("Players")
 
 local GolemModel        = require(game.ReplicatedStorage.Shared.Modules.GolemModel)
+local GolemData         = require(game.ReplicatedStorage.Shared.Data.GolemData)
 local GolemNames        = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 local WorldBuilder      = require(script.Parent.WorldBuilder)
@@ -42,7 +43,7 @@ local function FreeSlot(zoneId)
 end
 
 local function StyleKey(golem, equipped)
-    return table.concat({ golem.variant or "", golem.zoneId or "", equipped.GolemAccessory or "", equipped.ParticleEffect or "", equipped.GolemSkin or "", GolemModel.AssetVersion() }, "|")
+    return table.concat({ golem.variant or "", GolemData.StageOf(golem).id, golem.zoneId or "", equipped.GolemAccessory or "", equipped.ParticleEffect or "", equipped.GolemSkin or "", GolemModel.AssetVersion() }, "|")
 end
 
 -- "20 Basic Ore, 10 Coal" for the repair prompt
@@ -64,10 +65,11 @@ local function Build(golem, ownerName, equipped, owner)
     local radius = RING_RADIUS + math.floor(slot / SLOTS) * 8
     local pos    = center + Vector3.new(math.cos(angle) * radius, GROUND_Y, math.sin(angle) * radius)
     local base   = CFrame.lookAt(pos, Vector3.new(center.X, pos.Y, center.Z))
-    local scale  = 1 + ((golem.tier or 1) - 1) * 0.18
+    local stage  = GolemData.StageOf(golem)
+    local scale  = (1 + ((golem.tier or 1) - 1) * 0.18) * stage.scale       -- an Infant stands small, an Ancient tall
 
     local model = GolemModel.Build(golem.element, golem.tier, {
-        variant = golem.variant, accessory = equipped.GolemAccessory, particle = equipped.ParticleEffect, skin = equipped.GolemSkin,
+        stage = stage.id, variant = golem.variant, accessory = equipped.GolemAccessory, particle = equipped.ParticleEffect, skin = equipped.GolemSkin,
     })
     model.Name = "Golem_" .. golem.id
     model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic   -- streams in whole, so the client always finds every limb when it starts animating
@@ -131,8 +133,8 @@ local function Build(golem, ownerName, equipped, owner)
         rarity.Position = UDim2.new(0, 0, 0.72, 0)
         rarity.Size = UDim2.new(1, 0, 0.28, 0)
         rarity.BackgroundTransparency = 1
-        rarity.Text = desc.rarity .. (desc.variantLabel and ("  -  " .. desc.variantLabel) or "")
-        rarity.TextColor3 = Color3.fromRGB(235, 235, 235)
+        rarity.Text = desc.rarity .. (desc.variantLabel and ("  -  " .. desc.variantLabel) or "") .. "  -  " .. desc.stage.id
+        rarity.TextColor3 = desc.stage.color                       -- stage colour: pale green Infant, teal Young, white Adult, bronze Elder, gold Ancient
         rarity.Font = Enum.Font.Gotham
         rarity.TextScaled = true
         rarity.TextStrokeTransparency = 0.5

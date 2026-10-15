@@ -110,7 +110,7 @@ GolemData.Tiers = {
     },
     {
         tier        = 5,
-        name        = "Ancient Golem",
+        name        = "Primordial Golem",   -- (not "Ancient": that is the oldest life stage)
         resourcesPerHour = 4000,
         carryCapacity    = 16000,
         efficiency       = 1.35,
@@ -243,6 +243,113 @@ GolemData.Variants = {
 }
 GolemData.NEON_FUSION_COUNT = 4
 
+-- ── Growth (life stages) ───────────────────────────────────────────────────────
+-- Tier is what a Golem was crafted as (fixed, and it sets the rarity). Stage is how long it has worked: a Golem grows while it is
+-- deployed and mining, from a small weak Infant to a huge Ancient. The two multiply, so a grown Tier 2 never beats a Tier 3.
+--   at     hours of work to reach the stage
+--   mult   share of its stats the Golem has at this stage (Adult = 1.0, so everything crafted before growth existed is unchanged)
+--   scale  how big it is drawn
+--   head   how big its head is next to its body (a big head reads as young)
+--   body   how wide its torso is, and  limb  how thick its arms and legs are: a young Golem is chubby, an old one broad and heavy.
+--          Together these reshape the mesh a little at every stage (Adult = 1.0 is the model as made).
+--   tone   how vivid its colours are: a young Golem is duller and deepens to the model's full colour by Adult (a texture can only be
+--          darkened, so Adult is the brightest the body gets; Elder and Ancient get brighter through glow instead)
+--   glow   how much its accent glows (runes, crown, a faint light): none until Elder, strongest at Ancient
+--   color  the stage's badge colour in the menus and over its head
+-- Golems from before growth existed have no `grown` record and count as Adult.
+GolemData.Stages = {
+    { id = "Infant",  at = 0,   mult = 0.70, scale = 0.62, head = 1.30, body = 1.10, limb = 1.16, tone = 0.68, glow = 0.0, color = Color3.fromRGB(170, 215, 170) },
+    { id = "Young",   at = 1,   mult = 0.85, scale = 0.82, head = 1.14, body = 1.05, limb = 1.08, tone = 0.84, glow = 0.0, color = Color3.fromRGB(120, 205, 200) },
+    { id = "Adult",   at = 8,   mult = 1.00, scale = 1.00, head = 1.00, body = 1.00, limb = 1.00, tone = 1.00, glow = 0.0, color = Color3.fromRGB(235, 235, 235) },
+    { id = "Elder",   at = 48,  mult = 1.15, scale = 1.08, head = 1.00, body = 1.07, limb = 1.08, tone = 1.00, glow = 0.5, color = Color3.fromRGB(225, 160, 90) },
+    { id = "Ancient", at = 240, mult = 1.30, scale = 1.16, head = 1.00, body = 1.14, limb = 1.16, tone = 1.00, glow = 1.0, color = Color3.fromRGB(255, 205, 70) },
+}
+GolemData.ADULT_INDEX = 3
+GolemData.GROW_OFFLINE_RATE = 0.5   -- a Golem works at half growth speed while its owner is away
+GolemData.GROW_FUSE_KEEP = 0.25     -- an Elite / Supreme fusion keeps this share of the combined growth (so it restarts young but not from zero)
+
+function GolemData.GrownSeconds(golem)
+    if golem.grown == nil then return GolemData.Stages[GolemData.ADULT_INDEX].at * 3600 end
+    return golem.grown
+end
+
+-- stage table, its index, progress 0..1 toward the next stage (1 at Ancient), and hours left (nil at Ancient)
+function GolemData.StageOf(golem)
+    local hours = GolemData.GrownSeconds(golem) / 3600
+    local index = 1
+    for i, s in ipairs(GolemData.Stages) do if hours >= s.at then index = i end end
+    local nextStage = GolemData.Stages[index + 1]
+    if not nextStage then return GolemData.Stages[index], index, 1, nil end
+    local cur = GolemData.Stages[index]
+    return GolemData.Stages[index], index, (hours - cur.at) / (nextStage.at - cur.at), nextStage.at - hours
+end
+
+function GolemData.StageById(id)
+    for i, s in ipairs(GolemData.Stages) do if s.id == id then return s, i end end
+    return GolemData.Stages[GolemData.ADULT_INDEX], GolemData.ADULT_INDEX
+end
+
+-- Adds working time to a Golem. Returns the new stage if it just reached one, otherwise nil.
+function GolemData.AddGrowth(golem, seconds)
+    if not seconds or seconds <= 0 then return nil end
+    local before = select(2, GolemData.StageOf(golem))
+    golem.grown = GolemData.GrownSeconds(golem) + seconds
+    local stage, after = GolemData.StageOf(golem)
+    if after > before then return stage end
+    return nil
+end
+
+-- ── Collection (the Golem index) ───────────────────────────────────────────────
+-- data.GolemsSeen remembers every Golem type at every life stage the player has ever owned, even after trading it away
+-- (like the pet index). Keys are "Ember:Infant", "Frost:Ancient" ... A Golem that has reached a stage has been through the stages before
+-- it; a Golem from before growth existed has only been seen as an Adult.
+GolemData.CollectionOrder = { "Ember", "Stone", "Frost", "Storm", "Void", "All" }
+for _, id in ipairs(GolemData.SpecialOrder) do table.insert(GolemData.CollectionOrder, id) end
+
+function GolemData.SeenKey(element, stageId) return element .. ":" .. stageId end
+
+local function SeenStages(golem)
+    local _, index = GolemData.StageOf(golem)
+    local first = golem.grown == nil and GolemData.ADULT_INDEX or 1
+    local out = {}
+    for i = first, index do table.insert(out, GolemData.Stages[i].id) end
+    return out
+end
+
+function GolemData.NoteSeen(data, golem)
+    if not data or not golem or not golem.element then return end
+    data.GolemsSeen = data.GolemsSeen or {}
+    for _, id in ipairs(SeenStages(golem)) do data.GolemsSeen[GolemData.SeenKey(golem.element, id)] = true end
+end
+
+-- Everything ever seen, including the Golems owned right now (so saves from before the index existed are filled in)
+function GolemData.SeenSet(data)
+    local seen = {}
+    for k in pairs(data and data.GolemsSeen or {}) do seen[k] = true end
+    for _, golem in ipairs(data and data.Golems or {}) do
+        for _, id in ipairs(SeenStages(golem)) do seen[GolemData.SeenKey(golem.element, id)] = true end
+    end
+    return seen
+end
+
+-- found, total forms (every type x every stage)
+function GolemData.CollectionTotals(data)
+    local seen, found = GolemData.SeenSet(data), 0
+    for _, element in ipairs(GolemData.CollectionOrder) do
+        for _, st in ipairs(GolemData.Stages) do
+            if seen[GolemData.SeenKey(element, st.id)] then found += 1 end
+        end
+    end
+    return found, #GolemData.CollectionOrder * #GolemData.Stages
+end
+
+-- The growth a Golem starts with after an Elite / Supreme fusion of `golems`
+function GolemData.FusedGrowth(golems)
+    local total = 0
+    for _, g in ipairs(golems) do total += GolemData.GrownSeconds(g) end
+    return total * GolemData.GROW_FUSE_KEEP
+end
+
 -- Golem slot unlock milestones
 GolemData.SlotMilestones = {
     { slots = 3,  condition = "start"              },
@@ -254,14 +361,16 @@ GolemData.SlotMilestones = {
 
 -- Compute final stats for a golem given element + tier + optional fusion bonus
 -- `quality` (0..0.15) is the bonus a Golem earned from the grade of materials it was crafted with
-function GolemData.ComputeStats(elementId, tierIndex, fusionBonus, quality, variant)
+-- `stageId` is its life stage (GolemData.StageOf(golem).id); left out it counts as Adult, the full stats
+function GolemData.ComputeStats(elementId, tierIndex, fusionBonus, quality, variant, stageId)
     local tier = GolemData.Tiers[tierIndex]
     local mult = GolemData.ElementMultipliers[elementId]
     if not tier or not mult then return nil end
 
     fusionBonus = fusionBonus or {}
     local variantDef = variant and GolemData.Variants[variant]
-    local q = (1 + (quality or 0)) * (variantDef and variantDef.statMultiplier or 1)
+    local stage = stageId and GolemData.StageById(stageId)
+    local q = (1 + (quality or 0)) * (variantDef and variantDef.statMultiplier or 1) * (stage and stage.mult or 1)
     return {
         miningRate    = math.floor(tier.resourcesPerHour * mult.MiningRate  * (1 + (fusionBonus.miningRate or 0)) * q),
         carryCapacity = math.floor(tier.carryCapacity    * mult.CarryCapacity * (1 + (fusionBonus.carryCapacity or 0)) * q),

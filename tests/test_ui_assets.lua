@@ -133,6 +133,33 @@ expect(GolemModel.Build("Stone", 1, {}):GetAttribute("AssetId") == 111, "other e
 expect(GolemModel.Build("Stone", 5, {}):FindFirstChild("Halo") == nil and GolemModel.Build("Stone", 5, {}):FindFirstChild("Halo") == nil, "tierAddOns=false skips the halo")
 AssetData.Golem.Elements.Ember.assetId = 0
 
+print("== a life-stage pack loads its models as <Type>_<Stage>")
+AssetData.StagePacks.Infant.assetId = 777
+insertResults[777] = function()
+    local outer = Instance.new("Model")
+    local pack = newModel({})
+    pack.Name = "InfantPack"
+    for _, n in ipairs({ "EF_Default", "EF_Ember", "EF_Bogus" }) do
+        local mm = newModel({ "Torso", "Head" })
+        mm.Name = n
+        mm.Parent = pack
+    end
+    pack.Parent = outer
+    return outer
+end
+reset()
+Loader.Init()
+local gaf = rs:FindFirstChild("GolemAssets")
+expect(gaf:FindFirstChild("Default_Infant") ~= nil and gaf:FindFirstChild("Ember_Infant") ~= nil, "the pack's models are registered as Default_Infant and Ember_Infant")
+expect(gaf:FindFirstChild("Bogus_Infant") == nil, "a model that is not a Golem type is ignored")
+expect(gaf:FindFirstChild("Default_Infant"):GetAttribute("OwnModel") == false and gaf:FindFirstChild("Ember_Infant"):GetAttribute("OwnModel") == true,
+    "the shared Infant body is recoloured like the shared Adult body; a type's own Infant carries its own look")
+expect(saw(logs, "Infant pack (asset 777): 2 model(s) loaded"), "Output reports the pack")
+expect(gaf:FindFirstChild("Default") ~= nil, "the Adult models are unaffected")
+expect(GolemModel.Build("Frost", 1, { stage = "Infant" }):FindFirstChild("SproutStem") == nil, "a Golem on its stage's own mesh skips the code-made Infant sprout")
+expect(GolemModel.Build("Frost", 1, { stage = "Elder" }):FindFirstChild("Beard") ~= nil, "a stage with no mesh of its own is still dressed in code")
+AssetData.StagePacks.Infant.assetId = 0
+
 print("== single mesh becomes Static (bob and sway)")
 insertResults[111] = function() return container(newModel({ "Body" })) end
 D.tierAddOns = true

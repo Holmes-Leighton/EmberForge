@@ -110,7 +110,7 @@ local function Register(key, model, cfg, assetId)
     model:SetAttribute("AssetId", assetId)
     model:SetAttribute("RigMode", mode)
     model:SetAttribute("ElementTint", cfg.elementTint or 0)
-    model:SetAttribute("OwnModel", key ~= "Default")          -- a model made for one type carries its own look
+    model:SetAttribute("OwnModel", key:match("^Default") == nil)          -- a model made for one type carries its own look (the shared body, at any stage, does not)
     if cfg.height then model:SetAttribute("Height", cfg.height) end
     model:SetAttribute("TierAddOns", cfg.tierAddOns ~= false)
     model:SetAttribute("Facing", cfg.facing or 0)
@@ -159,6 +159,27 @@ local function LoadPack(packId, entries)
         if entry and Register(key, d, entry, packId) then found += 1 end
     end
     log(string.format("Golem Pack (asset %d): %d of %d Golem(s) loaded", packId, found, (function() local n = 0 for _ in pairs(entries) do n += 1 end return n end)()))
+    pending -= 1
+end
+
+-- A life-stage pack (AssetData.StagePacks): the same layout as the Golem Pack, but each model is registered as <Type>_<Stage>
+-- (Ember_Infant, Default_Elder ...) so GolemModel.FindAsset can pick the mesh for a Golem's stage.
+local function LoadStagePack(stage, packId, entries)
+    pending += 1
+    local ok, result = pcall(function() return InsertService:LoadAsset(packId) end)
+    if not ok or not result then
+        warn(string.format("[GolemAssets] %s pack (asset %d) FAILED to load: %s. %s Golems will use the Adult mesh instead. "
+            .. "Check the id, and that the asset is owned by this game's creator or group.", stage, packId, tostring(result), stage))
+        pending -= 1
+        return
+    end
+    local found = 0
+    for _, d in ipairs(result:GetDescendants()) do
+        local typeName = d:IsA("Model") and d.Name:match("^EF_(.+)$")
+        local entry = typeName and entries[typeName]
+        if entry and Register(typeName .. "_" .. stage, d, entry, packId) then found += 1 end
+    end
+    log(string.format("%s pack (asset %d): %d model(s) loaded", stage, packId, found))
     pending -= 1
 end
 
@@ -572,7 +593,11 @@ function GolemAssetLoader.Init()
 
     local jobs = AssetData.All()
     local packId = AssetData.Pack and AssetData.Pack.assetId or 0
-    if #jobs == 0 and packId <= 0 and petPackId <= 0 and crownPackId <= 0 then
+    local stageJobs = {}
+    for stage, pack in pairs(AssetData.StagePacks or {}) do
+        if (pack.assetId or 0) > 0 then table.insert(stageJobs, { stage = stage, assetId = pack.assetId }) end
+    end
+    if #jobs == 0 and packId <= 0 and petPackId <= 0 and crownPackId <= 0 and #stageJobs == 0 then
         log("No Golem asset id is set in AssetData.lua: using the built-in block Golem.")
         return
     end
@@ -581,6 +606,7 @@ function GolemAssetLoader.Init()
         task.spawn(LoadOne, job.key, job.config)
     end
     if packId > 0 then task.spawn(LoadPack, packId, AssetData.PackEntries()) end
+    for _, job in ipairs(stageJobs) do task.spawn(LoadStagePack, job.stage, job.assetId, AssetData.StageEntries()) end
     -- Not blocking: GolemVisuals rebuilds Golems when the version changes, so a slow asset just
     -- appears when it arrives. This only reports if it is taking long.
     task.delay(AssetData.LOAD_TIMEOUT, function()

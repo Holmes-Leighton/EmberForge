@@ -10,6 +10,7 @@ local PlayerDataService = require(script.Parent.PlayerDataService)
 local SafeDataStore     = require(script.Parent.SafeDataStore)
 local GolemNames        = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
 local PetData           = require(game.ReplicatedStorage.Shared.Data.PetData)
+local GolemData         = require(game.ReplicatedStorage.Shared.Data.GolemData)
 
 local TradingService = {}
 
@@ -93,7 +94,8 @@ function TradingService.ValueOf(it)
         return v * (stage and stage.mult or 1)
     elseif it.type == "golem" then
         local v = 30 * 3 ^ ((it.tier or 1) - 1)
-        return v * (it.variant == "MegaNeon" and 12 or (it.variant == "Neon" and 4) or 1)
+        local stage = GolemData.StageOf({ grown = it.grown })              -- a grown Golem is worth more than an Infant (an old save counts as Adult)
+        return v * (it.variant == "MegaNeon" and 12 or (it.variant == "Neon" and 4) or 1) * stage.mult ^ 2
     end
     return 0
 end
@@ -182,8 +184,8 @@ local function ValidateItem(data, raw, alreadyOffered)
                 if g.deployed then return nil, "Recall that Golem before trading it" end
                 local d = GolemNames.Describe(g)
                 return { type = "golem", id = id, qty = 1, element = g.element, tier = g.tier,
-                         rarity = d.rarity, variant = g.variant,
-                         name = string.format("%s (%s)", d.name, d.rarity) }
+                         rarity = d.rarity, variant = g.variant, grown = g.grown,
+                         name = string.format("%s (%s, %s)", d.name, d.rarity, d.stage.id) }
             end
         end
         return nil, "Golem not found"
@@ -514,7 +516,10 @@ function TradingService._ExecuteTrade(tradeId)
             elseif it.type == "golem" then
                 for i = #fromData.Golems, 1, -1 do
                     if fromData.Golems[i].id == it.id then
-                        table.insert(toData.Golems, table.remove(fromData.Golems, i))
+                        local moved = table.remove(fromData.Golems, i)
+                        GolemData.NoteSeen(fromData, moved)                -- the giver keeps it in their collection
+                        table.insert(toData.Golems, moved)
+                        GolemData.NoteSeen(toData, moved)
                         break
                     end
                 end
@@ -619,6 +624,7 @@ function TradingService.ListOnMarket(player, rawItem, priceCoins)
         for i, g in ipairs(data.Golems) do
             if g.id == item.id then
                 golemObject = table.remove(data.Golems, i)
+                GolemData.NoteSeen(data, golemObject)              -- (listing it does not take it out of the collection)
                 break
             end
         end
@@ -658,6 +664,7 @@ local function DeliverListing(player, listing)
     elseif listing.golem then
         local data = PlayerDataService.Get(player)
         table.insert(data.Golems, listing.golem)
+        GolemData.NoteSeen(data, listing.golem)
         PlayerDataService.MarkDirty(player)
     elseif listing.pet then
         local data = PlayerDataService.Get(player)

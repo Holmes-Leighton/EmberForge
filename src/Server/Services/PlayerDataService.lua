@@ -74,12 +74,14 @@ local function DefaultData()
         TempSlotBoostExpiry  = 0,
         MaterialMagnetExpiry = 0,
         LuckBoostExpiry      = 0,
+        GrowthBoostExpiry    = 0,           -- Growth Tonic: Golems grow 2x until then
         -- Cosmetics & receipts
         PurchasedSlots  = 0,           -- extra Golem slots bought with Robux (packs of 5, stackable)
         UnlockedPads    = {},          -- padId -> true (bought with Robux)
         OwnedCosmetics    = {},
         OwnedPets         = {},          -- { id, type, hatchedAt } (see PetData)
         EquippedPets      = {},          -- pet ids being worn (up to PetData.SLOTS)
+        GolemsSeen        = {},          -- the Golem index: every type at every life stage ever owned (see GolemData.SeenKey)
         PetsSeen          = {},          -- the pet index: every pet form ever owned (see PetData.SeenKey)
         Ascensions        = 0,           -- see AscensionData
         ForgeBuild        = { owned = {}, placed = {}, bought = { slot = 0, counts = {} } },   -- see ForgeBuildService

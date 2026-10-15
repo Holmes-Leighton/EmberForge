@@ -42,6 +42,7 @@ function GolemService.CraftGolem(player, blueprintId, skinId)
         fusionBonus = nil,
         quality   = CraftRules.QualityFor(bp),       -- stat bonus from the grade of materials used
         rarity    = GolemData.RarityForTier(bp.tier),
+        grown     = 0,                                -- seconds of work so far: a new Golem is an Infant (GolemData.Stages)
         _carriedResources = 0,
         _accumulatedResources = 0,
         _durabilitySeconds = durabilitySeconds,
@@ -50,6 +51,7 @@ function GolemService.CraftGolem(player, blueprintId, skinId)
     }
 
     table.insert(data.Golems, golem)
+    GolemData.NoteSeen(data, golem)
     require(game.ReplicatedStorage.Shared.Data.MiningZoneData).RememberUnlocked(data)
     data.CraftedByTier = data.CraftedByTier or {}
     data.CraftedByTier[bp.tier] = (data.CraftedByTier[bp.tier] or 0) + 1
@@ -177,6 +179,7 @@ function GolemService.NeonFuse(player, element, tier, variant)
     end
     table.sort(pool, function(a, b) return power(a) > power(b) end)
     local keep = pool[1]
+    local fusedGrowth = GolemData.FusedGrowth(table.move(pool, 1, need, 1, {}))
 
     for i = 2, need do
         for idx, g in ipairs(data.Golems) do
@@ -185,6 +188,7 @@ function GolemService.NeonFuse(player, element, tier, variant)
     end
 
     keep.variant = nextVariant
+    keep.grown = fusedGrowth                    -- restarts young, with a share of what the four had grown
     keep._durabilitySeconds = keep._maxDurabilitySeconds or keep._durabilitySeconds
     PlayerDataService.MarkDirty(player)
     return keep, nil

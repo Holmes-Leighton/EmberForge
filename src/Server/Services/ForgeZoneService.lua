@@ -14,6 +14,7 @@ local ChallengeService  = require(script.Parent.ChallengeService)
 local ForgeBuilder      = require(script.Parent.ForgeBuilder)
 local ForgeData         = require(game.ReplicatedStorage.Shared.Data.ForgeData)
 local AscensionData     = require(game.ReplicatedStorage.Shared.Data.AscensionData)
+local GolemData         = require(game.ReplicatedStorage.Shared.Data.GolemData)
 
 local ForgeZoneService = {}
 
@@ -213,7 +214,7 @@ end
 local function IdleGolems(data)
     local list = {}
     for _, g in ipairs(data.Golems or {}) do
-        if not g.deployed then table.insert(list, { element = g.element, tier = g.tier, variant = g.variant }) end
+        if not g.deployed then table.insert(list, { element = g.element, tier = g.tier, variant = g.variant, grown = GolemData.GrownSeconds(g) }) end
     end
     table.sort(list, function(a, b) return (a.tier or 1) > (b.tier or 1) end)
     return list
@@ -226,7 +227,7 @@ local function Signature(data)
     table.sort(parts, function(a, b) return tostring(a) < tostring(b) end)
     for i, g in ipairs(IdleGolems(data)) do
         if i > 5 then break end
-        table.insert(parts, tostring(g.element) .. tostring(g.tier) .. tostring(g.variant))
+        table.insert(parts, tostring(g.element) .. tostring(g.tier) .. tostring(g.variant) .. GolemData.StageOf(g).id)     -- (a new life stage rebuilds the gallery)
     end
     return table.concat(parts, "|")
 end

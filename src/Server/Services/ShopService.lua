@@ -64,6 +64,13 @@ PRODUCT_HANDLERS.LuckBoost_1h = function(player)
     end)
 end
 
+-- ── Growth Tonic (1h: deployed Golems grow twice as fast; buying again extends it. It speeds growth, it cannot skip it) ─────────
+PRODUCT_HANDLERS.GrowthTonic_1h = function(player)
+    return withData(player, function(d)
+        d.GrowthBoostExpiry = math.max(d.GrowthBoostExpiry or 0, Utils.UnixTimestamp()) + 3600
+    end)
+end
+
 -- ── Event Catalyst ────────────────────────────────────────────────────────────
 PRODUCT_HANDLERS.EventCatalyst = function(player)
     PlayerDataService.AddMaterial(player, "EventCatalyst", 1)

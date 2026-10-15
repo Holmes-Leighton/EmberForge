@@ -74,15 +74,16 @@ convGrid.Parent = container
 local convItems = {
     { name="SpeedUpx1Btn",        emoji="⚗",  title="Speed-Up",          sub="Instantly smelt 1 item",        price="25 R$",    color=Theme.Colors.Info    },
     { name="SpeedUpx10Btn",       emoji="⚗⚗", title="Speed-Up Pack",     sub="10 instant completions",        price="200 R$",   color=Theme.Colors.Info    },
-    { name="StorageExpansionBtn", emoji="📦",  title="Offline Storage",   sub="Keep 24 hrs of mining. Once.",  price="299 R$",   color=Theme.Colors.Frost   },
-    { name="SlotPackBtn",         emoji="🧩",  title="+5 Golem Slots",    sub="Permanent. Buy again for more.", price="249 R$",  color=Theme.Colors.Gold    },
+    { name="StorageExpansionBtn", emoji="📦",  title="Offline Storage",   sub="Keep 24 hrs of mining",  price="299 R$",   color=Theme.Colors.Frost   },
+    { name="SlotPackBtn",         emoji="🧩",  title="+5 Golem Slots",    sub="Permanent, stackable", price="249 R$",  color=Theme.Colors.Gold    },
     { name="SlotBoostBtn",        emoji="🔓",  title="Slot Boost",        sub="+1 deploy slot for 7 days",     price="149 R$/wk",color=Theme.Colors.Storm   },
-    { name="MaterialMagnetBtn",   emoji="🧲",  title="Material Magnet",   sub="2× resource collection 24 hrs", price="199 R$",   color=Theme.Colors.Success },
-    { name="LuckBoostBtn",        emoji="🍀",  title="Lucky Boost",       sub="2× rare drop chance for 1 hr",  price="49 R$",    color=Theme.Colors.Success },
-    { name="EventCatalystBtn",   emoji="✨",  title="Event Catalyst",    sub="Skip the grind for 1 event mat",price="~400 R$",  color=Theme.Colors.Legendary },
+    { name="MaterialMagnetBtn",   emoji="🧲",  title="Material Magnet",   sub="2× resources, 24 hrs", price="199 R$",   color=Theme.Colors.Success },
+    { name="LuckBoostBtn",        emoji="🍀",  title="Lucky Boost",       sub="2× rare drops, 1 hr",  price="49 R$",    color=Theme.Colors.Success },
+    { name="GrowthTonicBtn",      emoji="🌱",  title="Growth Tonic",      sub="Golems grow 2×, 1 hr", price="99 R$",    color=Theme.Colors.Success },
+    { name="EventCatalystBtn",   emoji="✨",  title="Event Catalyst",    sub="1 event material",price="~400 R$",  color=Theme.Colors.Legendary },
 }
 
-local COLS = 4
+local COLS = 5     -- nine items in two rows (a third row would not fit the window)
 local itemW = math.floor((740 - 16 - (COLS - 1) * 8) / COLS)
 local itemH = 84
 

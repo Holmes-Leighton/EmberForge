@@ -274,7 +274,9 @@ local function RenderDetail()
 
     if stats then
         local bias = elemDef and elemDef.statBias or ""
+        local first = GolemData.Stages[1]
         statsLbl.Text = table.concat({
+            string.format("Adult stats  (born at %d%%)", math.floor(first.mult * 100 + 0.5)),       -- a new Golem is an Infant and grows into these
             string.format("Mining rate:  %d / hr", stats.miningRate),
             string.format("Carry capacity:  %d", stats.carryCapacity),
             string.format("Efficiency:  x%.2f", stats.efficiency),

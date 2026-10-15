@@ -296,7 +296,7 @@ local function RenderInventory()
 
     for _, g in ipairs(AvailableGolems()) do
         local d = GolemNames.Describe(g)
-        local row = Row(invList, string.format("%s  [%s]", d.name, d.rarity), d.rarityColor, 36, { type = "golem", element = g.element, tier = g.tier, variant = g.variant })
+        local row = Row(invList, string.format("%s  [%s]", d.name, d.rarity), d.rarityColor, 36, { type = "golem", element = g.element, tier = g.tier, variant = g.variant, grown = g.grown })
         local add = Theme.Button(row, "Add", Theme.Colors.Accent, Color3.fromRGB(255, 255, 255))
         add.Size = UDim2.new(0, 60, 0, 24)
         add.Position = UDim2.new(1, -76, 0.5, -12)

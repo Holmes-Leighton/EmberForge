@@ -136,8 +136,11 @@ local function GolemProduction(golem, seconds, storageTier, playerData, stormBoo
         seconds = active
     end
 
-    local stats  = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus, golem.quality, golem.variant)
+    local stats  = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus, golem.quality, golem.variant, GolemData.StageOf(golem).id)
     if not stats then return {} end
+    -- it grew while it worked (the haul below is at the stage it left with); a Growth Tonic doubled the part of the absence it covered
+    local tonicSeconds = math.min(seconds, math.max(0, (playerData.GrowthBoostExpiry or 0) - (playerData.LastOnline or Utils.UnixTimestamp())))
+    local grewTo = GolemData.AddGrowth(golem, (seconds + tonicSeconds) * GolemData.GROW_OFFLINE_RATE)
 
     -- Apply mastery bonuses
     local mb = MasteryBonuses(playerData, golem.element)
@@ -167,6 +170,7 @@ local function GolemProduction(golem, seconds, storageTier, playerData, stormBoo
     local carryCapped = math.min(produced, math.floor(stats.carryCapacity * (1 + fp.carry) * (1 + auras.carry) * storageScale * offlineSpeed))
 
     return {
+        grewTo    = grewTo,                                     -- the life stage it reached while away, if it reached one
         golemId   = golem.id,
         element   = golem.element,
         zoneId    = golem.zoneId,
@@ -205,9 +209,11 @@ function IdleEngine.CalculateOfflineProduction(playerData)
     local stormBoost = StormBoost(playerData)
     local auras = CrewAuras(playerData)
     local byElement = {}   -- element -> resources its Golems mined while away (for mastery)
+    local grewAway = {}    -- Golems that reached a new life stage while away: { golem, stage }
     for _, golem in ipairs(playerData.Golems or {}) do
         if golem.deployed then
             local production = GolemProduction(golem, elapsed, storageTier, playerData, stormBoost, auras)
+            if production.grewTo then table.insert(grewAway, { golem = golem, stage = production.grewTo }) end
             if production.produced and production.produced > 0 then
                 -- Sample drop types based on zone drop table and luck
                 local MiningZoneData = require(game.ReplicatedStorage.Shared.Data.MiningZoneData)
@@ -237,7 +243,7 @@ function IdleEngine.CalculateOfflineProduction(playerData)
         end
     end
 
-    return gains, elapsed, byElement
+    return gains, elapsed, byElement, grewAway
 end
 
 -- Apply the offline gains to player data and update timestamp
@@ -253,6 +259,7 @@ end
 function IdleEngine.TickOnlineProduction(playerData, deltaSeconds)
     local gains = {}
     local byElement = {}   -- element → resources its Golems mined this tick (for mastery)
+    local grew = {}        -- Golems that reached a new life stage this tick: { golem, stage }
     local storageTier = playerData.StorageTier or 0
     local MiningZoneData = require(game.ReplicatedStorage.Shared.Data.MiningZoneData)
     local SeasonPassService = require(script.Parent.SeasonPassService)
@@ -267,6 +274,7 @@ function IdleEngine.TickOnlineProduction(playerData, deltaSeconds)
 
     local stormBoost = StormBoost(playerData)
     local auras = CrewAuras(playerData)
+    local growMult = (playerData.GrowthBoostExpiry or 0) > Utils.UnixTimestamp() and 2 or 1      -- Growth Tonic
     local fp =ForgeData.TotalPerks(playerData.ForgeLevel or 1, playerData.Ascensions)
     for _, golem in ipairs(playerData.Golems or {}) do
         if golem.deployed and golem.zoneId then
@@ -279,7 +287,9 @@ function IdleEngine.TickOnlineProduction(playerData, deltaSeconds)
                 end
             end
 
-            local stats = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus, golem.quality, golem.variant)
+            local stats = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus, golem.quality, golem.variant, GolemData.StageOf(golem).id)
+            local grewTo = GolemData.AddGrowth(golem, deltaSeconds * growMult)       -- a Golem grows while it works, even with a full bag
+            if grewTo then table.insert(grew, { golem = golem, stage = grewTo }) end
             local carried = golem._carriedResources or 0
             local carryCap = stats and math.floor(stats.carryCapacity * (1 + fp.carry) * (1 + auras.carry)) or 0
             -- A full Golem waits (still deployed) until the player collects
@@ -320,7 +330,7 @@ function IdleEngine.TickOnlineProduction(playerData, deltaSeconds)
         end
     end
 
-    return gains, byElement
+    return gains, byElement, grew
 end
 
 return IdleEngine

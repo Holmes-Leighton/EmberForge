@@ -64,6 +64,18 @@ AssetData.Golem = {
 -- upload it once and set its id here. A type that has its own `assetId` below uses that instead.
 AssetData.Pack = { assetId = 130561025606346 }
 
+-- Life-stage models. The models above are the ADULT look (GolemData.Stages). Every other stage can have its own mesh: one pack per
+-- stage, built like the Golem Pack (a Model whose children are named EF_<Type>: EF_Ember, EF_Stone ... and EF_Default for the shared
+-- body). Infant is drawn small with a big head, Elder and Ancient grander and more weathered; GolemModel scales each to its stage's size.
+-- A type with no mesh for a stage still shows its Adult mesh, grown or shrunk to the stage and dressed in code (sprout and big eyes for an
+-- Infant, runes and a beard for an Elder, a crystal crown and orbiting rune stones for an Ancient), so nothing here is required.
+AssetData.StagePacks = {
+    Infant  = { assetId = 0 },
+    Young   = { assetId = 0 },
+    Elder   = { assetId = 0 },
+    Ancient = { assetId = 0 },
+}
+
 -- The same idea for pets (PetData): one Model whose children are named PET_<Type> (PET_Ember, PET_Coral ...).
 -- Each pet is shown at the size in PetData.Looks. Pets without a model show a mini Golem.
 AssetData.PetPack = { assetId = 136723892869054 }   -- segmented, animated pets (the old one-piece pack was 94911546053505)
@@ -242,6 +254,25 @@ function AssetData.PackEntries()
             out[name] = cfg
         end
     end
+    return out
+end
+
+-- The settings for every model in a stage pack: each type (and "Default") with the same settings as its Adult model. Keys are the
+-- names the pack's EF_<Type> children go by.
+function AssetData.StageEntries()
+    local def = AssetData.Golem.Default
+    local out = {}
+    local function entry(own, isDefault)
+        local cfg = {}
+        for k, v in pairs(def) do cfg[k] = v end
+        for k, v in pairs(own) do cfg[k] = v end
+        if not isDefault and own.elementTint == nil then cfg.elementTint = 0 end
+        cfg.animations = own.animations or def.animations
+        if not MODES[cfg.mode] then cfg.mode = "Auto" end
+        return cfg
+    end
+    out.Default = entry({}, true)
+    for name, own in pairs(AssetData.Golem.Elements) do out[name] = entry(own, false) end
     return out
 end
 

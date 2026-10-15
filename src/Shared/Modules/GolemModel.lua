@@ -4,6 +4,9 @@
 -- Look:   element -> body material/colour + accents (cracks, moss, ice, sparks, shadow)
 --         tier    -> more detail: shoulders (T2), glowing core (T3), horns (T4), halo (T5)
 --         variant -> Neon glows, Mega Neon cycles through rainbow colours (animated client-side)
+--         stage   -> options.stage (GolemData.Stages): Infant is small with a big head, Elder and Ancient bigger and weathered; Adult (or no
+--                    stage) is the plain look. A mesh made for a stage (AssetData.StagePacks) is used if it exists, otherwise the Adult one
+--                    is resized and dressed in code.
 --
 -- Parts tagged with the attribute "Tint" take the variant colour animation; the arms and
 -- pickaxe are named ArmL / ArmR / PickHandle / PickHead so the client can swing them.
@@ -19,6 +22,7 @@ local Theme = require(script.Parent.Theme)
 local CosmeticData = require(script.Parent.Parent.Data.CosmeticData)
 local AssetData = require(script.Parent.Parent.Data.AssetData)
 local GolemSkinData = require(script.Parent.Parent.Data.GolemSkinData)
+local GolemData = require(script.Parent.Parent.Data.GolemData)
 local CrownModel = require(script.Parent.CrownModel)
 
 local GolemModel = {}
@@ -39,10 +43,18 @@ function GolemModel.AssetVersion()
 end
 
 -- The loaded template for an element: its own model if it has one, otherwise the shared Default.
-function GolemModel.FindAsset(element)
+-- For a life stage other than Adult, the mesh made for that stage comes first (AssetData.StagePacks: Ember_Infant, or Default_Infant for a
+-- type that uses the shared body). The second result is true when a stage mesh was used; otherwise the Adult mesh is, and Build
+-- resizes and dresses it for the stage in code.
+function GolemModel.FindAsset(element, stage)
     local f = AssetFolder()
     if not f then return nil end
-    return f:FindFirstChild(element) or f:FindFirstChild("Default")
+    if stage and stage ~= "Adult" then
+        local own = f:FindFirstChild(element .. "_" .. stage)
+        if not own and not f:FindFirstChild(element) then own = f:FindFirstChild("Default_" .. stage) end
+        if own then return own, true end
+    end
+    return f:FindFirstChild(element) or f:FindFirstChild("Default"), false
 end
 
 local function BodyParts(model)
@@ -78,7 +90,7 @@ local ELEMENT_BODY = {
     All   = Color3.fromRGB(250, 245, 232),
 }
 
-local function PrepareAsset(template, s, elementColor, skinColor, isNeon, element, skinLook)
+local function PrepareAsset(template, s, elementColor, skinColor, isNeon, element, skinLook, headScale, bodyScale, limbScale, tone)
     local model = template:Clone()
     model.Name = "GolemPreview"
     local mode = template:GetAttribute("RigMode") or "Static"
@@ -86,6 +98,26 @@ local function PrepareAsset(template, s, elementColor, skinColor, isNeon, elemen
 
     local facing = template:GetAttribute("Facing") or 0
     if facing ~= 0 then model:PivotTo(CFrame.Angles(0, math.rad(facing), 0) * model:GetPivot()) end
+
+    -- A young Golem has a big head for its body. Grow the head about the point where it meets the neck (a rigged skeleton keeps its proportions).
+    local head = model:FindFirstChild("Head", true)
+    if headScale and headScale ~= 1 and mode ~= "Skinned" and head and head:IsA("BasePart") then
+        local grow = head.Size.Y * (headScale - 1)
+        head.Size = head.Size * headScale
+        head.CFrame = head.CFrame * CFrame.new(0, grow / 2, 0)
+    end
+    -- Torso width and limb thickness change with the stage too (about each part's own centre, so nothing moves out of place).
+    if mode ~= "Skinned" then
+        local function widen(part, k)
+            if k and k ~= 1 and part:IsA("BasePart") then part.Size = Vector3.new(part.Size.X * k, part.Size.Y, part.Size.Z * k) end
+        end
+        widen(model:FindFirstChild("Torso", true) or model, bodyScale)
+        for _, n in ipairs({ "ArmL", "ArmR", "Leg" }) do
+            for _, d in ipairs(model:GetDescendants()) do
+                if d.Name == n then widen(d, limbScale) end
+            end
+        end
+    end
 
     local height = model:GetExtentsSize().Y
     if height < 0.05 then error("model has no height") end
@@ -127,6 +159,28 @@ local function PrepareAsset(template, s, elementColor, skinColor, isNeon, elemen
         end
     end
 
+    -- A young Golem's colours are duller. A baked texture ignores Part.Color, so it is carried by a SurfaceAppearance (same texture) that takes a tint;
+    -- the pickaxe and glowing parts keep their own colour.
+    if tone and tone < 1 then
+        local tint = Color3.new(tone, tone, math.min(1, tone * 1.04))      -- a hair cooler, so it reads muted rather than just dark
+        for _, d in ipairs(BodyParts(model)) do
+            if d.Material ~= Enum.Material.Neon and d.Name ~= "PickHandle" and d.Name ~= "PickHead" then
+                local sa = d:FindFirstChildOfClass("SurfaceAppearance")
+                if sa then
+                    sa.Color = Color3.new(sa.Color.R * tint.R, sa.Color.G * tint.G, sa.Color.B * tint.B)
+                elseif d:IsA("MeshPart") and d.TextureID ~= "" then
+                    local made = Instance.new("SurfaceAppearance")
+                    made.ColorMap = d.TextureID
+                    made.Color = tint
+                    d.TextureID = ""
+                    made.Parent = d
+                else
+                    d.Color = Color3.new(d.Color.R * tint.R, d.Color.G * tint.G, d.Color.B * tint.B)
+                end
+            end
+        end
+    end
+
     model.PrimaryPart = root
     root.PivotOffset = root.CFrame:ToObjectSpace(CFrame.new(0, 5 * s, 0))
     model:SetAttribute("RigMode", mode)
@@ -142,6 +196,16 @@ local ELEMENT_LOOK = {
     All   = { material = Enum.Material.Marble,   accent = Color3.fromRGB(255, 215, 90),  accentMaterial = Enum.Material.Neon,  transparency = 0    },
 }
 
+-- The Ancient's crest, one shape per element family (fins up the upper back): count, width, height, fan angle, lift off the back, material.
+local CRESTS = {
+    Ember   = { count = 5, w = 0.5,  h = 2.4, fan = 0.16, lift = 0,   twist = false, material = Enum.Material.Neon, transparency = 0.12 },   -- swept flame fins
+    Frost   = { count = 5, w = 0.6,  h = 2.6, fan = 0.2,  lift = 0,   twist = false, material = Enum.Material.Ice,  transparency = 0.2 },    -- icicle shards
+    Stone   = { count = 4, w = 0.85, h = 1.9, fan = 0.12, lift = 0,   twist = false, material = Enum.Material.Glass, transparency = 0.15 },  -- gem crystals
+    Storm   = { count = 4, w = 0.28, h = 2.8, fan = 0.3,  lift = 0,   twist = true,  material = Enum.Material.Neon, transparency = 0.05 },   -- thin crackling bolts
+    Void    = { count = 5, w = 0.55, h = 1.8, fan = 0.1,  lift = 0.9, twist = true,  material = Enum.Material.Neon, transparency = 0.2 },    -- shards floating off the back
+    Default = { count = 5, w = 0.55, h = 2.0, fan = 0.16, lift = 0,   twist = false, material = Enum.Material.Neon, transparency = 0.2 },
+}
+
 local BACK_WIDTH = { MagmaTitan = 3.8, CrystalWraith = 4.4, ThunderColossus = 3.8, VoidWalker = 7.5, PrimordialGolem = 5.5 }    -- studs wide, block Golem
 
 function GolemModel.Build(element, tier, options)
@@ -153,7 +217,14 @@ function GolemModel.Build(element, tier, options)
     -- pale types (bone, marble) would blow out to pure white under Neon glow, so their glow colour is deeper
     if math.max(color.R, color.G, color.B) > 0.8 then elementColor = color:Lerp(Color3.fromRGB(200, 140, 60), 0.55) end
     local skinColor
-    local template = GolemModel.FindAsset(element)
+    -- Life stage (GolemData.Stages): size, head proportion, and - unless a mesh was made for this stage - the code-made stage details.
+    -- With no stage given a Golem is an Adult, which is exactly the look it had before growth existed.
+    local stageDef, stageIndex = GolemData.StageById(options.stage)
+    local template, stageMesh = GolemModel.FindAsset(element, options.stage)
+    local headScale = (not stageMesh) and stageDef.head or 1
+    local bodyScale = (not stageMesh) and stageDef.body or 1      -- torso width
+    local limbScale = (not stageMesh) and stageDef.limb or 1      -- arm and leg thickness
+    local tone = (not stageMesh) and stageDef.tone or 1           -- colour vividness (a stage's own mesh carries its own colour)
     -- A type with its own uploaded model (AssetData.Golem.Elements.<Name>.assetId) carries its own look, so
     -- the code-made surface and details are skipped for it (an equipped skin still applies, by choice).
     local ownModel = template ~= nil and template:GetAttribute("OwnModel") == true
@@ -168,15 +239,16 @@ function GolemModel.Build(element, tier, options)
         skinColor = CosmeticData.Describe(options.skin).color
         color = color:Lerp(skinColor, 0.65)
     end
+    if tone < 1 then color = color:Lerp(Color3.fromRGB(110, 112, 120), 1 - tone) end        -- the block Golem's body, duller when young (accents stay vivid)
     local dark  = color:Lerp(Color3.new(0, 0, 0), 0.35)
     local variant = options.variant
     local isNeon = variant == "Neon" or variant == "MegaNeon"     -- internal ids; players see them as Elite / Supreme
     -- an Elite is a little bigger than a normal Golem of its tier, a Supreme bigger still
-    local s     = (1 + (tier - 1) * 0.18) * (variant == "MegaNeon" and 1.14 or (variant == "Neon" and 1.06 or 1))
+    local s     = (1 + (tier - 1) * 0.18) * (variant == "MegaNeon" and 1.14 or (variant == "Neon" and 1.06 or 1)) * stageDef.scale
 
     local model, root, mode, addOns
     if template then
-        local ok, m, r, md, ao = pcall(PrepareAsset, template, s, elementColor, skinColor, isNeon, element, skinLook)
+        local ok, m, r, md, ao = pcall(PrepareAsset, template, s, elementColor, skinColor, isNeon, element, skinLook, headScale, bodyScale, limbScale, tone)
         if ok then
             model, root, mode, addOns = m, r, md, ao
         else
@@ -221,18 +293,21 @@ function GolemModel.Build(element, tier, options)
 
     local torso = root
     if not isAsset then
-        torso = part("Torso", Vector3.new(3.2, 4, 2), color, bodyMaterial, at(0, 5, 0), bodyTransparency, true)
-        part("Head", Vector3.new(2.4, 2.2, 2.4), dark, bodyMaterial, at(0, 8.3, 0), bodyTransparency, true)
+        torso = part("Torso", Vector3.new(3.2 * bodyScale, 4, 2 * bodyScale), color, bodyMaterial, at(0, 5, 0), bodyTransparency, true)
+        local hf = headScale                                  -- the head grows up from the neck (7.2), so a young Golem's head is big
+        local headY = 7.2 + 1.1 * hf
+        part("Head", Vector3.new(2.4 * hf, 2.2 * hf, 2.4 * hf), dark, bodyMaterial, at(0, headY, 0), bodyTransparency, true)
         for _, side in ipairs({ -0.6, 0.6 }) do
-            part("Eye", Vector3.new(0.5, 0.4, 0.2), look.accent:Lerp(Color3.new(1, 1, 1), 0.4), Enum.Material.Neon, at(side * 1.1, 8.5, -1.25))
+            part("Eye", Vector3.new(0.5, 0.4, 0.2), look.accent:Lerp(Color3.new(1, 1, 1), 0.4), Enum.Material.Neon, at(side * 1.1 * hf, headY + 0.2 * hf, -(1.2 * hf + 0.05)))
         end
         for _, side in ipairs({ -0.85, 0.85 }) do
-            part("Leg", Vector3.new(1.3, 3, 1.4), dark, bodyMaterial, at(side * 1, 1.5, 0), bodyTransparency, true)
+            part("Leg", Vector3.new(1.3 * limbScale, 3, 1.4 * limbScale), dark, bodyMaterial, at(side * 1, 1.5, 0), bodyTransparency, true)
         end
-        part("ArmL", Vector3.new(1.1, 3, 1.1), dark, bodyMaterial,
-            at(-2.2, 6.5, 0) * CFrame.Angles(-0.2, 0, 0) * CFrame.new(0, -1.5 * s, 0), bodyTransparency, true)
-        local armR = part("ArmR", Vector3.new(1.1, 3, 1.1), dark, bodyMaterial,
-            at(2.2, 6.5, 0) * CFrame.Angles(-1.1, 0, 0) * CFrame.new(0, -1.5 * s, 0), bodyTransparency, true)
+        local armX = 1.6 * bodyScale + 0.6                    -- the arms sit on the edge of the (wider or narrower) torso
+        part("ArmL", Vector3.new(1.1 * limbScale, 3, 1.1 * limbScale), dark, bodyMaterial,
+            at(-armX, 6.5, 0) * CFrame.Angles(-0.2, 0, 0) * CFrame.new(0, -1.5 * s, 0), bodyTransparency, true)
+        local armR = part("ArmR", Vector3.new(1.1 * limbScale, 3, 1.1 * limbScale), dark, bodyMaterial,
+            at(armX, 6.5, 0) * CFrame.Angles(-1.1, 0, 0) * CFrame.new(0, -1.5 * s, 0), bodyTransparency, true)
         local hand = armR.CFrame * CFrame.new(0, -1.4 * s, -1.4 * s)
         part("PickHandle", Vector3.new(0.4, 0.4, 3.4), Color3.fromRGB(110, 80, 50), Enum.Material.Wood, hand)
         part("PickHead", Vector3.new(2.8, 0.5, 0.5), Color3.fromRGB(190, 190, 200), Enum.Material.Metal, hand * CFrame.new(0, 0, -1.6 * s))
@@ -528,6 +603,108 @@ function GolemModel.Build(element, tier, options)
         end
     end
 
+    -- ── Life-stage details ────────────────────────────────────────────────────
+    -- Adult is the plain look. The others are dressed in code unless a mesh was made for that stage (stageMesh), which brings its own.
+    --   Infant   big shiny eyes and a leaf sprout          Young    budding crystals and a first crack
+    --   Elder    stone beard, heavy brow, chest runes, moss, ground ring    Ancient  all that, grander, plus an element crest up the back and orbiting rune stones
+    -- (nothing here goes on top of the head: that is kept for rarity pieces, Elite / Supreme crowns and equipped hats)
+    if not stageMesh and stageIndex ~= GolemData.ADULT_INDEX then
+        local SA = A or {                                  -- anchors for the block Golem, in the same world-space terms as an uploaded model's
+            T = Vector3.new(0, 5 * s, 0), hx = 1.6 * bodyScale * s, hy = 2 * s, hz = 1 * bodyScale * s,
+            H = Vector3.new(0, (7.2 + 1.1 * headScale) * s, 0), hhx = 1.2 * headScale * s, hhy = 1.1 * headScale * s, hhz = 1.2 * headScale * s,
+        }
+        local T, H = SA.T, SA.H
+        local front, headFront = T.Z - SA.hz, H.Z - SA.hhz
+        local acc = look.accent
+        local green = Color3.fromRGB(100, 170, 80)
+        local function sp(name, size, c, material, pos, rot, transparency)
+            return part(name, size / s, c, material, CFrame.new(pos) * (rot or CFrame.new()), transparency)
+        end
+        local function diamond(name, size, pos)             -- a glowing rune: a square stood on its corner
+            return sp(name, Vector3.new(size, size, 0.15), acc, Enum.Material.Neon, pos, CFrame.Angles(0, 0, math.pi / 4), 0.1)
+        end
+
+        if stageIndex == 1 then                            -- Infant
+            for _, side in ipairs({ -1, 1 }) do
+                local eyeD = SA.hhx * 0.72
+                local eyePos = Vector3.new(H.X + side * SA.hhx * 0.42, H.Y + SA.hhy * 0.05, headFront - 0.05)
+                local eye = sp("BabyEye", Vector3.new(eyeD, eyeD, eyeD * 0.6), acc:Lerp(Color3.new(1, 1, 1), 0.55), Enum.Material.Neon, eyePos)
+                eye.Shape = Enum.PartType.Ball
+                local pupil = sp("BabyPupil", Vector3.new(eyeD * 0.45, eyeD * 0.45, eyeD * 0.3), Color3.fromRGB(25, 25, 35), Enum.Material.SmoothPlastic,
+                    eyePos + Vector3.new(0, 0, -eyeD * 0.22))
+                pupil.Shape = Enum.PartType.Ball
+            end
+            local top = Vector3.new(H.X, H.Y + SA.hhy, H.Z)
+            sp("SproutStem", Vector3.new(0.22, 0.9, 0.22), green, Enum.Material.Grass, top + Vector3.new(0, 0.4, 0))
+            for _, side in ipairs({ -1, 1 }) do
+                sp("SproutLeaf", Vector3.new(0.95, 0.12, 0.5), green:Lerp(Color3.new(1, 1, 1), 0.15), Enum.Material.Grass,
+                    top + Vector3.new(side * 0.42, 0.95, 0), CFrame.Angles(0, 0, side * -0.45))
+            end
+        elseif stageIndex == 2 then                        -- Young
+            for _, side in ipairs({ -1, 1 }) do
+                sp("BudCrystal", Vector3.new(0.5, 1.1, 0.5), acc, Enum.Material.Glass,
+                    Vector3.new(T.X + side * SA.hx * 0.85, T.Y + SA.hy + 0.45, T.Z), CFrame.Angles(0, 0, side * -0.3), 0.2)
+            end
+            sp("YoungCrack", Vector3.new(0.2, SA.hy * 0.9, 0.12), acc, look.accentMaterial, Vector3.new(T.X + SA.hx * 0.25, T.Y, front - 0.05), CFrame.Angles(0, 0, 0.3))
+        else                                               -- Elder and Ancient
+            local ancient = stageIndex == 5
+            local hair = color:Lerp(Color3.new(1, 1, 1), 0.55)
+            for i = 0, 2 do                                -- a stone beard
+                sp("Beard", Vector3.new(SA.hhx * (1.5 - i * 0.4), 0.55, 0.6), hair, look.material,
+                    Vector3.new(H.X, H.Y - SA.hhy - 0.05 - i * 0.5, headFront - 0.1), nil, look.transparency)
+            end
+            if not A then                                  -- (a type's own mesh has its own face and brow)
+                sp("Brow", Vector3.new(SA.hhx * 2.1, 0.45, 0.5), dark, look.material, Vector3.new(H.X, H.Y + SA.hhy * 0.45, headFront - 0.1), nil, look.transparency)
+            end
+            local runeSize = ancient and 1.0 or 0.7
+            if not (isNeon and A) then                     -- (an Elite / Supreme's gold chest plate covers the chest: its stage shows in the glow, ground ring and stones instead)
+                for i = -1, 1 do
+                    diamond("ChestRune", runeSize, Vector3.new(T.X + i * SA.hx * 0.45, T.Y + SA.hy * 0.35 - math.abs(i) * SA.hy * 0.35, front - 0.05))
+                end
+            end
+            for _, side in ipairs({ -1, 1 }) do            -- a clump of moss on each shoulder: on the arm's top when the model has arms, else on the torso edge
+                local arm = model:FindFirstChild(side < 0 and "ArmL" or "ArmR")
+                local clumpX = (A and arm and arm:IsA("BasePart")) and arm.Position.X or (T.X + side * SA.hx * 0.75)    -- over the arm when the model has arms
+                local clump = sp("ShoulderMoss", Vector3.new(SA.hx * 0.38, SA.hx * 0.22, SA.hz * 0.5), green, Enum.Material.Grass,
+                    Vector3.new(clumpX, T.Y + SA.hy * (A and 0.55 or 1.0), T.Z))
+                clump.Shape = Enum.PartType.Ball
+            end
+            -- A glowing ring on the ground: the older the Golem, the stronger. It never clashes with anything on the body or head.
+            local ring = sp("GroundRing", Vector3.new(0.12, (SA.hx + SA.hz) * 1.9 + 1, (SA.hx + SA.hz) * 1.9 + 1), acc, Enum.Material.Neon,
+                Vector3.new(T.X, 0.07, T.Z), CFrame.Angles(0, 0, math.pi / 2), ancient and 0.55 or 0.78)
+            ring.Shape = Enum.PartType.Cylinder
+            if ancient then
+                -- The Ancient's crest: a fan of element-shaped fins up the upper back (not the head: that is kept for rarity pieces, Elite / Supreme crowns and hats)
+                local crest = CRESTS[element] or CRESTS.Default
+                local mid = (crest.count + 1) / 2
+                for i = 1, crest.count do
+                    local h = crest.h * (1 - math.abs(i - mid) * 0.14)
+                    local x = T.X + (i - mid) * (SA.hx * 1.5 / crest.count)
+                    sp("AncientCrest", Vector3.new(crest.w, h, crest.w), acc, crest.material,
+                        Vector3.new(x, T.Y + SA.hy * 0.8 + h * 0.4 + crest.lift, T.Z + SA.hz + 0.25),
+                        CFrame.Angles(0.3, 0, (i - mid) * crest.fan) * (crest.twist and CFrame.Angles(0, i, 0) or CFrame.new()), crest.transparency)
+                end
+                for i = 1, 4 do                            -- rune stones circling the body
+                    local a = i / 4 * math.pi * 2 + 0.4
+                    local pos = Vector3.new(T.X + math.cos(a) * (SA.hx + 2.4), T.Y + (i % 2 == 0 and 1 or -0.2) * SA.hy * 0.6, T.Z + math.sin(a) * (SA.hz + 2.4))
+                    -- made of the element's own stuff (basalt, ice, glass ...), so the family shows in the stones too
+                    sp("OrbitStone", Vector3.new(0.9, 1.15, 0.9), dark, look.material, pos, CFrame.Angles(i, i * 0.7, 0), look.transparency)
+                    diamond("OrbitRune", 0.55, pos + Vector3.new(0, 0.85, 0))
+                end
+            end
+            -- the older, the brighter: motes drift off it and it lights its surroundings a little (Elder faintly, Ancient strongly)
+            local glowAmt = stageDef.glow
+            local motes = Instance.new("ParticleEmitter")
+            motes.Color = ColorSequence.new(acc); motes.Rate = 5 * glowAmt; motes.Lifetime = NumberRange.new(2, 3.2)
+            motes.Speed = NumberRange.new(1, 2); motes.EmissionDirection = Enum.NormalId.Top; motes.LightEmission = 1
+            motes.Size = NumberSequence.new(0.5, 0); motes.Transparency = NumberSequence.new(0.2, 1); motes.Parent = torso
+            if not isNeon then
+                local light = Instance.new("PointLight")
+                light.Color = acc; light.Range = 6 + 6 * glowAmt; light.Brightness = 0.4 + 0.6 * glowAmt; light.Parent = torso
+            end
+        end
+    end
+
     -- ── Elite / Supreme gear (uploaded models keep their own body and gain status features) ──────────
     -- (internal variant ids are "Neon" and "MegaNeon"; players see Elite and Supreme)
     -- Elite: gold pauldrons with spikes, a gold chest plate and circlet, each set with a gem in the type's colour.
@@ -600,7 +777,7 @@ function GolemModel.Build(element, tier, options)
         sparkles.Parent = root
     end
     -- ── Tier details ──────────────────────────────────────────────────────────
-    if tier >= 2 and A then                            -- shoulder plates on the uploaded model
+    if tier >= 2 and A and not ownModel then           -- shoulder plates on the shared body (a type's own model already has shoulder armour; the plates stuck out like planks)
         for _, side in ipairs({ -1, 1 }) do
             local p = part("Shoulder", Vector3.new(1.7, 0.8, 1.9), dark:Lerp(Color3.new(1, 1, 1), 0.1), look.material,
                 CFrame.new(A.T.X + side * (A.hx + 0.9 * s), A.T.Y + A.hy - 0.3 * s, A.T.Z), bodyTransparency, true)
@@ -653,7 +830,7 @@ function GolemModel.Build(element, tier, options)
         -- block coordinates (head top at 9.4); on an uploaded model, re-centre on its real head and widen to fit
         local aw = A and (A.hhx * 2 / (2.4 * s)) or 1
         local function hat(x, y, z)
-            if not A then return at(x, y, z) end
+            if not A then return at(x, y + 2.2 * (headScale - 1), z) end      -- (a young block Golem's head is taller)
             return CFrame.new(A.H.X + x * s * aw, A.H.Y + A.hhy + (y - 9.4) * s, A.H.Z + z * s * aw)
         end
         local function wide(v) return Vector3.new(v.X * aw, v.Y, v.Z * aw) end
@@ -705,6 +882,8 @@ function GolemModel.Build(element, tier, options)
         model:SetAttribute("Variant", variant)
     end
 
+    model:SetAttribute("Stage", stageDef.id)                  -- the client leaves footprints in the stage's style (GolemAnimator)
+    model:SetAttribute("Accent", look.accent)
     model.PrimaryPart = torso
     return model
 end

@@ -31,6 +31,71 @@ local ELEMENT_FEEL = {
 }
 local DEFAULT_FEEL = { tempo = 1.0, dust = Color3.fromRGB(170, 150, 125) }
 
+-- ── Footprints ───────────────────────────────────────────────────────────────
+-- Every step a walking Golem takes presses a print into the ground, in the style of its life stage: faint dust prints that vanish quickly for the
+-- young and the plain Adult, then prints in the Golem's own element colour that glow and linger for an Elder (4 s) and an Ancient (7 s, brighter,
+-- bigger). They are drawn only on this client, only near the camera, from a small pool (never more than PRINT_CAP at once).
+local PRINT_CAP  = 90
+local PRINT_NEAR = 90           -- studs from the camera
+local PRINT_STYLE = {           -- size: how big next to the foot;  life: seconds;  alpha: starting transparency;  glow: element colour and Neon
+    Infant  = { size = 0.7,  life = 1.3, alpha = 0.55, glow = false },
+    Young   = { size = 0.85, life = 1.5, alpha = 0.5,  glow = false },
+    Adult   = { size = 1.0,  life = 1.9, alpha = 0.45, glow = false },
+    Elder   = { size = 1.05, life = 4.0, alpha = 0.35, glow = true },
+    Ancient = { size = 1.15, life = 7.0, alpha = 0.2,  glow = true },
+}
+local prints, printPool = {}, {}     -- prints: { part, born, life, alpha }
+local printFolder
+
+local function RecyclePrint(entry)
+    entry.part.Parent = nil
+    table.insert(printPool, entry.part)
+end
+
+local function SpawnPrint(footPos, groundY, look, width, info, t)
+    local style = PRINT_STYLE[info.stage] or PRINT_STYLE.Adult
+    if #prints >= PRINT_CAP then RecyclePrint(table.remove(prints, 1)) end
+    local p = table.remove(printPool)
+    if not p then
+        p = Instance.new("Part")
+        p.Name = "Footprint"
+        p.Anchored = true
+        p.CanCollide = false
+        p.CanQuery = false
+        p.CanTouch = false
+        p.CastShadow = false
+    end
+    if not printFolder or not printFolder.Parent then
+        printFolder = Instance.new("Folder")
+        printFolder.Name = "Footprints"
+        printFolder.Parent = workspace
+    end
+    local w = width * style.size
+    p.Size = Vector3.new(w, 0.05, w * 1.4)
+    p.Material = style.glow and Enum.Material.Neon or Enum.Material.SmoothPlastic
+    p.Color = style.glow and (info.accent or info.dustColor) or info.dustColor
+    p.Transparency = style.alpha
+    local pos = Vector3.new(footPos.X, groundY + 0.04, footPos.Z)
+    p.CFrame = CFrame.lookAt(pos, pos + Vector3.new(look.X, 0, look.Z))
+    p.Parent = printFolder
+    table.insert(prints, { part = p, born = t, life = style.life, alpha = style.alpha })
+end
+
+local function FadePrints(t)
+    for i = #prints, 1, -1 do
+        local e = prints[i]
+        local age = (t - e.born) / e.life
+        if age >= 1 or not e.part.Parent then
+            RecyclePrint(e)
+            table.remove(prints, i)
+        else
+            e.part.Transparency = e.alpha + (1 - e.alpha) * age * age          -- stays clear for most of its life, then fades out
+        end
+    end
+end
+
+GolemAnimator._Prints = { Spawn = SpawnPrint, Fade = FadePrints, list = prints, pool = printPool, cap = PRINT_CAP, style = PRINT_STYLE }      -- (for the tests)
+
 local golems = {}           -- model -> { parts... }
 local spinners = {}         -- part -> { cf = original CFrame, speed = rad/s }  (forge gears)
 local scenery = {}          -- Model or part -> { base = rest CFrame, kind, speed, amp, phase }  (biome art: see BiomeArt on the server)
@@ -157,10 +222,13 @@ local function Track(model)
         end
         local feel = ELEMENT_FEEL[model:GetAttribute("Element")] or DEFAULT_FEEL
         info.tempo = feel.tempo
+        info.dustColor = feel.dust:Lerp(Color3.fromRGB(120, 112, 105), 0.45)         -- footprints: a dull dust colour, the element's glow once old
+        info.stage = model:GetAttribute("Stage") or "Adult"
+        info.accent = model:GetAttribute("Accent")
         info.walkState = GolemWalk.New(math.floor((model:GetAttribute("Phase") or 0) * 1000) + 11)
         info.solid = {}
         for _, d in ipairs(model:GetDescendants()) do
-            if d:IsA("BasePart") and d.Transparency < 1 and d.Name ~= "PickHead" and d.Name ~= "PickHandle" then table.insert(info.solid, d) end      -- (the pick may rest on, or in, the ground; the body must not)
+            if d:IsA("BasePart") and d.Transparency < 1 and d.Name ~= "PickHead" and d.Name ~= "PickHandle" and d.Name ~= "GroundRing" then table.insert(info.solid, d) end      -- (the pick may rest on, or in, the ground; the body must not)
         end
         -- a puff of dust when the pick lands (the emitter sits on the pick head and is fired by the swing)
         local tip = model:FindFirstChild("PickHead", true)
@@ -213,6 +281,7 @@ local function Step()
     if not cam then return end
     local camPos = cam.CFrame.Position
     local t = os.clock()
+    FadePrints(t)
 
     -- forge machinery
     for part, info in pairs(spinners) do
@@ -373,6 +442,12 @@ local function Step()
                             local legPhase = stepT + (l.side == 1 and 0 or math.pi)
                             local lift = walking and math.max(0, math.cos(legPhase)) * 0.3 * ws.env * scale or 0       -- the foot lifts as the leg swings forward
                             l.part.CFrame = b * CFrame.new(0, lift, 0) * l.pivot * CFrame.Angles(swing, 0, 0) * l.pivot:Inverse() * l.rel
+                            -- the foot comes down: leave a print (only a Golem on its feet, close to the camera)
+                            local lifting = walking and math.cos(legPhase) > 0.15
+                            if l.wasLifting and not lifting and sit < 0.3 and (base.Position - camPos).Magnitude < PRINT_NEAR then
+                                SpawnPrint(l.part.Position, base.Position.Y, base.LookVector, math.clamp(l.part.Size.X, 0.8, 3) * 0.8, info, t)
+                            end
+                            l.wasLifting = lifting
                         end
                     end
                     if info.head then

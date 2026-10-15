@@ -106,6 +106,31 @@ Each tier is bigger and fancier. The game scales the model (+18% per tier), so o
 
 **Efficient plan:** one body, then swap-in add-on pieces (shoulders, core, horns, halo) as separate meshes. That is much cheaper than 25 full models.
 
+### 4.4b Life stages (Infant to Ancient, same tier and element)
+
+A Golem **grows** while it works: tier is what it was crafted as, *stage* is how long it has worked. The meshes in 4.1-4.4 are the **Adult** look (what the game has always shown). Five stages:
+
+| Stage | Works for | Size (x Adult) | Stats | Look |
+|---|---|---|---|---|
+| Infant | 0-1 h | 0.62 | 70% | Smallest, **big head and big eyes**, soft rounded limbs, a leaf sprout on top |
+| Young | 1-8 h | 0.82 | 85% | Head still a little large, rough nubs where shoulder plates and crystals will be, first cracks |
+| Adult | 8-48 h | 1.00 | 100% | **The standard model** |
+| Elder | 48-240 h | 1.08 | 115% | Weathered: heavy brow, a stone beard, moss, glowing runes on the chest |
+| Ancient | 240 h+ | 1.16 | 130% | Grandest: crystal crown, large runes, rune stones orbiting it, a faint glow |
+
+Each stage also reshapes the body a little in code (Infant: big head, chubby body and thick limbs; Elder and Ancient: broader and heavier; Adult as made), so a stage mesh should keep those differences going rather than only change size.
+
+**Colour and family.** Colours start duller and deepen to full colour by Adult (Infant about 68%, Young 84% of the texture's brightness); Elder and Ancient keep the full colour and get brighter through glow (runes, crown, motes, a faint light) instead. The element's accent colour (Ember orange, Frost ice-blue, Void violet ...) is identical at every stage, and so are the material and silhouette family, so an Infant Frost and an Ancient Frost are obviously the same line. Stage meshes should do the same: dull and softer when young, saturated and glowing when old, never a different colour scheme. Each stage also has a badge colour used in menus and over its head: pale green Infant, teal Young, white Adult, bronze Elder, gold Ancient.
+
+**Where age goes, so it never clashes with rarity or merging.** Rarity (tier) uses the head and chest (horns, halo, core, shoulder plates); Elite / Supreme use gold armour and the type's crown on the head; players' hats sit on the head. So **age keeps off the head**: it is shown by body shape and size, colour, a glowing ring on the ground (Elder, Ancient), orbiting rune stones and an element-shaped crest up the back (Ancient: flame fins, icicles, gem crystals, bolts, floating shards), chest runes (hidden under an Elite's gold plate), and footprints. Footprints: every step leaves a print in the stage's style, faint dust for Infant, Young and Adult, then the element's own glowing colour for an Elder (lasting 4 s) and an Ancient (7 s, brighter and bigger). Stage meshes should leave the head top and chest front free for those other pieces.
+
+The game already dresses the Adult model in code for every stage (sprout and big eyes, buds, beard and runes, crown and orbiting stones) and scales and re-proportions it, so **stage meshes are optional polish, not a blocker**. To replace the code-made look with a real mesh:
+
+- Make a separate version of the model for each of **Infant, Young, Elder, Ancient** (four packs; Adult is the existing pack). Keep it recognisably *the same Golem*: same silhouette family, same material zones, so a player can tell their Infant Frost Golem will become that Ancient Frost Golem.
+- Same rules as 4.1-4.2 (part names `Head`, `ArmL`, `ArmR`, `PickHandle`, `PickHead`, under ~120 parts, facing -Z, light neutral colour for tinting). Model it at any size: the game normalises the height and then applies the stage's size, so an Infant is drawn at 62% of an Adult.
+- Upload each stage as one Model whose children are named `EF_<Type>` (`EF_Ember`, `EF_Stone`, `EF_Frost`, `EF_Storm`, `EF_Void`, `EF_All`, the specials, and `EF_Default` for the shared body), then paste the asset id into `AssetData.StagePacks.<Stage>.assetId`. Any type missing from a pack keeps the code-made look for that stage.
+- Infant is the most important (every Golem is one for its first hour), then Ancient (the aspiration).
+
 ### 4.5 Variants
 
 - **Neon:** the same Golem but glowing, bright and slightly translucent (like Adopt Me's Neon pets).

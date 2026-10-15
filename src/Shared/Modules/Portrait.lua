@@ -5,6 +5,7 @@
 -- long list of portraits costs very little. Models that cannot be built give a plain coloured disc with the first letter.
 
 local PetData    = require(script.Parent.Parent.Data.PetData)
+local GolemData  = require(script.Parent.Parent.Data.GolemData)
 local Theme      = require(script.Parent.Theme)
 local PetModel   = require(script.Parent.PetModel)
 local GolemModel = require(script.Parent.GolemModel)
@@ -82,7 +83,7 @@ end
 
 function Portrait.Golem(parent, golem, size)
     local vp = Frame(parent, size or 52)
-    local ok, model = pcall(function() return GolemModel.Build(golem.element, golem.tier or 1, { variant = golem.variant }) end)
+    local ok, model = pcall(function() return GolemModel.Build(golem.element, golem.tier or 1, { variant = golem.variant, stage = GolemData.StageOf(golem).id }) end)
     return Finish(vp, ok and model or nil, golem.element)
 end
 

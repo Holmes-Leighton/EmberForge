@@ -142,7 +142,8 @@ local GolemData = require(game.ReplicatedStorage.Shared.Data.GolemData)
         shown = shown + 1
         local elemColor = ELEMENT_COLORS[golem.element] or Theme.Colors[golem.element] or Theme.Colors.TextSecondary
         local tierDef   = GolemData.Tiers[golem.tier]
-        local stats     = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus, golem.quality, golem.variant)
+        local stage     = GolemData.StageOf(golem)
+        local stats     = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus, golem.quality, golem.variant, stage.id)
 
         local card = Instance.new("Frame")
         card.Name = golem.id
@@ -178,9 +179,9 @@ local GolemData = require(game.ReplicatedStorage.Shared.Data.GolemData)
         nameLbl.Position = UDim2.new(0, 72, 0, 6)
 
         -- Status
-        local statusText = golem.deployed and ("⚡ Mining: " .. (golem.zoneId or "?")) or "● Idle"
+        local statusText = (golem.deployed and ("⚡ Mining: " .. (golem.zoneId or "?")) or "● Idle") .. "  -  " .. stage.id
         local statusColor = golem.deployed and Theme.Colors.Success or Theme.Colors.TextDim
-        local statusLbl = Theme.Label(card, statusText, Theme.TextSize.Small, statusColor)
+        local statusLbl = Theme.Label(card, statusText, Theme.TextSize.Small, golem.deployed and statusColor or stage.color)      -- (an idle Golem's line is in its stage colour)
         statusLbl.Size = UDim2.new(0.5, 0, 0, 16)
         statusLbl.Position = UDim2.new(0, 72, 0, 28)
 

@@ -87,6 +87,7 @@ Creator Hub > Monetization > **Developer Products > Create**. Same steps, copy t
 | Material Magnet (24h) | 199 | `MaterialMagnet` |
 | Event Catalyst | 400 | `EventCatalyst` |
 | Lucky Boost (1h) | 49 | `LuckBoost_1h` |
+| Growth Tonic (1h): Golems grow 2x faster | 99 | `GrowthTonic_1h` (id is 0 until you create the product) |
 | Royal Egg / x5 / x10 | 99 / 449 / 849 | `RoyalEgg_x1`, `RoyalEgg_x5`, `RoyalEgg_x10` |
 | Season Pass Standard / Premium | 699 / 1,299 | `SeasonPass_Standard`, `SeasonPass_Premium` |
 

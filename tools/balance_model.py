@@ -71,9 +71,29 @@ SPEED = 60
 rates = {"T1": 50, "T2": 180, "T3": 520, "T4": 1400, "T5": 4000}       # GolemData.Tiers resourcesPerHour
 tiers = [("Bronze", 0), ("Silver", 100_000), ("Gold", 500_000), ("Platinum", 2_000_000), ("Diamond", 8_000_000), ("Champion", 30_000_000)]
 personas = [("new: 3 x T1", 3, "T1"), ("early: 3 x T2", 3, "T2"), ("mid: 4 x T3", 4, "T3"), ("late: 6 x T4", 6, "T4"), ("end: 8 x T5", 8, "T5")]
-print("\nLadder tier for a 4-week season at 1 hour a day online (and at 3 hours):")
+# ---- growth (GolemData.Stages): a new Golem is an Infant and grows while deployed: online time at full speed, offline time at half ----
+STAGES = [("Infant", 0, 0.70), ("Young", 1, 0.85), ("Adult", 8, 1.00), ("Elder", 48, 1.15), ("Ancient", 240, 1.30)]     # name, hours of work to reach it, share of stats
+GROW_OFFLINE = 0.5
+def mult_at(work_hours):  return [m for _, at, m in STAGES if work_hours >= at][-1]
+def work_hours_per_day(online_hrs, deployed_hrs=24):   # a Golem that stays deployed: online hours at 1, the rest at the offline rate
+    return online_hrs + GROW_OFFLINE * max(0, deployed_hrs - online_hrs)
+print("\nGrowth: days of work to reach each stage, by hours online a day (a Golem left deployed all day):")
+print(f"  {'online h/day':14s}" + "".join(f"{n:>9s}" for n, at, _ in STAGES[1:]))
+for hrs in (1, 3, 6):
+    rate = work_hours_per_day(hrs)
+    print(f"  {hrs:<14d}" + "".join(f"{at / rate:>8.1f}d" for _, at, _ in STAGES[1:]))
+print("  (with a Growth Tonic the online hours count double)")
+
+def season_avg_mult(online_hrs, days=28):    # average share of full stats over a season for a Golem crafted on day 1
+    rate = work_hours_per_day(online_hrs)
+    return sum(mult_at(rate * (d + 0.5)) for d in range(days)) / days
+
+print("\nLadder tier for a 4-week season at 1 hour a day online (and at 3 hours), Golems crafted on day 1 and growing:")
 for label, n, t in personas:
     for hrs in (1, 3):
-        pts = n * rates[t] * SPEED * hrs * 28
+        avg = season_avg_mult(hrs)
+        full = n * rates[t] * SPEED * hrs * 28
+        pts = full * avg
         tier = [name for name, p in tiers if pts >= p][-1]
-        print(f"  {label:16s} {hrs}h/day: {pts:>13,.0f} points -> {tier}")
+        full_tier = [name for name, p in tiers if full >= p][-1]
+        print(f"  {label:16s} {hrs}h/day: {pts:>13,.0f} points -> {tier:9s} (average {avg:.2f} of full stats; fully grown from day 1 it would be {full_tier})")

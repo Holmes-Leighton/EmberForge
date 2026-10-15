@@ -211,6 +211,77 @@ function InventoryController._CreateMaterialRow(matId, qty, mat, yOff, pending)
     return row
 end
 
+-- ── Collection (the Golem index) ──────────────────────────────────────────────
+-- One card above the Golem list: how many of the type x stage forms you have ever owned, and for each type a row of five dots
+-- (one per life stage, filled in the stage's colour once seen). Traded-away Golems still count (GolemData.SeenSet).
+local COLLECTION_ROWS = math.ceil(#GolemData.CollectionOrder / 2)
+local COLLECTION_HEIGHT = 34 + COLLECTION_ROWS * 20 + 6
+
+local function Hex(c)
+    return string.format("#%02x%02x%02x", math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5))
+end
+
+-- { title = "Collection  3 / 70", rows = { { name = "Ember", text = "Ember  ●○○○○" (rich text) } ... } }
+function InventoryController._CollectionLines(data)
+    local seen = GolemData.SeenSet(data)
+    local found, total = GolemData.CollectionTotals(data)
+    local rows = {}
+    for _, element in ipairs(GolemData.CollectionOrder) do
+        local def = GolemData.Elements[element]
+        local dots = {}
+        for _, st in ipairs(GolemData.Stages) do
+            if seen[GolemData.SeenKey(element, st.id)] then
+                table.insert(dots, string.format('<font color="%s">●</font>', Hex(st.color)))
+            else
+                table.insert(dots, '<font color="#5a544e">○</font>')
+            end
+        end
+        table.insert(rows, { name = element, text = string.format("%-9s %s", def and def.displayName or element, table.concat(dots, " ")) })
+    end
+    return { title = string.format("Collection   %d / %d forms", found, total), found = found, total = total, rows = rows }
+end
+
+function InventoryController._CreateCollectionCard(data, yOff)
+    local lines = InventoryController._CollectionLines(data)
+    local card = Instance.new("Frame")
+    card.Name = "CollectionCard"
+    card.Size = UDim2.new(1, -10, 0, COLLECTION_HEIGHT)
+    card.Position = UDim2.new(0, 5, 0, yOff + 2)
+    card.BackgroundColor3 = Color3.fromRGB(35, 30, 25)
+    card.BorderSizePixel = 0
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = card
+    local title = Instance.new("TextLabel")
+    title.Name = "Title"
+    title.Size = UDim2.new(1, -16, 0, 22)
+    title.Position = UDim2.new(0, 8, 0, 6)
+    title.BackgroundTransparency = 1
+    title.Text = lines.title .. "   (Infant, Young, Adult, Elder, Ancient)"
+    title.TextColor3 = Color3.fromRGB(255, 214, 120)
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 13
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = card
+    for i, row in ipairs(lines.rows) do
+        local col = (i - 1) % 2
+        local r = math.floor((i - 1) / 2)
+        local lbl = Instance.new("TextLabel")
+        lbl.Name = "Row_" .. row.name
+        lbl.Size = UDim2.new(0.5, -12, 0, 18)
+        lbl.Position = UDim2.new(col * 0.5, 8, 0, 34 + r * 20)
+        lbl.BackgroundTransparency = 1
+        lbl.RichText = true
+        lbl.Text = row.text
+        lbl.TextColor3 = Color3.fromRGB(200, 195, 188)
+        lbl.Font = Enum.Font.Code
+        lbl.TextSize = 12
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.Parent = card
+    end
+    return card
+end
+
 -- ── Golem List ────────────────────────────────────────────────────────────────
 function InventoryController._BuildGolemList()
     if not inventoryGui then return end
@@ -223,6 +294,9 @@ function InventoryController._BuildGolemList()
 
     local data = InventoryController._data
     local yOff = 0
+    local collection = InventoryController._CreateCollectionCard(data, yOff)
+    collection.Parent = scroll
+    yOff = yOff + COLLECTION_HEIGHT + 8
     for _, golem in ipairs(data.Golems or {}) do
         local card = InventoryController._CreateGolemCard(golem, yOff)
         card.Parent = scroll
@@ -240,7 +314,7 @@ local ELEMENT_COLORS = {
 }
 
 function InventoryController._CreateGolemCard(golem, yOff)
-    local stats = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus, golem.quality, golem.variant)
+    local stats = GolemData.ComputeStats(golem.element, golem.tier, golem.fusionBonus, golem.quality, golem.variant, GolemData.StageOf(golem).id)
     local elemColor = ELEMENT_COLORS[golem.element] or GolemNames.Describe(golem).elementColor or Color3.fromRGB(150, 150, 150)
 
     local card = Instance.new("Frame")
@@ -299,6 +373,33 @@ function InventoryController._CreateGolemCard(golem, yOff)
         statsLbl.TextXAlignment = Enum.TextXAlignment.Left
         statsLbl.Parent = card
     end
+
+    -- Life stage and how far it is to the next one (a thin bar along the bottom of the card)
+    local stageText = desc.stage.id
+        .. (desc.stageHoursLeft and string.format("  -  %d%% to %s", math.floor(desc.stageProgress * 100), GolemData.Stages[desc.stageIndex + 1].id) or "  -  fully grown")
+    local stageLbl = Instance.new("TextLabel")
+    stageLbl.Name = "StageLabel"
+    stageLbl.Size = UDim2.new(1, -170, 0, 14)
+    stageLbl.Position = UDim2.new(0, 70, 0, 46)
+    stageLbl.BackgroundTransparency = 1
+    stageLbl.Text = stageText
+    stageLbl.TextColor3 = desc.stage.color
+    stageLbl.Font = Enum.Font.GothamMedium
+    stageLbl.TextSize = 11
+    stageLbl.TextXAlignment = Enum.TextXAlignment.Left
+    stageLbl.Parent = card
+    local barBack = Instance.new("Frame")
+    barBack.Name = "GrowthBar"
+    barBack.Size = UDim2.new(1, -78, 0, 4)
+    barBack.Position = UDim2.new(0, 70, 1, -7)
+    barBack.BackgroundColor3 = Color3.fromRGB(20, 18, 15)
+    barBack.BorderSizePixel = 0
+    barBack.Parent = card
+    local barFill = Instance.new("Frame")
+    barFill.Size = UDim2.new(desc.stageProgress, 0, 1, 0)
+    barFill.BackgroundColor3 = desc.stage.color
+    barFill.BorderSizePixel = 0
+    barFill.Parent = barBack
 
     -- A special Golem's unique skill
     if desc.skill then

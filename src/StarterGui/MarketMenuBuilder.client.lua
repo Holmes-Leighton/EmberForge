@@ -165,8 +165,9 @@ local function ItemLine(listing)
     end
     local g = listing.golem
     local d = g and GolemNames.Describe(g)
-    local stats = g and GolemData.ComputeStats(g.element, g.tier, g.fusionBonus, g.quality, g.variant)
-    local sub = stats and string.format("%d/hr   carry %d   luck %d%%", stats.miningRate, stats.carryCapacity,
+    local stage = g and GolemData.StageOf(g)
+    local stats = g and GolemData.ComputeStats(g.element, g.tier, g.fusionBonus, g.quality, g.variant, stage.id)
+    local sub = stats and string.format("%s   %d/hr   carry %d   luck %d%%", stage.id, stats.miningRate, stats.carryCapacity,
         math.floor(stats.luck * 100 + 0.5)) or nil
     return d and string.format("%s   [%s]", d.name, d.rarity) or it.name or "Golem",
            d and d.rarityColor or Theme.Colors.TextPrimary, sub

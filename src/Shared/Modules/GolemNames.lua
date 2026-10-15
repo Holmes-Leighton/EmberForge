@@ -29,7 +29,12 @@ function GolemNames.Describe(golem)
         fullName  = nickname .. " the " .. fullName
         shortName = nickname
     end
+    local stage, stageIndex, stageProgress, hoursLeft = GolemData.StageOf(golem)
     return {
+        stage      = stage,                -- life stage (GolemData.Stages): Infant .. Ancient
+        stageIndex = stageIndex,
+        stageProgress = stageProgress,     -- 0..1 toward the next stage
+        stageHoursLeft = hoursLeft,        -- nil once Ancient
         skill      = special and special.skill or nil,
         nickname   = nickname,
         name       = fullName,

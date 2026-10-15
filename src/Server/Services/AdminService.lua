@@ -281,7 +281,7 @@ function AdminService.Action(admin, action, args, LiveOps)
         local seconds = ((GolemData.Tiers[bp.tier] or {}).durabilityHours or 72) * 3600
         table.insert(data.Golems, {
             id = Utils.GenerateId(), blueprintId = args.id, element = bp.element, tier = bp.tier, skinId = "default", deployed = false,
-            variant = variant, quality = require(game.ReplicatedStorage.Shared.Modules.CraftRules).QualityFor(bp), rarity = GolemData.RarityForTier(bp.tier), _carriedResources = 0, _accumulatedResources = 0,
+            variant = variant, quality = require(game.ReplicatedStorage.Shared.Modules.CraftRules).QualityFor(bp), rarity = GolemData.RarityForTier(bp.tier), grown = 0, _carriedResources = 0, _accumulatedResources = 0,
             _durabilitySeconds = seconds, _maxDurabilitySeconds = seconds, craftedAt = Utils.UnixTimestamp(),
         })
         PlayerDataService.MarkDirty(target)
@@ -406,6 +406,9 @@ function AdminService.Init(LiveOps, Notify)
             if kind == "blueprint" and not table.find(data.Blueprints, id) then table.insert(data.Blueprints, id)
             elseif kind == "material" then data.Inventory[id] = (data.Inventory[id] or 0) + (qty or 1)
             elseif kind == "growpets" then require(script.Parent.PetService).Grow(player, qty or 0)      -- fast-forward worn time (seconds)
+            elseif kind == "growgolems" then                                -- fast-forward every Golem's growth by `qty` seconds (stage look test)
+                local GolemData = require(game.ReplicatedStorage.Shared.Data.GolemData)
+                for _, g in ipairs(data.Golems or {}) do GolemData.AddGrowth(g, qty or 0) end
             elseif kind == "coins" then data.EmberCoins = (data.EmberCoins or 0) + (qty or 0)
             elseif kind == "deploygolem" then                                -- put a fresh Golem to work in zone `id` (trip-home test)
                 table.insert(data.Golems, { id = "studio" .. (#data.Golems + 1), element = "Ember", tier = 2, deployed = true, zoneId = id or "EmberDepths" })
