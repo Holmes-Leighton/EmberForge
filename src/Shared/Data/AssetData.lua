@@ -159,6 +159,9 @@ AssetData.BiomeMeshes = {
         OreCrates = 130388675708310, RockCluster = 102073740936074, CrystalCluster = 115852827884095,
         Stalagmite = 108378956476502, Stalactite = 130560032309476,
         GolemAnvil = 120881231422580,     -- the big golden Anvil at the start; its parts are named anvil / chains / stone platform
+        -- floor clutter scattered through the hub (BiomeArt.HubScatter); all walk-through
+        Rubble = 80069580574333, BrokenPlanks = 110505573270903, OreSacks = 81262382977371, Wheelbarrow = 79558315011742,
+        BarrelStack = 111929352969724, ToolRack = 75655976922958, CaveMushrooms = 139148677029268, FloorLantern = 107081953072745,
     },
 }
 AssetData.BuildPack = { assetId = 108557283111622 }

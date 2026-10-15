@@ -713,6 +713,39 @@ local function BuildScatter(rec)
             MeshPiece(group, "World", "Stalactite", pos, { height = rng:NextNumber(14, 30), yaw = rng:NextNumber(0, math.pi * 2), hang = true })
         end
     end
+    -- Floor clutter: rubble, broken planks, ore sacks, barrels, tool racks, wheelbarrows, glowing mushrooms and floor lanterns. All walk-through (none of them is in
+    -- SOLID_PIECES), so nothing snags a player, a pet or a cart. They also line the edges of the main road, where the rest of the scenery keeps clear.
+    local clutterRegions = { table.unpack(regions) }
+    table.insert(clutterRegions, { x1 = -420, x2 = 2050, z1 = 26, z2 = 46 })          -- along the main road (z = 60), either side
+    table.insert(clutterRegions, { x1 = -420, x2 = 2050, z1 = 74, z2 = 94 })
+    local clutterAreas, clutterTotal = {}, 0
+    for i, r in ipairs(clutterRegions) do clutterAreas[i] = (r.x2 - r.x1) * (r.z2 - r.z1) clutterTotal += clutterAreas[i] end
+    local function pickClutterRegion()
+        if rng:NextNumber(0, 1) < 0.45 then return clutterRegions[#clutterRegions - rng:NextInteger(0, 1)] end        -- nearly half of it lines the main road, where players actually walk
+        local roll = rng:NextNumber(0, clutterTotal)
+        for i, a in ipairs(clutterAreas) do
+            roll -= a
+            if roll <= 0 then return clutterRegions[i] end
+        end
+        return clutterRegions[1]
+    end
+    local clutter = {   -- name, height range, how many, glow colour (nil = none)
+        { "Rubble", 3, 6, 520 }, { "BrokenPlanks", 2, 3.2, 120 }, { "OreSacks", 3, 4.2, 120 }, { "Wheelbarrow", 3.4, 4.6, 55 },
+        { "BarrelStack", 4.5, 6.5, 70 }, { "ToolRack", 5.5, 7.5, 40 },
+        { "CaveMushrooms", 3.5, 7, 180, Color3.fromRGB(120, 255, 210), 0.4 }, { "FloorLantern", 4.5, 5.5, 90, Color3.fromRGB(255, 190, 100), 1 },
+    }
+    for _, k in ipairs(clutter) do
+        if Template("World", k[1]) then
+            for _ = 1, k[4] do
+                local r = pickClutterRegion()
+                local pos = Vector3.new(rng:NextNumber(r.x1, r.x2), 0.2, rng:NextNumber(r.z1, r.z2))
+                if not CartCourseData.NearRoute(pos.X, pos.Z, 24) then
+                    local m = MeshPiece(group, "World", k[1], pos, { height = rng:NextNumber(k[2], k[3]), yaw = rng:NextNumber(0, math.pi * 2), solid = false })
+                    if m and k[5] and rng:NextNumber(0, 1) < (k[6] or 1) then GlowLight(m, k[5], 24, 0.9, rng:NextNumber(0, 6)) end
+                end
+            end
+        end
+    end
     rec.group = group
 end
 
