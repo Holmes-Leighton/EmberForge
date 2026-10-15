@@ -90,6 +90,11 @@ function ShopController._PromptPass(key)
         HUD.ShowNotification("You already own this", pass.displayName)
         return
     end
+    if LocalPlayer:GetAttribute("EFAdmin") then            -- admins get Robux items free
+        RemoteEvents.AdminClaim:FireServer("pass", key)
+        task.delay(1.5, ShopController.RefreshPads)
+        return
+    end
     local ok, err = pcall(function() MarketplaceService:PromptGamePassPurchase(LocalPlayer, pass.id) end)
     if not ok then warn("[ShopController] Pass prompt failed: " .. tostring(err)) end
 end
@@ -158,6 +163,10 @@ function ShopController._Prompt(productKey)
         or (productKey == "SeasonPass_Standard" and SeasonData.PassTier.Standard) or nil
     if wanted and held >= wanted then
         require(script.Parent.HUDController).ShowNotification("You already have this", product.displayName)
+        return
+    end
+    if LocalPlayer:GetAttribute("EFAdmin") then            -- admins get Robux items free
+        RemoteEvents.AdminClaim:FireServer("product", productKey)
         return
     end
     local ok, err = pcall(function()

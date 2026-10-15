@@ -330,7 +330,10 @@ local function Reload()
                         egg.blurb .. (save > 0 and ("  Save " .. save .. "%.") or ""), egg.color,
                         available and ("R$ " .. product.robux) or "Coming soon",
                         available and Theme.Colors.Success or Theme.Colors.PanelAlt,
-                        function() pcall(function() MarketplaceService:PromptProductPurchase(LocalPlayer, product.id) end) end,
+                        function()
+                            if LocalPlayer:GetAttribute("EFAdmin") then RemoteEvents.AdminClaim:FireServer("product", b.key) return end       -- admins: free
+                            pcall(function() MarketplaceService:PromptProductPurchase(LocalPlayer, product.id) end)
+                        end,
                         available, 64)
                 end
             else

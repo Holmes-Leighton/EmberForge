@@ -531,6 +531,10 @@ RemoteEvents.PadBuy.OnServerEvent:Connect(function(player, padId)
     SafeCall(player, function() require(script.Parent.Services.PadService).Buy(player, padId) end)
 end)
 
+RemoteEvents.AdminClaim.OnServerEvent:Connect(function(player, kind, key)
+    SafeCall(player, function() require(script.Parent.Services.ShopService).AdminClaim(player, kind, key) end)
+end)
+
 RemoteEvents.GetSupplierBuyList.OnServerInvoke = function(player)
     return SupplierService.GetBuyList(player)
 end

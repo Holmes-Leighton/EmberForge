@@ -138,7 +138,44 @@ function ShopService.RefreshPasses(player, onlyKey)
 end
 
 function ShopService.OnPlayerAdded(player)
-    task.spawn(function() ShopService.RefreshPasses(player) end)
+    task.spawn(function()
+        ShopService.RefreshPasses(player)
+        -- admins own every game pass for free
+        if require(script.Parent.AdminService).IsAdmin(player) then
+            for key in pairs(ProductData.GamePasses) do ShopService.GrantPass(player, key, false) end
+        end
+    end)
+end
+
+-- Admins get everything that costs Robux without paying: passes are granted, products run their normal handler.
+-- Returns true if something was granted.
+function ShopService.AdminClaim(player, kind, key)
+    if not require(script.Parent.AdminService).IsAdmin(player) then return false end
+    if type(key) ~= "string" then return false end
+    if kind == "pass" then
+        local pass = ProductData.GamePasses[key]
+        if not pass then return false end
+        if not ShopService.GrantPass(player, key, true) then
+            RemoteEvents_Notify(player, "Already yours", pass.displayName)
+            return false
+        end
+        return true
+    elseif kind == "product" then
+        local product, handler = ProductData.Products[key], PRODUCT_HANDLERS[key]
+        if not product or not handler then return false end
+        local data = PlayerDataService.Get(player)
+        if key == "SlotPack_5" and data and (data.PurchasedSlots or 0) >= GameConfig.MAX_PURCHASED_SLOTS then
+            RemoteEvents_Notify(player, "Slots maxed out", "You already have the maximum extra slots.")
+            return false
+        end
+        local ok, result = pcall(handler, player)
+        if ok and result then
+            PlayerDataService.Save(player, true)
+            RemoteEvents_Notify(player, "Admin: free", product.displayName)
+            return true
+        end
+    end
+    return false
 end
 
 if MarketplaceService.PromptGamePassPurchaseFinished then

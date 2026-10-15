@@ -24,9 +24,10 @@ local DIALOG_COOLDOWN = 60   -- seconds before the same dialog can open again fo
 
 local IsAdmin = require(script.Parent.AdminService).IsAdmin
 
--- A pad is usable at its level, or forever once bought with Robux (admins get the Admin pad)
+-- A pad is usable at its level, or forever once bought with Robux (admins get every pad for free)
 local function CanUse(player, def, data)
-    if def.adminOnly then return IsAdmin(player) end
+    if IsAdmin(player) then return true end
+    if def.adminOnly then return false end
     if (data.UnlockedPads or {})[def.id] then return true end
     return (data.PlayerLevel or 1) >= (def.minLevel or 1)
 end
@@ -346,7 +347,7 @@ local function Payout()
             -- never push a stock above its cap
             local gains, anyRoom = {}, false
             for matId, qty in pairs(wanted) do
-                local cap  = PadData.STOCK_CAP[matId] or math.huge
+                local cap  = PadData.StockCap(def, matId)
                 local room = cap - (data.Inventory[matId] or 0)
                 local give = math.min(qty, math.max(0, room))
                 if room > 0 then anyRoom = true end
@@ -363,8 +364,8 @@ local function Payout()
                 if os.clock() - last > 15 then
                     lastFullNotice[player.UserId] = os.clock()
                     RemoteEvents.Notify:FireClient(player, "Pad stock full",
-                        "Pads top up to " .. PadData.STOCK_CAP.BasicOre .. " Basic Ore / "
-                        .. PadData.STOCK_CAP.Coal .. " Coal. Spend some to keep mining.")
+                        def.displayName .. " tops up to " .. PadData.StockCap(def, "BasicOre") .. " Basic Ore / "
+                        .. PadData.StockCap(def, "Coal") .. " Coal. Spend some to keep mining.")
                 end
             end
         end

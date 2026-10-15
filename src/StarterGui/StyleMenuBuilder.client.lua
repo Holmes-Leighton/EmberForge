@@ -190,7 +190,10 @@ local function Reload()
                 d.color,
                 owned and "Owned" or (ProductData.PassIsAvailable(key) and "Buy" or "Coming soon"),
                 owned and Theme.Colors.PanelAlt or Theme.Colors.Accent,
-                function() pcall(function() MarketplaceService:PromptGamePassPurchase(LocalPlayer, p.id) end) end,
+                function()
+                    if LocalPlayer:GetAttribute("EFAdmin") then RemoteEvents.AdminClaim:FireServer("pass", key) return end                -- admins: free
+                    pcall(function() MarketplaceService:PromptGamePassPurchase(LocalPlayer, p.id) end)
+                end,
                 not owned and ProductData.PassIsAvailable(key))
         end
         return

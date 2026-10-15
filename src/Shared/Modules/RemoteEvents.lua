@@ -59,6 +59,7 @@ local DEFINITIONS = {
     GetSupplierStock    = "function",
     PadOffer            = "event",   -- server → client (offer table): you walked up to a pad you cannot use yet; here is how to unlock it
     PadBuy              = "event",   -- client → server (padId): "Unlock forever" pressed, open the Robux purchase
+    AdminClaim          = "event",   -- client → server (kind "pass"|"product", key): an admin takes a Robux item for free
     SellToSupplier      = "event",   -- client → server (itemId, quantity)
     GetSupplierBuyList  = "function",
     MarkCosmeticsSeen   = "event",   -- client → server: opened the Style menu
