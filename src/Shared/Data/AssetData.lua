@@ -121,6 +121,13 @@ AssetData.GolemAccessoryMeshes = {
 -- Frames and posts for the world's text boards and signs (SignArt): NoticeFrame = big notice board, PlankFrame = wide plank sign, SignPost = upright post.
 AssetData.SignMeshes = { NoticeFrame = 109410470926629, PlankFrame = 136746390001122, SignPost = 71436887776527, PlazaGate = 140390958058695, Depot = 95799192853820 }
 
+-- Meshes for the Sky Tower and the obstacle courses (TowerSkin): platform slabs, rest decks, crumbling and moving platforms, spinner bar, crusher, death tile,
+-- bounce pad, rainbow ring, scaffold girder and cloud.
+AssetData.TowerMeshes = {
+    Platform = 74638111743775, Rest = 130909452112747, Crumble = 70614088193274, Mover = 92745299589030, Spinner = 88751484752289, Crusher = 139253370426718,
+    DeathTile = 138462734309138, Bounce = 124685272887092, Ring = 91475482649523, Girder = 93266726839537, Cloud = 102244566507695,
+}
+
 AssetData.BuildExtras = {
     RailTrack = 98515694214823,
 }

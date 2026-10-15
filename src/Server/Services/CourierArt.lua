@@ -8,6 +8,7 @@
 local CollectionService = game:GetService("CollectionService")
 
 local SignArt = require(script.Parent.SignArt)
+local TowerSkin = require(script.Parent.TowerSkin)
 
 local CourierArt = {}
 
@@ -98,6 +99,9 @@ local function BuildPlatforms(folder, r)
         else
             trim(p, top)
         end
+        if not p.ice and not p.conveyor and not p.pipe then            -- ordinary platforms are a stone slab mesh (the part stays as the collision)
+            TowerSkin.Fit(part, isRest and "Rest" or "Platform", isRest and look.rest or look.color)
+        end
         if look.scaffold and not p.pipe and not p.conveyor then       -- scaffold-style: cross-beams under the planks, and on the big platforms pipe railings
             for k = 1, math.max(2, math.floor(p.sx / 6)) do
                 P({ Name = "CrossBeam", Material = Enum.Material.SmoothPlastic, Color = look.beam or Color3.fromRGB(96, 102, 114), Size = Vector3.new(0.9, 0.9, p.sz + 0.4), CanCollide = false,
@@ -124,6 +128,7 @@ local function BuildPlatforms(folder, r)
     end
     for i, m in ipairs(L.movers) do
         local part = P({ Name = "MovingPlatform", Material = Enum.Material.Metal, Color = accent, Size = Vector3.new(m.sx, m.sy, m.sz), CFrame = CFrame.new(m.x0, m.y, m.z) }, group)
+        TowerSkin.Fit(part, "Mover", accent)
         part:SetAttribute("X0", m.x0)
         part:SetAttribute("X1", m.x1)
         part:SetAttribute("Period", m.period)
@@ -133,6 +138,7 @@ local function BuildPlatforms(folder, r)
     end
     for i, c in ipairs(L.crumbles) do
         local part = P({ Name = "CrumblingPlatform", Material = Enum.Material.Slate, Color = Color3.fromRGB(150, 120, 100), Size = Vector3.new(c.sx, c.sy, c.sz), CFrame = CFrame.new(c.x, c.y, c.z) }, group)
+        TowerSkin.Fit(part, "Crumble")
         part:SetAttribute("Delay", c.delay)
         part:SetAttribute("Respawn", c.respawn)
         part:SetAttribute("CourseId", r.id)
@@ -154,6 +160,7 @@ local function BuildObstacles(folder, r)
             CFrame = CFrame.new(sp.x, sp.y + (sp.barY + 2) / 2, sp.z) }, group)
         local bar = P({ Name = "SpinnerBar", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 80, 60), Size = Vector3.new(sp.radius * 2, sp.thick, sp.thick), CanCollide = true,
             CFrame = CFrame.new(sp.x, sp.y + sp.barY, sp.z) * CFrame.Angles(0, -sp.phase, 0) }, group)
+        TowerSkin.Fit(bar, "Spinner", nil, true)
         bar:SetAttribute("Omega", sp.omega)
         bar:SetAttribute("Phase", sp.phase)
         bar:SetAttribute("CX", sp.x)
@@ -162,12 +169,14 @@ local function BuildObstacles(folder, r)
         CollectionService:AddTag(bar, "EFCourierSpinner")
     end
     for _, k in ipairs(L.kills or {}) do                              -- a deadly tile: glowing red with a dark cross, flush with the floor
-        P({ Name = "DeathTile", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 36, 36), Size = Vector3.new(k.sx, 0.4, k.sz), CanCollide = false,
+        local tile = P({ Name = "DeathTile", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 36, 36), Size = Vector3.new(k.sx, 0.4, k.sz), CanCollide = false,
             CFrame = CFrame.new(k.x, k.y + 0.2, k.z) }, group)
+        local crosses = {}
         for _, rot in ipairs({ math.pi / 4, -math.pi / 4 }) do
-            P({ Name = "DeathCross", Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(50, 0, 0), Size = Vector3.new(k.sx * 0.9, 0.45, 0.7), CanCollide = false,
-                CFrame = CFrame.new(k.x, k.y + 0.24, k.z) * CFrame.Angles(0, rot, 0) }, group)
+            table.insert(crosses, P({ Name = "DeathCross", Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(50, 0, 0), Size = Vector3.new(k.sx * 0.9, 0.45, 0.7), CanCollide = false,
+                CFrame = CFrame.new(k.x, k.y + 0.24, k.z) * CFrame.Angles(0, rot, 0) }, group))
         end
+        TowerSkin.Piece("DeathTile", Vector3.new(k.sx, 0.8, k.sz), CFrame.new(k.x, k.y + 0.4, k.z), group, { tile, table.unpack(crosses) })
     end
     for _, tr in ipairs(L.trusses or {}) do                          -- a ladder: a real truss, which characters climb
         local truss = Instance.new("TrussPart")
@@ -182,6 +191,7 @@ local function BuildObstacles(folder, r)
     for _, b in ipairs(L.bounces or {}) do
         local pad = P({ Name = "BouncePad", Material = Enum.Material.Neon, Color = Color3.fromRGB(80, 255, 140), Size = Vector3.new(b.sx, 0.6, b.sz),
             CFrame = CFrame.new(b.x, b.y + 0.3, b.z) }, group)
+        TowerSkin.Fit(pad, "Bounce")
         pad:SetAttribute("Power", b.power)
         pad:SetAttribute("HSpeed", b.hspeed or 28)
         pad:SetAttribute("Dir", b.dir or 1)
@@ -210,6 +220,7 @@ local function BuildObstacles(folder, r)
         P({ Name = "CrusherStripe", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 150, 40), Size = Vector3.new(c.sx + 0.2, 1, c.sz + 0.2), CanCollide = false,
             CFrame = CFrame.new(c.x, c.y + 1.5, c.z) }, unit)
         unit.PrimaryPart = block
+        TowerSkin.Fit(block, "Crusher")
         unit:SetAttribute("Open", c.open)
         unit:SetAttribute("Closed", c.closed)
         unit:SetAttribute("Phase", c.phase)

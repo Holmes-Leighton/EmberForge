@@ -519,6 +519,20 @@ function GolemAssetLoader.Init()
             if okArt then pcall(art.Refresh) end
         end)
     end
+    -- Sky Tower / obstacle course meshes (TowerSkin): ServerStorage.TowerAssets; courses built before this finishes pick their meshes up in TowerSkin.Refresh
+    if game:GetService("ServerStorage").FindFirstChild then
+        local towerFolder = game:GetService("ServerStorage"):FindFirstChild("TowerAssets")
+        if not towerFolder then
+            towerFolder = Instance.new("Folder")
+            towerFolder.Name = "TowerAssets"
+            towerFolder.Parent = game:GetService("ServerStorage")
+        end
+        task.spawn(function()
+            LoadBuildExtras(AssetData.TowerMeshes or {}, towerFolder)
+            local okSkin, skin = pcall(function() return require(script.Parent.TowerSkin) end)
+            if okSkin then pcall(skin.Refresh) end
+        end)
+    end
     local accessoryFolder = ReplicatedStorage:FindFirstChild("AccessoryAssets")
     if not accessoryFolder then
         accessoryFolder = Instance.new("Folder")

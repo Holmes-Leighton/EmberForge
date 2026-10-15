@@ -1,5 +1,6 @@
 -- Builds the Sky Tower out of parts: every level's platforms and obstacles (the same pieces as the Courier courses), a big numbered sign at each level's start, a colour
 -- that changes with height, a glowing summit, and the portals (one in the hub, one back down). Everything static; the moving pieces are tagged for CourierController.
+local TowerSkin = require(script.Parent.TowerSkin)
 local CourierArt = require(script.Parent.CourierArt)
 local TowerData  = require(game.ReplicatedStorage.Shared.Data.TowerData)
 
@@ -391,15 +392,24 @@ local function Frame(folder, T)
     group.Name = "ScaffoldFrame"
     group.Parent = folder
     local STEEL, YELLOW = Color3.fromRGB(255, 176, 40), Color3.fromRGB(255, 255, 255)
-    local function pole(x, z)
-        P({ Name = "ScaffoldPole", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, Color = STEEL, Size = Vector3.new(y1 - y0, 3, 3), CanCollide = false,
-            CFrame = CFrame.new(x, (y0 + y1) / 2, z) * CFrame.Angles(0, 0, math.pi / 2) }, group)
+    local function pole(x, z)                                                -- in 40-stud girder sections (each one a mesh once it has loaded)
+        local seg = 40
+        local y = y0
+        while y < y1 do
+            local len = math.min(seg, y1 - y)
+            local part = P({ Name = "ScaffoldPole", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, Color = STEEL, Size = Vector3.new(len, 3, 3), CanCollide = false,
+                CFrame = CFrame.new(x, y + len / 2, z) * CFrame.Angles(0, 0, math.pi / 2) }, group)
+            -- (the girder mesh's long axis is local Z: stand it upright)
+            TowerSkin.Piece("Girder", Vector3.new(3, 3, len), CFrame.new(x, y + len / 2, z) * CFrame.Angles(math.pi / 2, 0, 0), group, { part })
+            y += len
+        end
     end
     pole(lo, zlo) pole(lo, zhi) pole(hi, zlo) pole(hi, zhi)
     local function bar(a, b, name)
         local mid, span = (a + b) / 2, (b - a)
-        P({ Name = name, Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, Color = STEEL, Size = Vector3.new(span.Magnitude, 1.4, 1.4), CanCollide = false,
+        local part = P({ Name = name, Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, Color = STEEL, Size = Vector3.new(span.Magnitude, 1.4, 1.4), CanCollide = false,
             CFrame = CFrame.lookAt(mid, b) * CFrame.Angles(0, math.pi / 2, 0) }, group)
+        TowerSkin.Piece("Girder", Vector3.new(1.6, 1.6, span.Magnitude), CFrame.lookAt(mid, b), group, { part })
     end
     local step = 40
     local flip = false
@@ -424,11 +434,15 @@ end
 -- A giant rainbow ring, standing across the course (a gate you run through): `segs` colour blocks around a circle of `radius`, in the YZ plane at x
 function TowerArt.RainbowRing(parent, x, y, z, radius, segs)
     local arc = 2 * math.pi * radius / segs
+    local blocks = {}
     for k = 0, segs - 1 do
         local t = 2 * math.pi * k / segs
-        P({ Name = "RingBlock", Material = Enum.Material.SmoothPlastic, Color = Color3.fromHSV(k / segs, 0.85, 1), Size = Vector3.new(3.2, arc + 0.5, 3.2), CanCollide = false,
-            CFrame = CFrame.new(x, y + radius * math.sin(t), z + radius * math.cos(t)) * CFrame.Angles(-t, 0, 0) }, parent)
+        table.insert(blocks, P({ Name = "RingBlock", Material = Enum.Material.SmoothPlastic, Color = Color3.fromHSV(k / segs, 0.85, 1), Size = Vector3.new(3.2, arc + 0.5, 3.2), CanCollide = false,
+            CFrame = CFrame.new(x, y + radius * math.sin(t), z + radius * math.cos(t)) * CFrame.Angles(-t, 0, 0) }, parent))
     end
+    -- a single glowing ring mesh replaces the colour blocks once it has loaded (they stay as the fallback)
+    -- (the ring mesh lies in its local XY plane; the course's rings stand in the YZ plane, so it is turned a quarter turn)
+    TowerSkin.Piece("Ring", Vector3.new(radius * 2 + 3, radius * 2 + 3, 5), CFrame.new(x, y, z) * CFrame.Angles(0, math.pi / 2, 0), parent, blocks)
 end
 
 -- Soft clouds all round the tower, and a sea of cloud below it hiding the cavern floor far underneath. Decorative: nothing is solid.
@@ -449,11 +463,13 @@ local function Clouds(folder, T)
         local cy = rng:NextNumber(T.base.y - 110, top + 140)
         if math.abs(cx - (lo + hi) / 2) > 130 or math.abs(cz - (zlo + zhi) / 2) > 60 then          -- (keep the climbing space itself clear)
             local s = rng:NextNumber(26, 60)
+            local balls = {}
             for k = 1, 3 do
-                P({ Name = "Cloud", Shape = Enum.PartType.Ball, Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(252, 253, 255), Transparency = 0.08,
+                table.insert(balls, P({ Name = "Cloud", Shape = Enum.PartType.Ball, Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(252, 253, 255), Transparency = 0.08,
                     Size = Vector3.new(s * rng:NextNumber(1, 1.6), s * 0.55, s), CanCollide = false, CastShadow = false,
-                    CFrame = CFrame.new(cx + (k - 2) * s * 0.7, cy + (k % 2) * 4, cz + rng:NextNumber(-8, 8)) }, group)
+                    CFrame = CFrame.new(cx + (k - 2) * s * 0.7, cy + (k % 2) * 4, cz + rng:NextNumber(-8, 8)) }, group))
             end
+            TowerSkin.Piece("Cloud", Vector3.new(s * 2.6, s * 0.9, s * 1.3), CFrame.new(cx, cy + 2, cz), group, balls)
         end
     end
     P({ Name = "CloudSea", Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(240, 247, 255), Transparency = 0.12, Size = Vector3.new(4000, 8, 4000), CanCollide = false, CastShadow = false,
