@@ -79,6 +79,19 @@ local function BuildPost(rec)
     rec.art = art
 end
 
+-- A free-standing mesh piece (the Mining Pads gateway): `size` is its bounding size, `cf` its centre; `solid` pieces keep their own collision. Returns the record (rec.art).
+function SignArt.Piece(name, size, cf, parent, hide)
+    local rec = { piece = name, size = size, cf = cf, parent = parent, hide = hide }
+    table.insert(records, rec)
+    local template = Template(name)
+    if template then
+        rec.art = Place(template, size, cf, name .. "Art")
+        rec.art.Parent = parent
+        for _, h in ipairs(hide or {}) do h.Transparency = 1 end
+    end
+    return rec
+end
+
 function SignArt.Frame(kind, panel)
     local rec = { kind = kind, panel = panel }
     table.insert(records, rec)
@@ -97,7 +110,14 @@ function SignArt.Refresh()
     for i = #records, 1, -1 do
         local rec = records[i]
         if rec.art == nil then
-            if rec.panel then BuildFrame(rec) else BuildPost(rec) end
+            if rec.piece then
+                local template = Template(rec.piece)
+                if template and rec.parent and rec.parent.Parent then
+                    rec.art = Place(template, rec.size, rec.cf, rec.piece .. "Art")
+                    rec.art.Parent = rec.parent
+                    for _, h in ipairs(rec.hide or {}) do h.Transparency = 1 end
+                end
+            elseif rec.panel then BuildFrame(rec) else BuildPost(rec) end
         end
     end
 end

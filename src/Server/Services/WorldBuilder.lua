@@ -714,11 +714,18 @@ local function BuildPadPlaza(world)
     end
     local beam = Part({ Name = "GateBeam", Material = Enum.Material.WoodPlanks, Color = Color3.fromRGB(110, 76, 50), Size = Vector3.new(68, 7, 3),
         CFrame = CFrame.new(0, 26, -108) }, plaza)
+    -- the gateway is a carved mesh; the plain posts and beam go invisible (the beam keeps the lettering and the posts keep their collision, the orbs keep their light)
+    local hide = { beam }
+    for _, c in ipairs(plaza:GetChildren()) do if c.Name == "GatePost" then table.insert(hide, c) end end
+    SignArt.Piece("PlazaGate", Vector3.new(68, 34, 6), CFrame.new(0, 17, -108), plaza, hide)
+    -- the lettering sits on a thin invisible panel just in front of the (thicker) mesh lintel, so the mesh can never cover it
+    local lettering = Part({ Name = "GateLettering", Transparency = 1, CanCollide = false, CanQuery = false, Size = Vector3.new(56, 5, 0.2),
+        CFrame = CFrame.new(0, 26, -108 - 3.3) }, plaza)
     local sg = Instance.new("SurfaceGui")
     sg.Face = Enum.NormalId.Front
     sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
     sg.PixelsPerStud = 30
-    sg.Parent = beam
+    sg.Parent = lettering
     local t = Instance.new("TextLabel")
     t.Size = UDim2.new(1, 0, 1, 0)
     t.BackgroundTransparency = 1

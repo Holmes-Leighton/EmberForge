@@ -486,7 +486,7 @@ function ForgeBuilder.Build(parent, center, level, equipped, extra)
         part("TrimFront", Vector3.new(54, 0.3, 0.5), at(0, GROUND + 0.15, -FENCE + 0.6), skin.fire, Enum.Material.Neon)
         part("TrimLeft", Vector3.new(0.5, 0.3, 54), at(-FENCE + 0.6, GROUND + 0.15, 0), skin.fire, Enum.Material.Neon)
         part("TrimRight", Vector3.new(0.5, 0.3, 54), at(FENCE - 0.6, GROUND + 0.15, 0), skin.fire, Enum.Material.Neon)
-        part("TrimBeam", Vector3.new(12.2, 0.3, 2.4), at(0, GROUND + 8.7, FENCE), skin.fire, Enum.Material.Neon)
+        if not meshGate then part("TrimBeam", Vector3.new(12.2, 0.3, 2.4), at(0, GROUND + 8.7, FENCE), skin.fire, Enum.Material.Neon) end    -- (a mesh gate has its own trim; this flat bar would cut across it)
     end
 
     -- ── Skin scenery: themed structures (spires, crystals, pylons...) you can walk through ──
