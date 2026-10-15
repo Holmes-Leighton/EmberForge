@@ -9,6 +9,7 @@ local PadData           = require(game.ReplicatedStorage.Shared.Data.PadData)
 local ProductData       = require(game.ReplicatedStorage.Shared.Data.ProductData)
 local RemoteEvents      = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local PlayerDataService = require(script.Parent.PlayerDataService)
+local SignArt           = require(script.Parent.SignArt)
 
 local PadService = {}
 
@@ -219,6 +220,31 @@ local function BuildPad(world, def)
     prompt:SetAttribute("PadId", def.id)
     prompt.Parent = info
 
+    -- an info board behind the pad (a carved frame mesh around a dark panel): its name, its speed, what it mines, how much it stores and how to unlock it
+    local boardCF = CFrame.lookAt(Vector3.new(x, 11, z - 17), Vector3.new(x, 11, z))               -- faces the player's side (+Z)
+    local panel = Block(model, "PadBoard", Vector3.new(24, 12, 0.4), boardCF, Color3.fromRGB(30, 22, 18), Enum.Material.SmoothPlastic, { CanCollide = false })
+    for _, side in ipairs({ -1, 1 }) do
+        SignArt.Post(Block(model, "PadBoardPost", Vector3.new(2, 11, 2), CFrame.new(x + side * 14.5, 5.5, z - 17.4), dark:Lerp(Color3.new(1, 1, 1), 0.1), Enum.Material.Wood))
+    end
+    local bg = Instance.new("SurfaceGui")
+    bg.Name, bg.Face, bg.SizingMode, bg.PixelsPerStud = "BoardLettering", Enum.NormalId.Front, Enum.SurfaceGuiSizingMode.PixelsPerStud, 40
+    bg.Parent = panel
+    local function line(text, y, h, color, font)
+        local l = Instance.new("TextLabel")
+        l.Position, l.Size, l.BackgroundTransparency = UDim2.new(0, 20, 0, y), UDim2.new(1, -40, 0, h), 1
+        l.Text, l.TextColor3, l.Font, l.TextScaled = text, color, font or Enum.Font.GothamBold, true
+        l.TextXAlignment = Enum.TextXAlignment.Left
+        l.Parent = bg
+    end
+    local orePerSec = def.multiplier * PadData.ORE_PER_TICK / PadData.TICK_SECONDS
+    local coalPerSec = def.multiplier / PadData.COAL_EVERY_N / PadData.TICK_SECONDS
+    line(string.upper(def.displayName), 8, 86, def.color, Enum.Font.GothamBlack)
+    line(string.format("SPEED  x%d", def.multiplier), 96, 118, Color3.fromRGB(255, 255, 255), Enum.Font.GothamBlack)
+    line(string.format("Mines %s Ore + %s Coal every second", tostring(orePerSec), tostring(coalPerSec)), 222, 56, Color3.fromRGB(235, 225, 205))
+    line(string.format("Stores up to %d Ore / %d Coal", PadData.StockCap(def, "BasicOre"), PadData.StockCap(def, "Coal")), 282, 56, Color3.fromRGB(235, 225, 205))
+    line(RequirementText(def), 346, 62, def.adminOnly and Color3.fromRGB(255, 120, 120) or Color3.fromRGB(255, 220, 120))
+    SignArt.Frame("Plank", panel)
+
     -- the pad's custom mesh (when its set has loaded) replaces the plinth, rim and glow; the walkable surface and everything above stay
     require(script.Parent.BiomeArt).Pad(model, def.id, part, x, z, 1.4 + PadData.SIZE.Y)
 
@@ -333,8 +359,10 @@ local function Payout()
                 lastLockedNotice[player.UserId] = os.clock()
                 RemoteEvents.Notify:FireClient(player, def.displayName .. " locked", RequirementText(def))
             end
-            -- (the unlock dialog opened when they walked up; see WatchApproach)
+            -- (the unlock dialog opened when they walked up; see WatchApproach.) Standing on a paid pad you don't own also opens Roblox's own purchase prompt
+            -- (rate-limited to once per 30 s per pad)
             ShowOffer(player, def, data, false)
+            PadService.OfferPass(player, def, false)
         elseif def then
             local n = (tickCount[player.UserId] or 0) + 1
             tickCount[player.UserId] = n
