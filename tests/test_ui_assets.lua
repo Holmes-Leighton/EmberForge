@@ -185,6 +185,17 @@ if gen then
     expect(GolemModel.FindAsset("Ember", "Infant") == gen and select(2, GolemModel.FindAsset("Ember", "Infant")) == true, "FindAsset picks it for an Ember Infant")
     expect(GolemModel.FindAsset("Ember", "Elder") ~= gen, "but not for other stages")
 end
+-- a stage that has its own mesh keeps the family-wide age cues but not the code-made mesh dressing
+AssetData.StageModels = { Ancient = { Ember = 889 }, Infant = { Ember = 888 } }
+insertResults[889] = insertResults[888]
+reset()
+Loader.Init()
+local own = GolemModel.Build("Ember", 1, { stage = "Ancient" })
+expect(own:FindFirstChild("GroundRing") ~= nil and own:FindFirstChild("OrbitStone") ~= nil, "an Ancient on its own mesh still has the ground ring and orbiting stones")
+expect(own:FindFirstChild("AncientCrest") == nil and own:FindFirstChild("Beard") == nil and own:FindFirstChild("ChestRune") == nil, "but not the code-made crest, beard or runes (the mesh brings its own)")
+expect(own:GetAttribute("Stage") == "Ancient" and own:GetAttribute("RigMode") == "Parts", "it is tagged for the footprints and moves like the originals")
+local babyOwn = GolemModel.Build("Ember", 1, { stage = "Infant" })
+expect(babyOwn:FindFirstChild("SproutStem") == nil and babyOwn:FindFirstChild("BabyEye") == nil and babyOwn:FindFirstChild("GroundRing") == nil, "an Infant on its own mesh gets no code-made sprout or eyes, and no ring")
 insertResults[888] = "HTTP 403 forbidden"
 reset()
 Loader.Init()

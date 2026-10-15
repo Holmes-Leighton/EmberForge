@@ -88,6 +88,13 @@ AssetData.StageModels = {
         Storm = 84746662214065,        -- baby gunmetal golem: violet glow, exhaust pipes
         Void  = 123168681093153,       -- baby hooded void golem: purple eyes, shoulder crystals, crystal staff
     },
+    Ancient = {
+        Ember = 92964913353272,        -- lava elder: flame horns, grey stone beard, glowing runes
+        Stone = 116300288792738,       -- slate elder: mossy beard, green runes, teal crystals
+        Frost = 106028488407980,       -- ice elder: icicle crown and beard, frost collar
+        Storm = 118919561871911,       -- gunmetal elder: wire beard, violet lightning, exhaust stacks
+        Void  = 75333919674843,        -- hooded void elder: wispy beard, big purple crystals, crystal staff
+    },
 }
 
 -- The same idea for pets (PetData): one Model whose children are named PET_<Type> (PET_Ember, PET_Coral ...).

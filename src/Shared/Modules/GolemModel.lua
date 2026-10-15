@@ -608,7 +608,9 @@ function GolemModel.Build(element, tier, options)
     --   Infant   big shiny eyes and a leaf sprout          Young    budding crystals and a first crack
     --   Elder    stone beard, heavy brow, chest runes, moss, ground ring    Ancient  all that, grander, plus an element crest up the back and orbiting rune stones
     -- (nothing here goes on top of the head: that is kept for rarity pieces, Elite / Supreme crowns and equipped hats)
-    if not stageMesh and stageIndex ~= GolemData.ADULT_INDEX then
+    -- (a stage's own mesh brings its own sprout, eyes, buds, beard, runes and crest, so those are skipped for it; the glow, ground ring and orbiting stones
+    -- are the family-wide age cues and always apply)
+    if stageIndex ~= GolemData.ADULT_INDEX then
         local SA = A or {                                  -- anchors for the block Golem, in the same world-space terms as an uploaded model's
             T = Vector3.new(0, 5 * s, 0), hx = 1.6 * bodyScale * s, hy = 2 * s, hz = 1 * bodyScale * s,
             H = Vector3.new(0, (7.2 + 1.1 * headScale) * s, 0), hhx = 1.2 * headScale * s, hhy = 1.1 * headScale * s, hhz = 1.2 * headScale * s,
@@ -624,7 +626,7 @@ function GolemModel.Build(element, tier, options)
             return sp(name, Vector3.new(size, size, 0.15), acc, Enum.Material.Neon, pos, CFrame.Angles(0, 0, math.pi / 4), 0.1)
         end
 
-        if stageIndex == 1 then                            -- Infant
+        if stageIndex == 1 and not stageMesh then          -- Infant
             for _, side in ipairs({ -1, 1 }) do
                 local eyeD = SA.hhx * 0.72
                 local eyePos = Vector3.new(H.X + side * SA.hhx * 0.42, H.Y + SA.hhy * 0.05, headFront - 0.05)
@@ -640,49 +642,53 @@ function GolemModel.Build(element, tier, options)
                 sp("SproutLeaf", Vector3.new(0.95, 0.12, 0.5), green:Lerp(Color3.new(1, 1, 1), 0.15), Enum.Material.Grass,
                     top + Vector3.new(side * 0.42, 0.95, 0), CFrame.Angles(0, 0, side * -0.45))
             end
-        elseif stageIndex == 2 then                        -- Young
+        elseif stageIndex == 2 and not stageMesh then      -- Young
             for _, side in ipairs({ -1, 1 }) do
                 sp("BudCrystal", Vector3.new(0.5, 1.1, 0.5), acc, Enum.Material.Glass,
                     Vector3.new(T.X + side * SA.hx * 0.85, T.Y + SA.hy + 0.45, T.Z), CFrame.Angles(0, 0, side * -0.3), 0.2)
             end
             sp("YoungCrack", Vector3.new(0.2, SA.hy * 0.9, 0.12), acc, look.accentMaterial, Vector3.new(T.X + SA.hx * 0.25, T.Y, front - 0.05), CFrame.Angles(0, 0, 0.3))
-        else                                               -- Elder and Ancient
+        elseif stageIndex >= 4 then                        -- Elder and Ancient
             local ancient = stageIndex == 5
             local hair = color:Lerp(Color3.new(1, 1, 1), 0.55)
-            for i = 0, 2 do                                -- a stone beard
-                sp("Beard", Vector3.new(SA.hhx * (1.5 - i * 0.4), 0.55, 0.6), hair, look.material,
-                    Vector3.new(H.X, H.Y - SA.hhy - 0.05 - i * 0.5, headFront - 0.1), nil, look.transparency)
-            end
-            if not A then                                  -- (a type's own mesh has its own face and brow)
-                sp("Brow", Vector3.new(SA.hhx * 2.1, 0.45, 0.5), dark, look.material, Vector3.new(H.X, H.Y + SA.hhy * 0.45, headFront - 0.1), nil, look.transparency)
-            end
-            local runeSize = ancient and 1.0 or 0.7
-            if not (isNeon and A) then                     -- (an Elite / Supreme's gold chest plate covers the chest: its stage shows in the glow, ground ring and stones instead)
-                for i = -1, 1 do
-                    diamond("ChestRune", runeSize, Vector3.new(T.X + i * SA.hx * 0.45, T.Y + SA.hy * 0.35 - math.abs(i) * SA.hy * 0.35, front - 0.05))
+            if not stageMesh then
+                for i = 0, 2 do                                -- a stone beard
+                    sp("Beard", Vector3.new(SA.hhx * (1.5 - i * 0.4), 0.55, 0.6), hair, look.material,
+                        Vector3.new(H.X, H.Y - SA.hhy - 0.05 - i * 0.5, headFront - 0.1), nil, look.transparency)
                 end
-            end
-            for _, side in ipairs({ -1, 1 }) do            -- a clump of moss on each shoulder: on the arm's top when the model has arms, else on the torso edge
-                local arm = model:FindFirstChild(side < 0 and "ArmL" or "ArmR")
-                local clumpX = (A and arm and arm:IsA("BasePart")) and arm.Position.X or (T.X + side * SA.hx * 0.75)    -- over the arm when the model has arms
-                local clump = sp("ShoulderMoss", Vector3.new(SA.hx * 0.38, SA.hx * 0.22, SA.hz * 0.5), green, Enum.Material.Grass,
-                    Vector3.new(clumpX, T.Y + SA.hy * (A and 0.55 or 1.0), T.Z))
-                clump.Shape = Enum.PartType.Ball
-            end
+                if not A then                                  -- (a type's own mesh has its own face and brow)
+                    sp("Brow", Vector3.new(SA.hhx * 2.1, 0.45, 0.5), dark, look.material, Vector3.new(H.X, H.Y + SA.hhy * 0.45, headFront - 0.1), nil, look.transparency)
+                end
+                local runeSize = ancient and 1.0 or 0.7
+                if not (isNeon and A) then                     -- (an Elite / Supreme's gold chest plate covers the chest: its stage shows in the glow, ground ring and stones instead)
+                    for i = -1, 1 do
+                        diamond("ChestRune", runeSize, Vector3.new(T.X + i * SA.hx * 0.45, T.Y + SA.hy * 0.35 - math.abs(i) * SA.hy * 0.35, front - 0.05))
+                    end
+                end
+                for _, side in ipairs({ -1, 1 }) do            -- a clump of moss on each shoulder: on the arm's top when the model has arms, else on the torso edge
+                    local arm = model:FindFirstChild(side < 0 and "ArmL" or "ArmR")
+                    local clumpX = (A and arm and arm:IsA("BasePart")) and arm.Position.X or (T.X + side * SA.hx * 0.75)    -- over the arm when the model has arms
+                    local clump = sp("ShoulderMoss", Vector3.new(SA.hx * 0.38, SA.hx * 0.22, SA.hz * 0.5), green, Enum.Material.Grass,
+                        Vector3.new(clumpX, T.Y + SA.hy * (A and 0.55 or 1.0), T.Z))
+                    clump.Shape = Enum.PartType.Ball
+                end
+            end                                            -- (end of the mesh-level dressing)
             -- A glowing ring on the ground: the older the Golem, the stronger. It never clashes with anything on the body or head.
             local ring = sp("GroundRing", Vector3.new(0.12, (SA.hx + SA.hz) * 1.9 + 1, (SA.hx + SA.hz) * 1.9 + 1), acc, Enum.Material.Neon,
                 Vector3.new(T.X, 0.07, T.Z), CFrame.Angles(0, 0, math.pi / 2), ancient and 0.55 or 0.78)
             ring.Shape = Enum.PartType.Cylinder
             if ancient then
-                -- The Ancient's crest: a fan of element-shaped fins up the upper back (not the head: that is kept for rarity pieces, Elite / Supreme crowns and hats)
-                local crest = CRESTS[element] or CRESTS.Default
-                local mid = (crest.count + 1) / 2
-                for i = 1, crest.count do
-                    local h = crest.h * (1 - math.abs(i - mid) * 0.14)
-                    local x = T.X + (i - mid) * (SA.hx * 1.5 / crest.count)
-                    sp("AncientCrest", Vector3.new(crest.w, h, crest.w), acc, crest.material,
-                        Vector3.new(x, T.Y + SA.hy * 0.8 + h * 0.4 + crest.lift, T.Z + SA.hz + 0.25),
-                        CFrame.Angles(0.3, 0, (i - mid) * crest.fan) * (crest.twist and CFrame.Angles(0, i, 0) or CFrame.new()), crest.transparency)
+                if not stageMesh then
+                    -- The Ancient's crest: a fan of element-shaped fins up the upper back (not the head: that is kept for rarity pieces, Elite / Supreme crowns and hats)
+                    local crest = CRESTS[element] or CRESTS.Default
+                    local mid = (crest.count + 1) / 2
+                    for i = 1, crest.count do
+                        local h = crest.h * (1 - math.abs(i - mid) * 0.14)
+                        local x = T.X + (i - mid) * (SA.hx * 1.5 / crest.count)
+                        sp("AncientCrest", Vector3.new(crest.w, h, crest.w), acc, crest.material,
+                            Vector3.new(x, T.Y + SA.hy * 0.8 + h * 0.4 + crest.lift, T.Z + SA.hz + 0.25),
+                            CFrame.Angles(0.3, 0, (i - mid) * crest.fan) * (crest.twist and CFrame.Angles(0, i, 0) or CFrame.new()), crest.transparency)
+                    end
                 end
                 for i = 1, 4 do                            -- rune stones circling the body
                     local a = i / 4 * math.pi * 2 + 0.4
