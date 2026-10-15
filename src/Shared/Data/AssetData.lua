@@ -91,7 +91,7 @@ AssetData.StageModels = {
     Young = {
         Ember = 104010269078604,       -- teenage armoured lava golem: small flame crest, glowing chest window
         Stone = 86951893097205,        -- teenage slate golem: green eyes, a few moss patches
-        -- Frost: removed, moderation flagged a mesh in the first one (112831766869171); regenerate
+        Frost = 72851227271034,        -- teenage ice golem: small icicle crown, frost collar (regenerated: moderation flagged a mesh in the first one, 112831766869171)
         Storm = 79448496845941,        -- teenage gunmetal golem: violet strips, small exhaust pipes
         Void  = 134191012882976,       -- teenage hooded void golem: small shoulder crystals, crystal staff
     },
