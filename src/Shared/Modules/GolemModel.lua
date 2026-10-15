@@ -647,7 +647,11 @@ function GolemModel.Build(element, tier, options)
             return CFrame.new(A.H.X + x * s * aw, A.H.Y + A.hhy + (y - 9.4) * s, A.H.Z + z * s * aw)
         end
         local function wide(v) return Vector3.new(v.X * aw, v.Y, v.Z * aw) end
-        if id:find("Crown") then
+        local accName = id:gsub("^GolemAccessory_", "")
+        local seatY = (id:find("Helm") and 8.2 or 9.4) + (A and 0 or 0)
+        if CrownModel.AttachAccessory(model, accName, 2.9 * aw, hat(0, seatY, 0) * CFrame.Angles(0, math.pi, 0)) then
+            -- a generated mesh is on the head
+        elseif id:find("Crown") then
             part("CrownBand", wide(Vector3.new(2.6, 0.4, 2.6)), c, Enum.Material.Neon, hat(0, 9.5, 0), 0.1)
             for i = 0, 4 do
                 local a = i / 5 * math.pi * 2

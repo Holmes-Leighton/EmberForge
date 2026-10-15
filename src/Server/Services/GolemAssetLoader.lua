@@ -504,6 +504,13 @@ function GolemAssetLoader.Init()
     local buildPackId = AssetData.BuildPack and AssetData.BuildPack.assetId or 0
     if buildPackId > 0 then task.spawn(LoadBuildPack, buildPackId, buildFolder) end
     task.spawn(LoadBuildExtras, AssetData.BuildExtras or {}, buildFolder)
+    local accessoryFolder = ReplicatedStorage:FindFirstChild("AccessoryAssets")
+    if not accessoryFolder then
+        accessoryFolder = Instance.new("Folder")
+        accessoryFolder.Name = "AccessoryAssets"
+        accessoryFolder.Parent = ReplicatedStorage
+    end
+    task.spawn(LoadBuildExtras, AssetData.GolemAccessoryMeshes or {}, accessoryFolder)
     task.spawn(LoadForgeDecorations, AssetData.ForgeDecorationMeshes or {})
 
     local crownFolder = ReplicatedStorage:FindFirstChild("CrownAssets")

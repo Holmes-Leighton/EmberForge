@@ -14,6 +14,8 @@
       (`CartCourseArt.BuildDepot`), built from parts.
 - [ ] **Cart Run meshes**: swap in real meshes for the depot hall, the crusher gate, tunnel mouths, bridge planks and checkpoint banners (`CartCourseArt.lua`: each is a
       separate named part). Prompts for the mesh generator are in `ART_BRIEF.md` part B.
+- [x] ~~Golem accessories as meshes~~ done: all 10 (`AssetData.GolemAccessoryMeshes`, loaded into `ReplicatedStorage.AccessoryAssets`, placed by `CrownModel.AttachAccessory` in `GolemModel`);
+      the block crown / helm / hat / orb stays as the fallback. Seen on 10 Golems side by side in Studio; check fit on an uploaded Golem model with a different head size.
 - [x] ~~Forge props as meshes~~ done (first pass): anvil, workbench and brazier have a different design per look (7 each); barrel, crate, coal pile and smelter are shared (plain set).
       Wired in `ForgeBuilder.lua` with `MeshProp`/`Ghost` (part version stays as invisible collider / fallback); checked on the void forge in Studio.
 - [x] ~~Furnace, vault, banner, trophy, golem pedestal, wall gears, conveyor, floating crystals, side tower as meshes~~ done (furnace per look; the rest one shared design). Gears turn and

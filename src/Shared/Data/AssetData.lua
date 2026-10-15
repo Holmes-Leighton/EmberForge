@@ -105,6 +105,15 @@ AssetData.ForgeDecorationMeshes = {
     ForgeDecoration_PrimordialPillar = 103304628149392,
 }
 -- Extra Forge Builder pieces that are not in the Build Pack yet: one asset per piece (named after the ForgeBuildData id), loaded into ReplicatedStorage.BuildAssets.
+-- Golem accessory meshes: GolemAccessory_<Name> id -> mesh (CrownModel.Attach(.., "AccessoryAssets")). A missing / failed one falls back to the block-built crown / helm / hat / orb.
+AssetData.GolemAccessoryMeshes = {
+    LavaCrown = 109591769142974, EmberHelm = 132968658457545,
+    BlizzardCrown = 125136739365054, IceHelm = 121421801378622,
+    StormCrown = 125168510926458, ThunderHelm = 85452206245205,
+    VoidCrown = 96426446641776, VoidHelm = 133062122250030,
+    PrimordialHelm = 127117349777244, MinerHelm = 108545169935730,
+}
+
 AssetData.BuildExtras = {
     RailTrack = 98515694214823,
 }
