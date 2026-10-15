@@ -39,11 +39,13 @@ end
 
 -- For a MOVING part whose mesh has its long axis along Z (the spinner bar, a girder): a MeshPart child turned a quarter turn and welded to the part, so it follows
 -- every CFrame the client or server sets on it. The part itself turns invisible but keeps its collision.
+local turnedFat
 local function SkinTurned(part, template, tint)
     local mp = template:Clone()
     mp.Name = "TowerMesh"
     mp.Anchored, mp.CanCollide, mp.CanQuery, mp.CanTouch, mp.CastShadow, mp.Massless = false, false, false, false, false, true
-    mp.Size = Vector3.new(part.Size.Z, part.Size.Y, part.Size.X)
+    local fat = turnedFat or 1.7                                              -- a little chunkier than the hitbox so the bar reads from a distance
+    mp.Size = Vector3.new(part.Size.Z * fat, part.Size.Y * fat, part.Size.X)
     mp.CFrame = part.CFrame * CFrame.Angles(0, math.pi / 2, 0)
     mp.Color = tint and tint:Lerp(Color3.new(1, 1, 1), 0.5) or mp.Color
     local weld = Instance.new("WeldConstraint")
