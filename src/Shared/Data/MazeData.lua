@@ -36,9 +36,16 @@ function MazeData.ZombieSpeed(huntElapsed)
     return MazeData.PLAYER_SPEED * (MazeData.ZOMBIE_START + (MazeData.ZOMBIE_END - MazeData.ZOMBIE_START) * f)
 end
 
+-- A player trained up their movement speed (SpeedData): the Zombie Golem keeps pace with the player it is hunting, but only for part of the extra, so speed
+-- still helps. With ZOMBIE_FOLLOW 0.6 a player 50% faster than normal is hunted by a Zombie 30% faster than normal.
+MazeData.ZOMBIE_FOLLOW = 0.6
+function MazeData.ZombieScale(walkSpeed)
+    return math.max(0.5, 1 + MazeData.ZOMBIE_FOLLOW * ((walkSpeed or MazeData.PLAYER_SPEED) / MazeData.PLAYER_SPEED - 1))
+end
+
 -- ── Anti-cheat ────────────────────────────────────────────────────────────────
-MazeData.MAX_SPEED       = 48       -- studs/s a player may move before it counts as a teleport (generous: jumping, slopes and lag)
-MazeData.ESCAPE_MIN_TIME = 35       -- nobody escapes faster than this: the shortest route of any maze is 70 cells = 980 studs, which is 61 s at the default walk speed
+MazeData.MAX_SPEED       = 70       -- studs/s a player may move before it counts as a teleport (generous: the top speed level walks at 36, plus jumping, slopes and lag)
+MazeData.ESCAPE_MIN_TIME = 24       -- nobody escapes faster than this: the shortest route of any maze is 70 cells = 980 studs, which is 61 s at the default walk speed and 27 s at the top speed level (36)
 
 -- ── Rewards ───────────────────────────────────────────────────────────────────
 -- Reaching section n pays coins(n) = (1.5 + 0.3 x playerLevel) x n^1.5 (at least 1). Section 5 pays about 11 x section 1. At player level 10 a full first run of the

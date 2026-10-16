@@ -68,7 +68,8 @@ function MazeZombie.Step(M, z, targets, dt, huntElapsed)
     if not best then return caught, nil end
 
     -- walk toward it
-    local step = MazeData.ZombieSpeed(huntElapsed or 0) * dt
+    local pace = MazeData.ZombieSpeed(huntElapsed or 0) * (best.scale or 1)         -- (keeps pace with a trained-up target: see MazeData.ZombieScale)
+    local step = pace * dt
     local tKind, tcx, tcy = Zone(M, best.x, best.z)
     local guard = 0
     while step > 1e-6 and guard < 8 do
@@ -105,7 +106,7 @@ function MazeZombie.Step(M, z, targets, dt, huntElapsed)
     for _, t in ipairs(targets) do
         if Dist2D(z.x, z.z, t.x, t.z) <= MazeData.CATCH_RADIUS then caught[#caught + 1] = t.id end
     end
-    return caught, { target = best.id, distance = Dist2D(z.x, z.z, best.x, best.z) }
+    return caught, { target = best.id, distance = Dist2D(z.x, z.z, best.x, best.z), speed = pace }
 end
 
 return MazeZombie

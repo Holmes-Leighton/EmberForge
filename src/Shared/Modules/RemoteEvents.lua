@@ -38,6 +38,7 @@ local DEFINITIONS = {
     TowerEvent          = "event",   -- server → client (kind: start | level | respawn | summit | standings | roundover | abandon | speedup, payload table)
     MazeEvent           = "event",   -- server → client (kind: start | gateopen | wake | section | caught | escape | standings | roundover | abandon | speedup, payload table)
     CourierEvent        = "event",   -- server → client (kind: start | checkpoint | respawn | finish | abandon, payload table)
+    LeaveChallenge      = "event",   -- client → server: the "Back to the Forge" button in the Sky Tower / Hollow Maze
 
     -- Trading
     InitiateTrade       = "event",

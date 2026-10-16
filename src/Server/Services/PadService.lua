@@ -6,6 +6,7 @@ local Players    = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 
 local PadData           = require(game.ReplicatedStorage.Shared.Data.PadData)
+local SpeedData         = require(game.ReplicatedStorage.Shared.Data.SpeedData)
 local ProductData       = require(game.ReplicatedStorage.Shared.Data.ProductData)
 local RemoteEvents      = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local PlayerDataService = require(script.Parent.PlayerDataService)
@@ -242,6 +243,7 @@ local function BuildPad(world, def)
     line(string.format("SPEED  x%d", def.multiplier), 96, 118, Color3.fromRGB(255, 255, 255), Enum.Font.GothamBlack)
     line(string.format("Mines %s Ore + %s Coal every second", tostring(orePerSec), tostring(coalPerSec)), 222, 56, Color3.fromRGB(235, 225, 205))
     line(string.format("Stores up to %d Ore / %d Coal", PadData.StockCap(def, "BasicOre"), PadData.StockCap(def, "Coal")), 282, 56, Color3.fromRGB(235, 225, 205))
+    line(string.format("Trains Speed up to level %d", def.speedCap or SpeedData.MAX_LEVEL), 410, 56, Color3.fromRGB(150, 220, 255))
     line(RequirementText(def), 346, 62, def.adminOnly and Color3.fromRGB(255, 120, 120) or Color3.fromRGB(255, 220, 120))
     SignArt.Frame("Plank", panel)
 
@@ -349,7 +351,68 @@ local function PadUnderPlayer(player)
     return nil
 end
 
+-- ── Movement speed ───────────────────────────────────────────────────────────
+-- Standing on a pad also trains movement speed (SpeedData): a higher pad trains faster, even when its material stock is full. The player's SpeedLevel attribute
+-- feeds the HUD's speed row and the Zombie Golem (MazeService). The bonus applies in the hub and the Hollow Maze; the Sky Tower is built for the normal pace.
+local appliedWalk = {}   -- userId → the WalkSpeed this service last set (so another system's temporary change, like a Courier crate, is left alone)
+
+local function SetSpeedAttributes(player, data)
+    local level = data.SpeedLevel or 0
+    local need = SpeedData.XpToNext(level)
+    player:SetAttribute("SpeedLevel", level)
+    player:SetAttribute("SpeedNeed", need or 0)
+    player:SetAttribute("SpeedXp", need and math.floor(data.SpeedXp or 0) or 0)
+end
+
+local lastCapNotice = {}   -- userId → os.clock() of the last "this pad has taught you all it can" message
+
+local function TrainSpeed(player, data, def)
+    local level = data.SpeedLevel or 0
+    if level >= SpeedData.MAX_LEVEL then return end
+    local cap = math.min(def.speedCap or SpeedData.MAX_LEVEL, SpeedData.MAX_LEVEL)
+    if level >= cap then                                              -- this pad has taught all it can: the next pad up trains further
+        if os.clock() - (lastCapNotice[player.UserId] or -1e9) > 30 then
+            lastCapNotice[player.UserId] = os.clock()
+            RemoteEvents.Notify:FireClient(player, "Speed level " .. level, string.format("The %s trains speed up to level %d. Try a higher pad to keep getting faster.", def.displayName, cap))
+        end
+        return
+    end
+    local xp = (data.SpeedXp or 0) + SpeedData.XpPerTick(def.multiplier)
+    local need = SpeedData.XpToNext(level)
+    while need and xp >= need and level < cap do
+        xp -= need
+        level += 1
+        need = SpeedData.XpToNext(level)
+        data.SpeedLevel = level
+        if level % SpeedData.NOTICE_EVERY == 0 or level >= cap then
+            RemoteEvents.Notify:FireClient(player, "Speed level " .. level, string.format("You now walk at %.1f (normal is %d).", SpeedData.WalkSpeed(level), SpeedData.BASE_WALK))
+        end
+    end
+    data.SpeedXp = (need and level < cap) and xp or 0                 -- (at the cap the bar waits, empty)
+    PlayerDataService.MarkDirty(player)
+    SetSpeedAttributes(player, data)
+end
+
+local function ApplyWalkSpeed(player, data)
+    local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    local desired = SpeedData.BASE_WALK
+    if player:GetAttribute("TowerLevel") == nil then desired = SpeedData.WalkSpeed(data.SpeedLevel or 0) end
+    local last = appliedWalk[player.UserId]
+    if math.abs(hum.WalkSpeed - SpeedData.BASE_WALK) < 0.01 or (last and math.abs(hum.WalkSpeed - last) < 0.01) then
+        hum.WalkSpeed = desired
+        appliedWalk[player.UserId] = desired
+    end
+end
+
 local function Payout()
+    for _, player in ipairs(Players:GetPlayers()) do
+        local pd = PlayerDataService.Get(player)
+        if pd then
+            if player:GetAttribute("SpeedLevel") ~= (pd.SpeedLevel or 0) or player:GetAttribute("SpeedNeed") == nil then SetSpeedAttributes(player, pd) end
+            ApplyWalkSpeed(player, pd)
+        end
+    end
     for _, player in ipairs(Players:GetPlayers()) do
         local data = PlayerDataService.Get(player)
         local def = data and PadUnderPlayer(player)
@@ -364,6 +427,7 @@ local function Payout()
             ShowOffer(player, def, data, false)
             PadService.OfferPass(player, def, false)
         elseif def then
+            TrainSpeed(player, data, def)
             local n = (tickCount[player.UserId] or 0) + 1
             tickCount[player.UserId] = n
 
@@ -417,6 +481,8 @@ function PadService.Init()
 
     Players.PlayerRemoving:Connect(function(p)
         tickCount[p.UserId] = nil
+        appliedWalk[p.UserId] = nil
+        lastCapNotice[p.UserId] = nil
         lastLockedNotice[p.UserId] = nil
         lastFullNotice[p.UserId] = nil
         lastBuy[p.UserId] = nil

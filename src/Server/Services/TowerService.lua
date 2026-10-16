@@ -312,6 +312,14 @@ function TowerService.Init()
     local p = TowerData.PORTAL
     TowerArt.Portal(world, Vector3.new(p.x, 0, p.z), Vector3.new(0.92, 0, -0.38), "SKY TOWER", Color3.fromRGB(190, 120, 255), StartRun, true)       -- walk in to climb
 
+    RemoteEvents.LeaveChallenge.OnServerEvent:Connect(function(player)
+        local rec = runs[player.UserId]
+        if rec then
+            EndRun(rec, "left", true)
+            SendHome(player)
+        end
+    end)
+
     task.spawn(function()
         while true do
             task.wait(SAMPLE)

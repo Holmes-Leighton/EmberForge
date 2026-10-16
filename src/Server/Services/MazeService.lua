@@ -8,6 +8,7 @@ local MazeLayout  = require(game.ReplicatedStorage.Shared.Modules.MazeLayout)
 local MazeZombie  = require(game.ReplicatedStorage.Shared.Modules.MazeZombie)
 local CourierData = require(game.ReplicatedStorage.Shared.Data.CourierData)
 local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
+local SpeedData = require(game.ReplicatedStorage.Shared.Data.SpeedData)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 local ProgressionService = require(script.Parent.ProgressionService)
 local LiveOpsService = require(script.Parent.LiveOpsService)
@@ -174,7 +175,10 @@ local function Targets()
         if not rec.caught and not rec.escaped then
             local root = Root(rec.player)
             local hum = rec.player.Character and rec.player.Character:FindFirstChildOfClass("Humanoid")
-            if root and hum and hum.Health > 0 then list[#list + 1] = { id = rec.player.UserId, x = root.Position.X, z = root.Position.Z } end
+            if root and hum and hum.Health > 0 then
+                local walk = SpeedData.WalkSpeed(rec.player:GetAttribute("SpeedLevel") or 0)        -- (the trained speed, not whatever the humanoid says)
+                list[#list + 1] = { id = rec.player.UserId, x = root.Position.X, z = root.Position.Z, scale = MazeData.ZombieScale(walk) }
+            end
         end
     end
     return list
@@ -227,7 +231,7 @@ local function StepZombie(dt)
     publishAccum += dt
     if publishAccum >= 0.05 then
         publishAccum = 0
-        PublishZombie(info, MazeData.ZombieSpeed(hunt))
+        PublishZombie(info, info and info.speed or MazeData.ZombieSpeed(hunt))
     end
 end
 
@@ -371,6 +375,14 @@ function MazeService.Init()
 
     local p = MazeData.PORTAL
     TowerArt.Portal(world, Vector3.new(p.x, 0, p.z), Vector3.new(0.92, 0, 0.38), "HOLLOW MAZE", Color3.fromRGB(120, 255, 150), StartRun, true)       -- walk in to enter
+
+    RemoteEvents.LeaveChallenge.OnServerEvent:Connect(function(player)
+        local rec = runs[player.UserId]
+        if rec then
+            EndRun(rec, "left", true)
+            SendHome(player)
+        end
+    end)
 
     RunService.Heartbeat:Connect(function(dt)
         local ok, err = pcall(StepZombie, math.min(dt, 0.5))

@@ -78,6 +78,8 @@ local function DefaultData()
         -- Cosmetics & receipts
         PurchasedSlots  = 0,           -- extra Golem slots bought with Robux (packs of 5, stackable)
         UnlockedPads    = {},          -- padId -> true (bought with Robux)
+        SpeedLevel      = 0,           -- movement speed level, trained on mining pads (see SpeedData)
+        SpeedXp         = 0,           -- progress towards the next speed level
         OwnedCosmetics    = {},
         OwnedPets         = {},          -- { id, type, hatchedAt } (see PetData)
         EquippedPets      = {},          -- pet ids being worn (up to PetData.SLOTS)

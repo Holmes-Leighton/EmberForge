@@ -6,17 +6,18 @@ local PadData = {}
 -- The 1x / 3x / 9x / 25x / 100x ladder follows +1 Speed Keyboard Escape's treadmills (free,
 -- then 59 / 259 / 749 / 1,599 R$). Here a level also unlocks each pad for free.
 PadData.Pads = {
-    { id = "Starter", displayName = "Starter Pad", multiplier = 1,   minLevel = 1,
+    -- speedCap: the highest movement-speed level this pad can train you to (see SpeedData)
+    { id = "Starter", displayName = "Starter Pad", multiplier = 1,   minLevel = 1,  speedCap = 40,
       color = Color3.fromRGB(200, 160, 110), x = 0,    z = -140 },
-    { id = "Copper",  displayName = "Copper Pad",  multiplier = 3,   minLevel = 5,
+    { id = "Copper",  displayName = "Copper Pad",  multiplier = 3,   minLevel = 5,  speedCap = 80,
       color = Color3.fromRGB(205, 127, 80),  x = -120, z = -190 },
-    { id = "Iron",    displayName = "Iron Pad",    multiplier = 9,   minLevel = 10,
+    { id = "Iron",    displayName = "Iron Pad",    multiplier = 9,   minLevel = 10, speedCap = 120,
       color = Color3.fromRGB(160, 170, 185), x = -60,  z = -190 },
-    { id = "Gold",    displayName = "Gold Pad",    multiplier = 25,  minLevel = 20,
+    { id = "Gold",    displayName = "Gold Pad",    multiplier = 25,  minLevel = 20, speedCap = 160,
       color = Color3.fromRGB(255, 200, 60),  x = 0,    z = -190 },
-    { id = "Legend",  displayName = "Legend Pad",  multiplier = 100, minLevel = 35,
+    { id = "Legend",  displayName = "Legend Pad",  multiplier = 100, minLevel = 35, speedCap = 200,
       color = Color3.fromRGB(255, 90, 200),  x = 60,   z = -190 },
-    { id = "Admin",   displayName = "Admin Pad",   multiplier = 250, adminOnly = true,
+    { id = "Admin",   displayName = "Admin Pad",   multiplier = 250, adminOnly = true, speedCap = 200,
       color = Color3.fromRGB(255, 60, 60),   x = 120,  z = -190 },
 }
 

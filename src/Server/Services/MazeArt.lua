@@ -13,7 +13,7 @@ local P, Sign = CourierArt.P, CourierArt.Sign
 -- Each section's look. `decor` lists the decoration meshes with the height each stands (studs).
 MazeArt.Themes = {
     Stone = { material = Enum.Material.Slate,        floor = Color3.fromRGB(112, 114, 120), wall = Color3.fromRGB(100, 104, 112), accent = Color3.fromRGB(120, 230, 200),
-              lamp = Color3.fromRGB(255, 196, 120), fx = nil,
+              lamp = Color3.fromRGB(255, 196, 120), fx = nil, wallTint = Color3.fromRGB(80, 78, 74),      -- (the painted brick is pink and bright green: a grey wash makes it read as old stone)
               decor = { { "Stone_Pillar", 9 }, { "Stone_Crystals", 5 }, { "Stone_Lantern", 8 }, { "Stone_Rocks", 3 } } },
     Ember = { material = Enum.Material.Basalt,       floor = Color3.fromRGB(58, 44, 42),    wall = Color3.fromRGB(44, 34, 34),    accent = Color3.fromRGB(255, 120, 40),
               lamp = Color3.fromRGB(255, 130, 60),  fx = "ember",
@@ -113,7 +113,7 @@ function MazeArt.Build(parent, M)
             local ox, oz = (w.along == "x") and along or 0, (w.along == "x") and 0 or along
             for course = 0, 1 do
                 local flip = (wallRng:NextInteger(0, 1) == 1) and math.pi or 0
-                MazeSkin.Piece("Wall_" .. MazeData.SECTIONS[w.section], Vector3.new(cell, H / 2, T), CFrame.new(w.x + ox, base.y + H / 4 + course * H / 2, w.z + oz) * CFrame.Angles(0, rot + flip, 0), walls, { wall })
+                MazeSkin.Piece("Wall_" .. MazeData.SECTIONS[w.section], Vector3.new(cell, H / 2, T), CFrame.new(w.x + ox, base.y + H / 4 + course * H / 2, w.z + oz) * CFrame.Angles(0, rot + flip, 0), walls, { wall }, theme.wallTint)
             end
         end
     end

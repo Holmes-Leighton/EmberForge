@@ -29,7 +29,7 @@ end
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
 mainFrame.AnchorPoint = Vector2.new(0, 0.5)
-mainFrame.Size = UDim2.new(0, CARD_W, 0, 352)
+mainFrame.Size = UDim2.new(0, CARD_W, 0, 396)
 mainFrame.Position = UDim2.new(0, 8, 0.5, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 mainFrame.BackgroundTransparency = 0.04
@@ -192,8 +192,35 @@ end
 CompactCard()
 if workspace.CurrentCamera then workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(CompactCard) end
 
+-- Movement speed: the level (trained on the mining pads), the walk speed it gives and a bar to the next level. The server keeps the SpeedLevel / SpeedXp /
+-- SpeedNeed player attributes up to date (PadService); this row only draws them.
+local SpeedData = require(game.ReplicatedStorage.Shared.Data.SpeedData)
+local SPEED_COLOR = Color3.fromRGB(110, 205, 255)
+local speedRow = Row("SpeedRow", 294, 40, SPEED_COLOR)
+local speedLabel = Text(speedRow, "SpeedLabel", "Speed Lv 0", 14, SPEED_COLOR, Enum.Font.GothamBold, UDim2.new(0, 14, 0, 2), UDim2.new(1, -20, 0, 18))
+local speedTrack = Instance.new("Frame")
+speedTrack.Name = "SpeedTrack"
+speedTrack.Position, speedTrack.Size = UDim2.new(0, 14, 0, 26), UDim2.new(1, -24, 0, 7)
+speedTrack.BackgroundColor3, speedTrack.BorderSizePixel = Color3.fromRGB(24, 18, 16), 0
+speedTrack.Parent = speedRow
+Theme.AddCorner(speedTrack, UDim.new(0, 4))
+local speedFill = Instance.new("Frame")
+speedFill.Name = "SpeedFill"
+speedFill.Size, speedFill.BackgroundColor3, speedFill.BorderSizePixel = UDim2.new(0, 0, 1, 0), SPEED_COLOR, 0
+speedFill.Parent = speedTrack
+Theme.AddCorner(speedFill, UDim.new(0, 4))
+local function SyncSpeed()
+    local level = LocalPlayer:GetAttribute("SpeedLevel") or 0
+    local need = LocalPlayer:GetAttribute("SpeedNeed") or 0
+    local xp = LocalPlayer:GetAttribute("SpeedXp") or 0
+    speedLabel.Text = string.format("Speed Lv %d   (%.1f)", level, SpeedData.WalkSpeed(level))
+    speedFill.Size = UDim2.new(need > 0 and math.clamp(xp / need, 0, 1) or 1, 0, 1, 0)
+end
+for _, attr in ipairs({ "SpeedLevel", "SpeedNeed", "SpeedXp" }) do LocalPlayer:GetAttributeChangedSignal(attr):Connect(SyncSpeed) end
+SyncSpeed()
+
 -- What to do next: one line, kept up to date by HUDController from NextGoal
-local goalRow = Row("GoalRow", 294, 48, Theme.Colors.Gold)
+local goalRow = Row("GoalRow", 338, 48, Theme.Colors.Gold)
 local goalLabel = Text(goalRow, "GoalLabel", "", 12, Color3.fromRGB(255, 230, 170), Enum.Font.GothamBold, UDim2.new(0, 14, 0, 0), UDim2.new(1, -20, 1, 0))
 goalLabel.TextWrapped = true
 goalLabel.TextTruncate = Enum.TextTruncate.None
@@ -367,13 +394,20 @@ local secondaryTiles = {}
 -- Lays out the tiles that are visible (locked-far-away and not-yet-revealed ones take no room). On a short screen the column
 -- becomes two columns so the buttons stay big enough to tap, instead of shrinking to a sliver.
 local relayoutQueued = false
+-- On a touch screen the jump button sits in the bottom right corner: the column keeps clear of that corner (it hangs from the top edge instead of centring)
+local function JumpReserve()
+    return game:GetService("UserInputService").TouchEnabled and 150 or 0
+end
+local function InChallenge()
+    return LocalPlayer:GetAttribute("TowerLevel") ~= nil or LocalPlayer:GetAttribute("MazeSection") ~= nil
+end
 local function Relayout()
     local shown = {}
     for _, t in ipairs(secondaryTiles) do if t.Visible then table.insert(shown, t) end end
     local n = math.max(#shown, 1)
     local cam = workspace.CurrentCamera
     local vy = cam and cam.ViewportSize.Y or 720
-    local avail = vy - 36 - 16                       -- 36 = Roblox top bar
+    local avail = vy - 36 - 16 - JumpReserve()       -- 36 = Roblox top bar
     local cols = 1                                   -- add columns until the tiles can stay (nearly) full size
     while cols < 3 and avail / (math.ceil(n / cols) * 64 + 8) < 0.9 do cols += 1 end
     local rows = math.ceil(n / cols)
@@ -382,7 +416,7 @@ local function Relayout()
     end
     local h = rows * 64 + 8
     sidebar.Size = UDim2.new(0, cols * 64 + 8, 0, h)
-    sidebar.Visible = #shown > 0
+    sidebar.Visible = #shown > 0 and not InChallenge()
     sidebarScale.Scale = math.clamp(math.min(1, avail / h), 0.55, 1)       -- fit only: never shrunk just because the screen is small
 end
 local function QueueRelayout()                       -- several tiles can change in the same moment: lay out once
@@ -396,7 +430,7 @@ if workspace.CurrentCamera then workspace.CurrentCamera:GetPropertyChangedSignal
 -- so it sits at the top edge instead; on a tall screen it stays centred.
 local function PlaceSidebar()
     local cam = workspace.CurrentCamera
-    local short = cam and cam.ViewportSize.Y < 520
+    local short = (cam and cam.ViewportSize.Y < 520) or JumpReserve() > 0
     sidebar.AnchorPoint = short and Vector2.new(1, 0) or Vector2.new(1, 0.5)
     sidebar.Position = short and UDim2.new(1, -8, 0, 8) or UDim2.new(1, -12, 0.5, 0)
 end
@@ -481,10 +515,19 @@ PlaceCollectBar()
 hotbarScale:GetPropertyChangedSignal("Scale"):Connect(PlaceCollectBar)
 
 -- While climbing the Sky Tower the mining panels (player card, Collect bar and its list) only get in the way of the view: the tower has its own HUD
+-- The hotbar and the side menu go too: all that stays is a button to go back to the Forge.
+local leaveBtn = Theme.Button(gui, "Back to the Forge", Theme.Colors.Accent, Color3.fromRGB(255, 255, 255), "LeaveChallengeButton")
+leaveBtn.AnchorPoint, leaveBtn.Position, leaveBtn.Size, leaveBtn.TextSize, leaveBtn.Visible = Vector2.new(1, 0), UDim2.new(1, -8, 0, 8), UDim2.new(0, 150, 0, 36), 14, false
+leaveBtn.MouseButton1Click:Connect(function()
+    require(game.ReplicatedStorage.Shared.Modules.RemoteEvents).LeaveChallenge:FireServer()
+end)
 local function SyncTower()
-    local climbing = LocalPlayer:GetAttribute("TowerLevel") ~= nil or LocalPlayer:GetAttribute("MazeSection") ~= nil
+    local climbing = InChallenge()
     mainFrame.Visible = not climbing
     bottomBar.Visible = not climbing
+    hotbar.Visible = not climbing
+    QueueRelayout()                                                 -- shows or hides the side menu
+    leaveBtn.Visible = climbing
     if climbing then pendingFrame.Visible = false end
 end
 LocalPlayer:GetAttributeChangedSignal("TowerLevel"):Connect(SyncTower)

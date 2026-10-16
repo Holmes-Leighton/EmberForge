@@ -15,6 +15,7 @@ local CartCourseService = {}
 
 local PUSH_REACH_BEHIND, PUSH_REACH_AHEAD = 12, 4       -- studs behind / ahead of the cart's middle that still count as pushing
 local PUSH_REACH_SIDE = 10
+local PUSH_CONTACT, PUSH_CONTACT_SIDE = 8, 6                -- close enough behind the cart (studs) that walking into it counts as pushing
 local MIN_PUSH_SPEED  = 5                                -- studs/s forward along the rail
 local ACTIVE_RANGE    = 260                              -- carts with nobody this close (and parked at the start) are not simulated
 local TICK            = 1 / 20
@@ -46,6 +47,12 @@ local function FindPushers(c)
             if along >= -PUSH_REACH_BEHIND and along <= PUSH_REACH_AHEAD and side <= PUSH_REACH_SIDE and math.abs(rel.Y) <= 16 then
                 local vel = root.AssemblyLinearVelocity
                 local speed = vel.X * hx + vel.Z * hz
+                -- Leaning on the cart's back: the solid body stops the character, so its speed reads near zero. Walking forward into it still counts as pushing,
+                -- at the pace the character is trying to walk (otherwise a parked cart can hardly be started on the flat).
+                if along >= -PUSH_CONTACT and side <= PUSH_CONTACT_SIDE then
+                    local intent = hum.MoveDirection.X * hx + hum.MoveDirection.Z * hz
+                    if intent > 0.5 then speed = math.max(speed, hum.WalkSpeed * intent) end
+                end
                 -- forward = pushing; backward (walking against it) = braking
                 if math.abs(speed) >= MIN_PUSH_SPEED then table.insert(out, { userId = player.UserId, speed = speed, player = player }) end
             end

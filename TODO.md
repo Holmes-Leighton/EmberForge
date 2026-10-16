@@ -184,8 +184,7 @@ Recommendation: not yet. Six mining zones, the Quarry and pets already give plen
       (5 themed sections Stone, Ember, Frost, Storm, Void with mesh floors, walls and decorations; lobby with the coffin; victory room with the exit arch), `MazeService` (portal in the cavern, run, catches,
       rewards, escape speed-up) and `MazeController` (HUD, danger glow, summary card, and the Zombie Golem's walk, drawn on each client). Played through in Studio: all five sections, a full escape (gold time,
       coins, XP, material bundle, summary card) and the zombie waking and catching a player in the lobby. Meshes are generated (`AssetData.MazeMeshes`, `MazeZombie`); the maze works as plain blocks if they do not load.
-- [ ] Hollow Maze, still open: the Zombie's chase and the walk animation have only been seen standing still (watch a real hunt with the walk and the red edge glow); the Stone section's mesh reads pink and green
-      (consider a duller tint); after an escape speed-up the next round still starts on the fixed schedule, so there is a wait of up to about 4 minutes (rounds are clock-aligned across servers);
+- [ ] Hollow Maze, still open: the Zombie's walk animation and the red edge glow have only been seen standing still (a test walker could not stay ahead of it to film a real chase; watch one by hand); after an escape speed-up the next round still starts on the fixed schedule, so there is a wait of up to about 4 minutes (rounds are clock-aligned across servers);
       `MazeMeshes.Gate` is unused (the gate is a neon barrier); balance numbers (`SectionCoins`, `ESCAPE_CHEST_MULT`) are first guesses (a level 27 escape paid about 1,000 coins).
 
 ## Running the tests

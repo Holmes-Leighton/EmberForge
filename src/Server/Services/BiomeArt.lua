@@ -596,7 +596,7 @@ local function BuildCart(parent, spot, index)
     body.Size = bodySize
     body.CFrame = CFrame.new(spot.x, centerY, spot.z)
     if PhysicalProperties then
-        body.CustomPhysicalProperties = PhysicalProperties.new(math.max(0.01, 0.25 * (7.6 * 3.2 * 5.4) / (bodySize.X * bodySize.Y * bodySize.Z)), 0.25, 0.1, 1, 1)
+        body.CustomPhysicalProperties = PhysicalProperties.new(math.max(0.01, 0.15 * (7.6 * 3.2 * 5.4) / (bodySize.X * bodySize.Y * bodySize.Z)), 0.03, 0, 100, 1)       -- wheels on a rail: little friction, and our friction wins over the floor's
     end
     WeldAll(model, body)
     -- Mine Cart Delivery bounty (CartBountyService): the cart is tagged, remembers its start, says what to do, and the end of its rail has a glowing depot
