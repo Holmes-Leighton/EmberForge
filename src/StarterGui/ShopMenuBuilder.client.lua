@@ -79,7 +79,7 @@ local convItems = {
     { name="SlotBoostBtn",        emoji="🔓",  title="Slot Boost",        sub="+1 deploy slot for 7 days",     price="149 R$/wk",color=Theme.Colors.Storm   },
     { name="MaterialMagnetBtn",   emoji="🧲",  title="Material Magnet",   sub="2× resources, 24 hrs", price="199 R$",   color=Theme.Colors.Success },
     { name="LuckBoostBtn",        emoji="🍀",  title="Lucky Boost",       sub="2× rare drops, 1 hr",  price="49 R$",    color=Theme.Colors.Success },
-    { name="GrowthTonicBtn",      emoji="🌱",  title="Growth Tonic",      sub="Golems grow 2×, 1 hr", price="99 R$",    color=Theme.Colors.Success },
+    { name="GrowthTonicBtn",      emoji="🌱",  title="Growth Tonic",      sub="Golems grow 2×, 1 hr", price="49 R$",    color=Theme.Colors.Success },
     { name="EventCatalystBtn",   emoji="✨",  title="Event Catalyst",    sub="1 event material",price="~400 R$",  color=Theme.Colors.Legendary },
 }
 
