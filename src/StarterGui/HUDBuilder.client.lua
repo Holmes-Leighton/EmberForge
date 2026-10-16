@@ -198,7 +198,7 @@ if workspace.CurrentCamera then workspace.CurrentCamera:GetPropertyChangedSignal
 local SpeedData = require(game.ReplicatedStorage.Shared.Data.SpeedData)
 local SPEED_COLOR = Color3.fromRGB(110, 205, 255)
 local speedRow = Row("SpeedRow", 294, 40, SPEED_COLOR)
-local speedLabel = Text(speedRow, "SpeedLabel", "Speed Lv 0", 14, SPEED_COLOR, Enum.Font.GothamBold, UDim2.new(0, 14, 0, 2), UDim2.new(1, -20, 0, 18))
+local speedLabel = Text(speedRow, "SpeedLabel", "Speed Lv 0", 14, SPEED_COLOR, Enum.Font.GothamBold, UDim2.new(0, 14, 0, 2), UDim2.new(1, -20, 0, 21))
 local speedTrack = Instance.new("Frame")
 speedTrack.Name = "SpeedTrack"
 speedTrack.Position, speedTrack.Size = UDim2.new(0, 14, 0, 26), UDim2.new(1, -24, 0, 7)

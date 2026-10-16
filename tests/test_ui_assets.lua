@@ -83,6 +83,10 @@ AssetData.Golem.Default.mode = "Auto"          -- the live file pins "Parts"; th
 AssetData.Pack.assetId, AssetData.PetPack.assetId, AssetData.CrownPack.assetId = 0, 0, 0
 local realStageModels = AssetData.StageModels
 AssetData.StageModels = {}                     -- (the live generated stage models are tested on their own below)
+local realMazeZombie = AssetData.MazeZombie
+AssetData.MazeZombie = nil                     -- (and the Hollow Maze's Zombie Golem is a generated model too)
+local realMazeGolemId = AssetData.Golem.Elements.Maze.assetId
+AssetData.Golem.Elements.Maze.assetId = 0      -- (the Maze Golem has its own model id as well)
 print("== no asset ids: block Golem, clear log")
 Loader.Init()
 local m = GolemModel.Build("Frost", 2, {})
@@ -241,6 +245,8 @@ reset()
 Loader.Init()
 expect(saw(warns, "Infant Ember") and saw(warns, "Adult mesh"), "a failed load is warned and falls back to the Adult mesh")
 AssetData.StageModels = realStageModels
+AssetData.MazeZombie = realMazeZombie
+AssetData.Golem.Elements.Maze.assetId = realMazeGolemId
 
 print("== single mesh becomes Static (bob and sway)")
 insertResults[111] = function() return container(newModel({ "Body" })) end

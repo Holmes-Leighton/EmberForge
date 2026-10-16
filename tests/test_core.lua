@@ -115,6 +115,9 @@ do
     local MPS = game:GetService("MarketplaceService")
     local function pad(id) for _, def in ipairs(PadData.Pads) do if def.id == id then return def end end end
     d3.PlayerLevel = 1; d3.UnlockedPads = {}
+    local RunServiceMock = game:GetService("RunService")
+    local realIsStudio = RunServiceMock.IsStudio
+    RunServiceMock.IsStudio = function() return false end        -- (in Studio every player is an admin and admins can use every pad: test as a normal player)
     expect(PadService.CanUse(p3, pad("Copper"), d3) == false, "a level 1 player can't use the Copper pad")
     local k1 = Product.PassForPad("Copper")
     local ladder = {}
@@ -138,6 +141,7 @@ do
     expect(d3.UnlockedPads.Copper == true, "buying the Copper pass unlocks the pad")
     expect(PadService.CanUse(p3, pad("Copper"), d3) == true, "the bought pad works below its level")
     expect(PadService.CanUse(p3, pad("Iron"), d3) == false, "buying Copper doesn't unlock Iron")
+    RunServiceMock.IsStudio = realIsStudio
 
     -- owned on Roblox (bought on the game page / another server) is picked up on join
     MPS._owned[p3.UserId .. ":888"] = true
