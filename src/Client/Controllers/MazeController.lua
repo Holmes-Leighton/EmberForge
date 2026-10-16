@@ -9,6 +9,7 @@ local Debris       = game:GetService("Debris")
 local MazeData     = require(game.ReplicatedStorage.Shared.Data.MazeData)
 local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local Theme        = require(game.ReplicatedStorage.Shared.Modules.Theme)
+local MaterialIcon = require(game.ReplicatedStorage.Shared.Modules.MaterialIcon)
 local ScreenMode   = require(game.ReplicatedStorage.Shared.Modules.ScreenMode)
 
 local LocalPlayer = Players.LocalPlayer
@@ -20,6 +21,8 @@ local SECTION_COLORS = {
     Storm = Color3.fromRGB(255, 232, 110), Void = Color3.fromRGB(190, 120, 255),
 }
 
+local CARD_W, CARD_GAP = 270, 8       -- the reward cards (see below)
+local cardHolder
 local hud, sectionLbl, clockLbl, infoLbl, standingsFrame, standingsLbl, flash, banner, danger, panel
 local dailyTarget, dailyDone = nil, false
 local best = 0
@@ -67,6 +70,9 @@ local function BuildHud()
     standingsLbl = Theme.Label(standingsFrame, "", Theme.TextSize.Small, Color3.fromRGB(235, 240, 230), Theme.Fonts.Body)
     standingsLbl.Position, standingsLbl.Size, standingsLbl.TextYAlignment = UDim2.new(0, 8, 0, 6), UDim2.new(1, -16, 1, -12), Enum.TextYAlignment.Top
 
+    cardHolder = Instance.new("Frame")                                 -- the reward cards stack down the left, where the event cards sit when you are not in the maze
+    cardHolder.BackgroundTransparency, cardHolder.Position, cardHolder.Size = 1, UDim2.new(0, 14, 0, 112), UDim2.new(0, CARD_W, 0, 420)
+    cardHolder.Parent = hud
     flash = Instance.new("Frame")
     flash.Size, flash.BackgroundTransparency, flash.BorderSizePixel, flash.Visible, flash.ZIndex = UDim2.new(1, 0, 1, 0), 1, 0, false, 20
     flash.Parent = hud
@@ -124,6 +130,129 @@ local function Sparks(color, count)
     e.Parent = root
     e:Emit(count or 30)
     Debris:AddItem(e, 2)
+end
+
+-- ── Reward cards ──────────────────────────────────────────────────────────────
+-- The moments you want to read (a section cleared and what it paid, a Maze Golem piece, the daily bonus) are cards stacked down the left of the screen, like the event cards,
+-- instead of big centre text (that stays for the urgent moments: the gate, the wake-up, caught, escaped). They wait while the Zombie Golem is close, so nothing covers the
+-- corridor at the wrong moment (a piece find waits at most PIECE_WAIT seconds), and they stack so two finds in a row are both seen.
+local CARD_NEAR = 40                  -- studs: the Zombie is "close" inside this
+local PIECE_WAIT = 10                 -- seconds a piece card will wait for the Zombie to back off
+local cardQueue = {}                  -- { build = fn(parent) -> frame, height, stay, special, queuedAt }
+local liveCards = {}                  -- { frame, height, dieAt }
+local zombieNear = false
+
+local function LayoutCards()
+    local y = 0
+    for _, c in ipairs(liveCards) do
+        TweenService:Create(c.frame, TweenInfo.new(0.25, Enum.EasingStyle.Quad), { Position = UDim2.new(0, 0, 0, y) }):Play()
+        y += c.height + CARD_GAP
+    end
+end
+
+local function NewCard(height, accent, special)
+    local f = Instance.new("Frame")
+    f.Size, f.BackgroundColor3, f.BackgroundTransparency, f.BorderSizePixel = UDim2.new(0, CARD_W, 0, height), Color3.fromRGB(18, 22, 20), 0.1, 0
+    Theme.AddCorner(f, Theme.Corner.Medium)
+    Theme.AddStroke(f, accent, special and 3 or 2)
+    return f
+end
+
+local function PushCard(spec)
+    spec.queuedAt = os.clock()
+    table.insert(cardQueue, spec)
+end
+
+local function PumpCards()
+    if not cardHolder then return end
+    for i = #liveCards, 1, -1 do                                   -- retire the ones whose time is up
+        local c = liveCards[i]
+        if os.clock() >= c.dieAt then
+            table.remove(liveCards, i)
+            TweenService:Create(c.frame, TweenInfo.new(0.3), { Position = c.frame.Position - UDim2.new(0, CARD_W + 20, 0, 0) }):Play()
+            Debris:AddItem(c.frame, 0.35)
+            LayoutCards()
+        end
+    end
+    local i = 1
+    while i <= #cardQueue do
+        local spec = cardQueue[i]
+        local waited = os.clock() - spec.queuedAt
+        if (not zombieNear) or (spec.special and waited > PIECE_WAIT) or waited > 25 then
+            if #liveCards >= 4 then break end                    -- (four cards at a time at most)
+            table.remove(cardQueue, i)
+            local frame = spec.build(cardHolder)
+            local y = 0
+            for _, c in ipairs(liveCards) do y += c.height + CARD_GAP end
+            frame.Position = UDim2.new(0, -CARD_W - 20, 0, y)
+            table.insert(liveCards, { frame = frame, height = spec.height, dieAt = os.clock() + spec.stay })
+            TweenService:Create(frame, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Position = UDim2.new(0, 0, 0, y) }):Play()
+        else
+            i += 1
+        end
+    end
+end
+
+local function ClearCards()
+    cardQueue = {}
+    for _, c in ipairs(liveCards) do c.frame:Destroy() end
+    liveCards = {}
+end
+
+local function CardText(f, text, size, color, font, y, h, x)
+    local l = Theme.Label(f, text, size, color, font)
+    l.Position, l.Size, l.TextXAlignment = UDim2.new(0, x or 12, 0, y), UDim2.new(1, -((x or 12) + 12), 0, h), Enum.TextXAlignment.Left
+    return l
+end
+
+-- A section-cleared card: the section's colour, what it paid
+local function SectionCard(p)
+    local col = SECTION_COLORS[p.name] or Color3.fromRGB(255, 255, 255)
+    PushCard({ height = 64, stay = 4.5, build = function(parent)
+        local f = NewCard(64, col, false)
+        f.Parent = parent
+        CardText(f, string.upper(p.name or "") .. " CLEARED", 17, col, Theme.Fonts.Heading, 6, 24)
+        local bits = { string.format("+%d coins", p.coins or 0), string.format("+%d XP", p.xp or 0) }
+        if p.rare then table.insert(bits, "RARE!") end
+        if p.playerLevelUp then table.insert(bits, string.format("Level %d!", p.playerLevelUp)) end
+        CardText(f, table.concat(bits, "   "), Theme.TextSize.Small, Color3.fromRGB(235, 235, 220), Theme.Fonts.Body, 32, 22)
+        return f
+    end })
+end
+
+-- A Maze Golem piece card: gold border, the piece's own mesh, and a bar towards the full set
+local function PieceCard(piece)
+    PushCard({ height = 88, stay = 6.5, special = true, build = function(parent)
+        local gold = Color3.fromRGB(255, 215, 90)
+        local f = NewCard(88, gold, true)
+        f.Parent = parent
+        local icon = MaterialIcon.Make(f, piece.id, 64)
+        if icon then icon.Position = UDim2.new(0, 10, 0, 12) end
+        CardText(f, string.upper(piece.name) .. " FOUND!", 15, gold, Theme.Fonts.Heading, 8, 22, 82)
+        CardText(f, string.format("%d / %d for the Maze Golem", piece.have, piece.need), Theme.TextSize.Small, Color3.fromRGB(235, 235, 220), Theme.Fonts.Body, 32, 20, 82)
+        local track = Instance.new("Frame")
+        track.Position, track.Size, track.BackgroundColor3, track.BorderSizePixel = UDim2.new(0, 82, 0, 60), UDim2.new(1, -96, 0, 10), Color3.fromRGB(40, 36, 30), 0
+        track.Parent = f
+        Theme.AddCorner(track, UDim.new(0, 5))
+        local fill = Instance.new("Frame")
+        fill.Size, fill.BackgroundColor3, fill.BorderSizePixel = UDim2.new(0, 0, 1, 0), gold, 0
+        fill.Parent = track
+        Theme.AddCorner(fill, UDim.new(0, 5))
+        TweenService:Create(fill, TweenInfo.new(0.9, Enum.EasingStyle.Quad), { Size = UDim2.new(math.clamp(piece.have / piece.need, 0, 1), 0, 1, 0) }):Play()
+        Flash(gold, 0.3)
+        Sparks(gold, 60)
+        return f
+    end })
+end
+
+local function TextCard(title, text, accent)
+    PushCard({ height = 64, stay = 5, build = function(parent)
+        local f = NewCard(64, accent, false)
+        f.Parent = parent
+        CardText(f, title, 17, accent, Theme.Fonts.Heading, 6, 24)
+        CardText(f, text, Theme.TextSize.Small, Color3.fromRGB(235, 235, 220), Theme.Fonts.Body, 32, 22)
+        return f
+    end })
 end
 
 -- ── The Zombie Golem ──────────────────────────────────────────────────────────
@@ -239,13 +368,16 @@ local function Update(dt, now)
 
     -- the red edge glow: nothing past WARN_RADIUS, solid at the catch radius
     local glow = 1
+    zombieNear = false
     local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if root and zx and zstate ~= "asleep" and not caught then
         local d = math.sqrt((root.Position.X - zx) ^ 2 + (root.Position.Z - zz) ^ 2)
         local t = 1 - math.clamp((d - MazeData.CATCH_RADIUS) / (MazeData.WARN_RADIUS - MazeData.CATCH_RADIUS), 0, 1)
         glow = 1 - t * 0.7 * (0.75 + 0.25 * math.sin(now * (4 + 8 * t)))
+        zombieNear = d < CARD_NEAR
     end
     danger.BackgroundTransparency = glow
+    PumpCards()
 end
 
 -- ── The end-of-run card ───────────────────────────────────────────────────────
@@ -315,6 +447,7 @@ local function OnEvent(kind, p)
     p = p or {}
     if kind == "start" then
         best = 0
+        ClearCards()
         dailyTarget, dailyDone = p.dailyTarget, p.dailyDone
         hud.Enabled = true
         Banner("GET READY...", Color3.fromRGB(150, 255, 170))
@@ -326,32 +459,17 @@ local function OnEvent(kind, p)
         Flash(Color3.fromRGB(190, 20, 20), 0.35)
     elseif kind == "section" then
         local col = SECTION_COLORS[p.name] or Color3.fromRGB(255, 255, 255)
-        Banner(string.format("%s CLEARED", string.upper(p.name or "")), col)
         Sparks(col, 40)
         Flash(col, 0.15)
+        SectionCard(p)                                               -- what it paid goes on a card down the left
         if p.daily then
             dailyDone = true
-            task.delay(1.2, function()
-                Banner(string.format("DAILY CHALLENGE!  +%d coins", p.daily.coins), Color3.fromRGB(255, 232, 120))
-                Sparks(Color3.fromRGB(255, 232, 120), 60)
-            end)
+            TextCard("DAILY CHALLENGE!", string.format("+%d coins", p.daily.coins), Color3.fromRGB(255, 232, 120))
         end
         if p.piece then
-            task.delay(2.4, function()
-                Banner(string.format("%s FOUND!  %d / %d", string.upper(p.piece.name), p.piece.have, p.piece.need), Color3.fromRGB(255, 120, 255))
-                Flash(Color3.fromRGB(255, 120, 255), 0.35)
-                Sparks(Color3.fromRGB(255, 120, 255), 70)
-            end)
+            PieceCard(p.piece)
         elseif p.pieceCapped then
-            infoLbl.Text = "You have found all the Maze pieces you can today"
-        end
-        if p.coins then
-            task.delay(0.1, function()
-                local t = string.format("+%d coins  +%d XP", p.coins, p.xp or 0)
-                if p.rare then t ..= "  RARE!" end
-                if p.playerLevelUp then t ..= string.format("   Player level %d!", p.playerLevelUp) end
-                infoLbl.Text = t
-            end)
+            TextCard("MAZE PIECES", "You have found all you can today", Color3.fromRGB(190, 160, 255))
         end
     elseif kind == "caught" then
         Banner("CAUGHT!", Color3.fromRGB(255, 70, 60))
@@ -361,12 +479,7 @@ local function OnEvent(kind, p)
         Flash(Color3.fromRGB(255, 215, 90), 0.4)
         Sparks(Color3.fromRGB(255, 215, 90), 80)
         local piece = p.chest and p.chest.piece
-        if piece then
-            task.delay(2.4, function()
-                Banner(string.format("%s FOUND!  %d / %d", string.upper(piece.name), piece.have, piece.need), Color3.fromRGB(255, 120, 255))
-                Sparks(Color3.fromRGB(255, 120, 255), 70)
-            end)
-        end
+        if piece then PieceCard(piece) end
     elseif kind == "speedup" then
         Banner(string.format("%s escaped! %ds left!", p.name or "Someone", p.seconds or 45), Color3.fromRGB(255, 150, 80))
     elseif kind == "standings" then
@@ -379,6 +492,7 @@ local function OnEvent(kind, p)
         standingsLbl.Text = table.concat(lines, "\n")
     elseif kind == "roundover" or kind == "abandon" then
         hud.Enabled = false
+        ClearCards()
         danger.BackgroundTransparency = 1
         if kind == "roundover" and (p.best or 0) <= 0 and (p.coins or 0) == 0 and not p.escaped then
             Banner("Run ended", Color3.fromRGB(255, 190, 120))
