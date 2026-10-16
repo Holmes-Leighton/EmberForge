@@ -98,7 +98,8 @@ expect(GD.StageOf(legacy).id == "Adult", "and is still Adult")
 print("== the Growth Tonic")
 local Product = load("game/ReplicatedStorage/Shared/Data/ProductData")
 local Shop = load("SSS/EmberForge/Services/ShopService")
-expect(Product.Products.GrowthTonic_1h ~= nil and Product.Products.GrowthTonic_1h.id == 0 and not Product.IsAvailable("GrowthTonic_1h"), "the Tonic exists but is not for sale until its product id is pasted in")
+local realTonicId = Product.Products.GrowthTonic_1h and Product.Products.GrowthTonic_1h.id
+expect(realTonicId ~= nil and realTonicId ~= 0 and Product.IsAvailable("GrowthTonic_1h"), "the Tonic is for sale (its Developer Product id is set)")
 local pt1, dt1 = mk(20)
 local tg = { id = "t1", element = "Ember", tier = 1, deployed = true, zoneId = "EmberDepths", grown = 0 }
 dt1.Golems = { tg }
@@ -114,7 +115,7 @@ expect(tg.grown == 300, "with a Tonic, 100 seconds of work is 200 seconds of gro
 dt1.GrowthBoostExpiry = os.time() - 1
 IE.TickOnlineProduction(dt1, 100)
 expect(tg.grown == 400, "an expired Tonic does nothing")
-Product.Products.GrowthTonic_1h.id = 0
+Product.Products.GrowthTonic_1h.id = realTonicId
 -- away: the Tonic doubles only the part of the absence it covered
 local po1, do1 = mk(21)
 local ag = { id = "t2", element = "Ember", tier = 1, deployed = true, zoneId = "EmberDepths", grown = 0 }
