@@ -236,6 +236,7 @@ function MazeArt.Zombie(parent, home)
     local box, size = model:GetBoundingBox()
     model:PivotTo(CFrame.new(home.X - box.Position.X, 0, home.Z - box.Position.Z) * CFrame.new(0, home.Y - (box.Position.Y - size.Y / 2), 0) * model:GetPivot())
     model:SetAttribute("Home", home)
+    model:SetAttribute("PivotCF", model:GetPivot())                 -- (the client poses each part from this, however the model streams in)
     model.Parent = parent
     return model
 end

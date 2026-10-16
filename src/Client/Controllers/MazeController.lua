@@ -263,20 +263,26 @@ local zombieSearchAt = 0
 local walkPhase = 0
 local smoothX, smoothZ, smoothYaw
 
-local function BuildRig(model)
-    local home = model:GetAttribute("Home")
-    local pivot = model:GetPivot()
-    local r = { model = model, pivot = pivot, home = home, parts = {} }
-    for _, p in ipairs(model:GetDescendants()) do
-        if p:IsA("BasePart") then
+-- With streaming a model can arrive part by part, so the rig is topped up as parts show up. A part that has just arrived is still where the server put it (the Zombie's home
+-- pose, which is also where the pivot was taken), so its offset from the pivot is read once, when it is first seen.
+local function AddParts(r)
+    for _, p in ipairs(r.model:GetDescendants()) do
+        if p:IsA("BasePart") and not r.seen[p] then
+            r.seen[p] = true
             local n = p.Name
             local kind = (n == "ArmL" and "armL") or (n == "ArmR" and "armR") or (n == "Leg" and "leg") or (n == "Head" and "head") or (n == "Torso" and "torso") or "body"
-            local rel = pivot:ToObjectSpace(p.CFrame)
+            local rel = r.pivot:ToObjectSpace(p.CFrame)
             local side = 0
             if kind == "leg" then side = (rel.X < 0) and 1 or -1 end        -- (the two legs swing opposite ways)
             table.insert(r.parts, { part = p, rel = rel, kind = kind, side = side, hang = Vector3.new(0, p.Size.Y / 2 - 0.2, 0) })
         end
     end
+end
+
+local function BuildRig(model)
+    local r = { model = model, pivot = model:GetAttribute("PivotCF"), home = model:GetAttribute("Home"), parts = {}, seen = {}, checkedAt = 0 }
+    if not (r.pivot and r.home) then return r end
+    AddParts(r)
     return r
 end
 
@@ -288,7 +294,7 @@ local function FindZombie(now)
     local m = workspace:FindFirstChild("MazeZombie", true)
     if m and m:IsA("Model") and m:GetAttribute("Home") then
         local built = BuildRig(m)
-        if #built.parts == 0 then return end                         -- (with streaming the model can arrive before its parts: look again next second)
+        if #built.parts == 0 then return end                         -- (the model can arrive before its pivot or parts: look again next second)
         zombie, rig = m, built
         smoothX, smoothZ, smoothYaw = nil, nil, nil
     end
@@ -313,8 +319,13 @@ local function StepZombie(dt, now)
     local lean = walking and -0.12 or 0.18                          -- asleep: slumped forward
 
     local home, base = rig.home, rig.pivot
-    -- (the model is built facing east, ZYaw -pi/2 = east, so the heading is the difference to that)
-    local pose = CFrame.new(smoothX, base.Y + bob, smoothZ) * CFrame.Angles(0, smoothYaw + math.pi / 2, 0)
+    if now - rig.checkedAt > 0.5 then
+        rig.checkedAt = now
+        AddParts(rig)
+        for i = #rig.parts, 1, -1 do if not rig.parts[i].part.Parent then table.remove(rig.parts, i) end end
+    end
+    -- (the model is built facing -Z, which is heading 0; ZYaw -pi/2 turns it to face east, into the maze)
+    local pose = CFrame.new(smoothX, base.Y + bob, smoothZ) * CFrame.Angles(0, smoothYaw, 0)
         * CFrame.new(base.X - home.X, 0, base.Z - home.Z) * base.Rotation * CFrame.Angles(lean, 0, 0)
     for _, e in ipairs(rig.parts) do
         local cf = pose * e.rel
