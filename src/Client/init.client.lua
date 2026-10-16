@@ -55,7 +55,9 @@ require(script.Controllers.CartCourseController).Init()
 require(script.Controllers.CourierController).Init()
 require(script.Controllers.TowerController).Init()
 require(script.Controllers.MazeController).Init()
-require(script.Controllers.DecorAnimator).Init()            -- the forge decorations' orbiting, floating, spinning and flashing pieces
+require(script.Controllers.PadTreadmill).Init()              -- standing on a pad: run on the spot, embers, a beating light
+require(script.Controllers.SpeedSparks).Init()              -- sparks from the feet of fast players
+require(script.Controllers.DecorAnimator).Init()           -- the forge decorations' orbiting, floating, spinning and flashing pieces
 SoundController.Init()
 BadgeController.Init()
 OfferController.Init()

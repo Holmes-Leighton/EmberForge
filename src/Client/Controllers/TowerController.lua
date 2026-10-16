@@ -78,6 +78,7 @@ local function ServerNow() return workspace:GetServerTimeNow() end
 
 local hud, levelLbl, clockLbl, infoLbl, lavaLbl, standingsFrame, standingsLbl, flash, banner, badge
 local badgeCompact = nil
+local badgeScale = nil
 local roundEnds, total = nil, 30
 local dailyTarget, dailyDone = nil, false
 local lava
@@ -99,6 +100,8 @@ local function BuildHud()
 
     local panel = Instance.new("Frame")
     badge = panel
+    badgeScale = Instance.new("UIScale")
+    badgeScale.Parent = panel
     panel.AnchorPoint, panel.Position, panel.Size = Vector2.new(0.5, 0), UDim2.new(0.5, 0, 0, 118), UDim2.new(0, 300, 0, 96)
     panel.BackgroundColor3, panel.BackgroundTransparency, panel.BorderSizePixel = Color3.fromRGB(26, 18, 14), 0.15, 0
     panel.Parent = hud
@@ -129,32 +132,54 @@ local function BuildHud()
     banner.TextXAlignment, banner.TextTransparency, banner.TextStrokeTransparency, banner.TextStrokeColor3, banner.ZIndex = Enum.TextXAlignment.Center, 1, 1, Color3.fromRGB(20, 10, 6), 21
 end
 
--- On a phone the badge does not sit in the middle of the screen (where you are looking): it goes in the left column, just above the player card, as wide as that card.
--- (The card itself is hidden while climbing, but its frame still has its place and size, which is what this follows.)
-local function PlaceBadge()
-    if not badge then return end
-    local compact = ScreenMode.Compact()
-    local card = LocalPlayer.PlayerGui:FindFirstChild("HUD") and LocalPlayer.PlayerGui.HUD:FindFirstChild("MainFrame")
-    if compact and card then
-        local inset = (LocalPlayer.PlayerGui.HUD.IgnoreGuiInset and 0 or game:GetService("GuiService"):GetGuiInset().Y)
-        local w = math.max(card.AbsoluteSize.X, 140)
-        badge.AnchorPoint = Vector2.new(0, 1)
-        badge.Position = UDim2.fromOffset(card.AbsolutePosition.X, card.AbsolutePosition.Y + inset - 6)
-        badge.Size = UDim2.fromOffset(w, 66)
-        if badgeCompact ~= true then
-            badgeCompact = true
-            levelLbl.Position, levelLbl.Size, levelLbl.TextSize = UDim2.new(0, 4, 0, 2), UDim2.new(1, -8, 0, 22), 18
-            clockLbl.Position, clockLbl.Size, clockLbl.TextSize = UDim2.new(0, 4, 0, 24), UDim2.new(1, -8, 0, 16), 14
-            infoLbl.Position, infoLbl.Size, infoLbl.TextSize = UDim2.new(0, 4, 0, 40), UDim2.new(1, -8, 0, 12), 10
-            lavaLbl.Position, lavaLbl.Size, lavaLbl.TextSize = UDim2.new(0, 4, 0, 52), UDim2.new(1, -8, 0, 12), 10
-        end
-    elseif badgeCompact ~= false then
-        badgeCompact = false
-        badge.AnchorPoint, badge.Position, badge.Size = Vector2.new(0.5, 0), UDim2.new(0.5, 0, 0, 118), UDim2.new(0, 300, 0, 96)
+-- Where the badge sits: the same place and size as the hourly event banner, which is hidden while climbing: the left column just above the player card, as wide as
+-- that card, scaled like it (the card itself is hidden while climbing, but its frame still has its place and size, which is what this follows). On a phone it is a
+-- smaller panel in the same spot. With no card to follow it falls back to the middle of the screen.
+local function SetBadgeLayout(mode)
+    if badgeCompact == mode then return end
+    badgeCompact = mode
+    if mode == "compact" then
+        levelLbl.Position, levelLbl.Size, levelLbl.TextSize = UDim2.new(0, 4, 0, 2), UDim2.new(1, -8, 0, 22), 18
+        clockLbl.Position, clockLbl.Size, clockLbl.TextSize = UDim2.new(0, 4, 0, 24), UDim2.new(1, -8, 0, 16), 14
+        infoLbl.Position, infoLbl.Size, infoLbl.TextSize = UDim2.new(0, 4, 0, 40), UDim2.new(1, -8, 0, 12), 10
+        lavaLbl.Position, lavaLbl.Size, lavaLbl.TextSize = UDim2.new(0, 4, 0, 52), UDim2.new(1, -8, 0, 12), 10
+    elseif mode == "card" then                                  -- laid out at the banner's own size, 196 x 108, then scaled with the HUD
+        levelLbl.Position, levelLbl.Size, levelLbl.TextSize = UDim2.new(0, 8, 0, 6), UDim2.new(1, -16, 0, 30), 22
+        clockLbl.Position, clockLbl.Size, clockLbl.TextSize = UDim2.new(0, 8, 0, 38), UDim2.new(1, -16, 0, 22), 17
+        infoLbl.Position, infoLbl.Size, infoLbl.TextSize = UDim2.new(0, 8, 0, 64), UDim2.new(1, -16, 0, 16), 12
+        lavaLbl.Position, lavaLbl.Size, lavaLbl.TextSize = UDim2.new(0, 8, 0, 84), UDim2.new(1, -16, 0, 16), 12
+    else
         levelLbl.Position, levelLbl.Size, levelLbl.TextSize = UDim2.new(0, 10, 0, 4), UDim2.new(1, -20, 0, 32), 26
         clockLbl.Position, clockLbl.Size, clockLbl.TextSize = UDim2.new(0, 10, 0, 38), UDim2.new(1, -20, 0, 24), 20
         infoLbl.Position, infoLbl.Size, infoLbl.TextSize = UDim2.new(0, 10, 0, 62), UDim2.new(1, -20, 0, 16), Theme.TextSize.Small
         lavaLbl.Position, lavaLbl.Size, lavaLbl.TextSize = UDim2.new(0, 10, 0, 78), UDim2.new(1, -20, 0, 16), Theme.TextSize.Small
+    end
+end
+
+local BANNER_W, BANNER_H = 196, 108                             -- the event banner's size (EventBannerBuilder), before the HUD scale
+
+local function PlaceBadge()
+    if not badge then return end
+    local compact = ScreenMode.Compact()
+    local hudGui = LocalPlayer.PlayerGui:FindFirstChild("HUD")
+    local card = hudGui and hudGui:FindFirstChild("MainFrame")
+    if card and card.AbsoluteSize.X > 10 then
+        local inset = (hudGui.IgnoreGuiInset and 0 or game:GetService("GuiService"):GetGuiInset().Y)
+        badge.AnchorPoint = Vector2.new(0, 1)
+        badge.Position = UDim2.fromOffset(card.AbsolutePosition.X, card.AbsolutePosition.Y + inset - 6)
+        if compact then
+            SetBadgeLayout("compact")
+            badgeScale.Scale = 1
+            badge.Size = UDim2.fromOffset(math.max(card.AbsoluteSize.X, 140), 66)
+        else
+            SetBadgeLayout("card")
+            badgeScale.Scale = card.AbsoluteSize.X / BANNER_W
+            badge.Size = UDim2.fromOffset(BANNER_W, BANNER_H)
+        end
+    else
+        SetBadgeLayout("centre")
+        badgeScale.Scale = 1
+        badge.AnchorPoint, badge.Position, badge.Size = Vector2.new(0.5, 0), UDim2.new(0.5, 0, 0, 118), UDim2.new(0, 300, 0, 96)
     end
 end
 
