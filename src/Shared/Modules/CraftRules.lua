@@ -134,6 +134,7 @@ function CraftRules.HowToFind(bp)
     elseif src == S.Challenge then return "Reward for completing a challenge"
     elseif src == S.RareDrop then return "A rare find while your Golems mine"
     elseif src == S.SeasonalEvent then return "Appears during seasonal events"
+    elseif src == S.MazePieces then return "Found with the first Maze Golem piece, a very rare find in the Hollow Maze"
     elseif src == S.Trade then return "Trade for it with other players"
     end
     return nil

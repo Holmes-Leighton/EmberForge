@@ -70,6 +70,17 @@ local function ClearAttributes(player)
 end
 
 -- ── Progression hooks ─────────────────────────────────────────────────────────
+-- Deployed Maze Golems (Labyrinth Mind) add to the coins and XP the maze pays
+local function GolemBonus(data)
+    local n = 0
+    for _, g in ipairs(data.Golems or {}) do if g.element == "Maze" and g.deployed then n += 1 end end
+    return MazeRewards.GolemBonus(n)
+end
+
+local function PayOptions(data)
+    return { coinMultiplier = LiveOpsService.GetMultiplier("coins") * (1 + GolemBonus(data)) }
+end
+
 local function PaySection(rec, section)
     local player = rec.player
     local data = PlayerDataService.Get(player)
@@ -77,20 +88,23 @@ local function PaySection(rec, section)
     local best = paidSection[player.UserId] or 0
     if section <= best then return end
     paidSection[player.UserId] = section
-    local opts = { coinMultiplier = LiveOpsService.GetMultiplier("coins") }
+    local opts = PayOptions(data)
     local result = MazeRewards.PaySection(data, section, Today(), opts)
+    local piece, pieceWhy = MazeRewards.RollPiece(data, section, false, Today())
+    if piece then rec.totals.materials[piece.id] = (rec.totals.materials[piece.id] or 0) + 1 end
     local daily = MazeRewards.PayDaily(data, section, Today(), opts)
     if daily then rec.totals.coins += daily.coins end
-    local leveled, newLevel = ProgressionService.AddPlayerXP(player, MazeData.PlayerXp(section))
+    local xpGain = math.floor(MazeData.PlayerXp(section) * (1 + GolemBonus(data)))
+    local leveled, newLevel = ProgressionService.AddPlayerXP(player, xpGain)
     rec.totals.coins += result.coins
-    rec.totals.xp += MazeData.PlayerXp(section)
+    rec.totals.xp += xpGain
     if result.material then rec.totals.materials[result.material.id] = (rec.totals.materials[result.material.id] or 0) + result.material.qty end
     if result.rare then rec.totals.materials[result.rare.id] = (rec.totals.materials[result.rare.id] or 0) + result.rare.qty end
     pcall(function() Analytics.Custom(player, "MazeSection", section, { seed = state.round and state.round.seed }) end)
     PlayerDataService.MarkDirty(player)
     Fire(player, "section", {
         section = section, name = MazeData.SECTIONS[section], total = #MazeData.SECTIONS, coins = result.coins, xp = MazeData.PlayerXp(section), material = result.material,
-        rare = result.rare, capped = result.capped, playerLevelUp = leveled and newLevel or nil, daily = daily,
+        rare = result.rare, capped = result.capped, playerLevelUp = leveled and newLevel or nil, daily = daily, piece = piece, pieceCapped = (pieceWhy == "capped") or nil,
     })
 end
 
@@ -114,14 +128,17 @@ local function Escape(rec)
     local seconds = MazeRound.RunElapsed(state.round, WallClock())
     rec.escaped = true
     if not data then return end
-    local opts = { coinMultiplier = LiveOpsService.GetMultiplier("coins") }
+    local opts = PayOptions(data)
     local chest = MazeRewards.PayEscape(data, #MazeData.SECTIONS, Today(), opts)
-    ProgressionService.AddPlayerXP(player, MazeData.ESCAPE_PLAYER_XP)
+    local piece, pieceWhy = MazeRewards.RollPiece(data, #MazeData.SECTIONS, true, Today())
+    if piece then rec.totals.materials[piece.id] = (rec.totals.materials[piece.id] or 0) + 1 end
+    chest.piece, chest.pieceCapped = piece, (pieceWhy == "capped") or nil
+    ProgressionService.AddPlayerXP(player, math.floor(MazeData.ESCAPE_PLAYER_XP * (1 + GolemBonus(data))))
     local c = MazeRewards.State(data, Today())
     local isNew = false
     if not c.mazeBestTime or seconds < c.mazeBestTime then c.mazeBestTime = math.floor(seconds * 10 + 0.5) / 10 isNew = true end
     rec.totals.coins += chest.coins
-    rec.totals.xp += MazeData.ESCAPE_PLAYER_XP
+    rec.totals.xp += math.floor(MazeData.ESCAPE_PLAYER_XP * (1 + GolemBonus(data)))
     rec.best = #MazeData.SECTIONS
     rec.escape = { seconds = seconds, medal = MazeData.Medal(seconds), chest = chest, personalBest = isNew }
     PlayerDataService.MarkDirty(player)

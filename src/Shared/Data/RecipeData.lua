@@ -10,6 +10,7 @@ RecipeData.Source = {
     RareDrop  = "rare_drop",
     SeasonalEvent = "seasonal_event",
     Trade     = "trade",
+    MazePieces = "maze_pieces",
 }
 
 -- All blueprint definitions
@@ -244,6 +245,17 @@ RecipeData.Blueprints = {
         id = "BP_Dragonbone_T4", element = "Dragonbone", tier = 4,
         source = RecipeData.Source.RareDrop, forgeLevelRequired = 8,
         materialsRequired = { { id = "PureIngot", qty = 200 }, { id = "EssenceShard", qty = 100 }, { id = "MoltenCore", qty = 20 } },
+    },
+
+    -- The Maze Golem: five pieces found only in the Hollow Maze (MazeData.PIECES), a lot of them, and a Tier 5 forge
+    BP_Maze_T5 = {
+        id = "BP_Maze_T5", element = "Maze", tier = 5,
+        source = RecipeData.Source.MazePieces,
+        materialsRequired = {
+            { id = "MazeFoot",  qty = 12 }, { id = "MazeHeart", qty = 12 }, { id = "MazePick", qty = 12 },
+            { id = "MazeEye",   qty = 12 }, { id = "MazeCrown", qty = 12 },
+            { id = "PrimordialIngot", qty = 20 },
+        },
     },
 
     -- ── Tier 5 (seasonal exclusives) ───────────────────────────────────────

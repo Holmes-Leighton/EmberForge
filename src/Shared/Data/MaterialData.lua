@@ -164,6 +164,15 @@ MaterialData.Special = {
     },
 }
 
+-- Pieces of the Maze Golem (found only in the Hollow Maze, MazeData.PIECES): bound to the account
+MaterialData.Maze = {
+    MazeFoot  = { id = "MazeFoot",  displayName = "Maze Golem Foot",  rarity = "Legendary", element = "Stone", tradeable = false },
+    MazeHeart = { id = "MazeHeart", displayName = "Maze Golem Heart", rarity = "Legendary", element = "Ember", tradeable = false },
+    MazePick  = { id = "MazePick",  displayName = "Maze Golem Pickaxe",  rarity = "Legendary", element = "Frost", tradeable = false },
+    MazeEye   = { id = "MazeEye",   displayName = "Maze Golem Eye",   rarity = "Legendary", element = "Storm", tradeable = false },
+    MazeCrown = { id = "MazeCrown", displayName = "Maze Golem Crown", rarity = "Legendary", element = "Void",  tradeable = false },
+}
+
 -- Quarry-exclusive materials: they can only be made by a player's own Quarry (see QuarryData), and are tradeable
 MaterialData.Quarry = {
     TemperedEmber = { id = "TemperedEmber", displayName = "Tempered Ember", rarity = "Rare",      element = "Ember", tradeable = true },
@@ -175,7 +184,7 @@ MaterialData.Quarry = {
 
 -- Flat lookup by id
 MaterialData.All = {}
-for _, tbl in pairs({ MaterialData.Raw, MaterialData.Refined, MaterialData.Special, MaterialData.Quarry }) do
+for _, tbl in pairs({ MaterialData.Raw, MaterialData.Refined, MaterialData.Special, MaterialData.Quarry, MaterialData.Maze }) do
     for id, mat in pairs(tbl) do
         MaterialData.All[id] = mat
     end
@@ -200,6 +209,7 @@ MaterialData.Colors = {
     EssenceShard = C(120, 232, 204), PureIngot = C(238, 240, 255),
     PrimordialIngot = C(255, 204, 72),
     EventCatalyst = C(255, 100, 180),
+    MazeFoot = C(184, 158, 124), MazeHeart = C(255, 110, 50), MazePick = C(150, 220, 255), MazeEye = C(255, 232, 110), MazeCrown = C(176, 100, 255),
     TemperedEmber = C(255, 104, 56), Stormglass = C(110, 200, 255),
     FrostfireGem = C(112, 214, 232), Voidstone = C(154, 72, 214), PrismaticShard = C(255, 132, 222),
 }

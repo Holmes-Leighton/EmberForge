@@ -12,6 +12,8 @@ function MazeRewards.State(data, today)
     c.mazeEarned = c.mazeEarned or 0
     c.mazeBundles = c.mazeBundles or 0
     c.mazeBest = c.mazeBest or 0              -- the deepest section ever reached
+    if c.mazePieceDay ~= today then c.mazePieceDay, c.mazePieceCount = today, 0 end      -- Maze Golem pieces found today (capped)
+    c.mazePity = c.mazePity or 0                                                          -- section clears since the last piece (carries over days)
     return c
 end
 
@@ -51,6 +53,54 @@ function MazeRewards.PaySection(data, section, today, opts)
     c.level, c.xp = lvl, cur
     if section > c.mazeBest then c.mazeBest = section end
     return { coins = paid, xp = xp, material = material, rare = rare, section = section, levelUps = ups, courierLevel = lvl, capped = coins < wanted }
+end
+
+-- ── Maze Golem pieces ─────────────────────────────────────────────────────────
+local function Have(data, id) return (data.Inventory and data.Inventory[id]) or 0 end
+
+-- The piece (index into MazeData.PIECES) a drop gives: `preferred` if you still need it, else a random one you do need, else nil (a full set: craft first)
+local function ChoosePiece(data, preferred, rng)
+    local need = MazeData.PIECE_NEED
+    if preferred and Have(data, MazeData.PIECES[preferred].id) < need then return preferred end
+    local missing = {}
+    for i, p in ipairs(MazeData.PIECES) do if Have(data, p.id) < need then table.insert(missing, i) end end
+    if #missing == 0 then return nil end
+    return missing[math.floor(rng() * #missing) % #missing + 1]
+end
+
+local function GivePiece(data, c, index)
+    local piece = MazeData.PIECES[index]
+    data.Inventory = data.Inventory or {}
+    data.Inventory[piece.id] = (data.Inventory[piece.id] or 0) + 1
+    c.mazePieceCount += 1
+    c.mazePity = 0
+    local first = false
+    data.Blueprints = data.Blueprints or {}
+    if not table.find(data.Blueprints, MazeData.PIECE_BLUEPRINT) then table.insert(data.Blueprints, MazeData.PIECE_BLUEPRINT) first = true end
+    return { id = piece.id, name = piece.name, have = data.Inventory[piece.id], need = MazeData.PIECE_NEED, firstBlueprint = first }
+end
+
+-- Rolls for a Maze Golem piece after reaching `section` (or, with `escape`, for opening the exit chest). Returns { id, name, have, need, firstBlueprint } or nil, and a reason
+-- ("capped") when today's limit stopped a drop. opts: { rng }
+function MazeRewards.RollPiece(data, section, escape, today, opts)
+    opts = opts or {}
+    local rng = opts.rng or math.random
+    local c = MazeRewards.State(data, today)
+    local capped = c.mazePieceCount >= MazeData.PIECE_CAP_PER_DAY
+    if not escape then c.mazePity += 1 end
+    local chance = escape and MazeData.PIECE_ESCAPE or (MazeData.PIECE_CHANCE[section] or 0)
+    local hit = rng() < chance or (not escape and c.mazePity >= MazeData.PIECE_PITY)
+    if not hit then return nil end
+    if capped then return nil, "capped" end
+    local index = ChoosePiece(data, (not escape) and section or nil, rng)
+    if not index then return nil, "full" end
+    return GivePiece(data, c, index)
+end
+
+-- The Labyrinth Mind bonus (MazeGolem skill): the fraction added to the maze's coins and XP for `count` deployed Maze Golems
+function MazeRewards.GolemBonus(count)
+    local p = require(game.ReplicatedStorage.Shared.Data.GolemData).Specials.Maze.skill.params
+    return math.min(p.mazeCap, p.mazePer * (count or 0))
 end
 
 -- The chest at the exit. Returns { coins, rare, firstToday, capped }

@@ -56,6 +56,7 @@ AssetData.Golem = {
         Gargoyle   = { assetId = 0, height = 10.5 },   -- hunched, winged
         StormJar   = { assetId = 0, height = 9    },   -- a jar on legs
         Dragonbone = { assetId = 0, height = 13   },   -- towering skeleton
+        Maze       = { assetId = 71922150506963, height = 11 },   -- the Hollow Maze's hedge-and-stone labyrinth golem (its life stages are in StageModels)
     },
 }
 
@@ -95,6 +96,7 @@ AssetData.StageModels = {
         Gargoyle   = 85360440614614,   -- stone guardian with wings and horns
         StormJar   = 90127070400225,   -- glass jar of storm cloud on stone legs
         Dragonbone = 124844006804174,   -- pale bone with ribcage, spine fins and dragon horns
+        Maze       = 123624746289490,   -- baby hedge-and-stone labyrinth golem: leaf sprout, big teal eyes, gold maze belly
         All        = 97151946959544,   -- the event Primordial: white marble with gold
     },
     Young = {
@@ -111,6 +113,7 @@ AssetData.StageModels = {
         Gargoyle   = 138577960470626,   -- stone guardian with wings and horns
         StormJar   = 76449428466688,   -- glass jar of storm cloud on stone legs
         Dragonbone = 123641423182564,   -- pale bone with ribcage, spine fins and dragon horns
+        Maze       = 139885972269659,   -- teenage labyrinth golem: maze-wall ridges, gold maze chest, ivy
         All        = 112097798700099,   -- the event Primordial: white marble with gold
     },
     Elder = {
@@ -127,6 +130,7 @@ AssetData.StageModels = {
         Gargoyle   = 134833935260971,   -- stone guardian with wings and horns
         StormJar   = 137102980932096,   -- glass jar of storm cloud on stone legs
         Dragonbone = 140066674708713,   -- pale bone with ribcage, spine fins and dragon horns
+        Maze       = 136036037067840,   -- elder labyrinth golem: mossy stone, tall maze-wall ridges, deep gold maze chest
         All        = 112622455588150,   -- the event Primordial: white marble with gold
     },
     Ancient = {
@@ -143,6 +147,7 @@ AssetData.StageModels = {
         Gargoyle   = 88893956980538,   -- stone guardian with wings and horns
         StormJar   = 119408960303164,   -- glass jar of storm cloud on stone legs
         Dragonbone = 82391878046515,   -- pale bone with ribcage, spine fins and dragon horns
+        Maze       = 104011302909112,   -- ancient labyrinth golem: emerald hedge, violet-gold maze, floating maze-wall crown
         All        = 136276480675150,   -- the event Primordial: white marble with gold
     },
 }
@@ -330,6 +335,7 @@ AssetData.MaterialMeshes = {
     FrostfireGem = 123351298386815,
     Voidstone = 91156670078621,
     PrismaticShard = 135173389733208,
+    MazeFoot = 128107563770840, MazeHeart = 77150126445937, MazePick = 74531057806425, MazeEye = 118194365780311, MazeCrown = 94179495423788,   -- the Maze Golem's pieces
 }
 
 local MODES = { Auto = true, Skinned = true, Parts = true, Static = true }

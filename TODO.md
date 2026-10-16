@@ -184,6 +184,13 @@ Recommendation: not yet. Six mining zones, the Quarry and pets already give plen
       (5 themed sections Stone, Ember, Frost, Storm, Void with mesh floors, walls and decorations; lobby with the coffin; victory room with the exit arch), `MazeService` (portal in the cavern, run, catches,
       rewards, escape speed-up) and `MazeController` (HUD, danger glow, summary card, and the Zombie Golem's walk, drawn on each client). Played through in Studio: all five sections, a full escape (gold time,
       coins, XP, material bundle, summary card) and the zombie waking and catching a player in the lobby. Meshes are generated (`AssetData.MazeMeshes`, `MazeZombie`); the maze works as plain blocks if they do not load.
+- [x] **Maze Golem** (user request: the maze's very hard reward, a long-term goal; it follows the Infant to Ancient path). Five pieces (Foot from Stone, Heart from Ember, Pickaxe from Frost, Eye from Storm,
+      Crown from Void), 12 of each (60) plus 20 Primordial Ingots craft one Tier 5 Maze Golem. Pieces are bound to the account, the Golem is tradable. At most 2 pieces a day; each section clear rolls its piece
+      (1.5% to 4%, deeper is better), the escape chest rolls 7% for one you still need, and a guaranteed piece after 30 clears with none. Simulated: a player escaping 6 times a day takes about 38 days, one
+      escaping twice a day about 110. The first piece finds the blueprint so the recipe shows progress. Skill 'Labyrinth Mind': each deployed Maze Golem adds 10% (up to 30%) to the maze's coins and XP.
+      Meshes: all five stages and the five pieces are generated (`AssetData.Golem.Elements.Maze`, `StageModels`, `MaterialMeshes`) and were checked in Studio. Rules in `MazeRewards.RollPiece`, tests in `tests/test_maze.lua`.
+- [ ] Maze Golem, still open: not played end to end yet (a real piece drop, the crafting menu, the Golem growing); the piece drop chances are a first guess to tune with real play; the Maze Golem has not been
+      watched walking with the real animator (the stage models are adapted like the others).
 - [ ] Hollow Maze, still open: the Zombie's walk animation and the red edge glow have only been seen standing still (a test walker could not stay ahead of it to film a real chase; watch one by hand); after an escape speed-up the next round still starts on the fixed schedule, so there is a wait of up to about 4 minutes (rounds are clock-aligned across servers);
       `MazeMeshes.Gate` is unused (the gate is a neon barrier); balance numbers (`SectionCoins`, `ESCAPE_CHEST_MULT`) are first guesses (a level 27 escape paid about 1,000 coins).
 

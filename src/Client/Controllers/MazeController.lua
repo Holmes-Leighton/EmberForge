@@ -336,6 +336,15 @@ local function OnEvent(kind, p)
                 Sparks(Color3.fromRGB(255, 232, 120), 60)
             end)
         end
+        if p.piece then
+            task.delay(2.4, function()
+                Banner(string.format("%s FOUND!  %d / %d", string.upper(p.piece.name), p.piece.have, p.piece.need), Color3.fromRGB(255, 120, 255))
+                Flash(Color3.fromRGB(255, 120, 255), 0.35)
+                Sparks(Color3.fromRGB(255, 120, 255), 70)
+            end)
+        elseif p.pieceCapped then
+            infoLbl.Text = "You have found all the Maze pieces you can today"
+        end
         if p.coins then
             task.delay(0.1, function()
                 local t = string.format("+%d coins  +%d XP", p.coins, p.xp or 0)
@@ -351,6 +360,13 @@ local function OnEvent(kind, p)
         Banner("YOU ESCAPED!!", Color3.fromRGB(255, 215, 90))
         Flash(Color3.fromRGB(255, 215, 90), 0.4)
         Sparks(Color3.fromRGB(255, 215, 90), 80)
+        local piece = p.chest and p.chest.piece
+        if piece then
+            task.delay(2.4, function()
+                Banner(string.format("%s FOUND!  %d / %d", string.upper(piece.name), piece.have, piece.need), Color3.fromRGB(255, 120, 255))
+                Sparks(Color3.fromRGB(255, 120, 255), 70)
+            end)
+        end
     elseif kind == "speedup" then
         Banner(string.format("%s escaped! %ds left!", p.name or "Someone", p.seconds or 45), Color3.fromRGB(255, 150, 80))
     elseif kind == "standings" then

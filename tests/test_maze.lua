@@ -369,4 +369,74 @@ local run10 = MW.FullRunCoins(10, true)
 expect(run10 > 350 and run10 < 520 and cap10 / run10 > 5, "a full first run pays " .. run10 .. " coins: about six reach the daily allowance (" .. cap10 .. ")")
 expect(MW.FullRunCoins(10, false) < run10, "later runs pay less than the first of the day")
 
+print("== the Maze Golem pieces: a long goal")
+local always, never2 = function() return 0 end, function() return 0.999 end
+expect(#MD.PIECES == 5 and MD.PIECES[1].section == "Stone" and MD.PIECES[5].section == "Void", "five pieces, one per section")
+local allMaterials = true
+for _, pc in ipairs(MD.PIECES) do local m = MAT.Get(pc.id) if not (m and m.tradeable == false) then allMaterials = false end end
+expect(allMaterials, "every piece is a real material and bound to the account")
+local RDm = load("game/ReplicatedStorage/Shared/Data/RecipeData")
+local bpM = RDm.Blueprints[MD.PIECE_BLUEPRINT]
+local needs = 0
+for _, m in ipairs(bpM.materialsRequired) do if MD.PieceIndex(m.id) then needs += m.qty expect(m.qty == MD.PIECE_NEED, m.id .. " x" .. m.qty) end end
+expect(bpM.tier == 5 and needs == 5 * MD.PIECE_NEED, "the Maze Golem is a Tier 5 craft of " .. needs .. " pieces")
+
+d = player(10)
+local pc, why = MW.RollPiece(d, 3, false, TODAY, { rng = never2 })
+expect(pc == nil and why == nil, "a bad roll gives nothing")
+pc = MW.RollPiece(d, 3, false, TODAY, { rng = always })
+expect(pc and pc.id == "MazePick" and d.Inventory.MazePick == 1, "clearing Frost with a good roll gives the Frost piece")
+expect(table.find(d.Blueprints, MD.PIECE_BLUEPRINT) and pc.firstBlueprint, "the first piece finds the Maze Golem blueprint")
+pc = MW.RollPiece(d, 5, false, TODAY, { rng = always })
+expect(pc and not pc.firstBlueprint, "only the first piece gives the blueprint")
+local capReached, capWhy = MW.RollPiece(d, 1, false, TODAY, { rng = always })
+expect(capReached == nil and capWhy == "capped", "no more than " .. MD.PIECE_CAP_PER_DAY .. " pieces a day")
+expect(MW.RollPiece(d, 1, false, TODAY + 1, { rng = always }) ~= nil, "and the allowance returns tomorrow")
+
+d = player(10)
+d.Inventory.MazeFoot = MD.PIECE_NEED
+pc = MW.RollPiece(d, 1, false, TODAY, { rng = always })
+expect(pc and pc.id ~= "MazeFoot", "a piece you have enough of is replaced by one you still need")
+d = player(10)
+for _, p2 in ipairs(MD.PIECES) do d.Inventory[p2.id] = MD.PIECE_NEED end
+local full, fullWhy = MW.RollPiece(d, 2, false, TODAY, { rng = always })
+expect(full == nil and fullWhy == "full", "with a full set nothing drops until you craft")
+d = player(10)
+pc = MW.RollPiece(d, 1, true, TODAY, { rng = function() return 0 end })
+expect(pc ~= nil, "the escape chest can drop a piece too")
+
+d = player(10)
+local clears = 0
+local got
+repeat
+    clears += 1
+    got = MW.RollPiece(d, 1, false, TODAY + clears, { rng = never2 })
+until got or clears > MD.PIECE_PITY + 2
+expect(got and clears == MD.PIECE_PITY, "bad luck is capped: a guaranteed piece after " .. MD.PIECE_PITY .. " section clears (took " .. clears .. ")")
+
+-- how long does a keen player take? 6 full escapes a day, a fixed seed of luck
+local rngState = 12345
+local function lcg() rngState = (rngState * 1103515245 + 12345) % 2147483648 return rngState / 2147483648 end
+local function daysToSet(runsPerDay)
+    local pd = player(10)
+    for day = 1, 400 do
+        for _ = 1, runsPerDay do
+            for section = 1, 5 do MW.RollPiece(pd, section, false, TODAY + day, { rng = lcg }) end
+            MW.RollPiece(pd, 5, true, TODAY + day, { rng = lcg })
+        end
+        local done = true
+        for _, p2 in ipairs(MD.PIECES) do if (pd.Inventory[p2.id] or 0) < MD.PIECE_NEED then done = false end end
+        if done then return day end
+    end
+    return 400
+end
+local keen, casual = daysToSet(6), daysToSet(2)
+print("   days to a full set: 6 escapes a day = " .. keen .. ", 2 a day = " .. casual)
+expect(keen >= 35 and keen <= 70, "even a keen player needs 5-10 weeks (" .. keen .. " days)")
+expect(casual >= keen and casual <= 220, "a casual player still gets there (" .. casual .. " days)")
+
+local GDm = load("game/ReplicatedStorage/Shared/Data/GolemData")
+expect(math.abs(MW.GolemBonus(1) - 0.10) < 1e-9 and math.abs(MW.GolemBonus(9) - 0.30) < 1e-9, "Labyrinth Mind: +10% a Golem, capped at +30%")
+expect(GDm.Specials.Maze.tier == 5 and GDm.Elements.Maze.special, "the Maze Golem is a Tier 5 special")
+
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")

@@ -76,6 +76,29 @@ function MazeData.RareFor(section)
     return MazeData.RareDrops[#MazeData.RareDrops]
 end
 
+-- ── The Maze Golem: the long-term goal ───────────────────────────────────────────
+-- The maze is the only place the pieces of a Maze Golem are found, one kind per section. It takes PIECE_NEED of each of the five to craft one (Forge level for Tier 5), the pieces are
+-- bound to the account (not tradable), and at most PIECE_CAP_PER_DAY can be found in a day, so even a player who runs the maze every day needs weeks. A section's piece drops from
+-- clearing that section; the escape chest can drop any piece you still need. A "pity" counter guarantees a drop after PIECE_PITY section clears with none.
+MazeData.PIECES = {                       -- index = the section it comes from
+    { id = "MazeFoot",  name = "Maze Golem Foot",  section = "Stone" },
+    { id = "MazeHeart", name = "Maze Golem Heart", section = "Ember" },
+    { id = "MazePick",  name = "Maze Golem Pickaxe",  section = "Frost" },
+    { id = "MazeEye",   name = "Maze Golem Eye",   section = "Storm" },
+    { id = "MazeCrown", name = "Maze Golem Crown", section = "Void" },
+}
+MazeData.PIECE_NEED        = 12            -- of each piece (60 in all) per Maze Golem
+MazeData.PIECE_CAP_PER_DAY = 2
+MazeData.PIECE_CHANCE      = { 0.015, 0.02, 0.025, 0.03, 0.04 }   -- per section clear (deeper is better)
+MazeData.PIECE_ESCAPE      = 0.07          -- the escape chest
+MazeData.PIECE_PITY        = 30            -- section clears with no piece before one is guaranteed
+MazeData.PIECE_BLUEPRINT   = "BP_Maze_T5"  -- found with the first piece, so the recipe shows your progress
+
+function MazeData.PieceIndex(id)
+    for i, p in ipairs(MazeData.PIECES) do if p.id == id then return i end end
+    return nil
+end
+
 -- Main player XP (the XP that levels you up) for reaching a section and for escaping
 function MazeData.PlayerXp(section) return 12 + 6 * section end
 MazeData.ESCAPE_PLAYER_XP = 250

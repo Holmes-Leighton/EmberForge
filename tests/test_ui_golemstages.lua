@@ -186,7 +186,7 @@ expect(ancientCard:FindFirstChild("StageLabel").Text:find("fully grown") and anc
 print("== the collection card")
 local seenData = { Golems = { { element = "Ember", tier = 1, grown = 60 * 3600 } }, GolemsSeen = { ["Frost:Infant"] = true } }
 local lines = Inv._CollectionLines(seenData)
-expect(lines.found == 5 and lines.total == 70 and lines.title:find("5 / 70"), "title counts the forms seen: " .. lines.title)
+expect(lines.found == 5 and lines.total == 75 and lines.title:find("5 / 75"), "title counts the forms seen: " .. lines.title)
 expect(#lines.rows == #GD.CollectionOrder, "one row per Golem type")
 local emberRow
 for _, r in ipairs(lines.rows) do if r.name == "Ember" then emberRow = r.text end end

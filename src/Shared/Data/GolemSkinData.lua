@@ -56,6 +56,7 @@ GolemSkinData.Specials = {
     Alchemist  = { color = Color3.fromRGB(120, 190, 160), material = Enum.Material.Glass,     accent = Color3.fromRGB(130, 255, 130), detail = "vials", transparency = 0.2 },
     Gargoyle   = { color = Color3.fromRGB(104, 108, 120), material = Enum.Material.Slate,     accent = Color3.fromRGB(255, 100, 70),  detail = "wings" },
     StormJar   = { color = Color3.fromRGB(150, 172, 214), material = Enum.Material.Glass,     accent = Color3.fromRGB(200, 170, 255), detail = "jar", transparency = 0.3 },
+    Maze       = { color = Color3.fromRGB(96, 124, 98),   material = Enum.Material.Slate,     accent = Color3.fromRGB(150, 255, 170), detail = "stitches" },
     Dragonbone = { color = Color3.fromRGB(228, 218, 192), material = Enum.Material.Limestone, accent = Color3.fromRGB(255, 120, 60),  detail = "skull" },
 }
 

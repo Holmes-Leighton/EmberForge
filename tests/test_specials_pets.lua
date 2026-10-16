@@ -22,7 +22,7 @@ for _, id in ipairs(GD.SpecialOrder) do
     local bp = RD.GetForElement(id, def.tier)
     expect(bp ~= nil and bp.element == id, id .. " has a blueprint at tier " .. def.tier)
 end
-expect(n == 8, "eight special types")
+expect(n == 9, "nine special types")
 local d1 = Names.Describe({ element = "StormJar", tier = 4 })
 expect(d1.name == "Storm in a Jar Golem" and d1.rarity == "Epic", "special Golems are named '<Name> Golem' with their tier's rarity (" .. d1.name .. ")")
 

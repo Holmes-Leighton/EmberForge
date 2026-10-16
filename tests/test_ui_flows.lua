@@ -129,7 +129,7 @@ expect(anvil.Enabled == true, "pressing E at the anvil opens the menu")
 local list = anvil:FindFirstChild("GolemList", true)
 local rows = 0
 for _, c in ipairs(list:GetChildren()) do if c:IsA("GuiButton") then rows += 1 end end
-expect(rows == 33, "anvil lists every Golem, 6 owned plus the 27 still to find (" .. rows .. ")")
+expect(rows == 34, "anvil lists every Golem, 6 owned plus the 28 still to find (" .. rows .. ")")
 local firstRow, lastRow
 for _, c in ipairs(list:GetChildren()) do
     if c:IsA("GuiButton") and c.LayoutOrder == 1 then firstRow = c end

@@ -42,6 +42,9 @@ for id, bp in pairs(RD.Blueprints) do
     elseif bp.source == RD.Source.Challenge then how = fromChallenge[id] and "challenge" or nil
     elseif bp.source == RD.Source.RareDrop then
         how = (not bp.isEventGolem and bp.tier >= 2 and bp.tier <= 4 and (bp.forgeLevelRequired or 1) - 2 <= maxForge) and "rare drop" or nil
+    elseif bp.source == RD.Source.MazePieces then
+        local MZD = load("game/ReplicatedStorage/Shared/Data/MazeData")
+        how = (bp.tier <= maxTier and MZD.PIECE_BLUEPRINT == id) and "maze pieces" or nil
     elseif bp.source == RD.Source.SeasonalEvent then
         for _, s in pairs(SeD.Seasons) do
             if s.eventGolemBlueprintId == id then how = "season" end
@@ -69,6 +72,9 @@ local function add(id) if id then mat[id] = true end end
 for _, it in ipairs(SD.Items) do if it.kind == "material" then add(it.id) end end
 for _, c in ipairs(CD.Daily) do for _, m in ipairs((c.rewards and c.rewards.materials) or {}) do add(m.id) end end
 for _, c in ipairs(CD.Weekly) do for _, m in ipairs((c.rewards and c.rewards.materials) or {}) do add(m.id) end end
+
+local MZE = load("game/ReplicatedStorage/Shared/Data/MazeData")
+for _, pc in ipairs(MZE.PIECES) do add(pc.id) end            -- (found in the Hollow Maze)
 
 -- zones: a zone is reachable if its unlock is satisfiable
 print("== every mining zone can be unlocked")

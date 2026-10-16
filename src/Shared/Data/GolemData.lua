@@ -143,7 +143,7 @@ GolemData.ElementMultipliers = {
 -- what the player sees, so keep the two in step.
 --   tier   the tier its blueprint crafts at (rarity follows the tier)
 --   mult   stat multipliers, like ElementMultipliers
-GolemData.SpecialOrder = { "Patchwork", "Woven", "Coral", "Clockwork", "Alchemist", "Gargoyle", "StormJar", "Dragonbone" }
+GolemData.SpecialOrder = { "Patchwork", "Woven", "Coral", "Clockwork", "Alchemist", "Gargoyle", "StormJar", "Dragonbone", "Maze" }
 
 GolemData.Specials = {
     Patchwork = {
@@ -197,6 +197,13 @@ GolemData.Specials = {
         skill = { name = "Hoarder's Instinct", text = "Each Dragonbone you deploy doubles your chance to discover new blueprints (up to 3x).",
             params = { blueprintPer = 1.0, blueprintCap = 2.0 } },
         mult = { MiningRate = 1.25, CarryCapacity = 1.10, Efficiency = 1.00, Luck = 1.15 },
+    },
+    Maze = {
+        displayName = "Maze", tier = 5, statBias = "Everything",
+        description = "Built from the pieces of the Hollow Maze, which only gives them up very rarely. It remembers every way out.",
+        skill = { name = "Labyrinth Mind", text = "Each Maze Golem you deploy adds 10% to the coins and XP the Hollow Maze pays you (up to 30%).",
+            params = { mazePer = 0.10, mazeCap = 0.30 } },
+        mult = { MiningRate = 1.35, CarryCapacity = 1.20, Efficiency = 1.15, Luck = 1.20 },
     },
 }
 
