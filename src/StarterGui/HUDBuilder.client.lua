@@ -464,58 +464,9 @@ UserInputService.InputBegan:Connect(function(input, processed)
     end
 end)
 
--- ── Pending resources (per type) shown above the Collect button ──────────────
-local pendingFrame = Instance.new("Frame")
-pendingFrame.Name = "PendingFrame"
-pendingFrame.AnchorPoint = Vector2.new(0.5, 1)
-pendingFrame.Size = UDim2.new(0, 260, 0, 0)
-pendingFrame.AutomaticSize = Enum.AutomaticSize.Y
-pendingFrame.Position = UDim2.new(0.5, 0, 1, -184)
-pendingFrame.BackgroundColor3 = Theme.Colors.Panel
-pendingFrame.BackgroundTransparency = 0.15
-pendingFrame.BorderSizePixel = 0
-pendingFrame.Visible = false
-pendingFrame.Parent = gui
-Theme.AddCorner(pendingFrame, Theme.Corner.Large)
-Theme.AddPadding(pendingFrame, 6, 10, 6, 10)
+-- (There is no Collect button or pending list any more: the server banks what the Golems mine every few seconds, see CollectService.)
 
-local pendingLabel = Instance.new("TextLabel")
-pendingLabel.Name = "PendingLabel"
-pendingLabel.Size = UDim2.new(1, 0, 0, 0)
-pendingLabel.AutomaticSize = Enum.AutomaticSize.Y
-pendingLabel.BackgroundTransparency = 1
-pendingLabel.Text = ""
-pendingLabel.TextColor3 = Theme.Colors.TextPrimary
-pendingLabel.Font = Theme.Fonts.Body
-pendingLabel.TextSize = 14
-pendingLabel.TextXAlignment = Enum.TextXAlignment.Left
-pendingLabel.TextYAlignment = Enum.TextYAlignment.Top
-pendingLabel.Parent = pendingFrame
-
--- ── Bottom action bar ─────────────────────────────────────────────────────────
-local bottomBar = Instance.new("Frame")
-bottomBar.Name = "BottomBar"
-bottomBar.Size = UDim2.new(0, 220, 0, 52)
-bottomBar.Position = UDim2.new(0.5, -110, 1, -176)
-bottomBar.BackgroundColor3 = Theme.Colors.Panel
-bottomBar.BackgroundTransparency = 0.1
-bottomBar.BorderSizePixel = 0
-bottomBar.Parent = gui
-Theme.AddCorner(bottomBar, Theme.Corner.Large)
-
--- The guide bubble ("Your Golems need you") sits above its hotbar button, in the space the Collect bar would otherwise use. So the Collect bar
--- is placed relative to the hotbar's real (scaled) size: just above the bubble's room. Full size puts it 228 px up, a phone's smaller
--- hotbar (scale 0.6) puts it about 166 px up, and every size in between (tablets, large phones) clears the bubble too.
-local function PlaceCollectBar()
-    local s = hotbarScale.Scale
-    local up = 72 + 156 * s
-    bottomBar.Position = UDim2.new(0.5, -110, 1, -up)
-    pendingFrame.Position = UDim2.new(0.5, 0, 1, -(up + 8))
-end
-PlaceCollectBar()
-hotbarScale:GetPropertyChangedSignal("Scale"):Connect(PlaceCollectBar)
-
--- While climbing the Sky Tower the mining panels (player card, Collect bar and its list) only get in the way of the view: the tower has its own HUD
+-- While climbing the Sky Tower the mining panels (the player card) only get in the way of the view: the tower has its own HUD
 -- The hotbar and the side menu go too: all that stays is a button to go back to the Forge.
 local leaveBtn = Theme.Button(gui, "Back to the Forge", Theme.Colors.Accent, Color3.fromRGB(255, 255, 255), "LeaveChallengeButton")
 leaveBtn.AnchorPoint, leaveBtn.Position, leaveBtn.Size, leaveBtn.TextSize, leaveBtn.Visible = Vector2.new(1, 0), UDim2.new(1, -8, 0, 8), UDim2.new(0, 150, 0, 36), 14, false
@@ -525,30 +476,13 @@ end)
 local function SyncTower()
     local climbing = InChallenge()
     mainFrame.Visible = not climbing
-    bottomBar.Visible = not climbing
     hotbar.Visible = not climbing
     QueueRelayout()                                                 -- shows or hides the side menu
     leaveBtn.Visible = climbing
-    if climbing then pendingFrame.Visible = false end
 end
 LocalPlayer:GetAttributeChangedSignal("TowerLevel"):Connect(SyncTower)
 LocalPlayer:GetAttributeChangedSignal("MazeSection"):Connect(SyncTower)
 SyncTower()
-
--- Collect button
-local collectBtn = Theme.Button(bottomBar, "⛏  Collect Resources", Theme.Colors.Accent, Color3.fromRGB(255,255,255), "CollectButton")
-collectBtn.Size = UDim2.new(1, -12, 0, 38)
-collectBtn.Position = UDim2.new(0, 6, 0, 7)
-collectBtn.TextSize = 15
-
--- pulse animation on collect button
-local TweenService = game:GetService("TweenService")
-local function pulseCollect()
-    local t1 = TweenService:Create(collectBtn, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-        { BackgroundColor3 = Theme.Colors.AccentBright })
-    t1:Play()
-end
-task.spawn(pulseCollect)
 
 -- ── Active boosts strip ────────────────────────────────────────────────────────
 local boostStrip = Instance.new("Frame")

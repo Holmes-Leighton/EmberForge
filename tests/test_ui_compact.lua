@@ -38,18 +38,12 @@ for _, c in ipairs(PlayerGui:GetChildren()) do if c.Name == "HUD" then hud = c e
 local many = {}
 for i = 1, 9 do many["Mat" .. i] = i * 10 end
 HUDController.SetPending(many)
-local frame = hud:FindFirstChild("PendingFrame", true)
-expect(frame.Visible == false, "on a phone the list is hidden however much was mined")
-expect(hud:FindFirstChild("CollectButton", true).Text:find("Collect %(450%)") ~= nil, "the Collect button still shows the total: " .. hud:FindFirstChild("CollectButton", true).Text)
+expect(hud:FindFirstChild("PendingFrame", true) == nil and hud:FindFirstChild("CollectButton", true) == nil, "there is no pending list or Collect button on a phone (the server banks it)")
 
-print("== on a desktop the list is a short summary")
+print("== on a desktop there is no list either")
 uis.TouchEnabled, uis.KeyboardEnabled = false, true
 workspace.CurrentCamera.ViewportSize = Vector2.new(1920, 1080)
 HUDController.SetPending(many)
-expect(frame.Visible == true, "shown")
-local lines = 0
-for _ in hud:FindFirstChild("PendingLabel", true).Text:gmatch("[^%c]+") do lines += 1 end
-expect(lines == 4, "the top 3 plus a '+ 6 more' line, not nine (" .. lines .. " lines)")
-expect(hud:FindFirstChild("PendingLabel", true).Text:find("%+ 6 more"), "says how many more")
+expect(hud:FindFirstChild("PendingFrame", true) == nil and hud:FindFirstChild("PendingLabel", true) == nil, "the mined-items list is gone (it is banked by itself)")
 
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")

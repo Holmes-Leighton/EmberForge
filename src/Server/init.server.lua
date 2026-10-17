@@ -33,6 +33,7 @@ local CartCourseService  = require(script.Services.CartCourseService)
 local CourierService     = require(script.Services.CourierService)
 local TowerService       = require(script.Services.TowerService)
 local MazeService        = require(script.Services.MazeService)
+local CollectService     = require(script.Services.CollectService)
 local Utils              = require(game.ReplicatedStorage.Shared.Modules.Utils)
 local GolemNames         = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
 local GolemData          = require(game.ReplicatedStorage.Shared.Data.GolemData)
@@ -49,6 +50,7 @@ CartBountyService.Init()           -- the Mine Cart Delivery bounty
 CartCourseService.Init()           -- the Cart Run courses (CartCourseData): winding rails with tunnels, hills, gates and bridges
 CourierService.Init()              -- the Courier Run obstacle courses (CourierData): carry a crate to the drop-off
 TowerService.Init()                -- the Sky Tower (TOWER_DESIGN.md): a new tower to climb every round
+CollectService.Init()              -- banks what the Golems mine, by itself, except in the Sky Tower and the Hollow Maze
 MazeService.Init()                 -- the Hollow Maze (MAZE_DESIGN.md): a new maze, and a Zombie Golem to outrun, every round
 
 -- Start periodic auto-save and leaderboard flush
@@ -119,7 +121,7 @@ local function OnPlayerAdded(player)
         end)
     end
     if elapsed and elapsed > 60 then
-        -- Offline haul goes into the pending pool so the player collects it with the button
+        -- Offline haul goes into the pending pool (CollectService banks it a few seconds after they join)
         local minedAway = 0
         for matId, qty in pairs(gains) do
             if matId:sub(1, 12) ~= "__blueprint:" then
@@ -135,7 +137,7 @@ local function OnPlayerAdded(player)
                 end)
             end
         end
-        -- tell them what they came back to (the screen offers to collect it)
+        -- tell them what they came back to
         if minedAway > 0 and elapsed > 300 then
             local haul = {}
             for matId, qty in pairs(gains) do if matId:sub(1, 12) ~= "__blueprint:" then haul[matId] = qty end end
@@ -281,7 +283,7 @@ task.spawn(function()
                     ChallengeService.TrackEvent(player, "SmeltComplete", { count = job.quantity })
                 end
 
-                -- Tell the client the new pending totals (shown on the Collect button)
+                -- Tell the client the new pending totals (the badge on the Bag)
                 if next(gains) then
                     RemoteEvents.PendingUpdate:FireClient(player, data.Pending)
                 end

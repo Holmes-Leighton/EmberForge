@@ -35,10 +35,6 @@ function NextGoal.For(data)
     for _, g in ipairs(golems) do if g.deployed then deployed = true break end end
     if not deployed then return "Deploy a Golem from the Forge menu" end
 
-    local pending = 0
-    for _, n in pairs(data.Pending or {}) do pending += n end
-    if pending > 0 then return "Press Collect to bank what your Golems mined" end
-
     local level, xp = data.PlayerLevel or 1, data.PlayerXP or 0
     local forge, forgeXP = data.ForgeLevel or 1, data.ForgeXP or 0
     -- the nearest thing still locked

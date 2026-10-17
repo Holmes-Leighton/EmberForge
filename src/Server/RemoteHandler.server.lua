@@ -114,31 +114,12 @@ RemoteEvents.CollectResources.OnServerEvent:Connect(function(player)
             return
         end
 
-        -- Move everything the Golems have mined into the inventory
-        local gains, total = {}, 0
-        for matId, qty in pairs(data.Pending or {}) do
-            if qty > 0 then
-                PlayerDataService.AddMaterial(player, matId, qty)
-                gains[matId] = qty
-                total = total + qty
-            end
-        end
-        data.Pending = {}
-        for _, g in ipairs(data.Golems or {}) do
-            g._carriedResources = 0   -- empty their bags (recalled Golems too)
-        end
-        PlayerDataService.MarkDirty(player)
-        RemoteEvents.PendingUpdate:FireClient(player, data.Pending)
-
+        -- Move everything the Golems have mined into the inventory (the server also does this by itself every few seconds: see CollectService)
+        local total = require(script.Parent.Services.CollectService).Collect(player, -1)
         if total == 0 then
             RemoteEvents.Notify:FireClient(player, "Nothing to collect",
                 "Your Golems haven't mined anything yet. Deploy one from the Forge menu.")
-            return
         end
-
-        ChallengeService.TrackEvent(player, "GolemCollect", { count = 1 })
-        Analytics.Funnel(player, data, "collect", 4, "FirstCollect")
-        RemoteEvents.ResourcesCollected:FireClient(player, gains, -1)   -- -1 marks a manual collect
     end)
 end)
 

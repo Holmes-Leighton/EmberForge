@@ -1,4 +1,4 @@
--- "Welcome back": what the Golems mined while the player was away, with a button to bank it. Opened by the server's WelcomeBack event.
+-- "Welcome back": what the Golems mined while the player was away (it is banked by itself a moment after they join). Opened by the server's WelcomeBack event.
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -55,20 +55,12 @@ local note = Theme.Label(card, "", Theme.TextSize.Small, Theme.Colors.TextDim, T
 note.Position = UDim2.new(0, 22, 0, 214)
 note.Size = UDim2.new(1, -44, 0, 36)
 
-local collect = Theme.Button(card, "⛏  Collect now", Theme.Colors.Accent, Color3.fromRGB(255, 255, 255), "CollectNow")
-collect.Size = UDim2.new(0, 220, 0, 44)
-collect.Position = UDim2.new(0, 22, 1, -62)
-collect.TextSize = 17
-collect.MouseButton1Click:Connect(function()
-    RemoteEvents.CollectResources:FireServer()
-    gui.Enabled = false
-end)
-
-local later = Theme.Button(card, "Later", Theme.Colors.PanelAlt, Theme.Colors.TextSecondary, "Later")
-later.Size = UDim2.new(0, 120, 0, 44)
-later.Position = UDim2.new(1, -142, 1, -62)
-later.TextSize = 15
-later.MouseButton1Click:Connect(function() gui.Enabled = false end)
+local ok = Theme.Button(card, "Nice!", Theme.Colors.Accent, Color3.fromRGB(255, 255, 255), "WelcomeOk")
+ok.Size = UDim2.new(0, 200, 0, 44)
+ok.AnchorPoint = Vector2.new(0.5, 0)
+ok.Position = UDim2.new(0.5, 0, 1, -62)
+ok.TextSize = 17
+ok.MouseButton1Click:Connect(function() gui.Enabled = false end)
 
 RemoteEvents.WelcomeBack.OnClientEvent:Connect(function(seconds, haul, capHours, capped)
     local lines, total = {}, 0

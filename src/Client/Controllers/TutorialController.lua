@@ -29,13 +29,13 @@ local PAGES = {
         "<b>Golems mine for you</b>, even while you are away from the game.",
         "You turn what they mine into <b>stronger Golems</b>, which mine more and open up new mining zones.",
         "Grow your <b>Forge</b>, build your own <b>Quarry</b>, trade with other players and climb the <b>Leaderboard</b>.",
-        "Come back, collect, craft and send them out again: that is the loop.",
+        "Come back, craft and send them out again: that is the loop.",
     } },
     { heading = "🚀  Your first ten minutes", lines = {
         "<b>1.</b>  Stand on the glowing <b>Starter Pad</b> under the Mining Pads gate. It gives free Basic Ore and Coal.",
         "<b>2.</b>  Press <b>E</b> at the <b>Golem Anvil</b> near spawn, pick a Golem and forge it (10 Basic Ore + 5 Coal).",
         "<b>3.</b>  Open the <b>Forge menu (F)</b> and deploy your Golem to a mining zone.",
-        "<b>4.</b>  Press <b>Collect Resources</b> to bank what it mined. Then do it all again with a better Golem.",
+        "<b>4.</b>  Your Golem banks what it mines by itself: watch it land in your <b>Bag</b>. Then do it all again with a better Golem.",
     } },
     { heading = "⚒  Materials and crafting", lines = {
         "Golems bring back <b>raw materials</b>. Some are smelted in your Forge into <b>refined</b> ones: it takes time, and a Speed-Up finishes a smelt at once.",
@@ -390,7 +390,7 @@ function TutorialController.Init(playerData)
             ore  += gains.BasicOre or 0
             coal += gains.Coal or 0
             if ore >= 10 and coal >= 5 then Advance(1) end
-        elseif stepIndex == 4 and elapsed == -1 and next(gains) ~= nil then   -- -1 = manual Collect
+        elseif stepIndex == 4 and (elapsed == -1 or elapsed == -2) and next(gains) ~= nil then   -- -1 = asked for, -2 = banked by itself
             Advance(4)
         end
     end)

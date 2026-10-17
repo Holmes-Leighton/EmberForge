@@ -45,7 +45,17 @@ local stubs = {
     ReplicatedStorage = { FindFirstChild = function() return nil end }, UserService = {},
 }
 local ColorMeta = {}
-ColorMeta.__index = { Lerp = function(a, b, t) return setmetatable({ R = a.R + (b.R - a.R) * t, G = a.G + (b.G - a.G) * t, B = a.B + (b.B - a.B) * t }, ColorMeta) end }
+ColorMeta.__index = { Lerp = function(a, b, t) return setmetatable({ R = a.R + (b.R - a.R) * t, G = a.G + (b.G - a.G) * t, B = a.B + (b.B - a.B) * t }, ColorMeta) end,
+    ToHSV = function(c)                                   -- hue, saturation, value (0..1)
+        local mx, mn = math.max(c.R, c.G, c.B), math.min(c.R, c.G, c.B)
+        local d = mx - mn
+        local h = 0
+        if d > 0 then
+            if mx == c.R then h = ((c.G - c.B) / d) % 6 elseif mx == c.G then h = (c.B - c.R) / d + 2 else h = (c.R - c.G) / d + 4 end
+            h = h / 6
+        end
+        return h, mx == 0 and 0 or d / mx, mx
+    end }
 Color3 = { fromRGB = function(r, g, b) return setmetatable({ R = r / 255, G = g / 255, B = b / 255 }, ColorMeta) end,
            new = function(r, g, b) return setmetatable({ R = r, G = g, B = b }, ColorMeta) end }
 UDim = { new = function(s, o) return { Scale = s, Offset = o } end }
