@@ -134,7 +134,7 @@ local function Step(now)
             if running then
                 track = RunTrack(char, hum)
                 if track then
-                    local t = math.clamp((hum.WalkSpeed - SpeedData.BASE_WALK) / (SpeedData.PER_LEVEL * SpeedData.MAX_LEVEL), 0, 1)
+                    local t = math.clamp((hum.WalkSpeed - SpeedData.NORMAL_WALK) / (SpeedData.PER_LEVEL * SpeedData.MAX_LEVEL), 0, 1)
                     track:AdjustSpeed(1 + 0.8 * t)
                     if not track.IsPlaying then track:Play(0.15) end
                 end

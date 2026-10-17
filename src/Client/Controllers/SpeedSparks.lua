@@ -89,7 +89,7 @@ local function Step()
                 rigs[char] = rig
                 char.AncestryChanged:Connect(function(_, parent) if not parent then rigs[char] = nil end end)
             end
-            local bonus = math.max(0, hum.WalkSpeed - SpeedData.BASE_WALK)
+            local bonus = math.max(0, hum.WalkSpeed - SpeedData.NORMAL_WALK)
             local v = root.AssemblyLinearVelocity
             local onPad = char:GetAttribute("OnPad") == true                -- running on the spot on a mining pad (PadTreadmill): a few sparks even at normal speed
             local running = (Vector3.new(v.X, 0, v.Z).Magnitude > 8 and hum.FloorMaterial ~= Enum.Material.Air) or onPad

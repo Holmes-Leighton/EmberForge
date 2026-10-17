@@ -11,9 +11,9 @@ MazeData.SECTIONS = { "Stone", "Ember", "Frost", "Storm", "Void" }     -- west t
 MazeData.COLS     = 8                                       -- cells across one section
 MazeData.ROWS     = 10                                      -- cells down the maze
 MazeData.CELL     = 14                                      -- studs
-MazeData.WALL_H   = 16                                      -- studs: too tall to jump or see over
+MazeData.WALL_H   = 26                                      -- studs: too tall to jump or see over (the camera is also held close while you are in the maze)
 MazeData.WALL_T   = 2                                       -- studs thick
-MazeData.ROOF_H   = 19                                      -- the roof (so nobody can look down on the maze or climb out)
+MazeData.ROOF_H   = 27                                      -- the roof (so nobody can look down on the maze or climb out)
 -- the share of each section's dead ends that are opened into loops, so the maze has loops to run round (Stone has the most, Void the least)
 MazeData.BRAID    = { 0.45, 0.38, 0.30, 0.22, 0.15 }
 

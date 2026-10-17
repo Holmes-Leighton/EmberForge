@@ -1,9 +1,11 @@
--- Movement speed levels: trained by standing on mining pads, so a pad pays materials AND speed. Level 0 is Roblox's normal walk (16); each level adds a little.
+-- Movement speed levels: trained by standing on mining pads, so a pad pays materials AND speed. Level 0 is a little quicker than Roblox's normal walk (19, not 16); each level adds a little.
 -- Each pad only trains speed up to its own cap (PadData speedCap), so climbing the levels means moving up to the higher pads. The Sky Tower is built for the
 -- normal pace (no bonus there); the Hollow Maze keeps the Zombie Golem in step (MazeData.ZombieScale).
 local SpeedData = {}
 
-SpeedData.BASE_WALK  = 16
+SpeedData.BASE_WALK  = 16         -- Roblox's normal walk: the pace the Sky Tower is built for (no bonus there)
+SpeedData.HUB_BONUS  = 3          -- everywhere else everyone walks a little faster than that, before any speed levels
+SpeedData.NORMAL_WALK = SpeedData.BASE_WALK + SpeedData.HUB_BONUS         -- level 0 outside the tower (the "normal" pace the speed bonus is measured from)
 SpeedData.MAX_LEVEL  = 200
 SpeedData.PER_LEVEL  = 0.1        -- studs/s per level: level 200 walks at 36
 SpeedData.NOTICE_EVERY = 5        -- a level-up message every this many levels (the HUD row shows every level)
@@ -23,7 +25,7 @@ function SpeedData.XpToNext(level)
 end
 
 function SpeedData.WalkSpeed(level)
-    return SpeedData.BASE_WALK + SpeedData.PER_LEVEL * math.clamp(level or 0, 0, SpeedData.MAX_LEVEL)
+    return SpeedData.NORMAL_WALK + SpeedData.PER_LEVEL * math.clamp(level or 0, 0, SpeedData.MAX_LEVEL)
 end
 
 return SpeedData

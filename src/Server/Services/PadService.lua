@@ -385,7 +385,7 @@ local function TrainSpeed(player, data, def)
         need = SpeedData.XpToNext(level)
         data.SpeedLevel = level
         if level % SpeedData.NOTICE_EVERY == 0 or level >= cap then
-            RemoteEvents.Notify:FireClient(player, "Speed level " .. level, string.format("You now walk at %.1f (normal is %d).", SpeedData.WalkSpeed(level), SpeedData.BASE_WALK))
+            RemoteEvents.Notify:FireClient(player, "Speed level " .. level, string.format("You now walk at %.1f (normal is %d).", SpeedData.WalkSpeed(level), SpeedData.NORMAL_WALK))
         end
     end
     data.SpeedXp = (need and level < cap) and xp or 0                 -- (at the cap the bar waits, empty)

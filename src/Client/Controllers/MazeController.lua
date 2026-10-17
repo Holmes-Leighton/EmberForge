@@ -30,6 +30,19 @@ local panelCompact = nil
 
 local function ServerNow() return workspace:GetServerTimeNow() end
 
+-- While you are in the maze the camera cannot be pulled far back and up to look down over the walls
+local CAMERA_ZOOM_LIMIT = 16
+local savedZoom
+local function HoldCamera(inMaze)
+    if inMaze and not savedZoom then
+        savedZoom = LocalPlayer.CameraMaxZoomDistance
+        LocalPlayer.CameraMaxZoomDistance = CAMERA_ZOOM_LIMIT
+    elseif not inMaze and savedZoom then
+        LocalPlayer.CameraMaxZoomDistance = savedZoom
+        savedZoom = nil
+    end
+end
+
 local function Clock(seconds)
     seconds = math.max(0, math.floor(seconds))
     return string.format("%d:%02d", seconds // 60, seconds % 60)
@@ -349,6 +362,7 @@ end
 local noRunSince
 local function Update(dt, now)
     local zx, zz, zstate = StepZombie(dt, now)
+    HoldCamera(LocalPlayer:GetAttribute("MazeSection") ~= nil)
     if not (hud and hud.Enabled) then return end
     local section = LocalPlayer:GetAttribute("MazeSection")
     if section == nil then                                          -- safety net: no run on the server for a few seconds means no HUD
