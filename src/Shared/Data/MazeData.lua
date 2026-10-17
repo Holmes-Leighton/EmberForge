@@ -20,6 +20,7 @@ MazeData.BRAID    = { 0.45, 0.38, 0.30, 0.22, 0.15 }
 -- ── The round ─────────────────────────────────────────────────────────────────
 MazeData.GATHER_SECONDS    = 20     -- players arrive; the gate is shut
 MazeData.HEADSTART_SECONDS = 25     -- the gate opens; the Zombie Golem sleeps
+MazeData.LATE_ENTRY_CUTOFF = 60     -- you can still walk in until this many seconds before the hunt ends (most players arrive mid-round, so a short entry window left the portal shut most of the time)
 MazeData.HUNT_SECONDS      = 300    -- the longest a hunt lasts
 MazeData.INTERMISSION      = 25
 MazeData.ESCAPE_SPEEDUP    = 45     -- once someone escapes, the hunt has at most this long left

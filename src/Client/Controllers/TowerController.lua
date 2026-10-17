@@ -102,7 +102,7 @@ local function BuildHud()
     badge = panel
     badgeScale = Instance.new("UIScale")
     badgeScale.Parent = panel
-    panel.AnchorPoint, panel.Position, panel.Size = Vector2.new(0.5, 0), UDim2.new(0.5, 0, 0, 118), UDim2.new(0, 300, 0, 96)
+    panel.AnchorPoint, panel.Position, panel.Size = Vector2.new(0, 0), UDim2.new(0, 14, 0, 96), UDim2.new(0, 300, 0, 96)
     panel.BackgroundColor3, panel.BackgroundTransparency, panel.BorderSizePixel = Color3.fromRGB(26, 18, 14), 0.15, 0
     panel.Parent = hud
     Theme.AddCorner(panel, Theme.Corner.Medium)
@@ -179,7 +179,7 @@ local function PlaceBadge()
     else
         SetBadgeLayout("centre")
         badgeScale.Scale = 1
-        badge.AnchorPoint, badge.Position, badge.Size = Vector2.new(0.5, 0), UDim2.new(0.5, 0, 0, 118), UDim2.new(0, 300, 0, 96)
+        badge.AnchorPoint, badge.Position, badge.Size = Vector2.new(0, 0), UDim2.new(0, 14, 0, 96), UDim2.new(0, 300, 0, 96)
     end
 end
 

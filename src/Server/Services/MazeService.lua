@@ -69,6 +69,12 @@ local function ClearAttributes(player)
     for _, name in ipairs({ "MazeSection", "MazeTotal", "MazeCaught" }) do player:SetAttribute(name, nil) end
 end
 
+-- How long this run has lasted: from the gate opening, or from when the player came in if they arrived after that
+local function RunSeconds(rec, clock)
+    local round = state.round
+    return math.max(0, clock - math.max(round.opensAt, rec.enteredClock or round.opensAt))
+end
+
 -- ── Progression hooks ─────────────────────────────────────────────────────────
 -- Deployed Maze Golems (Labyrinth Mind) add to the coins and XP the maze pays
 local function GolemBonus(data)
@@ -125,7 +131,7 @@ local function Escape(rec)
     local player = rec.player
     local data = PlayerDataService.Get(player)
     local now = ServerNow()
-    local seconds = MazeRound.RunElapsed(state.round, WallClock())
+    local seconds = RunSeconds(rec, WallClock())
     rec.escaped = true
     if not data then return end
     local opts = PayOptions(data)
@@ -165,14 +171,14 @@ local function StartRun(player)
     end
     local clock = WallClock()
     if not MazeRound.CanEnter(state.round, clock) then
-        Tell(player, "Hollow Maze", string.format("The Zombie Golem is already hunting. The next maze opens in %d seconds.", math.ceil(MazeRound.UntilNext(state.round, clock))))
+        Tell(player, "Hollow Maze", string.format("This maze is nearly over. The next one opens in %d seconds.", math.ceil(MazeRound.UntilNext(state.round, clock))))
         return
     end
     if runs[player.UserId] then
         SendToLobby(player)
         return
     end
-    local rec = { player = player, enteredAt = ServerNow(), best = 0, totals = { coins = 0, xp = 0, materials = {} } }
+    local rec = { player = player, enteredAt = ServerNow(), enteredClock = clock, best = 0, totals = { coins = 0, xp = 0, materials = {} } }
     runs[player.UserId] = rec
     player:SetAttribute("MazeSection", 0)
     player:SetAttribute("MazeTotal", #MazeData.SECTIONS)
@@ -287,7 +293,7 @@ local function Tick()
                 end
                 -- through the exit arch into the victory room
                 if p.X > state.art.exitX + 6 and MazeRound.GateOpen(round, clock) then
-                    if MazeRound.RunElapsed(round, clock) >= MazeData.ESCAPE_MIN_TIME then
+                    if RunSeconds(rec, clock) >= MazeData.ESCAPE_MIN_TIME then
                         Escape(rec)
                     else
                         rec.caught = false
@@ -365,6 +371,26 @@ local function Standings()
     return list
 end
 
+-- The portal's status board: what you can do right now
+local function UpdatePortalStatus()
+    local text = state.portalStatus
+    if not (text and state.round) then return end
+    local clock, round = WallClock(), state.round
+    local function mmss(s) s = math.max(0, math.ceil(s)) return string.format("%d:%02d", s // 60, s % 60) end
+    if MazeRound.CanEnter(round, clock) then
+        local phase = MazeRound.Phase(round, clock)
+        if phase == "gather" then
+            text.Text, text.TextColor3 = string.format("MAZE OPEN - gate opens in %ds", math.ceil(round.opensAt - clock)), Color3.fromRGB(150, 255, 170)
+        elseif phase == "headstart" then
+            text.Text, text.TextColor3 = string.format("MAZE OPEN - Zombie wakes in %ds", math.ceil(round.wakesAt - clock)), Color3.fromRGB(150, 255, 170)
+        else
+            text.Text, text.TextColor3 = "HUNT ON - you can still go in", Color3.fromRGB(255, 220, 120)
+        end
+    else
+        text.Text, text.TextColor3 = string.format("CLOSED - next maze in %s", mmss(MazeRound.UntilNext(round, clock))), Color3.fromRGB(255, 130, 110)
+    end
+end
+
 -- Phase changes, announced once each: the gate opens, then the zombie wakes
 local function PhaseChanges()
     local phase = MazeRound.Phase(state.round, WallClock())
@@ -391,7 +417,19 @@ function MazeService.Init()
     BuildMaze(world, state.round)
 
     local p = MazeData.PORTAL
-    TowerArt.Portal(world, Vector3.new(p.x, 0, p.z), Vector3.new(0.92, 0, 0.38), "HOLLOW MAZE", Color3.fromRGB(120, 255, 150), StartRun, true)       -- walk in to enter
+    local portal = TowerArt.Portal(world, Vector3.new(p.x, 0, p.z), Vector3.new(0.92, 0, 0.38), "HOLLOW MAZE", Color3.fromRGB(120, 255, 150), StartRun, true)       -- walk in to enter
+    -- a live status board over the portal, so you can see whether you can walk in (and when it opens) without trying
+    local glow = portal:FindFirstChild("PortalGlow")
+    if glow then
+        local board = Instance.new("BillboardGui")
+        board.Name, board.Adornee, board.Size, board.StudsOffset, board.MaxDistance, board.AlwaysOnTop = "MazeStatus", glow, UDim2.new(0, 330, 0, 64), Vector3.new(0, 24, 0), 260, false
+        board.Parent = glow
+        local text = Instance.new("TextLabel")
+        text.Size, text.BackgroundTransparency, text.TextScaled, text.Font = UDim2.new(1, 0, 1, 0), 1, true, Enum.Font.GothamBold
+        text.TextStrokeTransparency, text.TextStrokeColor3 = 0.3, Color3.fromRGB(10, 14, 12)
+        text.Parent = board
+        state.portalStatus = text
+    end
 
     RemoteEvents.LeaveChallenge.OnServerEvent:Connect(function(player)
         local rec = runs[player.UserId]
@@ -416,6 +454,7 @@ function MazeService.Init()
         local lastStandings = 0
         while true do
             task.wait(1)
+            pcall(UpdatePortalStatus)
             local clock = WallClock()
             -- the hunt is over: everyone is told how they did and brought home; a while later the next maze starts
             if not MazeRound.Running(state.round, clock) and MazeRound.Phase(state.round, clock) == "intermission" and next(runs) ~= nil then

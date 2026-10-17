@@ -50,7 +50,7 @@ local function BuildHud()
     grad.Parent = danger
 
     panel = Instance.new("Frame")
-    panel.AnchorPoint, panel.Position, panel.Size = Vector2.new(0.5, 0), UDim2.new(0.5, 0, 0, 118), UDim2.new(0, 300, 0, 84)
+    panel.AnchorPoint, panel.Position, panel.Size = Vector2.new(0, 0), UDim2.new(0, 14, 0, 96), UDim2.new(0, 300, 0, 84)
     panel.BackgroundColor3, panel.BackgroundTransparency, panel.BorderSizePixel = Color3.fromRGB(18, 22, 20), 0.15, 0
     panel.Parent = hud
     Theme.AddCorner(panel, Theme.Corner.Medium)
@@ -71,7 +71,7 @@ local function BuildHud()
     standingsLbl.Position, standingsLbl.Size, standingsLbl.TextYAlignment = UDim2.new(0, 8, 0, 6), UDim2.new(1, -16, 1, -12), Enum.TextYAlignment.Top
 
     cardHolder = Instance.new("Frame")                                 -- the reward cards stack down the left, where the event cards sit when you are not in the maze
-    cardHolder.BackgroundTransparency, cardHolder.Position, cardHolder.Size = 1, UDim2.new(0, 14, 0, 112), UDim2.new(0, CARD_W, 0, 420)
+    cardHolder.BackgroundTransparency, cardHolder.Position, cardHolder.Size = 1, UDim2.new(0, 14, 0, 192), UDim2.new(0, CARD_W, 0, 400)
     cardHolder.Parent = hud
     flash = Instance.new("Frame")
     flash.Size, flash.BackgroundTransparency, flash.BorderSizePixel, flash.Visible, flash.ZIndex = UDim2.new(1, 0, 1, 0), 1, 0, false, 20
@@ -99,7 +99,7 @@ local function PlacePanel()
         end
     elseif panelCompact ~= false then
         panelCompact = false
-        panel.AnchorPoint, panel.Position, panel.Size = Vector2.new(0.5, 0), UDim2.new(0.5, 0, 0, 118), UDim2.new(0, 300, 0, 84)
+        panel.AnchorPoint, panel.Position, panel.Size = Vector2.new(0, 0), UDim2.new(0, 14, 0, 96), UDim2.new(0, 300, 0, 84)
         sectionLbl.Position, sectionLbl.Size, sectionLbl.TextSize = UDim2.new(0, 10, 0, 4), UDim2.new(1, -20, 0, 30), 24
         clockLbl.Position, clockLbl.Size, clockLbl.TextSize = UDim2.new(0, 10, 0, 36), UDim2.new(1, -20, 0, 24), 20
         infoLbl.Position, infoLbl.Size, infoLbl.TextSize = UDim2.new(0, 10, 0, 62), UDim2.new(1, -20, 0, 16), Theme.TextSize.Small

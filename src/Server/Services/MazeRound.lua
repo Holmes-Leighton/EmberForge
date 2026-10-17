@@ -34,9 +34,10 @@ function MazeRound.Phase(round, t)
     return "intermission"
 end
 
--- You can walk in while the gate is shut or during the head start; once the zombie wakes, wait for the next round
+-- You can walk in any time from the start of the round until the last minute of the hunt (a late arrival starts in the lobby with the gate already open and the
+-- Zombie Golem somewhere in the maze; their run is timed from when they came in)
 function MazeRound.CanEnter(round, t)
-    return t < round.wakesAt
+    return t < round.endsAt - MazeData.LATE_ENTRY_CUTOFF
 end
 
 function MazeRound.GateOpen(round, t)

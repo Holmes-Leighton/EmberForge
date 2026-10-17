@@ -195,6 +195,25 @@ local function Clock(seconds)
     return string.format("%d:%04.1f", m, seconds - m * 60)
 end
 
+-- The run's timers sit down the left with the event card and the player card (not in the middle of the screen, where you are looking): just beside that column,
+-- level with the event card; on a phone, above the player card like the Sky Tower's badge.
+local hudPanel
+local function PlaceHudPanel()
+    if not hudPanel then return end
+    local main = LocalPlayer.PlayerGui:FindFirstChild("HUD")
+    local card = main and main:FindFirstChild("MainFrame")
+    if not (card and card.Visible) then hudPanel.AnchorPoint, hudPanel.Position = Vector2.new(0, 0), UDim2.new(0, 14, 0, 96) return end
+    local inset = (main.IgnoreGuiInset and 0 or game:GetService("GuiService"):GetGuiInset().Y)
+    local x, y, w, h = card.AbsolutePosition.X, card.AbsolutePosition.Y + inset, card.AbsoluteSize.X, card.AbsoluteSize.Y
+    if require(game.ReplicatedStorage.Shared.Modules.ScreenMode).Compact() then
+        hudPanel.AnchorPoint = Vector2.new(0, 1)
+        hudPanel.Position = UDim2.fromOffset(x, y - 6)
+    else
+        hudPanel.AnchorPoint = Vector2.new(0, 0)
+        hudPanel.Position = UDim2.fromOffset(x + w + 10, math.max(60, y - 92))
+    end
+end
+
 local function BuildHud()
     local playerGui = LocalPlayer:WaitForChild("PlayerGui")
     hud = Instance.new("ScreenGui")
@@ -203,7 +222,8 @@ local function BuildHud()
 
     local panel = Instance.new("Frame")
     panel.Name = "Panel"
-    panel.AnchorPoint, panel.Position, panel.Size = Vector2.new(0.5, 0), UDim2.new(0.5, 0, 0, 118), UDim2.new(0, 280, 0, 92)
+    hudPanel = panel
+    panel.AnchorPoint, panel.Position, panel.Size = Vector2.new(0, 0), UDim2.new(0, 216, 0, 96), UDim2.new(0, 280, 0, 92)
     panel.BackgroundColor3, panel.BackgroundTransparency, panel.BorderSizePixel = Color3.fromRGB(26, 18, 14), 0.15, 0
     panel.Parent = hud
     Theme.AddCorner(panel, Theme.Corner.Medium)
@@ -440,6 +460,7 @@ function CourierController.Init()
         local now = ServerNow()
         StepWorld(dt, now)
         UpdateHud(now)
+        PlaceHudPanel()
     end)
     RemoteEvents.CourierEvent.OnClientEvent:Connect(OnEvent)
 end
