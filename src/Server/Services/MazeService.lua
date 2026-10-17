@@ -180,6 +180,18 @@ local function StartRun(player)
     end
     local rec = { player = player, enteredAt = ServerNow(), enteredClock = clock, best = 0, totals = { coins = 0, xp = 0, materials = {} } }
     runs[player.UserId] = rec
+    -- Coming in mid-hunt with nobody else running: the Zombie Golem is usually parked at the lobby gate from the last catch, so it would catch you the moment you
+    -- arrive. It is sent back to the far end of the maze (the exit) to start its hunt from there.
+    local z = state.zombieState
+    local others = false
+    for _, r in pairs(runs) do if r ~= rec and not r.caught and not r.escaped then others = true end end
+    if z and z.awake and not others then
+        local sx, _, sz = MazeLayout.CellCenter(state.layout, 1, state.layout.start.y)
+        if math.abs(z.x - sx) < 160 and math.abs(z.z - sz) < 160 then
+            local ex, _, ez = MazeLayout.CellCenter(state.layout, state.layout.width, state.layout.exit.y)
+            z.x, z.z = ex - 7, ez
+        end
+    end
     player:SetAttribute("MazeSection", 0)
     player:SetAttribute("MazeTotal", #MazeData.SECTIONS)
     SendToLobby(player)
