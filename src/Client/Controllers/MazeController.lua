@@ -496,6 +496,8 @@ local function OnEvent(kind, p)
         elseif p.pieceCapped then
             TextCard("MAZE PIECES", "You have found all you can today", Color3.fromRGB(190, 160, 255))
         end
+    elseif kind == "retry" then
+        Banner("TRY AGAIN!", Color3.fromRGB(150, 255, 170))
     elseif kind == "caught" then
         Banner("CAUGHT!", Color3.fromRGB(255, 70, 60))
         Flash(Color3.fromRGB(200, 20, 20), 0.6)

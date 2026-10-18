@@ -160,7 +160,8 @@ for seed = 1, 20 do
     killsBuilt += #tw.kills
 end
 expect(tilesBuilt > 100 and killsBuilt > 100, "towers contain them (" .. tilesBuilt .. " falling tiles and " .. killsBuilt .. " death tiles in 20 towers)")
-local kk = build(4, 30).kills[1]
+local kk
+for _, k in ipairs(build(4, 30).kills) do if not k.style then kk = k break end end
 expect(kk and kk.sx > 4 and kk.sz > 4, "a death tile is a tile-sized square")
 
 print("== the designs")
@@ -241,5 +242,40 @@ local small = build(3, 9)
 expect(#small.levels == 9 and small.finish and small.height > 150, "a 9-level tower works (" .. math.floor(small.height) .. " studs)")
 local pro = build(3, 60)
 expect(#pro.levels == 60 and pro.height > 1300 and pro.levels[60].tier == 3, "a 60-level Pro tower works (" .. math.floor(pro.height) .. " studs)")
+
+print("== walls, yellow strips and harder climbs")
+local wallsSeen, stripsSeen, hurdlesSeen, crumblesInClimbs, narrowInClimbs = 0, 0, 0, 0, 0
+for seed = 1, 20 do
+    local tw = build(seed * 5 + 1, 30)
+    for _, w in ipairs(tw.walls) do
+        local lim = CD.Limits[tw.levels[w.level].designTier]
+        if w.open then
+            wallsSeen += 1
+            expect(w.open >= lim.minWidth + 1.5 and w.open >= 5, "seed " .. seed .. ": a slalom wall leaves a gap you can walk through (" .. w.open .. ")")
+            expect(w.sy > 6, "and is too tall to jump over (" .. w.sy .. ")")
+        else
+            hurdlesSeen += 1
+            expect(w.sy <= lim.maxRise, "seed " .. seed .. ": a hurdle can be jumped (" .. w.sy .. " high, limit " .. lim.maxRise .. ")")
+        end
+    end
+    for _, k in ipairs(tw.kills) do
+        if k.style == "strip" then
+            stripsSeen += 1
+            expect(k.sx <= 2.6, "a yellow strip is narrow enough to jump (" .. k.sx .. ")")
+        end
+    end
+    for lvIndex, lv in ipairs(tw.levels) do
+        if lvIndex < #tw.levels and lv.designTier >= 2 then
+            local order = TL.WalkOrder(tw, lvIndex)
+            local last = order[#order]
+            local plainEnd = false
+            for _, p in ipairs(tw.platforms) do if p.level == lvIndex and math.abs((p.x + (lv.dir == 1 and p.sx / 2 or -p.sx / 2)) - lv.endX) < 0.01 then plainEnd = true end end
+            expect(plainEnd, "seed " .. seed .. " level " .. lvIndex .. ": the climb ends on a plain ledge (the next level starts there)")
+        end
+    end
+    for _, c in ipairs(tw.crumbles) do if not c.grid and tw.levels[c.level].designTier >= 2 then crumblesInClimbs += 1 end end
+end
+expect(wallsSeen > 0 and hurdlesSeen > 0 and stripsSeen > 0, "towers contain slalom walls (" .. wallsSeen .. "), hurdles (" .. hurdlesSeen .. ") and yellow strips (" .. stripsSeen .. ")")
+expect(crumblesInClimbs > 40, "the harder levels have crumbling ledges in them (" .. crumblesInClimbs .. " across 20 towers)")
 
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")

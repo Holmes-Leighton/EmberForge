@@ -30,7 +30,7 @@ local function walkTo(run, now, from, to, speed)
         for _, c in ipairs(run.byLevel[lv].crushers) do if math.abs(x - c.x) <= c.sx then lift = 9 end end
         for _, sw in ipairs(run.byLevel[lv].sweepers) do if math.abs(x - sw.x) <= 4 then lift = 8 end end
         for _, k in ipairs(run.byLevel[lv].kills) do if math.abs(x - k.x) <= k.sx / 2 + 1 then lift = 7 end end
-        for _, p in ipairs(run.byLevel[lv].pendulums) do if math.abs(x - p.x) <= 12 then lift = 11 end end                         -- (jump the blades; the bot just ignores the beam pads: it is above them)
+        for _, p in ipairs(run.byLevel[lv].pendulums) do if math.abs(x - p.x) <= 17 then lift = 22 end end                         -- (clear the blades, whose pivot is 15.5 up, whenever they happen to be swinging; the bot just ignores the beam pads: it is above them)
         for _, f in ipairs(run.byLevel[lv].beamfields) do if x >= f.x1 - 6 and x <= f.x2 + 6 then lift = 75 end end
         Runner.Step(run, now, x, from.y + dy * f + lift, from.z + dz * f)
     end

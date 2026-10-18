@@ -57,7 +57,7 @@ local function BuildPlatforms(folder, r)
     group.Parent = folder
     local function trim(p, top)
         for _, side in ipairs({ -1, 1 }) do                         -- glowing edges so the platforms read at a glance, even from a distance
-            P({ Name = "Trim", Material = Enum.Material.Neon, Color = accent, Size = Vector3.new(p.sx, 0.3, 0.4), CanCollide = false,
+            P({ Name = "Trim", Material = Enum.Material.Neon, Color = accent:Lerp(Color3.fromRGB(235, 240, 255), 0.6), Size = Vector3.new(p.sx, 0.3, 0.4), CanCollide = false,    -- (pale, so nothing harmless is bright yellow: that is reserved for the deadly strips)
                 CFrame = CFrame.new(p.x, top + 0.15, p.z + side * (p.sz / 2 - 0.2)) }, group)
         end
     end
@@ -110,7 +110,7 @@ local function BuildPlatforms(folder, r)
             if isRest then
                 for _, side in ipairs({ -1, 1 }) do
                     local zr = p.z + side * (p.sz / 2 - 0.5)
-                    P({ Name = "RailPipe", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, Color = Color3.fromRGB(255, 200, 60), Size = Vector3.new(p.sx - 4, 0.7, 0.7),
+                    P({ Name = "RailPipe", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, Color = Color3.fromRGB(150, 160, 178), Size = Vector3.new(p.sx - 4, 0.7, 0.7),
                         CanCollide = false, CFrame = CFrame.new(p.x, top + 3.4, zr) }, group)
                     for k = 0, math.floor((p.sx - 4) / 7) do
                         P({ Name = "RailPost", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, Color = Color3.fromRGB(110, 116, 128), Size = Vector3.new(3.4, 0.7, 0.7),
@@ -168,7 +168,21 @@ local function BuildObstacles(folder, r)
         bar:SetAttribute("Y", sp.y + sp.barY)
         CollectionService:AddTag(bar, "EFCourierSpinner")
     end
-    for _, k in ipairs(L.kills or {}) do                              -- a deadly tile: glowing red with a dark cross, flush with the floor
+    for _, k in ipairs(L.kills or {}) do
+      if k.style == "strip" then                                       -- a deadly strip across the platform: bright yellow with black chevrons, just proud of the floor
+        local yellow = Color3.fromRGB(255, 225, 0)
+        local strip = P({ Name = "DeathStrip", Material = Enum.Material.Neon, Color = yellow, Size = Vector3.new(k.sx, 0.5, k.sz), CanCollide = false,
+            CFrame = CFrame.new(k.x, k.y + 0.25, k.z) }, group)
+        local marks = math.max(2, math.floor(k.sz / 3))
+        for m = 1, marks do
+            P({ Name = "DeathStripMark", Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(25, 22, 10), Size = Vector3.new(k.sx * 0.55, 0.55, 0.9), CanCollide = false,
+                CFrame = CFrame.new(k.x, k.y + 0.27, k.z - k.sz / 2 + (k.sz / marks) * (m - 0.5)) * CFrame.Angles(0, math.rad(35), 0) }, group)
+        end
+        local glow = Instance.new("PointLight")
+        glow.Color, glow.Range, glow.Brightness = yellow, 9, 1.2
+        glow.Parent = strip
+      else
+        -- a deadly tile: glowing red with a dark cross, flush with the floor
         local tile = P({ Name = "DeathTile", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 36, 36), Size = Vector3.new(k.sx, 0.4, k.sz), CanCollide = false,
             CFrame = CFrame.new(k.x, k.y + 0.2, k.z) }, group)
         local crosses = {}
@@ -177,6 +191,15 @@ local function BuildObstacles(folder, r)
                 CFrame = CFrame.new(k.x, k.y + 0.24, k.z) * CFrame.Angles(0, rot, 0) }, group))
         end
         TowerSkin.Piece("DeathTile", Vector3.new(k.sx, 0.8, k.sz), CFrame.new(k.x, k.y + 0.4, k.z), group, { tile, table.unpack(crosses) })
+      end
+    end
+    for _, w in ipairs(L.walls or {}) do                              -- a solid wall on a platform: tall ones are weaved round, low ones (hurdles) are jumped
+        local tall = w.sy > 5
+        local wall = P({ Name = tall and "SlalomWall" or "Hurdle", Material = tall and Enum.Material.Concrete or Enum.Material.SmoothPlastic,
+            Color = tall and Color3.fromRGB(88, 94, 112) or Color3.fromRGB(235, 110, 60), Size = Vector3.new(w.sx, w.sy, w.sz), CanCollide = true,
+            CFrame = CFrame.new(w.x, w.y + w.sy / 2, w.z) }, group)
+        P({ Name = "WallCap", Material = Enum.Material.Neon, Color = tall and Color3.fromRGB(160, 200, 255) or Color3.fromRGB(255, 245, 235), Size = Vector3.new(w.sx + 0.2, 0.3, w.sz + 0.2),
+            CanCollide = false, CFrame = CFrame.new(w.x, w.y + w.sy + 0.15, w.z) }, group)
     end
     for _, tr in ipairs(L.trusses or {}) do                          -- a ladder: a real truss, which characters climb
         local truss = Instance.new("TrussPart")

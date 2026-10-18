@@ -11,6 +11,7 @@
 --   trusses    { x, y(foot), z, height }   a ladder you climb
 --   bounces    { x, y(top of the pad), z, sx, sz, power, hspeed, rise }   a pad that throws you up (Y speed `power`) and forward (`hspeed` along the course)
 --   sweepers   { x, y(top of the platform), z, amp, period, phase, thick }   a bar sliding across Z
+--   walls      { x, y(top of the platform), z, sx, sy, sz }   a solid wall on a platform: tall ones to weave round (slalom), low ones to jump (hurdle)
 --   (platforms may also carry conveyor = speed, ice = true, viaTruss / viaBounce = true on the landing of a ladder or bounce)
 --   checkpoints{ x, y, z }   places to respawn (the first is the start)
 --   finish     { x, y, z, hx, hz }  the drop-off zone
@@ -57,6 +58,55 @@ function Modules.climb(L, cur, p)
         cur.y += p.rise
         cur.z = Clamp(cur.z + ((p.zigs and p.zigs[(i - 1) % #p.zigs + 1]) or 0), L.base.z - L.zRange, L.base.z + L.zRange)
         Plat(L, x0, p.len, cur.y, cur.z, p.width)
+        cur.x = x0 + p.len
+    end
+end
+
+-- A long platform with walls across it. With `hurdle` each wall spans the whole width and is low enough to jump over (wallH, about 2.5 to 3.4). Otherwise each wall is tall
+-- (wallH, about 9: too high to jump) and leaves a gap of `open` studs on alternate sides, so you have to weave from side to side round them.
+function Modules.slalom(L, cur, p)
+    local x0 = cur.x + (p.gap or 3)
+    Plat(L, x0, p.len, cur.y, cur.z, p.width)
+    local open = p.open or 6
+    for i = 1, p.n do
+        local x = x0 + (p.len / (p.n + 1)) * i
+        if p.hurdle then
+            table.insert(L.walls, { x = x, y = cur.y, z = cur.z, sx = p.thick or 1.6, sy = p.wallH or 3, sz = p.width })
+        else
+            local side = (i % 2 == 1) and 1 or -1                     -- the gap is on this side
+            table.insert(L.walls, { x = x, y = cur.y, z = cur.z - side * open / 2, sx = p.thick or 1.6, sy = p.wallH or 9, sz = p.width - open, open = open })
+        end
+    end
+    cur.x = x0 + p.len
+end
+
+-- A platform with bright yellow strips across it: touching one sends you back to the start of the level. Each strip is `strip` studs wide along the course and spans the whole
+-- platform, so the only way over is to jump (the platform is `spacing` studs between strips).
+function Modules.strips(L, cur, p)
+    local x0 = cur.x + (p.gap or 3)
+    Plat(L, x0, p.len, cur.y, cur.z, p.width)
+    local strip, n = p.strip or 2.2, p.n
+    local spacing = (p.len - n * strip) / (n + 1)
+    for i = 1, n do
+        local x = x0 + spacing * i + strip * (i - 0.5)
+        table.insert(L.kills, { x = x, y = cur.y, z = cur.z, sx = strip, sz = p.width, style = "strip" })
+    end
+    cur.x = x0 + p.len
+end
+
+-- Climbing ledges that are not all plain: `pattern` has one letter per ledge, "p" a plain ledge, "n" a narrow plain one (width p.narrow), "c" a ledge that crumbles shortly
+-- after you land on it. The last ledge must be plain (it is where the next level starts).
+function Modules.climbmix(L, cur, p)
+    for i = 1, #p.pattern do
+        local kind = p.pattern:sub(i, i)
+        local x0 = cur.x + p.gap
+        cur.y += p.rise
+        local width = (kind == "n") and (p.narrow or 5) or p.width
+        if kind == "c" then
+            table.insert(L.crumbles, { x = x0 + p.len / 2, y = cur.y - THICK / 2, z = cur.z, sx = p.len, sy = THICK, sz = width, delay = p.delay or 0.7, respawn = p.respawn or 3 })
+        else
+            Plat(L, x0, p.len, cur.y, cur.z, width)
+        end
         cur.x = x0 + p.len
     end
 end
@@ -289,7 +339,7 @@ end
 function CourierLayout.Build(course)
     local L = {
         base = course.base, zRange = course.zRange or 14,
-        platforms = {}, movers = {}, crumbles = {}, spinners = {}, crushers = {}, checkpoints = {}, trusses = {}, bounces = {}, sweepers = {}, kills = {}, grids = {},
+        platforms = {}, movers = {}, crumbles = {}, spinners = {}, crushers = {}, checkpoints = {}, trusses = {}, bounces = {}, sweepers = {}, walls = {}, kills = {}, grids = {},
         lifts = {}, zmovers = {}, orbiters = {}, pendulums = {}, beamfields = {},
     }
     local cur = { x = course.base.x, y = course.base.y, z = course.base.z }

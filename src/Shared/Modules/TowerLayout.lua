@@ -187,8 +187,47 @@ local DESIGNS = {
     { name = "Kill Sweep", theme = "metal", tier = 3,
       modules = { { "killfloor", { gap = 3, pattern = { ".X.X.X", "X.X..X", ".X..X." } } },
                   { "sweeper", { gap = 4, len = 32, width = 5, n = 2, amp = 3.5, period = 3.0, stagger = 1.5 } } } },
+
+    -- walls to hurdle or weave round, and bright yellow strips that kill on touch
+    { name = "Hurdle Run", theme = "sandstone", tier = 1,
+      modules = { { "slalom", { gap = 3, len = 34, width = 14, n = 5, hurdle = true, wallH = 2.4 } } } },
+    { name = "Yellow Strips", theme = "metal", tier = 1,
+      modules = { { "strips", { gap = 3, len = 36, width = 16, n = 4, strip = 2.4 } },
+                  { "steps", { n = 2, gap = 4, len = 9, width = 10, rises = { 0, 1 }, zigs = { 0, 0 } } } } },
+    { name = "Wall Weave", theme = "slate", tier = 2,
+      modules = { { "slalom", { gap = 3, len = 40, width = 22, n = 4, open = 7, wallH = 9 } } } },
+    { name = "Hazard Strips", theme = "dark", tier = 2,
+      modules = { { "strips", { gap = 3, len = 44, width = 18, n = 6, strip = 2.2 } } } },
+    { name = "Hurdles & Strips", theme = "wood", tier = 2,
+      modules = { { "slalom", { gap = 3, len = 28, width = 16, n = 3, hurdle = true, wallH = 3.2 } },
+                  { "strips", { gap = 4, len = 30, width = 16, n = 3, strip = 2.2 } } } },
+    { name = "Wall Maze", theme = "lava", tier = 3,
+      modules = { { "slalom", { gap = 3, len = 50, width = 20, n = 6, open = 5.5, wallH = 10 } },
+                  { "sweeper", { gap = 4, len = 26, width = 8, n = 2, amp = 2.5, period = 3.0, stagger = 1.5 } } } },
+    { name = "Strip Gauntlet", theme = "neon", tier = 3,
+      modules = { { "strips", { gap = 3, len = 54, width = 14, n = 8, strip = 2.0 } } } },
+    { name = "Weave & Hurdle", theme = "glass", tier = 3,
+      modules = { { "slalom", { gap = 3, len = 40, width = 20, n = 4, open = 6, wallH = 10 } },
+                  { "slalom", { gap = 4, len = 34, width = 18, n = 4, hurdle = true, wallH = 3.5 } } } },
 }
 TowerLayout.Designs = DESIGNS
+
+-- How you climb up to the next level (when a design has no ladder of its own). Tier 1 is plain ledges; higher tiers mix in narrow ledges and ledges that crumble under you
+-- ("p" plain, "n" narrow, "c" crumbling; the last is always plain). Every ledge stays inside that tier's jump limits (CourierData.Limits).
+local CLIMBS = {
+    [1] = { { pattern = "pppppppp", gap = 3.2, len = 7, width = 8 } },
+    [2] = { { pattern = "pcpcpcpp", gap = 4.2, len = 6, width = 8, delay = 1.0 },
+            { pattern = "nnpnnpnp", gap = 4.4, len = 5.5, width = 8, narrow = 5 },
+            { pattern = "pcnpcnpp", gap = 4.2, len = 6, width = 8, narrow = 5, delay = 1.0 } },
+    [3] = { { pattern = "ccnccnpp", gap = 5.0, len = 5, width = 7, narrow = 4, delay = 0.65 },
+            { pattern = "ncncncnp", gap = 5.0, len = 5, width = 7, narrow = 4, delay = 0.65 },
+            { pattern = "cnccnccp", gap = 5.2, len = 4.6, width = 7, narrow = 4, delay = 0.6 } },
+}
+local function ClimbFor(tier, rng)
+    local styles = CLIMBS[tier]
+    local s = styles[rng(#styles)]
+    return { "climbmix", { pattern = s.pattern, gap = s.gap, rise = TowerLayout.CLIMB_RISE[tier], len = s.len, width = s.width, narrow = s.narrow, delay = s.delay } }
+end
 
 -- A tiny deterministic random number generator (so server and clients agree without sharing state)
 local function Rng(seed)
@@ -218,7 +257,7 @@ function TowerLayout.Build(opts)
     local base = opts.base or { x = 0, y = 100, z = 0 }
     local rng = Rng(seed)
     local T = { levels = {}, platforms = {}, movers = {}, crumbles = {}, spinners = {}, crushers = {}, checkpoints = {}, levelOfCheckpoint = {},
-        trusses = {}, bounces = {}, sweepers = {}, kills = {}, grids = {}, lifts = {}, zmovers = {}, orbiters = {}, pendulums = {}, beamfields = {}, base = base, seed = seed, total = total }
+        trusses = {}, bounces = {}, sweepers = {}, walls = {}, kills = {}, grids = {}, lifts = {}, zmovers = {}, orbiters = {}, pendulums = {}, beamfields = {}, base = base, seed = seed, total = total }
 
     local startX, y, z, dir = base.x, base.y, base.z, 1
     local lastDesign = 0
@@ -241,7 +280,7 @@ function TowerLayout.Build(opts)
             if design.connector then
                 for _, m in ipairs(design.connector) do modules[#modules + 1] = m end
             else
-                modules[#modules + 1] = { "climb", { n = TowerLayout.CLIMB_LEDGES, gap = 3.2, rise = TowerLayout.CLIMB_RISE[design.tier], len = 7, width = 8, zigs = { 0 } } }
+                modules[#modules + 1] = ClimbFor(design.tier, rng)
             end
         else
             modules[#modules + 1] = { "finish", { gap = 4, len = 32, width = 28 } }
@@ -268,6 +307,7 @@ function TowerLayout.Build(opts)
         put(T.trusses, layout.trusses, function(c, q) c.x = wx(q.x) end)
         put(T.bounces, layout.bounces, function(c, q) c.x = wx(q.x) c.dir = dir end)         -- (it throws you the way the level runs)
         put(T.sweepers, layout.sweepers, function(c, q) c.x = wx(q.x) end)
+        put(T.walls, layout.walls, function(c, q) c.x = wx(q.x) end)
         put(T.kills, layout.kills, function(c, q) c.x = wx(q.x) end)
         put(T.lifts, layout.lifts, function(c, q) c.x = wx(q.x) end)
         put(T.zmovers, layout.zmovers, function(c, q) c.x = wx(q.x) end)

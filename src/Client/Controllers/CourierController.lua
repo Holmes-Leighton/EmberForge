@@ -111,7 +111,9 @@ local function StepWorld(dt, now)
     end
     for part, s in pairs(spinners) do
         if part.Parent then
-            part.CFrame = CFrame.new(s.cx, s.y, s.cz) * CFrame.Angles(0, -(s.phase + s.omega * now), 0)
+            -- (the server clock is about 1.8 billion seconds and CFrame.Angles keeps its angle in 32 bits, so a big angle only changes every couple of minutes: the bar
+            -- looked frozen while the server still judged it moving. Wrap it into one turn first, in doubles.)
+            part.CFrame = CFrame.new(s.cx, s.y, s.cz) * CFrame.Angles(0, -((s.phase + s.omega * now) % (2 * math.pi)), 0)
         else spinners[part] = nil end
     end
     for part, l in pairs(lifts) do

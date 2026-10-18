@@ -204,6 +204,14 @@ local function StartRun(player)
 end
 
 -- ── The hunt ──────────────────────────────────────────────────────────────────
+-- Back to its starting place at the far end of the maze (the exit), so a new attempt is not caught at the gate
+local function ResetZombie()
+    local z = state.zombieState
+    if not (z and state.layout) then return end
+    local ex, _, ez = MazeLayout.CellCenter(state.layout, state.layout.width, state.layout.exit.y)
+    z.x, z.z = ex - 7, ez
+end
+
 local function Targets()
     local list = {}
     for _, rec in pairs(runs) do
@@ -260,7 +268,20 @@ local function StepZombie(dt)
             rec.caught = true
             rec.player:SetAttribute("MazeCaught", true)
             Fire(rec.player, "caught", Summary(rec, "caught"))
-            task.delay(2.5, function() SendToLobby(rec.player) end)        -- a moment to see what happened, then to the lobby to watch
+            task.delay(2.5, function()
+                -- a moment to see what happened, then straight back to the lobby to try again: a fresh attempt (the rewards for sections already reached are not paid twice),
+                -- and the Zombie Golem goes back to the far end if nobody else is running
+                if runs[rec.player.UserId] ~= rec or not rec.caught or rec.escaped then return end
+                SendToLobby(rec.player)
+                rec.caught = false
+                rec.enteredClock = WallClock()
+                rec.lastPos, rec.lastGood = nil, nil
+                rec.player:SetAttribute("MazeCaught", nil)
+                local others = false
+                for _, r in pairs(runs) do if r ~= rec and not r.caught and not r.escaped then others = true end end
+                if not others then ResetZombie() end
+                Fire(rec.player, "retry", {})
+            end)
         end
     end
     publishAccum += dt
