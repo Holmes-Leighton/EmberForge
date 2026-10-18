@@ -31,7 +31,7 @@ function CrownModel.AttachAccessory(target, name, width, baseCFrame)
     if widest < 0.05 then piece:Destroy() return nil end
     piece:ScaleTo(piece:GetScale() * width / widest)
     local height = piece:GetExtentsSize().Y
-    piece:PivotTo(baseCFrame * CFrame.new(0, height / 2, 0))             -- generated meshes pivot on their centre
+    piece:PivotTo(baseCFrame * CFrame.new(0, height / 2 - height * 0.12, 0))     -- generated meshes pivot on their centre; sunk a little so the band sits on the head, not above it
     for _, d in ipairs(piece:GetDescendants()) do
         if d:IsA("BasePart") then
             d.Anchored, d.CanCollide, d.CanQuery, d.CanTouch, d.CastShadow = true, false, false, false, false
@@ -53,8 +53,8 @@ function CrownModel.Attach(target, crownType, width, baseCFrame)
     local widest = math.max(ext.X, ext.Z)
     if widest < 0.05 then crown:Destroy() return nil end
     crown:ScaleTo(crown:GetScale() * width / widest)
-    crown:PivotTo(baseCFrame)
     local height = crown:GetExtentsSize().Y
+    crown:PivotTo(baseCFrame * CFrame.new(0, -height * 0.08, 0))                -- (sunk a little so the band sits on the head, not above it)
     for _, d in ipairs(crown:GetDescendants()) do
         if d:IsA("BasePart") then
             d.Anchored, d.CanCollide, d.CanQuery, d.CanTouch, d.CastShadow = true, false, false, false, false

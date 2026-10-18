@@ -23,16 +23,21 @@ local function log(...) print("[GolemAssets]", ...) end
 
 -- LoadAsset returns a container Model; the artwork is usually the single Model inside it.
 local function Unwrap(container)
-    local inner
-    for _, c in ipairs(container:GetChildren()) do
-        if c:IsA("Model") then
-            if inner then return container end        -- several models: keep the container
-            inner = c
-        elseif c:IsA("BasePart") then
-            return container
+    local current = container
+    for _ = 1, 4 do                                   -- (a generated model can be wrapped more than once, e.g. a model holding a model called "world" that holds the parts)
+        local inner
+        for _, c in ipairs(current:GetChildren()) do
+            if c:IsA("Model") then
+                if inner then return current end      -- several models: keep this one
+                inner = c
+            elseif c:IsA("BasePart") then
+                return current
+            end
         end
+        if not inner then return current end
+        current = inner
     end
-    return inner or container
+    return current
 end
 
 -- Artists deliver meshes only. Strip anything executable so a loaded asset can never run code.
@@ -129,6 +134,8 @@ local function Register(key, model, cfg, assetId)
 end
 
 -- One model per asset id
+local AdaptGenerated                                 -- (defined below: tidies the part names and wrappers of a generated model)
+
 local function LoadOne(key, cfg)
     pending += 1
     local ok, result = pcall(function() return InsertService:LoadAsset(cfg.assetId) end)
@@ -136,7 +143,9 @@ local function LoadOne(key, cfg)
         warn(string.format("[GolemAssets] '%s' (asset %d) FAILED to load: %s. Using the block Golem instead. "
             .. "Check the id, and that the asset is owned by this game's creator or group.", key, cfg.assetId, tostring(result)))
     else
-        Register(key, Unwrap(result), cfg, cfg.assetId)
+        local model = Unwrap(result)
+        if cfg.generated then AdaptGenerated(model) end
+        Register(key, model, cfg, cfg.assetId)
     end
     pending -= 1
 end
@@ -185,10 +194,19 @@ end
 
 -- A model made by Studio's mesh generator arrives as "<Part>_geom" meshes plus a RootPart and rig leftovers. Make it a Golem model: the names the
 -- animator looks for, the torso as the primary part, and each arm pivoting at the shoulder (the top of the arm) so it swings rather than spins.
-local function AdaptGenerated(model)
+function AdaptGenerated(model)
     for _, d in ipairs(model:GetChildren()) do
         local name = d.Name:gsub("_geom$", "")
+        name = name:gsub("[^%w]", "")                                 -- (the Maze Golem's parts came out named like ["Torso" with the quotes and brackets of the list they were made from)
         if d.Name == "RootPart" or d.ClassName == "AnimationController" or d.Name == "InitialPoses" then
+            d:Destroy()
+        elseif d:IsA("Model") and d:FindFirstChildWhichIsA("BasePart", true) then
+            -- a part delivered inside a model of its own (the Maze Golem): take the mesh out, named for what it is, and drop the wrapper
+            local part = d:FindFirstChildWhichIsA("BasePart", true)
+            local partName = part.Name:gsub("_geom$", "")
+            partName = partName:gsub("[^%w]", "")
+            part.Name = (partName == "LegL" or partName == "LegR") and "Leg" or partName
+            part.Parent = model
             d:Destroy()
         else
             d.Name = (name == "LegL" or name == "LegR") and "Leg" or name

@@ -346,6 +346,10 @@ function GolemModel.Build(element, tier, options)
         local H  = head and head.Position or (T + Vector3.new(0, TS.Y, 0))
         local HS = head and head.Size or Vector3.new(2.4, 2.2, 2.4) * s
         A = { T = T, hx = TS.X / 2, hy = TS.Y / 2, hz = TS.Z / 2, H = H, hhx = HS.X / 2, hhy = HS.Y / 2, hhz = HS.Z / 2 }
+        -- where a crown or hat sits (see AssetData.HeadFit): on the real top of the head, not the top of its bounding box
+        local fit = AssetData.HeadFitFor(element, stageDef.id)
+        A.seat = Vector3.new(H.X + fit.ox * HS.X, H.Y - HS.Y / 2 + fit.seat * HS.Y, H.Z + fit.oz * HS.Z)
+        A.crownW = math.max(fit.w, 0.5) * HS.X
 
         if not isNeon and not (ownModel and not skinLook) then   -- each element has its own surface (ART_BRIEF 4.3)
             for _, d in ipairs(BodyParts(model)) do
@@ -738,18 +742,18 @@ function GolemModel.Build(element, tier, options)
         P("ChestGem", Vector3.new(A.hx * 0.3, A.hx * 0.3, 0.4), gem, Enum.Material.Neon,
             CFrame.new(A.T.X, A.T.Y + A.hy * 0.05, front - 0.4), 0.1, true, Enum.PartType.Ball)
         -- this type's own crown (a unique mesh per type); a plain gold circlet if it has none yet
-        local crownH = CrownModel.Attach(model, element, A.hhx * 2 * (supreme and 1.35 or 1.2),
-            CFrame.new(A.H.X, A.H.Y + A.hhy - 0.1 * s, A.H.Z))
+        local crownH = CrownModel.Attach(model, element, A.crownW * (supreme and 1.35 or 1.2),
+            CFrame.new(A.seat.X, A.seat.Y - 0.1 * s, A.seat.Z))
         if not crownH then
-            P("Circlet", Vector3.new(A.hhx * 1.95, 0.4, A.hhz * 1.95), gold, Enum.Material.Metal,
-                CFrame.new(A.H.X, A.H.Y + A.hhy * 0.72, A.H.Z))
+            P("Circlet", Vector3.new(A.crownW * 1.05, 0.4, A.crownW * 1.05), gold, Enum.Material.Metal,
+                CFrame.new(A.seat.X, A.seat.Y - 0.2 * s, A.seat.Z))
             P("CircletGem", Vector3.new(0.7, 0.7, 0.4), gem, Enum.Material.Neon,
-                CFrame.new(A.H.X, A.H.Y + A.hhy * 0.72, A.H.Z - A.hhz * 0.98 - 0.15), 0.1, true, Enum.PartType.Ball)
+                CFrame.new(A.seat.X, A.seat.Y - 0.2 * s, A.seat.Z - A.crownW * 0.52 - 0.15), 0.1, true, Enum.PartType.Ball)
         end
 
         if supreme then
             P("Halo", Vector3.new(0.25, A.hhx * 3, A.hhx * 3), gold, Enum.Material.Neon,
-                CFrame.new(A.H.X, A.H.Y + A.hhy + (crownH or 0) + 1.2 * s, A.H.Z) * CFrame.Angles(0, 0, math.pi / 2), 0.15, nil, Enum.PartType.Cylinder)
+                CFrame.new(A.seat.X, A.seat.Y + (crownH or 0) + 1.2 * s, A.seat.Z) * CFrame.Angles(0, 0, math.pi / 2), 0.15, nil, Enum.PartType.Cylinder)
             local crimson = Color3.fromRGB(170, 35, 55)
             for i = -1, 1 do
                 P("CapePanel", Vector3.new(A.hx * 0.72, A.hy * 2.1, 0.22), crimson, Enum.Material.Fabric,
@@ -834,15 +838,15 @@ function GolemModel.Build(element, tier, options)
         local id = options.accessory
         local c = d.color
         -- block coordinates (head top at 9.4); on an uploaded model, re-centre on its real head and widen to fit
-        local aw = A and (A.hhx * 2 / (2.4 * s)) or 1
+        local aw = A and (A.crownW / (2.4 * s)) or 1
         local function hat(x, y, z)
             if not A then return at(x, y + 2.2 * (headScale - 1), z) end      -- (a young block Golem's head is taller)
-            return CFrame.new(A.H.X + x * s * aw, A.H.Y + A.hhy + (y - 9.4) * s, A.H.Z + z * s * aw)
+            return CFrame.new(A.seat.X + x * s * aw, A.seat.Y + (y - 9.4) * s, A.seat.Z + z * s * aw)
         end
         local function wide(v) return Vector3.new(v.X * aw, v.Y, v.Z * aw) end
         local accName = id:gsub("^GolemAccessory_", "")
         local seatY = (id:find("Helm") and 8.2 or 9.4) + (A and 0 or 0)
-        if CrownModel.AttachAccessory(model, accName, A and (A.hhx * 2.4) or 2.9 * s, hat(0, seatY, 0) * CFrame.Angles(0, math.pi, 0)) then
+        if CrownModel.AttachAccessory(model, accName, A and (A.crownW * 1.2) or 2.9 * s, hat(0, seatY, 0) * CFrame.Angles(0, math.pi, 0)) then
             -- a generated mesh is on the head
         elseif id:find("Crown") then
             part("CrownBand", wide(Vector3.new(2.6, 0.4, 2.6)), c, Enum.Material.Neon, hat(0, 9.5, 0), 0.1)

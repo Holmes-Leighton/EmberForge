@@ -56,7 +56,7 @@ AssetData.Golem = {
         Gargoyle   = { assetId = 0, height = 10.5 },   -- hunched, winged
         StormJar   = { assetId = 0, height = 9    },   -- a jar on legs
         Dragonbone = { assetId = 0, height = 13   },   -- towering skeleton
-        Maze       = { assetId = 71922150506963, height = 11 },   -- the Hollow Maze's hedge-and-stone labyrinth golem (its life stages are in StageModels)
+        Maze       = { assetId = 71922150506963, height = 11, generated = true },   -- the Hollow Maze's hedge-and-stone labyrinth golem (its life stages are in StageModels)
     },
 }
 
@@ -225,6 +225,36 @@ AssetData.TowerMeshes = {
     DeathTile = 138462734309138, Bounce = 124685272887092, Ring = 91475482649523, Girder = 93266726839537, Cloud = 102244566507695,
     Blade = 120155553107921, BeamPad = 131637819605325,
 }
+
+-- Where a crown or hat sits on each model's head. A generated Golem's "Head" part is a bounding box that often reaches well past the visible head (horns, hoods, flames,
+-- a crest), so putting a crown on the top of the box leaves it floating or far too wide. These were measured by firing a grid of rays down onto each head mesh:
+--   seat   how high up the head box the crown's base sits (0 bottom .. 1 top): the typical height of the middle of the head's top, not its spikes
+--   w      how wide the head is up there, as a fraction of the box's width (the crown is made a little wider than this)
+--   ox, oz how far off the middle of the box that seat is (fractions of the box's width and depth)
+-- A type or stage with no entry (and block Golems) use HeadFitDefault.
+AssetData.HeadFit = {
+    Ember = { Infant = { seat = 0.81, w = 0.86, ox = -0.00, oz = 0.04 }, Young = { seat = 0.84, w = 0.95, ox = 0.00, oz = 0.05 }, Adult = { seat = 0.86, w = 0.62, ox = 0.02, oz = 0.02 }, Elder = { seat = 0.81, w = 0.76, ox = 0.00, oz = 0.02 }, Ancient = { seat = 0.80, w = 0.95, ox = -0.00, oz = 0.08 } },
+    Stone = { Infant = { seat = 0.99, w = 0.76, ox = -0.00, oz = 0.02 }, Young = { seat = 0.98, w = 0.86, ox = -0.01, oz = 0.02 }, Adult = { seat = 1.00, w = 0.95, ox = -0.00, oz = -0.01 }, Elder = { seat = 0.94, w = 0.95, ox = -0.00, oz = -0.00 }, Ancient = { seat = 0.89, w = 0.86, ox = -0.00, oz = -0.00 } },
+    Frost = { Infant = { seat = 0.90, w = 0.76, ox = 0.00, oz = -0.00 }, Young = { seat = 0.88, w = 0.76, ox = 0.01, oz = -0.02 }, Adult = { seat = 0.89, w = 0.95, ox = -0.00, oz = -0.00 }, Elder = { seat = 0.98, w = 0.95, ox = -0.00, oz = -0.01 }, Ancient = { seat = 0.86, w = 0.86, ox = 0.00, oz = 0.10 } },
+    Storm = { Infant = { seat = 1.00, w = 0.67, ox = -0.00, oz = 0.01 }, Young = { seat = 0.94, w = 0.86, ox = -0.01, oz = 0.03 }, Adult = { seat = 0.96, w = 0.95, ox = 0.01, oz = -0.04 }, Elder = { seat = 0.94, w = 0.95, ox = -0.00, oz = 0.04 }, Ancient = { seat = 0.91, w = 0.67, ox = -0.00, oz = 0.10 } },
+    Void = { Infant = { seat = 0.97, w = 0.86, ox = -0.00, oz = -0.03 }, Young = { seat = 0.96, w = 0.81, ox = -0.01, oz = -0.04 }, Adult = { seat = 0.88, w = 0.62, ox = 0.06, oz = -0.10 }, Elder = { seat = 1.00, w = 0.95, ox = 0.00, oz = 0.01 }, Ancient = { seat = 0.95, w = 0.71, ox = -0.02, oz = 0.10 } },
+    Patchwork = { Infant = { seat = 0.99, w = 0.76, ox = -0.00, oz = 0.01 }, Young = { seat = 0.98, w = 0.76, ox = 0.00, oz = -0.01 }, Adult = { seat = 0.98, w = 0.76, ox = -0.00, oz = 0.01 }, Elder = { seat = 1.00, w = 0.62, ox = -0.02, oz = 0.08 }, Ancient = { seat = 0.97, w = 0.86, ox = 0.00, oz = 0.03 } },
+    Woven = { Infant = { seat = 0.99, w = 0.76, ox = -0.01, oz = -0.02 }, Young = { seat = 0.98, w = 0.67, ox = -0.00, oz = -0.04 }, Adult = { seat = 0.98, w = 0.62, ox = 0.02, oz = -0.02 }, Elder = { seat = 0.97, w = 0.86, ox = -0.00, oz = 0.01 }, Ancient = { seat = 0.65, w = 0.90, ox = -0.02, oz = 0.01 } },
+    Coral = { Infant = { seat = 0.96, w = 0.67, ox = 0.00, oz = -0.04 }, Young = { seat = 0.96, w = 0.48, ox = 0.08, oz = 0.00 }, Adult = { seat = 0.98, w = 0.71, ox = 0.01, oz = 0.03 }, Elder = { seat = 0.96, w = 0.81, ox = 0.01, oz = 0.11 }, Ancient = { seat = 0.80, w = 0.81, ox = -0.01, oz = -0.00 } },
+    Clockwork = { Infant = { seat = 0.97, w = 0.81, ox = 0.01, oz = 0.00 }, Young = { seat = 0.92, w = 0.86, ox = -0.00, oz = -0.04 }, Adult = { seat = 0.92, w = 0.71, ox = 0.01, oz = 0.00 }, Elder = { seat = 0.97, w = 0.67, ox = -0.00, oz = 0.02 }, Ancient = { seat = 0.45, w = 0.95, ox = -0.11, oz = 0.03 } },
+    Alchemist = { Infant = { seat = 1.00, w = 0.76, ox = 0.00, oz = 0.03 }, Young = { seat = 1.00, w = 0.95, ox = -0.00, oz = 0.05 }, Adult = { seat = 1.00, w = 0.76, ox = 0.00, oz = 0.07 }, Elder = { seat = 0.97, w = 0.57, ox = 0.01, oz = -0.11 }, Ancient = { seat = 0.98, w = 0.76, ox = 0.00, oz = -0.01 } },
+    Gargoyle = { Infant = { seat = 0.85, w = 0.95, ox = -0.00, oz = 0.03 }, Young = { seat = 0.79, w = 0.95, ox = -0.00, oz = -0.02 }, Adult = { seat = 0.73, w = 0.95, ox = -0.00, oz = -0.00 }, Elder = { seat = 0.76, w = 0.95, ox = -0.00, oz = 0.00 }, Ancient = { seat = 0.63, w = 0.95, ox = 0.00, oz = -0.01 } },
+    StormJar = { Infant = { seat = 1.00, w = 0.76, ox = -0.00, oz = 0.00 }, Young = { seat = 1.00, w = 0.81, ox = -0.00, oz = -0.00 }, Adult = { seat = 1.00, w = 0.86, ox = 0.00, oz = -0.05 }, Elder = { seat = 1.00, w = 0.95, ox = 0.00, oz = 0.10 }, Ancient = { seat = 0.52, w = 0.95, ox = -0.15, oz = -0.00 } },
+    Dragonbone = { Infant = { seat = 0.80, w = 0.95, ox = 0.00, oz = 0.03 }, Young = { seat = 0.76, w = 0.95, ox = -0.01, oz = 0.04 }, Adult = { seat = 0.74, w = 0.95, ox = -0.00, oz = -0.07 }, Elder = { seat = 0.70, w = 0.95, ox = 0.00, oz = 0.06 }, Ancient = { seat = 0.65, w = 0.95, ox = -0.00, oz = 0.04 } },
+    Maze = { Infant = { seat = 0.73, w = 0.95, ox = -0.00, oz = 0.00 }, Young = { seat = 1.00, w = 0.76, ox = 0.00, oz = -0.05 }, Adult = { seat = 0.98, w = 0.86, ox = -0.00, oz = -0.03 }, Elder = { seat = 0.93, w = 0.95, ox = -0.00, oz = 0.00 }, Ancient = { seat = 1.00, w = 0.71, ox = -0.02, oz = 0.04 } },
+    All = { Infant = { seat = 0.89, w = 0.71, ox = 0.01, oz = -0.00 }, Young = { seat = 0.94, w = 0.67, ox = -0.00, oz = -0.00 }, Elder = { seat = 1.00, w = 0.76, ox = 0.00, oz = 0.06 }, Ancient = { seat = 0.71, w = 0.95, ox = 0.01, oz = 0.00 } },
+}
+AssetData.HeadFitDefault = { seat = 0.95, w = 0.85, ox = 0, oz = 0 }
+
+function AssetData.HeadFitFor(element, stage)
+    local byType = AssetData.HeadFit[element]
+    return (byType and (byType[stage] or byType.Adult)) or AssetData.HeadFitDefault
+end
 
 -- Meshes for the Hollow Maze (MazeSkin; see MAZE_DESIGN.md). Each is a generated model published as a Model asset; GolemAssetLoader loads them into ServerStorage.MazeAssets and
 -- MazeSkin draws them on the maze's plain parts, so the maze works (as plain blocks) even if one fails to load. Floor_ is a floor tile, Wall_ a wall piece, the rest decorations.
