@@ -540,9 +540,11 @@ end
 -- The cart you can see: a mesh when the World pack has loaded, otherwise built from parts. Placed at spot.x / spot.z with its base at height 0.5, as `CartArt`
 -- (a model) or as loose parts. Shared by the road carts below and the Cart Run carts (CartCourseService).
 local function MakeCartArt(model, spot, index)
-    local template = Template("World", index % 2 == 0 and "CartCrystal" or "CartGold")
+    local crystal = index % 2 == 0
+    local template = Template("World", crystal and "CartCrystal" or "CartGold")
     if template then
         local m = template:Clone()
+        if crystal then m:PivotTo(m:GetPivot() * CFrame.Angles(0, math.rad(90), 0)) end       -- (the crystal cart is modelled with its wheels on the ends: a quarter turn puts them on the sides, rolling along the track like the gold one's)
         local ext = m:GetExtentsSize()
         m:ScaleTo(m:GetScale() * 9 / math.max(math.max(ext.X, ext.Z), 0.01))
         local box, size = m:GetBoundingBox()

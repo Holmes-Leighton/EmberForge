@@ -90,45 +90,71 @@ end
 
 -- ── Road, rails, tunnels ───────────────────────────────────────────────────────
 local function BuildRoad(folder, r)
-    local samples = CartPath.Samples(r.path, 8)
+    -- Samples are closer together where the route bends (a 16-stud road cannot be drawn with 8-stud straight pieces round a 7-stud bend: the outside of every join
+    -- would gape open), and every piece is lengthened by how far its outer edge swings away from the next piece.
+    local samples = CartPath.AdaptiveSamples(r.path, 8, 1, 0.07)
     local gaps = GapRanges(r)
     local H = CartCourseData.TUNNEL_HEIGHT
     local deckFolder, railFolder, rockFolder = Instance.new("Folder"), Instance.new("Folder"), Instance.new("Folder")
     deckFolder.Name, railFolder.Name, rockFolder.Name = "Road", "Rails", "Tunnels"
     deckFolder.Parent, railFolder.Parent, rockFolder.Parent = folder, folder, folder
-    local lampCount = 0
+    local lastLampS, lastPillarS = -1e9, -1e9
     for i = 1, #samples - 1 do
         local a, b = samples[i], samples[i + 1]
         local va, vb = Vector3.new(a.x, a.y, a.z), Vector3.new(b.x, b.y, b.z)
         local mid, span = (va + vb) / 2, vb - va
-        local len = span.Magnitude + 0.5
+        local chord = span.Magnitude
         local dir = span.Unit
         local midS = (a.s + b.s) / 2
         local cf = CFrame.lookAt(mid, mid + dir)
-        local rx, rz = Right(dir.X, dir.Z)
-        local rightV = Vector3.new(rx, 0, rz)
+        -- how much the heading turns over this piece (radians): the outer edge of a piece W wide opens a gap of about W/2 * turn at each join
+        local la, lb = math.sqrt(a.tx * a.tx + a.tz * a.tz), math.sqrt(b.tx * b.tx + b.tz * b.tz)
+        local turn = 0
+        if la > 1e-4 and lb > 1e-4 then turn = math.acos(math.clamp((a.tx * b.tx + a.tz * b.tz) / (la * lb), -1, 1)) end
+        local function stretch(halfWidth) return chord + 0.5 + halfWidth * turn * 2 end
         if not InRange(midS, gaps) then
-            P({ Name = "Deck", Material = Enum.Material.Slate, Color = DECK, Size = Vector3.new(W, 1, len), CFrame = cf * CFrame.new(0, -0.5, 0) }, deckFolder)
-            if mid.Y > 3 and i % 3 == 0 then                                  -- a column holds up the raised road
+            P({ Name = "Deck", Material = Enum.Material.Slate, Color = DECK, Size = Vector3.new(W, 1, stretch(W / 2)), CFrame = cf * CFrame.new(0, -0.5, 0) }, deckFolder)
+            if mid.Y > 3 and midS - lastPillarS >= 24 then                    -- a column holds up the raised road
+                lastPillarS = midS
                 P({ Name = "Pillar", Material = Enum.Material.Basalt, Color = ROCK, Size = Vector3.new(5, mid.Y - 1, 5),
                     CFrame = CFrame.new(mid.X, (mid.Y - 1) / 2, mid.Z) }, deckFolder)
             end
+            -- each rail runs from where its own side of this sample is to where its side of the next one is (so it follows the bend instead of cutting across it)
+            local rax, raz = Right(a.tx, a.tz)
+            local rbx, rbz = Right(b.tx, b.tz)
             for _, off in ipairs({ -3, 3 }) do
-                P({ Name = "Rail", Material = Enum.Material.Metal, Color = RAIL, Size = Vector3.new(0.5, 0.5, len), CanCollide = false,
-                    CFrame = CFrame.lookAt(mid + rightV * off + Vector3.new(0, 0.4, 0), mid + rightV * off + Vector3.new(0, 0.4, 0) + dir) }, railFolder)
+                local pa = va + Vector3.new(rax * off, 0.4, raz * off)
+                local pb = vb + Vector3.new(rbx * off, 0.4, rbz * off)
+                local rmid = (pa + pb) / 2
+                local rspan = pb - pa
+                P({ Name = "Rail", Material = Enum.Material.Metal, Color = RAIL, Size = Vector3.new(0.5, 0.5, rspan.Magnitude + 0.3), CanCollide = false,
+                    CFrame = CFrame.lookAt(rmid, rmid + rspan.Unit) }, railFolder)
             end
-            P({ Name = "Sleeper", Material = Enum.Material.Wood, Color = SLEEPER, Size = Vector3.new(10, 0.3, 1.2), CanCollide = false,
-                CFrame = cf * CFrame.new(0, 0.15, 0) }, railFolder)
         end
         if InRange(midS, r.tunnels) then
             for _, side in ipairs({ -1, 1 }) do
-                P({ Name = "TunnelWall", Material = Enum.Material.Basalt, Color = ROCK, Size = Vector3.new(3, H, len),
+                P({ Name = "TunnelWall", Material = Enum.Material.Basalt, Color = ROCK, Size = Vector3.new(3, H, stretch(W / 2 + 3)),
                     CFrame = cf * CFrame.new(side * (W / 2 + 1.5), H / 2, 0) }, rockFolder)
             end
-            P({ Name = "TunnelRoof", Material = Enum.Material.Basalt, Color = ROCK, Size = Vector3.new(W + 8, 3, len),
+            P({ Name = "TunnelRoof", Material = Enum.Material.Basalt, Color = ROCK, Size = Vector3.new(W + 8, 3, stretch(W / 2 + 4)),
                 CFrame = cf * CFrame.new(0, H + 1.5, 0) }, rockFolder)
-            lampCount += 1
-            if lampCount % 4 == 1 then Lantern(rockFolder, (cf * CFrame.new(0, H - 2, 0)).Position, nil) end
+            if midS - lastLampS >= 32 then
+                lastLampS = midS
+                Lantern(rockFolder, (cf * CFrame.new(0, H - 2, 0)).Position, nil)
+            end
+        end
+    end
+    -- sleepers every few studs along the middle of the route (by distance, so a tight bend does not pile them up on its inside)
+    local SLEEPER_EVERY = 4
+    for s = SLEEPER_EVERY / 2, r.path.length, SLEEPER_EVERY do
+        if not InRange(s, gaps) then
+            local x, y, z, tx, ty, tz = CartPath.At(r.path, s)
+            local pos = Vector3.new(x, y, z)
+            local d = Vector3.new(tx, ty, tz)
+            if d.Magnitude > 1e-4 then
+                P({ Name = "Sleeper", Material = Enum.Material.Wood, Color = SLEEPER, Size = Vector3.new(10, 0.3, 1.2), CanCollide = false,
+                    CFrame = CFrame.lookAt(pos + Vector3.new(0, 0.15, 0), pos + Vector3.new(0, 0.15, 0) + d.Unit) }, railFolder)
+            end
         end
     end
     for _, t in ipairs(r.tunnels) do                                          -- timber frames at every tunnel mouth

@@ -110,7 +110,26 @@ for _, c in ipairs(CD.Courses) do
     expect(minR >= 5, c.name .. " has no impossible kink")
 end
 expect(CP.MinRadius(CD.Resolve("EasyHaul").path) >= 11, "Easy Haul's bends can all be taken at a steady push")
-expect(CP.MinRadius(CD.Resolve("CaveRun").path) < 10 and CP.MinRadius(CD.Resolve("DeepRun").path) < 8, "Cave and Deep have tight turns")
+expect(CP.MinRadius(CD.Resolve("CaveRun").path) < 10 and CP.MinRadius(CD.Resolve("DeepRun").path) < 9, "Cave and Deep have tight turns (the sharpest kinks are opened to a 7-stud bend, so a road 16 wide can be drawn)")
+print("== the track is drawn finely enough for its bends")
+for _, c in ipairs(CD.Courses) do
+    local r = CD.Resolve(c.id)
+    local sm = CP.AdaptiveSamples(r.path, 8, 1, 0.07)
+    local worstTurn, worstStep, inOrder = 0, 0, true
+    for i = 2, #sm do
+        local a, b = sm[i - 1], sm[i]
+        if b.s <= a.s then inOrder = false end
+        worstStep = math.max(worstStep, b.s - a.s)
+        local la, lb = math.sqrt(a.tx ^ 2 + a.tz ^ 2), math.sqrt(b.tx ^ 2 + b.tz ^ 2)
+        if la > 1e-4 and lb > 1e-4 then worstTurn = math.max(worstTurn, math.acos(math.clamp((a.tx * b.tx + a.tz * b.tz) / (la * lb), -1, 1))) end
+    end
+    expect(inOrder and math.abs(sm[#sm].s - r.path.length) < 1e-6 and sm[1].s == 0, c.name .. ": the samples run from the start to the end in order (" .. #sm .. ")")
+    expect(worstStep <= 8.0001, c.name .. ": never further apart than 8 studs (" .. string.format("%.1f", worstStep) .. ")")
+    expect(worstTurn <= 0.2, c.name .. ": no join turns more than about 11 degrees (" .. string.format("%.3f", worstTurn) .. " rad), so the road has no gaps")
+    local fixed = CP.Samples(r.path, 8)
+    expect(#sm > #fixed, c.name .. ": more pieces than the old fixed spacing (" .. #sm .. " against " .. #fixed .. ")")
+end
+
 local deepPath = CD.Resolve("DeepRun").path
 local climb = 0
 for _, sm in ipairs(CP.Samples(deepPath, 4)) do climb = math.max(climb, sm.y) end
