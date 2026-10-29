@@ -2,6 +2,9 @@
 -- blueprintId format: "BP_<Element>_T<Tier>" or "BP_Event_<Name>"
 local RecipeData = {}
 
+-- the Maze Golem is built from this many of each of its five pieces (MazeData decides how hard they are to find)
+local MAZE_PIECES = require(script.Parent.MazeData).PIECE_NEED
+
 -- Source categories for how blueprints are obtained
 RecipeData.Source = {
     Starting  = "starting",
@@ -252,8 +255,8 @@ RecipeData.Blueprints = {
         id = "BP_Maze_T5", element = "Maze", tier = 5,
         source = RecipeData.Source.MazePieces,
         materialsRequired = {
-            { id = "MazeFoot",  qty = 12 }, { id = "MazeHeart", qty = 12 }, { id = "MazePick", qty = 12 },
-            { id = "MazeEye",   qty = 12 }, { id = "MazeCrown", qty = 12 },
+            { id = "MazeFoot",  qty = MAZE_PIECES }, { id = "MazeHeart", qty = MAZE_PIECES }, { id = "MazePick", qty = MAZE_PIECES },
+            { id = "MazeEye",   qty = MAZE_PIECES }, { id = "MazeCrown", qty = MAZE_PIECES },
             { id = "PrimordialIngot", qty = 20 },
         },
     },

@@ -88,6 +88,36 @@ function MazeLayout.Build(opts)
     cells[1][startRow].W = false                       -- the entrance from the lobby
     cells[width][exitRow].E = false                    -- the way out
 
+    -- rooms: one open room per section (ROOM_SIZE x ROOM_SIZE cells, every wall between its cells knocked out) with a solid pillar cell in the middle, so there is somewhere to
+    -- circle round and shake the Zombie Golem off. A room never touches a section's edge columns, so the doorways and the start and exit cells are untouched, and it only adds
+    -- passages (the pillar cell has no way in from anywhere but the room itself, so nothing is cut off).
+    local rooms = {}
+    local size = MazeData.ROOM_SIZE or 3
+    if cols >= size + 2 and rows >= size then
+        for s = 1, sections do
+            local x0 = (s - 1) * cols + 1
+            local rx = x0 + 1 + (rng(cols - size - 1) - 1)
+            local ry = rng(rows - size + 1)
+            local mx, my = rx + (size - 1) // 2, ry + (size - 1) // 2
+            for x = rx, rx + size - 1 do
+                for y = ry, ry + size - 1 do
+                    cells[x][y].room = s
+                    if not (x == mx and y == my) then
+                        if x < rx + size - 1 and not (x + 1 == mx and y == my) then Open(cells, x, y, "E") end
+                        if y < ry + size - 1 and not (x == mx and y + 1 == my) then Open(cells, x, y, "S") end
+                    end
+                end
+            end
+            for _, d in ipairs(DIRS) do                                             -- seal the pillar cell from every side
+                cells[mx][my][d] = true
+                local nx, ny = mx + DX[d], my + DY[d]
+                cells[nx][ny][OPPOSITE[d]] = true
+            end
+            cells[mx][my].pillar = true
+            rooms[s] = { section = s, x1 = rx, y1 = ry, x2 = rx + size - 1, y2 = ry + size - 1, pillar = { x = mx, y = my } }
+        end
+    end
+
     -- loops: open a share of each section's dead ends into a neighbour in the same section (never the outer doors)
     for s = 1, sections do
         local x0, x1 = (s - 1) * cols + 1, s * cols
@@ -115,7 +145,7 @@ function MazeLayout.Build(opts)
 
     return {
         seed = seed, sections = sections, cols = cols, rows = rows, cell = cell, base = base, width = width, height = rows, cells = cells,
-        gates = gates, start = { x = 1, y = startRow }, exit = { x = width, y = exitRow }, names = MazeData.SECTIONS,
+        gates = gates, start = { x = 1, y = startRow }, exit = { x = width, y = exitRow }, names = MazeData.SECTIONS, rooms = rooms,
     }
 end
 
@@ -229,6 +259,71 @@ function MazeLayout.Walls(M)
         if w.along == "z" then
             local i = math.floor((w.x - M.base.x) / M.cell + 0.5)
             w.section = MazeLayout.SectionOf(M, math.max(1, i))
+        end
+    end
+    return out
+end
+
+-- ── Things to find ────────────────────────────────────────────────────────────
+-- Candidate cells of a section for an item or a hiding place: never the start or exit cell, a doorway cell, or the pillar. Dead ends first (a good place to hide, and a gamble to
+-- go into), then any other cell, each list shuffled by `rng`.
+local function Candidates(M, s, rng)
+    local x0, x1 = (s - 1) * M.cols + 1, s * M.cols
+    local dead, other = {}, {}
+    for x = x0, x1 do
+        for y = 1, M.height do
+            local c = M.cells[x][y]
+            local special = c.pillar
+                or (x == M.start.x and y == M.start.y) or (x == M.exit.x and y == M.exit.y)
+                or (x == x1 and M.gates[s] == y) or (s > 1 and x == x0 and M.gates[s - 1] == y)
+            if not special then
+                if OpenCount(c) == 1 then dead[#dead + 1] = { x, y } else other[#other + 1] = { x, y } end
+            end
+        end
+    end
+    for _, list in ipairs({ dead, other }) do
+        for k = #list, 2, -1 do
+            local j = rng(k)
+            list[k], list[j] = list[j], list[k]
+        end
+    end
+    return dead, other
+end
+
+local function Pick(dead, other, n, taken)
+    local out = {}
+    for _, list in ipairs({ dead, other }) do
+        for _, c in ipairs(list) do
+            if #out >= n then break end
+            if not taken[c[1] * 1000 + c[2]] then
+                taken[c[1] * 1000 + c[2]] = true
+                out[#out + 1] = c
+            end
+        end
+    end
+    return out
+end
+
+-- The item orbs lying about the maze: MazeData.PICKUPS_PER_SECTION in each section, each holding that section's item. { id, cx, cy, section, item }
+function MazeLayout.Pickups(M)
+    local out, taken = {}, {}
+    for s = 1, M.sections do
+        local dead, other = Candidates(M, s, Rng(M.seed * 31 + s * 7 + 5))
+        for k, c in ipairs(Pick(dead, other, MazeData.PICKUPS_PER_SECTION, taken)) do
+            out[#out + 1] = { id = string.format("P%d_%d", s, k), cx = c[1], cy = c[2], section = s, item = MazeData.ITEMS[M.names[s]] }
+        end
+    end
+    return out
+end
+
+-- The hiding crates (in dead ends where there are any, and never in a cell holding an item): { id, cx, cy, section }
+function MazeLayout.Hideouts(M)
+    local out, taken = {}, {}
+    for _, p in ipairs(MazeLayout.Pickups(M)) do taken[p.cx * 1000 + p.cy] = true end
+    for s = 1, M.sections do
+        local dead, other = Candidates(M, s, Rng(M.seed * 53 + s * 11 + 9))
+        for k, c in ipairs(Pick(dead, other, (MazeData.HIDEOUTS_PER_SECTION or {})[s] or 1, taken)) do
+            out[#out + 1] = { id = string.format("H%d_%d", s, k), cx = c[1], cy = c[2], section = s }
         end
     end
     return out

@@ -28,9 +28,49 @@ MazeData.ESCAPE_SPEEDUP    = 45     -- once someone escapes, the hunt has at mos
 -- ── The Zombie Golem ──────────────────────────────────────────────────────────
 MazeData.PLAYER_SPEED    = 16       -- studs/s: Roblox's default walk speed
 MazeData.ZOMBIE_START    = 0.70     -- of PLAYER_SPEED when it wakes
-MazeData.ZOMBIE_END      = 1.05     -- of PLAYER_SPEED by the end of a full-length hunt
+MazeData.ZOMBIE_END      = 1.12     -- of PLAYER_SPEED by the end of a full-length hunt (a little faster than you, so a perfect runner is never safe for ever)
 MazeData.CATCH_RADIUS    = 5        -- studs
 MazeData.WARN_RADIUS     = 55       -- studs: the screen-edge warning starts this close
+
+-- ── What the Zombie Golem can hear ───────────────────────────────────────────
+-- It is no longer all-knowing. It hunts what it can HEAR: a running player is heard from far along the corridors, a walking one from half as far, and one standing still
+-- (or hiding, or cloaked) only when it practically bumps into them. It remembers where it last heard someone for a few seconds, then goes back to patrolling the way to the exit.
+MazeData.HEAR_RUN        = 170      -- studs along the corridors
+MazeData.HEAR_WALK       = 80
+MazeData.HEAR_STILL      = 16
+MazeData.HIDE_FIND       = 9        -- a hiding player is found only this close (straight line)
+MazeData.CLOAK_FIND      = 10       -- ... and so is a cloaked one
+MazeData.RUN_FRACTION    = 0.6      -- moving faster than this share of walk speed counts as running
+MazeData.WALK_FRACTION   = 0.15     -- ... slower than this is standing still
+MazeData.MEMORY          = 7        -- seconds it keeps heading for the place it last heard someone
+MazeData.SNIFF           = 1.2      -- seconds it stops to sniff at a decoy flare it has reached
+
+-- ── Items: one in each section's colour, picked up from glowing orbs and used with a button ─────────────────────────────────
+-- Each lets you do something about the Zombie Golem other than run. You carry one at a time; picking up another when your hands are full does nothing.
+MazeData.ITEMS = {
+    Stone = { id = "sprint", name = "Sprint Tonic",  desc = "Run 35% faster for 5 seconds.",                              seconds = 5,   speed = 1.35, color = { 190, 175, 150 } },
+    Ember = { id = "flare",  name = "Decoy Flare",   desc = "Throws a flare: the Zombie Golem goes for it for 7 seconds.", seconds = 7,   color = { 255, 140, 60 } },
+    Frost = { id = "freeze", name = "Frost Snap",    desc = "Slows the Zombie Golem to 40% for 6 seconds.",               seconds = 6,   slow = 0.4, color = { 140, 210, 255 } },
+    Storm = { id = "stun",   name = "Storm Jolt",    desc = "Stuns the Zombie Golem for 3.5 seconds.",                    seconds = 3.5, color = { 200, 170, 255 } },
+    Void  = { id = "cloak",  name = "Void Cloak",    desc = "The Zombie Golem can barely sense you for 6 seconds.",       seconds = 6,   color = { 150, 90, 230 } },
+}
+MazeData.ItemById = {}
+for section, item in pairs(MazeData.ITEMS) do
+    item.section = section
+    MazeData.ItemById[item.id] = item
+end
+MazeData.PICKUPS_PER_SECTION = 2
+MazeData.PICKUP_RADIUS       = 5        -- studs: walk into the orb
+MazeData.PICKUP_RESPAWN      = 35       -- seconds until a taken orb comes back
+MazeData.SPRINT_MAX_WALK     = 38       -- (held under the anti-cheat's limit, like the Tower's Turbo)
+
+-- ── Hiding places: crates in dead ends. Press E to climb in; the Zombie Golem finds you only if it comes right up to the crate. ───────────────────
+MazeData.HIDEOUTS_PER_SECTION = { 1, 1, 2, 2, 2 }
+MazeData.HIDE_MAX      = 8              -- seconds you can stay in before being pushed out
+MazeData.HIDE_COOLDOWN = 10             -- seconds before you can hide again
+
+-- ── Rooms: each section has one open room (3 x 3 cells) with a pillar in the middle, so you can circle it and shake the Zombie Golem off ──────────
+MazeData.ROOM_SIZE = 3
 
 function MazeData.ZombieSpeed(huntElapsed)
     local f = math.clamp(huntElapsed / MazeData.HUNT_SECONDS, 0, 1)
@@ -46,7 +86,7 @@ end
 
 -- ── Anti-cheat ────────────────────────────────────────────────────────────────
 MazeData.MAX_SPEED       = 70       -- studs/s a player may move before it counts as a teleport (generous: the top speed level walks at 36, plus jumping, slopes and lag)
-MazeData.ESCAPE_MIN_TIME = 24       -- nobody escapes faster than this: the shortest route of any maze is 70 cells = 980 studs, which is 61 s at the default walk speed and 27 s at the top speed level (36)
+MazeData.ESCAPE_MIN_TIME = 20       -- nobody escapes faster than this: the shortest route of any maze is about 60 cells = 840 studs, which is 53 s at the default walk speed and 22 s at the top speed level on a Sprint Tonic (38)
 
 -- ── Rewards ───────────────────────────────────────────────────────────────────
 -- Reaching section n pays coins(n) = (1.5 + 0.3 x playerLevel) x n^1.5 (at least 1). Section 5 pays about 11 x section 1. At player level 10 a full first run of the
@@ -88,12 +128,20 @@ MazeData.PIECES = {                       -- index = the section it comes from
     { id = "MazeEye",   name = "Maze Golem Eye",   section = "Storm" },
     { id = "MazeCrown", name = "Maze Golem Crown", section = "Void" },
 }
-MazeData.PIECE_NEED        = 12            -- of each piece (60 in all) per Maze Golem
-MazeData.PIECE_CAP_PER_DAY = 2
+MazeData.PIECE_NEED        = 6             -- of each piece (30 in all) per Maze Golem (it was 12 of each: weeks of nothing to show)
+MazeData.PIECE_CAP_PER_DAY = 3
 MazeData.PIECE_CHANCE      = { 0.015, 0.02, 0.025, 0.03, 0.04 }   -- per section clear (deeper is better)
 MazeData.PIECE_ESCAPE      = 0.07          -- the escape chest
 MazeData.PIECE_PITY        = 30            -- section clears with no piece before one is guaranteed
 MazeData.PIECE_BLUEPRINT   = "BP_Maze_T5"  -- found with the first piece, so the recipe shows your progress
+-- Early wins: the very first piece is guaranteed the first time you reach this section (or escape), and every few pieces along the way pay a cache, so the long chase is full of rewards.
+MazeData.PIECE_FIRST_SECTION = 3
+MazeData.PIECE_MILESTONES = {            -- pieces found in total -> what you are paid
+    [3]  = { coins = 400,  items = { { id = "ElementalIngot", qty = 3 } } },
+    [10] = { coins = 1500, items = { { id = "EssenceShard", qty = 4 } } },
+    [20] = { coins = 4000, items = { { id = "EssenceShard", qty = 8 }, { id = "PrimordialIngot", qty = 3 } } },
+    [30] = { coins = 10000, items = { { id = "PrimordialIngot", qty = 8 } } },
+}
 
 function MazeData.PieceIndex(id)
     for i, p in ipairs(MazeData.PIECES) do if p.id == id then return i end end

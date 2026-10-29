@@ -11,6 +11,9 @@ local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local Theme        = require(game.ReplicatedStorage.Shared.Modules.Theme)
 local MaterialIcon = require(game.ReplicatedStorage.Shared.Modules.MaterialIcon)
 local ScreenMode   = require(game.ReplicatedStorage.Shared.Modules.ScreenMode)
+local MoodData     = require(game.ReplicatedStorage.Shared.Data.MoodData)
+local Feel         = require(script.Parent.Feel)
+local UserInputService = game:GetService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -27,6 +30,10 @@ local hud, sectionLbl, clockLbl, infoLbl, standingsFrame, standingsLbl, flash, b
 local dailyTarget, dailyDone = nil, false
 local best = 0
 local panelCompact = nil
+local itemBtn, itemDesc, hideLbl
+local curMood, nextThunder, footAt, beatAt, lastZState, lastZSlowed = nil, 0, 0, 0, nil, nil
+local hiddenAt, hideMax = nil, MazeData.HIDE_MAX
+local orbList, orbScanAt = {}, 0
 
 local function ServerNow() return workspace:GetServerTimeNow() end
 
@@ -82,6 +89,19 @@ local function BuildHud()
     Theme.AddCorner(standingsFrame, Theme.Corner.Small)
     standingsLbl = Theme.Label(standingsFrame, "", Theme.TextSize.Small, Color3.fromRGB(235, 240, 230), Theme.Fonts.Body)
     standingsLbl.Position, standingsLbl.Size, standingsLbl.TextYAlignment = UDim2.new(0, 8, 0, 6), UDim2.new(1, -16, 1, -12), Enum.TextYAlignment.Top
+
+    -- the item you are carrying: a button to use it (or press R)
+    itemBtn = Theme.Button(hud, "", Color3.fromRGB(110, 190, 120), Color3.fromRGB(255, 255, 255), "MazeItemButton")
+    itemBtn.AnchorPoint, itemBtn.Position, itemBtn.Size, itemBtn.Visible = Vector2.new(0.5, 1), UDim2.new(0.5, 0, 1, -120), UDim2.new(0, 320, 0, 52), false
+    itemBtn.MouseButton1Click:Connect(function() RemoteEvents.MazeUseItem:FireServer() end)
+    itemDesc = Theme.Label(hud, "", 12, Color3.fromRGB(225, 232, 220), Theme.Fonts.Body)
+    itemDesc.Name = "MazeItemNote"
+    itemDesc.AnchorPoint, itemDesc.Position, itemDesc.Size, itemDesc.Visible = Vector2.new(0.5, 1), UDim2.new(0.5, 0, 1, -98), UDim2.new(0, 360, 0, 18), false
+    itemDesc.TextXAlignment = Enum.TextXAlignment.Center
+    hideLbl = Theme.Label(hud, "", 22, Color3.fromRGB(190, 240, 255), Theme.Fonts.Heading)
+    hideLbl.Name = "MazeHideLabel"
+    hideLbl.AnchorPoint, hideLbl.Position, hideLbl.Size, hideLbl.Visible = Vector2.new(0.5, 0), UDim2.new(0.5, 0, 0.12, 0), UDim2.new(0, 460, 0, 34), false
+    hideLbl.TextXAlignment = Enum.TextXAlignment.Center
 
     cardHolder = Instance.new("Frame")                                 -- the reward cards stack down the left, where the event cards sit when you are not in the maze
     cardHolder.BackgroundTransparency, cardHolder.Position, cardHolder.Size = 1, UDim2.new(0, 14, 0, 192), UDim2.new(0, CARD_W, 0, 400)
@@ -242,7 +262,7 @@ local function PieceCard(piece)
         local icon = MaterialIcon.Make(f, piece.id, 64)
         if icon then icon.Position = UDim2.new(0, 10, 0, 12) end
         CardText(f, string.upper(piece.name) .. " FOUND!", 15, gold, Theme.Fonts.Heading, 8, 22, 82)
-        CardText(f, string.format("%d / %d for the Maze Golem", piece.have, piece.need), Theme.TextSize.Small, Color3.fromRGB(235, 235, 220), Theme.Fonts.Body, 32, 20, 82)
+        CardText(f, string.format("%d / %d of this piece%s", piece.have, piece.need, (piece.total and piece.goal) and string.format("   |   set %d / %d", piece.total, piece.goal) or ""), Theme.TextSize.Small, Color3.fromRGB(235, 235, 220), Theme.Fonts.Body, 32, 20, 82)
         local track = Instance.new("Frame")
         track.Position, track.Size, track.BackgroundColor3, track.BorderSizePixel = UDim2.new(0, 82, 0, 60), UDim2.new(1, -96, 0, 10), Color3.fromRGB(40, 36, 30), 0
         track.Parent = f
@@ -403,6 +423,77 @@ local function Update(dt, now)
     end
     danger.BackgroundTransparency = glow
     PumpCards()
+
+    -- the lighting follows the section you are in
+    local want = (section <= 0) and "MazeStone" or MoodData.MazeMood(section)
+    if want ~= curMood then
+        curMood = want
+        Feel.Mood(want)
+    end
+
+    -- the Zombie Golem by ear: footsteps that quicken as it closes in, a heartbeat inside the warning radius
+    if root and zx and zombie and zstate ~= "asleep" and not caught then
+        local d = math.sqrt((root.Position.X - zx) ^ 2 + (root.Position.Z - zz) ^ 2)
+        local zspeed = zombie:GetAttribute("ZSpeed") or 0
+        if zspeed > 0.5 and d < 80 and now >= footAt then
+            footAt = now + 0.3 + 0.3 * (d / 80)
+            Feel.Snd("MazeFootstep", { volume = 0.35 + 0.65 * (1 - d / 80), pitch = 0.9 + math.random() * 0.2 })
+        end
+        if d < MazeData.WARN_RADIUS and now >= beatAt then
+            local t = 1 - math.clamp((d - MazeData.CATCH_RADIUS) / (MazeData.WARN_RADIUS - MazeData.CATCH_RADIUS), 0, 1)
+            beatAt = now + 1.0 - 0.55 * t
+            Feel.Snd("MazeHeartbeat", { volume = 0.4 + 0.6 * t })
+        end
+        -- what happens to it, for everyone watching: a stun, a slow
+        local zs = zombie:GetAttribute("ZState")
+        if zs ~= lastZState then
+            if zs == "stunned" then Feel.Snd("MazeStun") end
+            lastZState = zs
+        end
+        local slowed = zombie:GetAttribute("ZSlowed") == true
+        if slowed ~= lastZSlowed then
+            if slowed then Feel.Snd("MazeFreeze") end
+            lastZSlowed = slowed
+        end
+    end
+
+    -- the Storm section: lightning, and thunder a moment later
+    if section == 4 and not caught and now >= nextThunder then
+        nextThunder = now + 10 + math.random() * 12
+        Flash(Color3.fromRGB(235, 225, 255), 0.5)
+        task.delay(0.3 + math.random() * 0.5, function() Feel.Snd("MazeThunder") end)
+    end
+
+    -- the item in your hands, and how long you can stay in a crate
+    local item = LocalPlayer:GetAttribute("MazeItem")
+    local def = item and MazeData.ItemById[item]
+    itemBtn.Visible = def ~= nil and not caught
+    itemDesc.Visible = itemBtn.Visible
+    if def then
+        itemBtn.Text = string.format("USE: %s   [R]", def.name)
+        itemDesc.Text = def.desc
+    end
+    if LocalPlayer:GetAttribute("MazeHidden") == true and hiddenAt then
+        hideLbl.Visible = true
+        hideLbl.Text = string.format("HIDDEN  %.0fs  -  stay quiet. Press E to climb out", math.max(0, hideMax - (os.clock() - hiddenAt)))
+    else
+        hideLbl.Visible = false
+    end
+
+    -- the item orbs hover and bob
+    if now - orbScanAt > 2 then
+        orbScanAt = now
+        orbList = {}
+        local folder = workspace:FindFirstChild("Orbs", true)
+        if folder then
+            for _, o in ipairs(folder:GetChildren()) do
+                if o:IsA("BasePart") and o.Name == "MazeOrb" then table.insert(orbList, { part = o, x = o.Position.X, y = o.Position.Y, z = o.Position.Z, phase = (o.Position.X + o.Position.Z) % 6 }) end
+            end
+        end
+    end
+    for _, o in ipairs(orbList) do
+        if o.part.Parent then o.part.CFrame = CFrame.new(o.x, o.y + math.sin(now * 2 + o.phase) * 0.7, o.z) end
+    end
 end
 
 -- ── The end-of-run card ───────────────────────────────────────────────────────
@@ -475,6 +566,9 @@ local function OnEvent(kind, p)
         ClearCards()
         dailyTarget, dailyDone = p.dailyTarget, p.dailyDone
         hud.Enabled = true
+        hiddenAt, hideMax = nil, p.hideMax or MazeData.HIDE_MAX
+        curMood, lastZState, lastZSlowed = nil, nil, nil
+        Feel.Scene("Maze")
         Banner("GET READY...", Color3.fromRGB(150, 255, 170))
     elseif kind == "gateopen" then
         Banner("THE GATE IS OPEN! RUN!", Color3.fromRGB(255, 232, 120))
@@ -482,10 +576,13 @@ local function OnEvent(kind, p)
     elseif kind == "wake" then
         Banner("THE ZOMBIE GOLEM WAKES", Color3.fromRGB(255, 80, 70))
         Flash(Color3.fromRGB(190, 20, 20), 0.35)
+        Feel.Snd("MazeRoar")
+        Feel.Shake(1.8, 0.9)
     elseif kind == "section" then
         local col = SECTION_COLORS[p.name] or Color3.fromRGB(255, 255, 255)
         Sparks(col, 40)
         Flash(col, 0.15)
+        Feel.Snd("TowerLevel", { pitch = 0.9 + 0.12 * (p.section or 1) })
         SectionCard(p)                                               -- what it paid goes on a card down the left
         if p.daily then
             dailyDone = true
@@ -493,6 +590,11 @@ local function OnEvent(kind, p)
         end
         if p.piece then
             PieceCard(p.piece)
+            Feel.Snd("RewardChest")
+            local ms = p.piece.milestone
+            if ms then
+                TextCard("MAZE CACHE!", string.format("%d pieces found: +%d coins and more", ms.at, ms.coins or 0), Color3.fromRGB(255, 215, 90))
+            end
         elseif p.pieceCapped then
             TextCard("MAZE PIECES", "You have found all you can today", Color3.fromRGB(190, 160, 255))
         end
@@ -501,12 +603,34 @@ local function OnEvent(kind, p)
     elseif kind == "caught" then
         Banner("CAUGHT!", Color3.fromRGB(255, 70, 60))
         Flash(Color3.fromRGB(200, 20, 20), 0.6)
+        hiddenAt = nil
+        Feel.Snd("MazeCaught")
+        Feel.Shake(2.2, 0.6)
     elseif kind == "escape" then
         Banner("YOU ESCAPED!!", Color3.fromRGB(255, 215, 90))
         Flash(Color3.fromRGB(255, 215, 90), 0.4)
         Sparks(Color3.fromRGB(255, 215, 90), 80)
+        Feel.Snd("MazeEscape")
+        task.delay(0.7, function() Feel.Snd("RewardChest") end)
+        pcall(function() require(game.ReplicatedStorage.Shared.Modules.Celebrate).Burst({ count = 80 }) end)
         local piece = p.chest and p.chest.piece
-        if piece then PieceCard(piece) end
+        if piece then
+            PieceCard(piece)
+            if piece.milestone then TextCard("MAZE CACHE!", string.format("%d pieces found: +%d coins and more", piece.milestone.at, piece.milestone.coins or 0), Color3.fromRGB(255, 215, 90)) end
+        end
+    elseif kind == "pickup" then
+        Banner(string.format("%s  -  %s", p.name or "Item", p.desc or ""), Color3.fromRGB(190, 240, 190))
+        Feel.Snd("MazePickup")
+    elseif kind == "itemused" then
+        local sound = ({ freeze = "MazeFreeze", stun = "MazeStun", flare = "MazeLight", cloak = "MazeHide" })[p.kind]
+        if p.kind == "sprint" then Feel.Snd("TowerBounce", { pitch = 1.4 }) elseif sound then Feel.Snd(sound) end
+        if p.kind == "cloak" then Flash(Color3.fromRGB(150, 90, 230), 0.25) elseif p.kind == "stun" then Flash(Color3.fromRGB(220, 200, 255), 0.4) end
+    elseif kind == "hidden" then
+        hiddenAt, hideMax = os.clock(), p.seconds or hideMax
+        Feel.Snd("MazeHide")
+        Banner("HIDDEN... stay quiet", Color3.fromRGB(190, 240, 255))
+    elseif kind == "unhidden" then
+        hiddenAt = nil
     elseif kind == "speedup" then
         Banner(string.format("%s escaped! %ds left!", p.name or "Someone", p.seconds or 45), Color3.fromRGB(255, 150, 80))
     elseif kind == "standings" then
@@ -521,6 +645,9 @@ local function OnEvent(kind, p)
         hud.Enabled = false
         ClearCards()
         danger.BackgroundTransparency = 1
+        hiddenAt, curMood = nil, nil
+        Feel.Scene("Hub")
+        Feel.Mood(nil)                                               -- the lighting goes back to following where you stand
         if kind == "roundover" and (p.best or 0) <= 0 and (p.coins or 0) == 0 and not p.escaped then
             Banner("Run ended", Color3.fromRGB(255, 190, 120))
         elseif kind == "roundover" then
@@ -538,6 +665,12 @@ function MazeController.Init()
         Update(dt, ServerNow())
     end)
     RemoteEvents.MazeEvent.OnClientEvent:Connect(OnEvent)
+    UserInputService.InputBegan:Connect(function(input, processed)
+        if processed or UserInputService:GetFocusedTextBox() then return end
+        if input.KeyCode == Enum.KeyCode.R and LocalPlayer:GetAttribute("MazeItem") then RemoteEvents.MazeUseItem:FireServer() end
+    end)
 end
+MazeController._OnEvent = OnEvent                                    -- (for the tests)
+MazeController._Update = function(dt, now) Update(dt, now) end
 
 return MazeController

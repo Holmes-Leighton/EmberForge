@@ -14,6 +14,7 @@ function MazeRewards.State(data, today)
     c.mazeBest = c.mazeBest or 0              -- the deepest section ever reached
     if c.mazePieceDay ~= today then c.mazePieceDay, c.mazePieceCount = today, 0 end      -- Maze Golem pieces found today (capped)
     c.mazePity = c.mazePity or 0                                                          -- section clears since the last piece (carries over days)
+    c.mazePiecesTotal = c.mazePiecesTotal or 0                                            -- pieces found in all (for the milestone caches)
     return c
 end
 
@@ -74,13 +75,23 @@ local function GivePiece(data, c, index)
     data.Inventory[piece.id] = (data.Inventory[piece.id] or 0) + 1
     c.mazePieceCount += 1
     c.mazePity = 0
+    c.mazePiecesTotal += 1
     local first = false
     data.Blueprints = data.Blueprints or {}
     if not table.find(data.Blueprints, MazeData.PIECE_BLUEPRINT) then table.insert(data.Blueprints, MazeData.PIECE_BLUEPRINT) first = true end
-    return { id = piece.id, name = piece.name, have = data.Inventory[piece.id], need = MazeData.PIECE_NEED, firstBlueprint = first }
+    local result = { id = piece.id, name = piece.name, have = data.Inventory[piece.id], need = MazeData.PIECE_NEED, firstBlueprint = first, total = c.mazePiecesTotal,
+        goal = MazeData.PIECE_NEED * #MazeData.PIECES }
+    -- every few pieces along the way pays a cache, so the long chase is full of rewards
+    local milestone = MazeData.PIECE_MILESTONES[c.mazePiecesTotal]
+    if milestone then
+        data.EmberCoins = (data.EmberCoins or 0) + (milestone.coins or 0)
+        for _, it in ipairs(milestone.items or {}) do data.Inventory[it.id] = (data.Inventory[it.id] or 0) + it.qty end
+        result.milestone = { at = c.mazePiecesTotal, coins = milestone.coins, items = milestone.items }
+    end
+    return result
 end
 
--- Rolls for a Maze Golem piece after reaching `section` (or, with `escape`, for opening the exit chest). Returns { id, name, have, need, firstBlueprint } or nil, and a reason
+-- Rolls for a Maze Golem piece after reaching `section` (or, with `escape`, for opening the exit chest). Returns { id, name, have, need, firstBlueprint, total, goal, milestone } or nil, and a reason
 -- ("capped") when today's limit stopped a drop. opts: { rng }
 function MazeRewards.RollPiece(data, section, escape, today, opts)
     opts = opts or {}
@@ -89,7 +100,9 @@ function MazeRewards.RollPiece(data, section, escape, today, opts)
     local capped = c.mazePieceCount >= MazeData.PIECE_CAP_PER_DAY
     if not escape then c.mazePity += 1 end
     local chance = escape and MazeData.PIECE_ESCAPE or (MazeData.PIECE_CHANCE[section] or 0)
-    local hit = rng() < chance or (not escape and c.mazePity >= MazeData.PIECE_PITY)
+    -- the very first piece is guaranteed: the first time you get as deep as PIECE_FIRST_SECTION (or escape), so the chase always starts with a win
+    local firstEver = c.mazePiecesTotal == 0 and (escape or section >= MazeData.PIECE_FIRST_SECTION)
+    local hit = firstEver or rng() < chance or (not escape and c.mazePity >= MazeData.PIECE_PITY)
     if not hit then return nil end
     if capped then return nil, "capped" end
     local index = ChoosePiece(data, (not escape) and section or nil, rng)

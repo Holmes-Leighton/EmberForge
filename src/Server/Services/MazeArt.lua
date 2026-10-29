@@ -153,6 +153,30 @@ function MazeArt.Build(parent, M)
         end
     end
 
+    -- ── rooms: the pillar in the middle of each room glows in its section's colour, with a lit ring round the floor of the room, so you can see where to circle ──
+    for _, r in ipairs(M.rooms or {}) do
+        local theme = MazeArt.Themes[MazeData.SECTIONS[r.section]]
+        local px, _, pz = MazeLayout.CellCenter(M, r.pillar.x, r.pillar.y)
+        local half = cell / 2
+        for _, f in ipairs({ { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } }) do
+            local strip = P({ Name = "RoomPillarGlow", Material = Enum.Material.Neon, Color = theme.accent, Transparency = 0.15, CanCollide = false, CanQuery = false,
+                Size = Vector3.new(f[1] == 0 and 5 or 0.4, 16, f[2] == 0 and 5 or 0.4), CFrame = CFrame.new(px + f[1] * (half + 0.25), base.y + 9, pz + f[2] * (half + 0.25)) }, extras)
+            if f[1] == 0 and f[2] == -1 then
+                local light = Instance.new("PointLight")
+                light.Color, light.Range, light.Brightness = theme.accent, 34, 1.6
+                light.Parent = strip
+            end
+        end
+        local x1, _, z1 = MazeLayout.CellCenter(M, r.x1, r.y1)
+        local x2, _, z2 = MazeLayout.CellCenter(M, r.x2, r.y2)
+        local cxm, czm = (x1 + x2) / 2, (z1 + z2) / 2
+        local w, d = (x2 - x1) + cell, (z2 - z1) + cell
+        for _, e in ipairs({ { 0, -1, w, 0.8 }, { 0, 1, w, 0.8 }, { -1, 0, 0.8, d }, { 1, 0, 0.8, d } }) do
+            P({ Name = "RoomRing", Material = Enum.Material.Neon, Color = theme.accent, Transparency = 0.35, CanCollide = false, CanQuery = false,
+                Size = Vector3.new(e[3], 0.2, e[4]), CFrame = CFrame.new(cxm + e[1] * (w / 2 - 0.5), base.y + 0.1, czm + e[2] * (d / 2 - 0.5)) }, extras)
+        end
+    end
+
     -- ── section signs: a glowing banner over the first doorway of each section ──
     for s = 1, M.sections do
         local theme = MazeArt.Themes[MazeData.SECTIONS[s]]
@@ -202,6 +226,88 @@ function MazeArt.Build(parent, M)
         zombieHome = zombieHome, exitX = base.x + mazeW, victorySpawn = Vector3.new(victoryX, base.y + 4, base.z), victoryX = victoryX, lobbyDepth = LOBBY_DEPTH,
         victoryDepth = VICTORY_DEPTH,
     }
+end
+
+-- The item orbs lying in the maze: a glowing ball in the item colour hovering over the floor, with its name over it. `pickups` is MazeLayout.Pickups(M).
+-- Returns the list the server tracks: { id, x, z (world), item, part }.
+function MazeArt.Orbs(parent, M, pickups)
+    local folder = Instance.new("Folder")
+    folder.Name = "Orbs"
+    folder.Parent = parent
+    local out = {}
+    for _, p in ipairs(pickups) do
+        local x, y, z = MazeLayout.CellCenter(M, p.cx, p.cy)
+        local c = p.item.color
+        local color = Color3.fromRGB(c[1], c[2], c[3])
+        local orb = P({ Name = "MazeOrb", Shape = Enum.PartType.Ball, Material = Enum.Material.Neon, Color = color, Size = Vector3.new(3.4, 3.4, 3.4), CanCollide = false, CanQuery = false,
+            CFrame = CFrame.new(x, y + 3.2, z) }, folder)
+        orb:SetAttribute("ItemId", p.item.id)
+        orb:SetAttribute("MazeFx", "orb")
+        local light = Instance.new("PointLight")
+        light.Color, light.Range, light.Brightness = color, 18, 1.6
+        light.Parent = orb
+        local sparks = Instance.new("ParticleEmitter")
+        sparks.Color = ColorSequence.new(color)
+        sparks.Rate, sparks.Lifetime, sparks.Speed = 8, NumberRange.new(1, 1.8), NumberRange.new(1, 3)
+        sparks.SpreadAngle = Vector2.new(180, 180)
+        sparks.Size = NumberSequence.new(0.5, 0)
+        sparks.LightEmission = 1
+        sparks.Parent = orb
+        local ring = P({ Name = "OrbRing", Material = Enum.Material.Neon, Color = color, Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.2, 8, 8), Transparency = 0.5, CanCollide = false, CanQuery = false,
+            CFrame = CFrame.new(x, y + 0.15, z) * CFrame.Angles(0, 0, math.pi / 2) }, folder)
+        Sign(folder, orb, p.item.name, UDim2.new(0, 200, 0, 36), Vector3.new(0, 3, 0), color, 55)
+        out[#out + 1] = { id = p.id, x = x, z = z, item = p.item, part = orb, ring = ring, baseY = y + 3.2 }
+    end
+    return out
+end
+
+-- The hiding crates: an open-fronted wooden crate in a dead end, tucked against the back wall, with a "Hide" prompt. `hideouts` is MazeLayout.Hideouts(M).
+-- Returns { id, x, z (world; where a hiding player stands), part, prompt }.
+function MazeArt.Hideouts(parent, M, hideouts)
+    local folder = Instance.new("Folder")
+    folder.Name = "Hideouts"
+    folder.Parent = parent
+    local out = {}
+    local cell = M.cell
+    for _, h in ipairs(hideouts) do
+        local x, y, z = MazeLayout.CellCenter(M, h.cx, h.cy)
+        local c = M.cells[h.cx][h.cy]
+        -- the way in is the open side; the crate sits against the wall opposite it
+        local ox, oz = 0, 0
+        if not c.W then ox = (cell / 2 - 5) elseif not c.E then ox = -(cell / 2 - 5) elseif not c.N then oz = (cell / 2 - 5) elseif not c.S then oz = -(cell / 2 - 5) end
+        local cx, cz = x + ox, z + oz
+        local crate = P({ Name = "HideCrate", Material = Enum.Material.Wood, Color = Color3.fromRGB(122, 84, 52), Size = Vector3.new(7, 8, 7), CanCollide = false, CanQuery = true,
+            CFrame = CFrame.new(cx, y + 4, cz) }, folder)
+        for _, dy in ipairs({ -3.4, 0, 3.4 }) do                                       -- slats
+            P({ Name = "CrateSlat", Material = Enum.Material.Wood, Color = Color3.fromRGB(88, 58, 36), Size = Vector3.new(7.3, 0.7, 7.3), CanCollide = false, CanQuery = false,
+                CFrame = CFrame.new(cx, y + 4 + dy, cz) }, folder)
+        end
+        local mark = P({ Name = "CrateMark", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 220, 140), Size = Vector3.new(2.2, 2.2, 0.3), CanCollide = false, CanQuery = false,
+            CFrame = CFrame.new(cx, y + 9.6, cz) }, folder)
+        Sign(folder, mark, "HIDE", UDim2.new(0, 90, 0, 30), Vector3.new(0, 1.5, 0), Color3.fromRGB(255, 220, 140), 40)
+        local prompt = Instance.new("ProximityPrompt")
+        prompt.Name, prompt.ActionText, prompt.ObjectText = "HidePrompt", "Hide", "Crate"
+        prompt.HoldDuration, prompt.MaxActivationDistance, prompt.RequiresLineOfSight = 0, 9, false
+        prompt.Parent = crate
+        out[#out + 1] = { id = h.id, x = cx, z = cz, y = y, outX = x, outZ = z, part = crate, prompt = prompt }
+    end
+    return out
+end
+
+-- A decoy flare lying on the floor, burning for `seconds`
+function MazeArt.Flare(parent, pos, seconds)
+    local flare = P({ Name = "MazeFlare", Shape = Enum.PartType.Ball, Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 140, 50), Size = Vector3.new(2, 2, 2), CanCollide = false, CanQuery = false,
+        CFrame = CFrame.new(pos.X, pos.Y + 1, pos.Z) }, parent)
+    local light = Instance.new("PointLight")
+    light.Color, light.Range, light.Brightness = Color3.fromRGB(255, 150, 70), 40, 2.4
+    light.Parent = flare
+    local fire = Instance.new("ParticleEmitter")
+    fire.Color = ColorSequence.new(Color3.fromRGB(255, 200, 80), Color3.fromRGB(255, 70, 20))
+    fire.Rate, fire.Lifetime, fire.Speed, fire.Size = 30, NumberRange.new(0.6, 1.2), NumberRange.new(4, 8), NumberSequence.new(1.4, 0)
+    fire.LightEmission = 1
+    fire.Parent = flare
+    game:GetService("Debris"):AddItem(flare, seconds)
+    return flare
 end
 
 -- The Zombie Golem: the generated model if it has loaded, otherwise a plain block zombie. Returns the model, parented under `parent`, standing at `home`.

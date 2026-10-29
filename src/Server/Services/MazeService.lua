@@ -6,6 +6,7 @@ local RunService = game:GetService("RunService")
 local MazeData    = require(game.ReplicatedStorage.Shared.Data.MazeData)
 local MazeLayout  = require(game.ReplicatedStorage.Shared.Modules.MazeLayout)
 local MazeZombie  = require(game.ReplicatedStorage.Shared.Modules.MazeZombie)
+local MazeItems   = require(game.ReplicatedStorage.Shared.Modules.MazeItems)
 local CourierData = require(game.ReplicatedStorage.Shared.Data.CourierData)
 local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local SpeedData = require(game.ReplicatedStorage.Shared.Data.SpeedData)
@@ -24,7 +25,7 @@ local SPAWN_HOME = Vector3.new(0, 6, -60)          -- where the way back leaves 
 local STANDINGS_EVERY = 2
 local TELEPORT_JUMP = 70                           -- studs in one tick that cannot be walking (cheat check)
 
-local state = { round = nil, layout = nil, art = nil, root = nil, zombie = nil, zombieState = nil, phase = nil }
+local state = { round = nil, layout = nil, art = nil, root = nil, zombie = nil, zombieState = nil, phase = nil, orbs = {}, hideouts = {}, flares = 0 }
 local runs = {}                  -- userId -> { player, enteredAt, best, totals, caught, escaped, lastPos }
 local paidSection = {}           -- userId -> the deepest section paid in the current round (a section pays once per round, so re-entering cannot farm it)
 
@@ -66,7 +67,67 @@ local function SendToLobby(player)
 end
 
 local function ClearAttributes(player)
-    for _, name in ipairs({ "MazeSection", "MazeTotal", "MazeCaught" }) do player:SetAttribute(name, nil) end
+    for _, name in ipairs({ "MazeSection", "MazeTotal", "MazeCaught", "MazeItem", "MazeHidden" }) do player:SetAttribute(name, nil) end
+end
+
+-- ── Items and hiding ──────────────────────────────────────────────────────────
+-- A Sprint Tonic raises the walk speed for a few seconds; this puts it back
+local function RestoreSprint(rec)
+    if not rec.baseWalk then return end
+    local hum = rec.player.Character and rec.player.Character:FindFirstChildOfClass("Humanoid")
+    if hum then hum.WalkSpeed = rec.baseWalk end
+    rec.baseWalk = nil
+end
+
+-- Climb out of a crate (by choice, when the time is up, when caught, or when the run ends)
+local function Unhide(rec, silent)
+    if not MazeItems.Hidden(rec) then return end
+    MazeItems.Unhide(rec, ServerNow())
+    local h = rec.hideout
+    rec.hideout = nil
+    if h then
+        h.occupant = nil
+        if h.prompt then h.prompt.ActionText = "Hide" end
+    end
+    local root = Root(rec.player)
+    if root then
+        root.Anchored = false
+        if h then root.CFrame = CFrame.new(h.outX or h.x, (h.y or root.Position.Y) + 3, h.outZ or h.z) end      -- step out into the middle of the cell
+        root.AssemblyLinearVelocity = Vector3.zero
+    end
+    rec.player:SetAttribute("MazeHidden", nil)
+    rec.lastPos = nil
+    if not silent then Fire(rec.player, "unhidden", {}) end
+end
+
+-- E at a crate: climb in (the Zombie Golem finds you only if it comes right up to the crate), or climb out of the one you are in
+local function ToggleHide(player, h)
+    local rec = runs[player.UserId]
+    if not rec or rec.caught or rec.escaped then return end
+    local root = Root(player)
+    if not root then return end
+    if MazeItems.Hidden(rec) then
+        if rec.hideout == h then Unhide(rec) end
+        return
+    end
+    if h.occupant then
+        Tell(player, "Crate", "Someone is already hiding in there.")
+        return
+    end
+    local ok, why = MazeItems.Hide(rec, ServerNow())
+    if not ok then
+        if why == "cooldown" then Tell(player, "Crate", "Catch your breath: you can hide again in a moment.") end
+        return
+    end
+    h.occupant = player.UserId
+    rec.hideout = h
+    root.CFrame = CFrame.new(h.x, (h.y or root.Position.Y) + 3, h.z)
+    root.AssemblyLinearVelocity = Vector3.zero
+    root.Anchored = true
+    rec.lastPos = nil
+    player:SetAttribute("MazeHidden", true)
+    if h.prompt then h.prompt.ActionText = "Climb out" end
+    Fire(player, "hidden", { seconds = MazeData.HIDE_MAX })
 end
 
 -- How long this run has lasted: from the gate opening, or from when the player came in if they arrived after that
@@ -97,7 +158,10 @@ local function PaySection(rec, section)
     local opts = PayOptions(data)
     local result = MazeRewards.PaySection(data, section, Today(), opts)
     local piece, pieceWhy = MazeRewards.RollPiece(data, section, false, Today())
-    if piece then rec.totals.materials[piece.id] = (rec.totals.materials[piece.id] or 0) + 1 end
+    if piece then
+        rec.totals.materials[piece.id] = (rec.totals.materials[piece.id] or 0) + 1
+        Analytics.Funnel(player, data, "piece", 8, "FirstMazePiece")
+    end
     local daily = MazeRewards.PayDaily(data, section, Today(), opts)
     if daily then rec.totals.coins += daily.coins end
     local xpGain = math.floor(MazeData.PlayerXp(section) * (1 + GolemBonus(data)))
@@ -121,6 +185,9 @@ end
 
 local function EndRun(rec, reason, send)
     runs[rec.player.UserId] = nil
+    Unhide(rec, true)
+    RestoreSprint(rec)
+    rec.item = nil
     ClearAttributes(rec.player)
     local summary = Summary(rec, reason)
     if send then Fire(rec.player, "roundover", summary) end
@@ -136,6 +203,7 @@ local function Escape(rec)
     if not data then return end
     local opts = PayOptions(data)
     local chest = MazeRewards.PayEscape(data, #MazeData.SECTIONS, Today(), opts)
+    Analytics.Funnel(player, data, "escape", 9, "FirstMazeEscape")
     local piece, pieceWhy = MazeRewards.RollPiece(data, #MazeData.SECTIONS, true, Today())
     if piece then rec.totals.materials[piece.id] = (rec.totals.materials[piece.id] or 0) + 1 end
     chest.piece, chest.pieceCapped = piece, (pieceWhy == "capped") or nil
@@ -199,8 +267,10 @@ local function StartRun(player)
     Fire(player, "start", {
         opensAt = ToServerTime(r.opensAt), wakesAt = ToServerTime(r.wakesAt), endsAt = ToServerTime(r.endsAt), sections = MazeData.SECTIONS, seed = r.seed,
         best = MazeRewards.State(data, Today()).mazeBest or 0, dailyTarget = MazeData.DailyTarget(Today()), dailyDone = MazeRewards.DailyDone(data, Today()),
-        zombieHome = state.art.zombieHome, mazeBase = MazeData.BASE,
+        zombieHome = state.art.zombieHome, mazeBase = MazeData.BASE, hideMax = MazeData.HIDE_MAX,
     })
+    Analytics.Funnel(player, data, "maze", 6, "FirstMazeEntered")
+    Analytics.TimeTo(player, data, "FirstMaze")
 end
 
 -- ── The hunt ──────────────────────────────────────────────────────────────────
@@ -220,7 +290,7 @@ local function Targets()
             local hum = rec.player.Character and rec.player.Character:FindFirstChildOfClass("Humanoid")
             if root and hum and hum.Health > 0 then
                 local walk = SpeedData.WalkSpeed(rec.player:GetAttribute("SpeedLevel") or 0)        -- (the trained speed, not whatever the humanoid says)
-                list[#list + 1] = { id = rec.player.UserId, x = root.Position.X, z = root.Position.Z, scale = MazeData.ZombieScale(walk) }
+                list[#list + 1] = MazeItems.TargetFor(rec, rec.player.UserId, root.Position.X, root.Position.Z, MazeData.ZombieScale(walk), rec.speed or 0, walk, ServerNow())
             end
         end
     end
@@ -240,7 +310,17 @@ local function PublishZombie(info, speed)
     model:SetAttribute("ZZ", z.z)
     model:SetAttribute("ZYaw", yaw)
     model:SetAttribute("ZSpeed", moving and speed or 0)
-    model:SetAttribute("ZState", z.awake and (info and info.distance and info.distance < 40 and "close" or "hunt") or "asleep")
+    local mode = info and info.mode
+    local zstate = "asleep"
+    if z.awake then
+        if mode == "stunned" then zstate = "stunned"
+        elseif mode == "search" then zstate = "search"
+        elseif mode == "patrol" then zstate = "patrol"
+        elseif info and info.distance and info.distance < 40 then zstate = "close"
+        else zstate = "hunt" end
+    end
+    model:SetAttribute("ZState", zstate)
+    model:SetAttribute("ZSlowed", (z.slowUntil ~= nil and z.clock < z.slowUntil) or nil)
 end
 
 local publishAccum = 0
@@ -266,6 +346,10 @@ local function StepZombie(dt)
         local rec = runs[id]
         if rec and not rec.caught then
             rec.caught = true
+            Unhide(rec, true)
+            RestoreSprint(rec)
+            rec.item = nil
+            rec.player:SetAttribute("MazeItem", nil)
             rec.player:SetAttribute("MazeCaught", true)
             Fire(rec.player, "caught", Summary(rec, "caught"))
             task.delay(2.5, function()
@@ -307,8 +391,33 @@ local function Tick()
             EndRun(rec, "left", false)
         else
             local p = root.Position
+            local now = ServerNow()
+            -- how fast they are moving (the Zombie Golem hears running, walking and standing still differently)
+            if rec.lastPos and rec.lastAt and now - rec.lastAt > 0.02 then rec.speed = math.min(60, (p - rec.lastPos).Magnitude / (now - rec.lastAt)) else rec.speed = 0 end
+            rec.lastAt = now
             local jumped = rec.lastPos and (p - rec.lastPos).Magnitude > TELEPORT_JUMP
             rec.lastPos = p
+            -- a Sprint Tonic: faster while it lasts
+            if MazeItems.Sprinting(rec, now) then
+                if not rec.baseWalk then
+                    rec.baseWalk = hum.WalkSpeed
+                    hum.WalkSpeed = MazeItems.SprintSpeed(rec.baseWalk)
+                end
+            elseif rec.baseWalk then
+                RestoreSprint(rec)
+            end
+            if MazeItems.HideExpired(rec, now) then Unhide(rec) end
+            -- an item orb lies where you stand
+            if not rec.caught and not rec.escaped and not MazeItems.Hidden(rec) and MazeRound.GateOpen(round, clock) then
+                local orb = MazeItems.OrbAt(state.orbs, p.X, p.Z, now)
+                if orb then
+                    local id = MazeItems.TakeOrb(rec, orb, now)
+                    if id then
+                        player:SetAttribute("MazeItem", id)
+                        Fire(player, "pickup", { item = id, name = orb.item.name, desc = orb.item.desc })
+                    end
+                end
+            end
             if jumped and not rec.caught then
                 -- a teleport inside the maze (or a long lag spike): put them back where they were seen, no penalty beyond that
                 root.CFrame = CFrame.new(rec.lastGood or p) * CFrame.Angles(0, 0, 0)
@@ -368,6 +477,11 @@ local function BuildMaze(world, round)
         if rec then EndRun(rec, "home", true) end
         SendHome(player)
     end)
+    state.orbs = MazeArt.Orbs(root, M, MazeLayout.Pickups(M))
+    state.hideouts = MazeArt.Hideouts(root, M, MazeLayout.Hideouts(M))
+    for _, h in ipairs(state.hideouts) do
+        h.prompt.Triggered:Connect(function(player) ToggleHide(player, h) end)
+    end
     state.zombie = MazeArt.Zombie(root, art.zombieHome)
     state.zombieState = MazeZombie.New(M)
     state.zombieState.x, state.zombieState.z = art.zombieHome.X, art.zombieHome.Z
@@ -438,6 +552,42 @@ local function UpdatePortalStatus()
     end
 end
 
+-- Taken orbs vanish and come back (only touches a part when its state changes)
+local function UpdateOrbs()
+    local now = ServerNow()
+    for _, orb in ipairs(state.orbs) do
+        local taken = orb.takenUntil ~= nil and now < orb.takenUntil
+        if orb.hiddenNow ~= taken then
+            orb.hiddenNow = taken
+            orb.part.Transparency = taken and 1 or 0
+            if orb.ring then orb.ring.Transparency = taken and 1 or 0.5 end
+            for _, d in ipairs(orb.part:GetChildren()) do
+                if d:IsA("PointLight") or d:IsA("ParticleEmitter") then d.Enabled = not taken end
+            end
+            for _, d in ipairs(orb.part:GetChildren()) do
+                if d:IsA("BillboardGui") then d.Enabled = not taken end
+            end
+        end
+    end
+end
+
+-- Use the item in your hands against the Zombie Golem
+function MazeService.UseItem(player)
+    local rec = runs[player.UserId]
+    if not rec or rec.caught or rec.escaped or not rec.item or MazeItems.Hidden(rec) then return false end
+    local root = Root(player)
+    local z = state.zombieState
+    if not (root and z) then return false end
+    state.flares += 1
+    local ok, effect = MazeItems.Use(rec, z, root.Position.X, root.Position.Z, ServerNow(), "flare" .. state.flares)
+    if not ok then return false end
+    player:SetAttribute("MazeItem", nil)
+    if effect.kind == "flare" and state.root then MazeArt.Flare(state.root, root.Position, effect.seconds) end
+    Fire(player, "itemused", { kind = effect.kind, seconds = effect.seconds })
+    pcall(function() Analytics.Custom(player, "MazeItem", 1, { kind = effect.kind }) end)
+    return true
+end
+
 -- Phase changes, announced once each: the gate opens, then the zombie wakes
 local function PhaseChanges()
     local phase = MazeRound.Phase(state.round, WallClock())
@@ -485,6 +635,7 @@ function MazeService.Init()
             SendHome(player)
         end
     end)
+    RemoteEvents.MazeUseItem.OnServerEvent:Connect(function(player) MazeService.UseItem(player) end)
 
     RunService.Heartbeat:Connect(function(dt)
         local ok, err = pcall(StepZombie, math.min(dt, 0.5))
@@ -493,7 +644,7 @@ function MazeService.Init()
     task.spawn(function()
         while true do
             task.wait(0.1)
-            local ok, err = pcall(function() PhaseChanges() Tick() end)
+            local ok, err = pcall(function() PhaseChanges() Tick() UpdateOrbs() end)
             if not ok then warn("[MazeService] " .. tostring(err)) end
         end
     end)
@@ -533,5 +684,8 @@ end
 function MazeService.InMaze(player) return InMaze(player) end
 function MazeService.Layout() return state.layout end
 function MazeService.Round() return state.round end
+
+-- (for the tests)
+MazeService._internals = { runs = runs, state = state, Tick = Tick, StepZombie = StepZombie, UpdateOrbs = UpdateOrbs, ToggleHide = ToggleHide, EndRun = EndRun, Targets = Targets }
 
 return MazeService

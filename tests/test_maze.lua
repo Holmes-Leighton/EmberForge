@@ -42,7 +42,7 @@ for seed = 1, 300 do
     local T = build(seed * 37 + 5)
     local dist = ML.Distances(T, T.start.x, T.start.y)
     local all = true
-    for x = 1, T.width do for y = 1, T.height do if dist[x][y] == nil then all = false end end end
+    for x = 1, T.width do for y = 1, T.height do if dist[x][y] == nil and not T.cells[x][y].pillar then all = false end end end       -- (a room's pillar is solid, on purpose)
     if not all or dist[T.exit.x][T.exit.y] == nil then notReachable += 1 end
     local len = dist[T.exit.x] and dist[T.exit.x][T.exit.y] or 0
     worstPath, bestPath = math.max(worstPath, len), math.min(bestPath, len)
@@ -52,12 +52,13 @@ for seed = 1, 300 do
     end
     local cellsN = T.width * T.height
     if ML.Passages(T) <= cellsN - T.sections then noLoops += 1 end       -- a perfect maze of 5 sections has cells - 5 passages inside them plus 4 doorways
-    if len < 70 then tooEasy += 1 end
+    if len < 60 then tooEasy += 1 end
 end
 expect(notReachable == 0, "from the entrance every cell and the exit can be reached on all 300 seeds")
 expect(gateBroken == 0, "the doorways between sections line up on all 300 seeds")
 expect(noLoops == 0, "every maze has loops to run round")
-expect(bestPath >= 70, "the shortest route is never trivial (the shortest of 300 is " .. bestPath .. " cells)")
+expect(bestPath >= 60, "the shortest route is never trivial (the shortest of 300 is " .. bestPath .. " cells)")
+expect(bestPath * 14 / MD.SPRINT_MAX_WALK >= MD.ESCAPE_MIN_TIME, "and even a fully trained runner on a Sprint Tonic cannot beat the cheat check (" .. string.format("%.1f", bestPath * 14 / MD.SPRINT_MAX_WALK) .. " s >= " .. MD.ESCAPE_MIN_TIME .. " s)")
 expect(worstPath < 400, "and never absurdly long (the longest is " .. worstPath .. " cells)")
 
 print("== the same seed is the same maze; a different seed is a different one")
@@ -141,7 +142,7 @@ expect(totalVoid > totalStone, "the last section has more dead ends than the fir
 
 
 print("== the Zombie Golem hunts along the corridors")
-expect(math.abs(MD.ZombieSpeed(0) - 16 * 0.70) < 1e-9 and math.abs(MD.ZombieSpeed(300) - 16 * 1.05) < 1e-9, "it starts at 70% of a player's speed and ends at 105%")
+expect(math.abs(MD.ZombieSpeed(0) - 16 * 0.70) < 1e-9 and math.abs(MD.ZombieSpeed(300) - 16 * 1.12) < 1e-9, "it starts at 70% of a player's speed and ends at 112%")
 local monotone = true
 for t = 1, 300 do if MD.ZombieSpeed(t) < MD.ZombieSpeed(t - 1) then monotone = false end end
 expect(monotone and MD.ZombieSpeed(1000) == MD.ZombieSpeed(300), "it only ever speeds up, and stops at the top speed")
@@ -185,8 +186,8 @@ expect(wallsOk, "the zombie only ever steps between neighbouring cells: never th
 expect(worstRatio < 1.1, "and it arrives in about the time its path and speed say (worst " .. string.format("%.2f", worstRatio) .. " of the estimate)")
 
 -- it picks the nearest player by the corridors, not by a straight line
-local rightPick = true
-for seed = 1, 60 do
+local rightPick, judged = true, 0
+for seed = 1, 120 do
     local R = build(seed * 5 + 1)
     local z = MZ.New(R)
     z.awake = true
@@ -194,15 +195,19 @@ for seed = 1, 60 do
     local a = { id = "a", x = 0, z = 0 }
     local b = { id = "b", x = 0, z = 0 }
     a.x, a.z = cellTargetPos(R, 12 + 1 + (seed % 3), 5 - 2 + (seed % 4))
-    b.x, b.z = cellTargetPos(R, 25, 2 + (seed % 7))
+    b.x, b.z = cellTargetPos(R, 16 + (seed % 3), 2 + (seed % 7))
     local _, info = MZ.Step(R, z, { a, b }, 0.01, 0)
     local da = ML.Distances(R, 12, 5)
     local ax, ay = ML.CellOf(R, a.x, a.z)
     local bx, by = ML.CellOf(R, b.x, b.z)
-    local nearest = da[ax][ay] <= da[bx][by] and "a" or "b"
-    if info and info.target ~= nearest then rightPick = false end
+    -- (only when both can be heard: the zombie hunts the nearest player it can hear, not one out of earshot)
+    if da[ax][ay] and da[bx][by] and da[ax][ay] * R.cell < MD.HEAR_RUN - 20 and da[bx][by] * R.cell < MD.HEAR_RUN - 20 then
+        judged += 1
+        local nearest = da[ax][ay] <= da[bx][by] and "a" or "b"
+        if info and info.target ~= nearest then rightPick = false end
+    end
 end
-expect(rightPick, "it hunts whichever player is nearest along the corridors")
+expect(rightPick and judged >= 5, "it hunts whichever player it can hear that is nearest along the corridors (" .. judged .. " mazes judged)")
 
 -- a perfect runner outruns it; a player who hides in the lobby is caught
 local function runnerSurvives(R)
@@ -248,12 +253,12 @@ while tt < 60 and not gotHim do
 end
 expect(gotHim, "a player who stays in the lobby is caught too")
 local nobody = MZ.Step(Q, lobbyZ, {}, 1, 0)
-expect(#nobody == 0, "with nobody to hunt it stands still")
+expect(#nobody == 0, "with nobody to hunt it catches nobody (it prowls on towards the exit)")
 local escapedZ = MZ.New(Q)
 escapedZ.awake = true
 local ex, ez = Q.base.x + 40 * 14 + 30, select(3, ML.CellCenter(Q, 40, Q.exit.y))
 local cEsc, infoEsc = MZ.Step(Q, escapedZ, { { id = 4, x = ex, z = ez } }, 1, 0)
-expect(#cEsc == 0 and infoEsc == nil, "a player who has escaped is not hunted")
+expect(#cEsc == 0 and (infoEsc == nil or infoEsc.target == nil), "a player who has escaped is not hunted (the zombie just prowls)")
 
 
 print("== the round clock")
@@ -386,13 +391,14 @@ for _, m in ipairs(bpM.materialsRequired) do if MD.PieceIndex(m.id) then needs +
 expect(bpM.tier == 5 and needs == 5 * MD.PIECE_NEED, "the Maze Golem is a Tier 5 craft of " .. needs .. " pieces")
 
 d = player(10)
-local pc, why = MW.RollPiece(d, 3, false, TODAY, { rng = never2 })
+local pc, why = MW.RollPiece(d, 2, false, TODAY, { rng = never2 })
 expect(pc == nil and why == nil, "a bad roll gives nothing")
 pc = MW.RollPiece(d, 3, false, TODAY, { rng = always })
 expect(pc and pc.id == "MazePick" and d.Inventory.MazePick == 1, "clearing Frost with a good roll gives the Frost piece")
 expect(table.find(d.Blueprints, MD.PIECE_BLUEPRINT) and pc.firstBlueprint, "the first piece finds the Maze Golem blueprint")
 pc = MW.RollPiece(d, 5, false, TODAY, { rng = always })
 expect(pc and not pc.firstBlueprint, "only the first piece gives the blueprint")
+MW.RollPiece(d, 2, false, TODAY, { rng = always })
 local capReached, capWhy = MW.RollPiece(d, 1, false, TODAY, { rng = always })
 expect(capReached == nil and capWhy == "capped", "no more than " .. MD.PIECE_CAP_PER_DAY .. " pieces a day")
 expect(MW.RollPiece(d, 1, false, TODAY + 1, { rng = always }) ~= nil, "and the allowance returns tomorrow")
@@ -436,8 +442,35 @@ local function daysToSet(runsPerDay)
 end
 local keen, casual = daysToSet(6), daysToSet(2)
 print("   days to a full set: 6 escapes a day = " .. keen .. ", 2 a day = " .. casual)
-expect(keen >= 35 and keen <= 70, "even a keen player needs 5-10 weeks (" .. keen .. " days)")
-expect(casual >= keen and casual <= 220, "a casual player still gets there (" .. casual .. " days)")
+expect(keen >= 10 and keen <= 35, "a keen player needs 2-5 weeks, not months (" .. keen .. " days)")
+expect(casual >= keen and casual <= 120, "a casual player still gets there (" .. casual .. " days)")
+
+print("== early wins on the long chase")
+local fresh = player(10)
+local noPiece, noWhy = MW.RollPiece(fresh, 2, false, TODAY, { rng = never2 })
+expect(noPiece == nil, "clearing an early section with bad luck still gives nothing")
+local guaranteed = MW.RollPiece(fresh, MD.PIECE_FIRST_SECTION, false, TODAY, { rng = never2 })
+expect(guaranteed ~= nil and guaranteed.total == 1 and guaranteed.firstBlueprint, "the first time you reach section " .. MD.PIECE_FIRST_SECTION .. " a piece is guaranteed, even on the worst luck")
+local second = MW.RollPiece(fresh, MD.PIECE_FIRST_SECTION, false, TODAY + 1, { rng = never2 })
+expect(second == nil, "but the guarantee is only for the first piece ever")
+local escapee = player(10)
+local viaEscape = MW.RollPiece(escapee, 5, true, TODAY, { rng = never2 })
+expect(viaEscape ~= nil, "escaping also guarantees the first piece")
+expect(MD.PIECE_NEED * 5 == 30, "the Maze Golem is 30 pieces (6 of each)")
+
+local ms = player(10)
+local seen = {}
+for n = 1, 30 do
+    local r = MW.RollPiece(ms, 1 + (n % 5), false, TODAY + n, { rng = always })
+    if r and r.milestone then seen[r.milestone.at] = r.milestone end
+end
+local coinsBefore = ms.EmberCoins
+expect(seen[3] and seen[10] and seen[20] and seen[30], "caches arrive at pieces 3, 10, 20 and 30")
+local cacheCoins = 0
+for _, m in pairs(MD.PIECE_MILESTONES) do cacheCoins += m.coins end
+expect(ms.EmberCoins >= cacheCoins, "their coins reached the player (" .. ms.EmberCoins .. " >= " .. cacheCoins .. ")")
+expect((ms.Inventory.EssenceShard or 0) >= 12 and (ms.Inventory.PrimordialIngot or 0) >= 11 and (ms.Inventory.ElementalIngot or 0) >= 3, "and their materials")
+for _, m in pairs(MD.PIECE_MILESTONES) do for _, it in ipairs(m.items) do expect(MAT.Get(it.id) ~= nil, "cache material " .. it.id .. " is real") end end
 
 local GDm = load("game/ReplicatedStorage/Shared/Data/GolemData")
 expect(math.abs(MW.GolemBonus(1) - 0.10) < 1e-9 and math.abs(MW.GolemBonus(9) - 0.30) < 1e-9, "Labyrinth Mind: +10% a Golem, capped at +30%")
