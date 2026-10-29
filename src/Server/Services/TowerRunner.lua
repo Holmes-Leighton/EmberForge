@@ -14,9 +14,10 @@ local CP_REACH_X, CP_REACH_Z, CP_REACH_Y = 9, 14, 8
 local SPEED_STRIKES = 3
 local LEAVE_RADIUS = 500
 
-function TowerRunner.New(T, hooks, now)
+-- mutator: this round's twist (TowerData.Mutators), or nil. It changes how fast the lava rises and from which level, and what a fall costs.
+function TowerRunner.New(T, hooks, now, mutator)
     local run = {
-        T = T, hooks = hooks or {}, startedAt = now, levelAt = now, highest = 1,
+        T = T, hooks = hooks or {}, startedAt = now, levelAt = now, highest = 1, mutator = mutator or TowerData.Mutators[1],
         respawns = 0, finished = false, dropped = false, lastPos = nil, lastT = nil, strikes = 0,
         byLevel = {},
     }
@@ -44,9 +45,12 @@ end
 -- (Re)starts the lava for the level the player is on: a head start below its start platform, rising at the tier's pace
 function TowerRunner.StartLava(run, now)
     local lv = run.T.levels[run.highest]
-    if lv.lava then
+    local mut = run.mutator or {}
+    local chases = lv.lava or (mut.lavaFrom ~= nil and run.highest >= mut.lavaFrom)
+    if chases then
         local cp = StartCp(run, run.highest)
-        run.lava = { y0 = cp.y - TowerData.LAVA_HEAD, t0 = now, rise = TowerData.LAVA_RISE[lv.tier] }
+        local rise = math.max(TowerData.LAVA_RISE[lv.tier] * (mut.lava or 1), mut.lavaMin or 0)
+        run.lava = { y0 = cp.y - TowerData.LAVA_HEAD, t0 = now, rise = rise }
     else
         run.lava = nil
     end
@@ -58,8 +62,33 @@ function TowerRunner.LavaY(run, now)
     return l.y0 + l.rise * math.max(0, now - l.t0)
 end
 
+function TowerRunner.Penalty(run)
+    return (run.mutator and run.mutator.penalty) or TowerData.RESPAWN_PENALTY
+end
+
 function TowerRunner.Elapsed(run, now)
-    return (now - run.startedAt) + run.respawns * TowerData.RESPAWN_PENALTY
+    return (now - run.startedAt) + run.respawns * TowerRunner.Penalty(run)
+end
+
+-- Can this climber skip up a level? (a paid skip: never from the last level, never once the run is over, and at most SKIPS_PER_ROUND a round). Returns ok, reason.
+function TowerRunner.CanSkip(run, skipsUsed)
+    if run.finished or run.dropped then return false, "over" end
+    if run.highest >= #run.T.levels then return false, "top" end
+    if (skipsUsed or 0) >= TowerData.SKIPS_PER_ROUND then return false, "limit" end
+    return true
+end
+
+-- Put the climber on the next level as if they had climbed it (the caller moves the player to StartCp). Returns the new level.
+function TowerRunner.SkipLevel(run, now)
+    run.highest += 1
+    run.levelAt = now - TowerData.LEVEL_MIN_MINIMUM - 1           -- so the following level's speed check does not count the skip as a too-fast climb
+    run.lastPos, run.lastT, run.strikes = nil, nil, 0
+    TowerRunner.StartLava(run, now)
+    return run.highest
+end
+
+function TowerRunner.StartPoint(run, level)
+    return StartCp(run, level or run.highest)
 end
 
 local function Respawn(run, now, reason)

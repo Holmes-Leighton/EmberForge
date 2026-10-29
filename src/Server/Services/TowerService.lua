@@ -2,7 +2,9 @@
 -- feeds the main game's progression: player XP (so tower levels count towards your level), Quests (daily, weekly and lifetime), the leaderboard and analytics.
 -- A new tower is built every round, the same on every server.
 local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
 
+local ProductData = require(game.ReplicatedStorage.Shared.Data.ProductData)
 local TowerData   = require(game.ReplicatedStorage.Shared.Data.TowerData)
 local TowerLayout = require(game.ReplicatedStorage.Shared.Modules.TowerLayout)
 local CourierData = require(game.ReplicatedStorage.Shared.Data.CourierData)
@@ -26,7 +28,7 @@ local SPAWN_HOME = Vector3.new(0, 6, -60)          -- where the way back leaves 
 local SAMPLE = 0.1
 local STANDINGS_EVERY = 2
 
-local state = { round = nil, layout = nil, folder = nil }
+local state = { round = nil, layout = nil, folder = nil, mutator = TowerData.Mutators[1] }
 local runs = {}                  -- userId -> { player, run, totals = { coins, xp, materials } }
 local roundBest = {}             -- userId -> the highest level paid in the current round (a level pays once per round, so re-entering can't farm it)
 
@@ -61,6 +63,30 @@ end
 local function LobbyPoint()
     local b = TowerData.BASE
     return CFrame.lookAt(Vector3.new(b.x - 17, b.y + 4, b.z), Vector3.new(b.x + 20, b.y + 4, b.z))
+end
+
+local function MutatorInfo(m)
+    return { id = m.id, name = m.name, desc = m.desc, fog = m.fog == true, walk = m.walk, jump = m.jump, lava = m.lava, pay = m.pay, penalty = m.penalty }
+end
+
+-- This round's twist on how a climber moves (Turbo, Moon Jump): remembered so it can be put back when the climb ends
+local function ApplyMovement(player, rec)
+    local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+    local mut = state.mutator
+    if not hum or not (mut.walk or mut.jump) then return end
+    rec.saved = { walk = hum.WalkSpeed, useJumpPower = hum.UseJumpPower, jumpPower = hum.JumpPower, jumpHeight = hum.JumpHeight }
+    local walk, power, height = TowerData.MovementFor(mut, hum.WalkSpeed, hum.UseJumpPower, hum.JumpPower, hum.JumpHeight)
+    hum.WalkSpeed = walk
+    if hum.UseJumpPower then hum.JumpPower = power else hum.JumpHeight = height end
+end
+
+local function RestoreMovement(rec)
+    local saved = rec.saved
+    rec.saved = nil
+    local hum = rec.player.Character and rec.player.Character:FindFirstChildOfClass("Humanoid")
+    if not saved or not hum then return end
+    hum.WalkSpeed = saved.walk
+    if saved.useJumpPower then hum.JumpPower = saved.jumpPower else hum.JumpHeight = saved.jumpHeight end
 end
 
 local function ClearAttributes(player)
@@ -99,25 +125,31 @@ local function PayLevel(rec, level)
         return
     end
     roundBest[player.UserId] = level
-    local result = TowerRewards.PayLevel(data, level, total, Today(), { coinMultiplier = LiveOpsService.GetMultiplier("coins") })
+    local coinMult = LiveOpsService.GetMultiplier("coins") * (state.mutator.pay or 1)
+    local result = TowerRewards.PayLevel(data, level, total, Today(), { coinMultiplier = coinMult })
     local daily = TowerRewards.PayDaily(data, level, total, Today(), { coinMultiplier = LiveOpsService.GetMultiplier("coins") })
     if daily then rec.totals.coins += daily.coins end
     local leveled, newLevel = Feed(player, level, result)
+    if result.zoneClear then Analytics.Funnel(player, data, "zone", 7, "FirstZoneCleared") end
     rec.totals.coins += result.coins
     rec.totals.xp += TowerData.PlayerXp(level)
     for _, m in ipairs(result.materials or {}) do rec.totals.materials[m.id] = (rec.totals.materials[m.id] or 0) + m.qty end
     if result.rare then rec.totals.materials[result.rare.id] = (rec.totals.materials[result.rare.id] or 0) + result.rare.qty end
+    if result.zoneClear then rec.totals.materials[result.zoneClear.material.id] = (rec.totals.materials[result.zoneClear.material.id] or 0) + result.zoneClear.material.qty end
     PlayerDataService.MarkDirty(player)
     Fire(player, "level", {
         level = level, total = total, coins = result.coins, xp = TowerData.PlayerXp(level), courierXp = result.xp, materials = result.materials, rare = result.rare,
         capped = result.capped, playerLevelUp = leveled and newLevel or nil, courierLevel = result.courierLevel, courierLevelUp = result.levelUps > 0,
         seconds = TowerRunner.Elapsed(rec.run, ServerNow()), daily = daily,
+        zone = state.layout.levels[level].zone, zoneStart = state.layout.levels[level].zoneStart, boss = state.layout.levels[level].boss,
+        zoneClear = result.zoneClear,
     })
 end
 
 -- ── Runs ──────────────────────────────────────────────────────────────────────
 local function EndRun(rec, reason, send)
     runs[rec.player.UserId] = nil
+    RestoreMovement(rec)
     ClearAttributes(rec.player)
     local summary = { best = rec.run.highest, total = state.layout and state.layout.total or 0, respawns = rec.run.respawns, coins = rec.totals.coins, xp = rec.totals.xp,
         materials = rec.totals.materials, reason = reason, summit = rec.summit }
@@ -146,7 +178,7 @@ local function StartRun(player)
         return
     end
     local T = state.layout
-    local rec = { player = player, totals = { coins = 0, xp = 0, materials = {} } }
+    local rec = { player = player, totals = { coins = 0, xp = 0, materials = {} }, skips = 0 }
     rec.run = TowerRunner.New(T, {
         onLevel = function(level, seconds)
             PayLevel(rec, level)
@@ -168,7 +200,7 @@ local function StartRun(player)
             local d = PlayerDataService.Get(player)
             local isNew = false
             if d then
-                local chest = TowerRewards.PayTop(d, T.total, Today(), { coinMultiplier = LiveOpsService.GetMultiplier("coins") })
+                local chest = TowerRewards.PayTop(d, T.total, Today(), { coinMultiplier = LiveOpsService.GetMultiplier("coins") * (state.mutator.pay or 1) })
                 ProgressionService.AddPlayerXP(player, TowerData.SUMMIT_PLAYER_XP)
                 ChallengeService.TrackEvent(player, "TowerSummit", { count = 1 })
                 local s = TowerRewards.State(d, Today())
@@ -194,8 +226,9 @@ local function StartRun(player)
             Fire(player, "abandon", { reason = reason })
             EndRun(rec, reason, false)
         end,
-    }, now)
+    }, now, state.mutator)
     runs[player.UserId] = rec
+    ApplyMovement(player, rec)
     player:SetAttribute("TowerLevel", 1)
     player:SetAttribute("TowerTotal", T.total)
     player:SetAttribute("TowerStart", now)
@@ -203,8 +236,69 @@ local function StartRun(player)
     root.CFrame = LobbyPoint()
     root.AssemblyLinearVelocity = Vector3.zero
     PayLevel(rec, 1)                                              -- level 1 is yours the moment you arrive
+    Analytics.Funnel(player, data, "tower", 5, "FirstTowerEntered")
+    Analytics.TimeTo(player, data, "FirstTower")
     Fire(player, "start", { total = T.total, roundEnds = state.round.endsAt, best = (TowerRewards.State(data, Today()).towerBest or 0), seed = state.round.seed,
-        dailyTarget = TowerData.DailyTarget(Today(), T.total), dailyDone = TowerRewards.DailyDone(data, Today()) })
+        dailyTarget = TowerData.DailyTarget(Today(), T.total), dailyDone = TowerRewards.DailyDone(data, Today()),
+        mutator = MutatorInfo(state.mutator), zone = 1, skips = TowerData.SKIPS_PER_ROUND, skipOwned = data.TowerSkips or 0 })
+end
+
+-- ── Skipping a level (a Robux Developer Product; the credits are kept in the player's data as TowerSkips) ─────────────────────────────────
+local function DoSkip(rec)
+    local run = rec.run
+    if not TowerRunner.CanSkip(run, rec.skips) then return false end
+    local level = TowerRunner.SkipLevel(run, ServerNow())
+    rec.skips += 1
+    local cp = TowerRunner.StartPoint(run, level)
+    local root = Root(rec.player)
+    if root and cp then
+        root.CFrame = CFrame.lookAt(Vector3.new(cp.x, cp.y + 2, cp.z), Vector3.new(cp.x + state.layout.levels[level].dir, cp.y + 2, cp.z))
+        root.AssemblyLinearVelocity = Vector3.zero
+    end
+    rec.player:SetAttribute("TowerLevel", level)
+    SetLavaAttributes(rec.player, run)
+    PayLevel(rec, level)
+    Fire(rec.player, "skipped", { level = level, left = TowerData.SKIPS_PER_ROUND - rec.skips })
+    return true
+end
+
+-- The player pressed Skip: use a skip they already own, or offer to sell one
+function TowerService.RequestSkip(player)
+    local rec = runs[player.UserId]
+    if not rec then return end
+    local ok, why = TowerRunner.CanSkip(rec.run, rec.skips)
+    if not ok then
+        Tell(player, "Sky Tower", why == "top" and "You are on the last level: nothing to skip." or (why == "limit" and string.format("You can skip %d levels a round.", TowerData.SKIPS_PER_ROUND) or "That climb is over."))
+        return
+    end
+    local data = PlayerDataService.Get(player)
+    if not data then return end
+    if (data.TowerSkips or 0) > 0 then
+        data.TowerSkips -= 1
+        PlayerDataService.MarkDirty(player)
+        DoSkip(rec)
+        return
+    end
+    local product = ProductData.Products.TowerSkip
+    if not product or product.id == 0 then
+        Tell(player, "Sky Tower", "Level skips are not for sale yet.")
+        return
+    end
+    rec.wantSkip = true
+    MarketplaceService:PromptProductPurchase(player, product.id)
+end
+
+-- The product was bought (the credit is already on the player): use it now if they were waiting to skip
+function TowerService.OnSkipBought(player)
+    local rec = runs[player.UserId]
+    if not (rec and rec.wantSkip) then return end
+    rec.wantSkip = false
+    local data = PlayerDataService.Get(player)
+    if data and (data.TowerSkips or 0) > 0 and TowerRunner.CanSkip(rec.run, rec.skips) then
+        data.TowerSkips -= 1
+        PlayerDataService.MarkDirty(player)
+        DoSkip(rec)
+    end
 end
 
 -- Studio only, for testing: set workspace attribute DevTowerLevel to N (from the Server console) and every climber is put at the start of level N as if they had climbed there.
@@ -265,6 +359,8 @@ local function BuildTower(world, round)
     if state.folder then state.folder:Destroy() end
     local T = TowerLayout.Build({ levels = TowerData.LEVELS, seed = round.seed, base = TowerData.BASE })
     state.layout = T
+    state.mutator = TowerData.MutatorForRound(round.index)
+    workspace:SetAttribute("TowerMutator", state.mutator.id)
     local root = Instance.new("Folder")
     root.Name = "SkyTowerRoot"
     root.Parent = world
@@ -312,6 +408,7 @@ function TowerService.Init()
     local p = TowerData.PORTAL
     TowerArt.Portal(world, Vector3.new(p.x, 0, p.z), Vector3.new(0.92, 0, -0.38), "SKY TOWER", Color3.fromRGB(190, 120, 255), StartRun, true)       -- walk in to climb
 
+    RemoteEvents.TowerSkip.OnServerEvent:Connect(function(player) TowerService.RequestSkip(player) end)
     RemoteEvents.LeaveChallenge.OnServerEvent:Connect(function(player)
         local rec = runs[player.UserId]
         if rec then

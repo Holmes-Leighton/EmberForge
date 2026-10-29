@@ -14,6 +14,7 @@ ProductData.Products = {
     EventCatalyst     = { id = 3716237130, displayName = "Event Catalyst",        robux = 400  },
     LuckBoost_1h      = { id = 3716237869, displayName = "Lucky Boost (1h)",      robux = 49   },
     GrowthTonic_1h    = { id = 3718927703, displayName = "Growth Tonic (1h)",     robux = 49   },
+    TowerSkip         = { id = 0,          displayName = "Sky Tower Level Skip",  robux = 29, stackable = true },   -- create the Developer Product, then paste its id (0 = not for sale yet)
 
     -- Pet eggs (paid random items: odds are shown in the Pets menu; hidden where Roblox restricts them).
     -- `eggId` / `count` tell ShopService how many pets to hatch from PetData.Eggs[eggId].

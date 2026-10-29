@@ -6,6 +6,7 @@ local TweenService = game:GetService("TweenService")
 local Debris       = game:GetService("Debris")
 
 local TowerData    = require(game.ReplicatedStorage.Shared.Data.TowerData)
+local MoodData     = require(game.ReplicatedStorage.Shared.Data.MoodData)
 local RemoteEvents = require(game.ReplicatedStorage.Shared.Modules.RemoteEvents)
 local Theme        = require(game.ReplicatedStorage.Shared.Modules.Theme)
 local ScreenMode = require(game.ReplicatedStorage.Shared.Modules.ScreenMode)
@@ -13,6 +14,35 @@ local TowerArtColors = nil
 
 local CollectionService = game:GetService("CollectionService")
 local LocalPlayer = Players.LocalPlayer
+
+-- Sound and the lighting mood are separate controllers; both are optional (nothing breaks if either is missing)
+local function Snd(name, opts)
+    local ok, S = pcall(require, script.Parent.SoundController)
+    if ok and S then S.Play(name, opts) end
+end
+local function Scene(name)
+    local ok, S = pcall(require, script.Parent.SoundController)
+    if ok and S and S.SetScene then S.SetScene(name) end
+end
+local function Mood(name)
+    local ok, L = pcall(require, script.Parent.LookController)
+    if ok and L and L.SetMood then L.SetMood(name) end
+end
+
+-- A short camera shake (the humanoid's camera offset jitters and settles): a fall, a boss roar, a landing
+local function Shake(strength, seconds)
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    task.spawn(function()
+        local steps = math.max(1, math.floor((seconds or 0.4) / 0.03))
+        for i = 1, steps do
+            local f = (1 - i / steps) * (strength or 1)
+            hum.CameraOffset = Vector3.new((math.random() - 0.5) * f, (math.random() - 0.5) * f, 0)
+            task.wait(0.03)
+        end
+        hum.CameraOffset = Vector3.new(0, 0, 0)
+    end)
+end
 
 -- After a respawn the character is turned to face the way the course runs, but the camera stays wherever it was pointing (often back at the fall). Swing it round behind
 -- the character, looking the way the course runs (the default camera carries on from the camera's current direction).
@@ -42,6 +72,7 @@ local function AddBounce(pad)
         bounceCooldown = now
         local root = char:FindFirstChild("HumanoidRootPart")
         if not root then return end
+        Snd("TowerBounce")
         local dir = pad:GetAttribute("Dir") or 1
         root.AssemblyLinearVelocity = Vector3.new(dir * (pad:GetAttribute("HSpeed") or 28), pad:GetAttribute("Power") or 78, 0)
         local e = Instance.new("ParticleEmitter")
@@ -93,6 +124,9 @@ local badgeScale = nil
 local roundEnds, total = nil, 30
 local dailyTarget, dailyDone = nil, false
 local lava
+local mutator, curZone, curMood = nil, nil, nil
+local zoneLbl, skipBtn, skipSub
+local skipsLeft, skipOwned = 0, 0
 
 local function Clock(seconds)
     seconds = math.max(0, math.floor(seconds))
@@ -100,7 +134,7 @@ local function Clock(seconds)
 end
 
 local function LevelColor(level)
-    return Color3.fromHSV(0.02 + 0.72 * (level - 1) / math.max(1, total - 1), 0.75, 1)
+    return (TowerData.ZoneColor(level, total))
 end
 
 -- ── HUD ───────────────────────────────────────────────────────────────────────
@@ -134,6 +168,22 @@ local function BuildHud()
     Theme.AddCorner(standingsFrame, Theme.Corner.Small)
     standingsLbl = Theme.Label(standingsFrame, "", Theme.TextSize.Small, Color3.fromRGB(240, 230, 210), Theme.Fonts.Body)
     standingsLbl.Position, standingsLbl.Size, standingsLbl.TextYAlignment = UDim2.new(0, 8, 0, 6), UDim2.new(1, -16, 1, -12), Enum.TextYAlignment.Top
+
+    -- the zone you are in, and this round's twist, in a strip at the top of the screen
+    zoneLbl = Theme.Label(hud, "", 16, Color3.fromRGB(255, 255, 255), Theme.Fonts.Heading)
+    zoneLbl.Name = "ZoneLabel"
+    zoneLbl.AnchorPoint, zoneLbl.Position, zoneLbl.Size = Vector2.new(0.5, 0), UDim2.new(0.5, 0, 0, 6), UDim2.new(0, 420, 0, 40)
+    zoneLbl.TextXAlignment, zoneLbl.BackgroundColor3, zoneLbl.BackgroundTransparency = Enum.TextXAlignment.Center, Color3.fromRGB(26, 18, 14), 0.3
+    Theme.AddCorner(zoneLbl, Theme.Corner.Small)
+
+    -- Skip a level (a Robux purchase; a skip you already own is used first)
+    skipBtn = Theme.Button(hud, "Skip level", Color3.fromRGB(150, 90, 230), Color3.fromRGB(255, 255, 255))
+    skipBtn.Name = "TowerSkipButton"
+    skipBtn.AnchorPoint, skipBtn.Position, skipBtn.Size = Vector2.new(1, 0), UDim2.new(1, -90, 0, 340), UDim2.new(0, 200, 0, 38)
+    skipBtn.MouseButton1Click:Connect(function() RemoteEvents.TowerSkip:FireServer() end)
+    skipSub = Theme.Label(hud, "", 11, Color3.fromRGB(210, 195, 240), Theme.Fonts.Body)
+    skipSub.Name = "TowerSkipNote"
+    skipSub.AnchorPoint, skipSub.Position, skipSub.Size, skipSub.TextXAlignment = Vector2.new(1, 0), UDim2.new(1, -90, 0, 380), UDim2.new(0, 200, 0, 16), Enum.TextXAlignment.Center
 
     flash = Instance.new("Frame")
     flash.Size, flash.BackgroundTransparency, flash.BorderSizePixel, flash.Visible, flash.ZIndex = UDim2.new(1, 0, 1, 0), 1, 0, false, 20
@@ -264,6 +314,20 @@ local function Update(now)
     local level = LocalPlayer:GetAttribute("TowerLevel") or 1
     levelLbl.Text = string.format("LEVEL %d / %d", level, total)
     levelLbl.TextColor3 = LevelColor(level)
+    -- the zone you are climbing: its name on the strip, and the sky and light change to match
+    local zone = TowerData.ZoneOf(level, total)
+    if zone ~= curZone then
+        curZone = zone
+        local z = TowerData.ZONES[zone]
+        zoneLbl.TextColor3 = LevelColor(level)
+        local mood = (mutator and mutator.fog) and "TowerFog" or MoodData.TowerMood(level, total)
+        curMood = mood
+        Mood(mood)
+        zoneLbl.Text = string.format("ZONE %d  -  %s%s", zone, string.upper(z.name), mutator and mutator.id ~= "classic" and ("   |   " .. mutator.name:upper()) or "")
+    end
+    skipBtn.Visible = skipsLeft > 0 and level < total
+    skipSub.Visible = skipBtn.Visible
+    skipSub.Text = skipOwned > 0 and string.format("You own %d skip%s", skipOwned, skipOwned == 1 and "" or "s") or "Robux: skip to the next level"
     local left = roundEnds and (roundEnds - os.time()) or 0
     clockLbl.Text = "Round  " .. Clock(left)
     clockLbl.TextColor3 = left < 60 and Color3.fromRGB(255, 110, 90) or Color3.fromRGB(255, 232, 170)
@@ -357,14 +421,45 @@ local function OnEvent(kind, p)
     if kind == "start" then
         total, roundEnds = p.total or total, p.roundEnds
         dailyTarget, dailyDone = p.dailyTarget, p.dailyDone
+        mutator = p.mutator
+        skipsLeft, skipOwned = p.skips or 0, p.skipOwned or 0
+        curZone = nil                                               -- (so the strip and the sky are set for the zone you start in)
         hud.Enabled = true
+        Scene("Tower")
+        Snd("TowerStart")
         Banner("CLIMB!", Color3.fromRGB(255, 232, 120))
+        if mutator and mutator.id ~= "classic" then
+            task.delay(1.4, function()
+                Banner(string.format("%s: %s", mutator.name, mutator.desc or ""), Color3.fromRGB(190, 160, 255))
+            end)
+        end
     elseif kind == "level" then
         if p.repeatLevel then return end
         local col = LevelColor(p.level)
         Banner(string.format("LEVEL %d", p.level), col)
         Sparks(col, 40)
         Flash(col, 0.15)
+        Snd("TowerLevel", { pitch = require(game.ReplicatedStorage.Shared.Data.AudioData).LevelPitch(p.level, total) })
+        if p.zoneClear then
+            -- a whole zone behind you: the chest opens
+            task.delay(0.4, function()
+                local zc = p.zoneClear
+                Banner(string.format("ZONE CLEARED!  +%d coins  +%d %s", zc.coins or 0, zc.material and zc.material.qty or 0, zc.material and MatName(zc.material.id) or ""), Color3.fromRGB(255, 226, 120))
+                Snd("RewardChest")
+                Flash(Color3.fromRGB(255, 226, 120), 0.35)
+                Sparks(Color3.fromRGB(255, 226, 120), 70)
+                pcall(function() require(game.ReplicatedStorage.Shared.Modules.Celebrate).Burst({ count = 60 }) end)
+            end)
+        elseif p.zoneStart and p.level > 1 then
+            task.delay(0.6, function() Banner(string.format("ZONE %d  -  %s", p.zone or 1, string.upper(TowerData.ZONES[p.zone or 1].name)), col) end)
+        end
+        if p.boss then
+            task.delay(0.9, function()
+                Banner("BOSS LEVEL!", Color3.fromRGB(255, 90, 70))
+                Snd("TowerStart", { pitch = 0.6, volume = 1.2 })
+                Shake(0.8, 0.5)
+            end)
+        end
         if p.daily then
             dailyDone = true
             task.delay(1.2, function()
@@ -381,14 +476,24 @@ local function OnEvent(kind, p)
                 infoLbl.Text = t
             end)
         end
+    elseif kind == "skipped" then
+        skipsLeft = p.left or math.max(0, skipsLeft - 1)
+        skipOwned = math.max(0, skipOwned - 1)
+        Banner(string.format("SKIPPED TO LEVEL %d", p.level or 0), Color3.fromRGB(190, 160, 255))
+        Snd("TowerStart", { pitch = 1.4, volume = 0.8 })
     elseif kind == "respawn" then
         Banner(string.format("%s  +%ds", REASONS[p.reason] or "Back to your level", p.penalty or 0), Color3.fromRGB(255, 110, 90))
         Flash(Color3.fromRGB(255, 50, 30), 0.45)
+        Snd("TowerFall")
+        Shake(1.4, 0.45)
         FaceCourse(p.dir)
     elseif kind == "summit" then
         Banner("SUMMIT!!", Color3.fromRGB(255, 215, 90))
         Flash(Color3.fromRGB(255, 215, 90), 0.4)
         Sparks(Color3.fromRGB(255, 215, 90), 80)
+        Snd("TowerSummit")
+        task.delay(0.8, function() Snd("RewardChest") end)
+        pcall(function() require(game.ReplicatedStorage.Shared.Modules.Celebrate).Burst({ count = 90 }) end)
     elseif kind == "speedup" then
         Banner(string.format("%s reached the top! %ds left!", p.name or "Someone", p.seconds or 60), Color3.fromRGB(255, 150, 80))
         roundEnds = math.min(roundEnds or math.huge, os.time() + (p.seconds or 60))
@@ -404,11 +509,15 @@ local function OnEvent(kind, p)
     elseif kind == "roundover" or kind == "abandon" then
         hud.Enabled = false
         if lava then lava:Destroy() lava = nil end
+        mutator, curZone = nil, nil
+        Scene("Hub")
+        Mood(nil)                                                   -- the lighting goes back to following where you stand
         if kind == "roundover" and p.best <= 1 and (p.coins or 0) == 0 and not p.summit then
             Banner("Climb ended", Color3.fromRGB(255, 190, 120))            -- just peeked in: no big summary card for nothing
         elseif kind == "roundover" then ShowSummary(p) else Banner(({ left = "You wandered off.", speed = "That climb was stopped.", died = "You were knocked out." })[p.reason] or "Climb ended", Color3.fromRGB(255, 190, 120)) end
     end
 end
+TowerController._OnEvent = OnEvent                               -- (for the tests)
 
 function TowerController.Init()
     BuildHud()

@@ -13,6 +13,7 @@
 --   sweepers   { x, y(top of the platform), z, amp, period, phase, thick }   a bar sliding across Z
 --   walls      { x, y(top of the platform), z, sx, sy, sz }   a solid wall on a platform: tall ones to weave round (slalom), low ones to jump (hurdle)
 --   (platforms may also carry conveyor = speed, ice = true, viaTruss / viaBounce = true on the landing of a ladder or bounce)
+--   helixes    { x1, x2, top, bottom, z, w, ledges, radius, ledge, rise }   a spiral of ledges (each also in platforms / crumbles with helix = true), climbed as one piece
 --   checkpoints{ x, y, z }   places to respawn (the first is the start)
 --   finish     { x, y, z, hx, hz }  the drop-off zone
 local CourierLayout = {}
@@ -205,6 +206,33 @@ function Modules.ladder(L, cur, p)
     cur.x = x0 + (p.footLen or 8) + 1.5 + (p.landLen or 9)
 end
 
+-- A spiral: `n` square ledges (p.width on a side) winding round a hub of radius p.radius, each one `p.rise` higher than the last, so you climb a full level in a corkscrew
+-- instead of a staircase. It sweeps p.sweep radians (an odd multiple of pi, default 1.5 turns), so the last ledge lies due east and the course carries on east from it.
+-- `pattern` has a letter per ledge: "p" plain, "c" crumbles shortly after you land, "i" ice; the last must be "p". p.cw winds the other way.
+-- Every ledge is flagged helix = true and the whole spiral is listed in L.helixes (the tests treat it as one piece you climb, like a ladder).
+function Modules.helix(L, cur, p)
+    local n, R, w = p.n or 8, p.radius or 9, p.width or 7
+    local sweep = p.sweep or 3 * math.pi
+    local pattern = p.pattern or string.rep("p", n)
+    local dirn = p.cw and -1 or 1
+    -- the first ledge is due west of the hub (so you step straight onto it from the platform before) and the last due east (so the course carries on east from it)
+    local cx, cz = cur.x + (p.gap or 3) + R + w / 2, cur.z
+    local y = cur.y
+    for k = 1, n do
+        y = cur.y + k * p.rise
+        local th = math.pi + dirn * sweep * (k - 1) / (n - 1)
+        local x, z = cx + R * math.cos(th), cz + R * math.sin(th)
+        local kind = pattern:sub(k, k)
+        if kind == "c" then
+            table.insert(L.crumbles, { x = x, y = y - THICK / 2, z = z, sx = w, sy = THICK, sz = w, delay = p.delay or 0.7, respawn = p.respawn or 3, helix = true })
+        else
+            Plat(L, x - w / 2, w, y, z, w, { helix = true, ice = (kind == "i") or nil })
+        end
+    end
+    table.insert(L.helixes, { x1 = cx - R - w / 2, x2 = cx + R + w / 2, top = y, bottom = cur.y, z = cz, w = 2 * R + w, ledges = n, radius = R, ledge = w, rise = p.rise })
+    cur.x, cur.y = cx + R + w / 2, y
+end
+
 -- A platform that carries you along (a conveyor belt): speed in studs/s, positive = the way the course runs. Against it is the hard way.
 function Modules.conveyor(L, cur, p)
     local x0 = cur.x + (p.gap or 3)
@@ -340,7 +368,7 @@ function CourierLayout.Build(course)
     local L = {
         base = course.base, zRange = course.zRange or 14,
         platforms = {}, movers = {}, crumbles = {}, spinners = {}, crushers = {}, checkpoints = {}, trusses = {}, bounces = {}, sweepers = {}, walls = {}, kills = {}, grids = {},
-        lifts = {}, zmovers = {}, orbiters = {}, pendulums = {}, beamfields = {},
+        lifts = {}, zmovers = {}, orbiters = {}, pendulums = {}, beamfields = {}, helixes = {},
     }
     local cur = { x = course.base.x, y = course.base.y, z = course.base.z }
     for _, m in ipairs(course.modules) do

@@ -71,6 +71,16 @@ PRODUCT_HANDLERS.GrowthTonic_1h = function(player)
     end)
 end
 
+-- ── Sky Tower level skip: a stored credit, spent when the player presses Skip in the tower (so a purchase is never lost if they have just left the climb) ──────────
+PRODUCT_HANDLERS.TowerSkip = function(player)
+    local ok = withData(player, function(d) d.TowerSkips = (d.TowerSkips or 0) + 1 end)
+    if ok then
+        local loaded, Tower = pcall(require, script.Parent.TowerService)
+        if loaded and Tower and Tower.OnSkipBought then Tower.OnSkipBought(player) end
+    end
+    return ok
+end
+
 -- ── Event Catalyst ────────────────────────────────────────────────────────────
 PRODUCT_HANDLERS.EventCatalyst = function(player)
     PlayerDataService.AddMaterial(player, "EventCatalyst", 1)

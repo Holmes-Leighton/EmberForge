@@ -2,6 +2,7 @@
 -- climb or a ladder to the next. Levels alternate direction and step sideways, so the tower zig-zags upward and no two levels overlap.
 -- Pure maths with no Roblox types: tests prove every jump on every seed, and the server and clients build identical towers from the same seed.
 local CourierLayout = require(script.Parent.CourierLayout)
+local TowerData     = require(game.ReplicatedStorage.Shared.Data.TowerData)
 
 local TowerLayout = {}
 
@@ -13,10 +14,18 @@ TowerLayout.CENTRE_OFFSET = 110       -- the middle of the tower, east of the fi
 TowerLayout.DRIFT        = 70        -- a level that ends further than this from the middle turns the next one back
 TowerLayout.Z_PATTERN    = { 0, 1, 2, 1 }    -- the sideways shift (in LEVEL_Z_STEPs) of levels 1, 2, 3, 4, then repeating: always one step from the level below
 
+-- How hard each level is (1 easy .. 3 hard): a sawtooth, not a ramp. Every zone starts a notch easier than the one before ended and builds to its boss level, so there is always a
+-- breather and always a peak. A tower with more levels (Pro) stretches this pattern.
+TowerLayout.TIER_PATTERN = {
+    1, 1, 1, 1, 1, 2,        -- zone 1, Stone: the opener
+    1, 2, 1, 2, 2, 3,        -- zone 2, Ember
+    2, 1, 2, 2, 3, 3,        -- zone 3, Frost
+    2, 2, 3, 2, 3, 3,        -- zone 4, Storm
+    2, 3, 2, 3, 3, 3,        -- zone 5, Void
+}
 function TowerLayout.TierOf(level, total)
-    local third = total / 3
-    if level <= third then return 1 elseif level <= third * 2 then return 2 end
-    return 3
+    local n = #TowerLayout.TIER_PATTERN
+    return TowerLayout.TIER_PATTERN[math.clamp(math.ceil(level / total * n), 1, n)]
 end
 
 -- ── The level designs ─────────────────────────────────────────────────────────
@@ -238,10 +247,112 @@ local function Rng(seed)
     end
 end
 
--- The designs of a tier, in a shuffled deck: a tower deals from it, so no design repeats until all of that tier's have been used
-local function Deck(tier, rng)
-    local deck = {}
-    for i, d in ipairs(DESIGNS) do if d.tier == tier then deck[#deck + 1] = i end end
+-- ── Boss levels ───────────────────────────────────────────────────────────────
+-- The last level of every zone is a hand-made set piece: bigger, with a mechanic that zone is known for, and the way up from it is part of the challenge (a spiral, never
+-- a plain staircase). They are not in the shuffled decks: level 6, 12, 18, 24 and 30 always play their zone's boss.
+local BOSSES = {
+    Stone = { name = "Boulder Run", theme = "sandstone", tier = 2, boss = "Stone",
+      modules = { { "slalom", { gap = 3, len = 50, width = 18, n = 6, hurdle = true, wallH = 3.0 } },
+                  { "strips", { gap = 4, len = 40, width = 16, n = 5, strip = 2.2 } },
+                  { "spinner", { gap = 4, len = 36, width = 24, radius = 10, omega = 1.3, bars = 2 } } },
+      connector = "helix" },
+    Ember = { name = "Magma Gauntlet", theme = "lava", tier = 3, boss = "Ember",
+      modules = { { "bounce", { gap = 4, padLen = 10, width = 12, span = 9, rise = 12, power = 86, hspeed = 28, landLen = 14, landWidth = 14 } },
+                  { "sweeper", { gap = 4, len = 40, width = 5, n = 3, amp = 4, period = 3.0, stagger = 1.5 } },
+                  { "killfloor", { gap = 3, pattern = { "..X.X.X..", ".X..X..X.", "X..X..X.." } } },
+                  { "spinner", { gap = 4, len = 38, width = 24, radius = 11, omega = 1.8, bars = 2 } } },
+      connector = "helix" },
+    Frost = { name = "Frozen Spiral", theme = "ice", tier = 3, boss = "Frost",
+      modules = { { "ice", { n = 4, gap = 5, len = 7, width = 7, zigs = { 0, 4, -4, 3 } } },
+                  { "helix", { gap = 4.5, n = 12, radius = 11.5, width = 6, rise = 3.6, pattern = "iiiiiiiiiiip" } } },
+      connector = "none" },
+    Storm = { name = "Storm Core", theme = "neon", tier = 3, boss = "Storm",
+      modules = { { "beams", { gap = 3, len = 46, width = 28, count = 12, rmin = 1.9, rmax = 2.7, period = 2.6, warn = 1.0, fire = 0.7 } },
+                  { "orbit", { radius = 10, len = 7, width = 7, omega = 0.8, landing = 8 } },
+                  { "pendulum", { gap = 3, len = 40, width = 8, n = 4, period = 2.8, amp = 1.0, stagger = 0.9 } } },
+      connector = "helix" },
+    Void = { name = "The Hollow Crown", theme = "dark", tier = 3, boss = "Void",
+      modules = { { "killfloor", { gap = 3, pattern = { "X.XX.X.XX", ".X..X..X.", "..X.X.X..", "X.X..XX.X" } } },
+                  { "tilefall", { gap = 4, delay = 0.45, pattern = { ".o....", "......", "....o." } } },
+                  { "pendulum", { gap = 3, len = 36, width = 8, n = 3, period = 2.8, amp = 1.0, stagger = 0.9 } },
+                  { "helix", { gap = 4.5, n = 12, radius = 11.5, width = 6, rise = 3.6, pattern = "cpcpcpcpcppp" } } },
+      connector = "none" },
+}
+TowerLayout.Bosses = BOSSES
+
+-- ── How you get up to the next level ──────────────────────────────────────────
+-- Not always a staircase: each level gets a way up of its own, drawn from the kinds below (a design can fix its own, like the ladder levels).
+--   ledges: a staircase   helix: a corkscrew of ledges   ladder: a real climb   lifts: two lifts, one after the other
+local CONNECTOR_WEIGHTS = {       -- percent, by tier
+    [1] = { ledges = 30, helix = 30, ladder = 20, lifts = 20 },
+    [2] = { ledges = 25, helix = 30, ladder = 20, lifts = 25 },
+    [3] = { ledges = 20, helix = 35, ladder = 20, lifts = 25 },
+}
+local HELIX_STYLE = {             -- radius and ledge size by tier (searched so the ledges never overlap and every hop is inside that tier's jump limit)
+    [1] = { radius = 9.0,  width = 7.0, patterns = { "pppppppp" } },
+    [2] = { radius = 8.5,  width = 6.5, patterns = { "ppcppcpp", "pcppcppp", "ppppcppp" } },
+    [3] = { radius = 8.5,  width = 6.0, patterns = { "pcpcpcpp", "ppcpcppp", "cpcpppcp" } },
+}
+local function HelixFor(tier, rng)
+    local st = HELIX_STYLE[tier]
+    return { "helix", { gap = 3.5, n = 8, radius = st.radius, width = st.width, rise = TowerLayout.CLIMB_RISE[tier], pattern = st.patterns[rng(#st.patterns)],
+        delay = tier == 2 and 0.9 or 0.65, cw = rng(2) == 1 } }
+end
+local function LadderFor(tier)
+    return { "ladder", { gap = 3.5, height = 22 + 2 * tier, footLen = 8, landLen = 9, width = 11 } }
+end
+local function LiftsFor(tier, rng)
+    local rise = 11 + tier
+    return { "lift", { gap = 2, len = 9, rise = rise, period = 7 - 0.4 * tier, phase = rng(4) * 0.5, landing = 8, width = 10 } },
+           { "lift", { gap = 2, len = 9, rise = rise, period = 6.4 - 0.4 * tier, phase = 3 + rng(4) * 0.5, landing = 9, width = 10 } }
+end
+
+-- The connector modules for a level, and its kind. `want` forces a kind ("helix" for a boss, "none" when the level's own obstacle is the way up).
+local function ConnectorModules(design, tier, rng, want)
+    if want == "none" then return {}, "none" end
+    local kind = want
+    if not kind then
+        if design.connector then
+            local c = design.connector[1] and design.connector[1][1]
+            return design.connector, c == "ladder" and "ladder" or "custom"
+        end
+        local w = CONNECTOR_WEIGHTS[tier]
+        local roll, acc = rng(100), 0
+        for _, k in ipairs({ "ledges", "helix", "ladder", "lifts" }) do
+            acc += w[k]
+            if roll <= acc then kind = k break end
+        end
+    end
+    if kind == "helix" then return { HelixFor(tier, rng) }, "helix" end
+    if kind == "ladder" then return { LadderFor(tier) }, "ladder" end
+    if kind == "lifts" then
+        local a, b = LiftsFor(tier, rng)
+        return { a, b }, "lifts"
+    end
+    return { ClimbFor(tier, rng) }, "ledges"
+end
+
+-- Which zone a design suits (by its look); metal designs suit any. A zone prefers its own designs and borrows the rest only if it would otherwise run short.
+local AFFINITY = { sandstone = "Stone", wood = "Stone", slate = "Stone", lava = "Ember", ice = "Frost", neon = "Storm", glass = "Storm", dark = "Void" }
+TowerLayout.MIN_CANDIDATES = 3
+
+local function Candidates(tier, zoneId)
+    local mine, all = {}, {}
+    for i, d in ipairs(DESIGNS) do
+        if d.tier == tier then
+            all[#all + 1] = i
+            local a = AFFINITY[d.theme]
+            if a == nil or a == zoneId then mine[#mine + 1] = i end
+        end
+    end
+    if #mine >= TowerLayout.MIN_CANDIDATES then return mine end
+    return all
+end
+TowerLayout.Candidates = Candidates
+
+-- The designs a (tier, zone) can use, in a shuffled deck: a tower deals from it, so no design repeats until all of them have been used
+local function Deck(tier, zoneId, rng)
+    local deck = Candidates(tier, zoneId)
     for k = #deck, 2, -1 do
         local j = rng(k)
         deck[k], deck[j] = deck[j], deck[k]
@@ -251,37 +362,57 @@ end
 
 local function Copy(q) local c = {} for k, v in pairs(q) do c[k] = v end return c end
 
+-- How big the start platform of a level is: a wide gateway plaza when a new zone begins, a roomy one before a boss, a plain one otherwise
+local function RestSize(level, total, rng)
+    if level == 1 or TowerData.IsZoneStart(level, total) then return 40, 34 end
+    if TowerData.IsBoss(level, total) then return 32, 30 end
+    return 22 + 2 * rng(3), 30       -- (wide enough that the previous level's exit, even a small spiral ledge, is always within a step of it sideways)
+end
+
 -- opts: { levels = 30, seed = 1, base = { x, y, z } }
 function TowerLayout.Build(opts)
     local total, seed = opts.levels or 30, opts.seed or 1
     local base = opts.base or { x = 0, y = 100, z = 0 }
     local rng = Rng(seed)
     local T = { levels = {}, platforms = {}, movers = {}, crumbles = {}, spinners = {}, crushers = {}, checkpoints = {}, levelOfCheckpoint = {},
-        trusses = {}, bounces = {}, sweepers = {}, walls = {}, kills = {}, grids = {}, lifts = {}, zmovers = {}, orbiters = {}, pendulums = {}, beamfields = {}, base = base, seed = seed, total = total }
+        trusses = {}, bounces = {}, sweepers = {}, walls = {}, kills = {}, grids = {}, lifts = {}, zmovers = {}, orbiters = {}, pendulums = {}, beamfields = {}, helixes = {},
+        base = base, seed = seed, total = total }
 
     local startX, y, z, dir = base.x, base.y, base.z, 1
     local lastDesign = 0
     local decks = {}
     for i = 1, total do
         local tier = TowerLayout.TierOf(i, total)
-        decks[tier] = decks[tier] or {}
-        local pick
-        for _ = 1, 4 do                                                -- deal the next design of this tier's deck (reshuffling when it runs out); never the same twice in a row
-            if #decks[tier] == 0 then decks[tier] = Deck(tier, rng) end
-            pick = table.remove(decks[tier])
-            if pick ~= lastDesign then break end
-        end
-        lastDesign = pick
-        local design = DESIGNS[pick]
-
-        local modules = { { "rest", { len = 26, width = 26 } } }
-        for _, m in ipairs(design.modules) do modules[#modules + 1] = m end
-        if i < total then
-            if design.connector then
-                for _, m in ipairs(design.connector) do modules[#modules + 1] = m end
-            else
-                modules[#modules + 1] = ClimbFor(design.tier, rng)
+        local zoneIndex = TowerData.ZoneOf(i, total)
+        local zoneId = TowerData.ZONES[zoneIndex].id
+        local boss = TowerData.IsBoss(i, total)
+        local design, designKey
+        if boss then
+            design = BOSSES[zoneId]
+            designKey = "boss" .. zoneId
+        else
+            local key = tier .. zoneId
+            decks[key] = decks[key] or {}
+            local pick
+            for _ = 1, 4 do                                                -- deal the next design of this deck (reshuffling when it runs out); never the same twice in a row
+                if #decks[key] == 0 then decks[key] = Deck(tier, zoneId, rng) end
+                pick = table.remove(decks[key])
+                if pick ~= lastDesign then break end
             end
+            lastDesign = pick
+            design = DESIGNS[pick]
+            designKey = pick
+        end
+
+        local restLen, restWidth = RestSize(i, total, rng)
+        local modules = { { "rest", { len = restLen, width = restWidth } } }
+        for _, m in ipairs(design.modules) do modules[#modules + 1] = m end
+        local connectorKind = "top"
+        if i < total then
+            local want = boss and design.connector or nil
+            local conn, kind = ConnectorModules(design, design.tier, rng, want)
+            for _, m in ipairs(conn) do modules[#modules + 1] = m end
+            connectorKind = kind
         else
             modules[#modules + 1] = { "finish", { gap = 4, len = 32, width = 28 } }
         end
@@ -313,6 +444,10 @@ function TowerLayout.Build(opts)
         put(T.zmovers, layout.zmovers, function(c, q) c.x = wx(q.x) end)
         put(T.orbiters, layout.orbiters, function(c, q) c.x = wx(q.x) end)
         put(T.pendulums, layout.pendulums, function(c, q) c.x = wx(q.x) end)
+        put(T.helixes, layout.helixes, function(c, q)
+            local a, b = wx(q.x1), wx(q.x2)
+            c.x1, c.x2 = math.min(a, b), math.max(a, b)
+        end)
         put(T.beamfields, layout.beamfields, function(c, q)
             c.x1, c.x2 = wx(q.x1), wx(q.x2)
             c.circles = {}
@@ -325,7 +460,8 @@ function TowerLayout.Build(opts)
             T.levelOfCheckpoint[#T.checkpoints] = i
         end
         T.levels[i] = { index = i, tier = tier, designTier = design.tier, design = design.name, theme = design.theme, y = y, dir = dir, z = z,
-            firstCheckpoint = firstCp, startX = startX, endX = wx(layout.endX), lava = i > total / 3 }
+            firstCheckpoint = firstCp, startX = startX, endX = wx(layout.endX), lava = i > total / 3,
+            zone = zoneIndex, zoneId = zoneId, boss = boss, zoneStart = TowerData.IsZoneStart(i, total), connector = connectorKind, designKey = designKey }
         if layout.finish then T.finish = { x = wx(layout.finish.x), y = layout.finish.y, z = layout.finish.z, hx = layout.finish.hx, hz = layout.finish.hz } end
 
         startX = wx(layout.endX)
@@ -343,14 +479,15 @@ function TowerLayout.Build(opts)
     return T
 end
 
--- The walk order of every piece in level i, for the tests: { x1, x2, top, z, w, kind, viaTruss, viaBounce }
+-- The walk order of every piece in level i, for the tests: { x1, x2, top, z, w, kind, viaTruss, viaBounce }. A spiral counts as one piece you climb, like a ladder.
 function TowerLayout.WalkOrder(T, level)
     local out = {}
     local function add(x1, x2, top, z, w, kind, src)
         out[#out + 1] = { x1 = math.min(x1, x2), x2 = math.max(x1, x2), top = top, z = z, w = w, kind = kind, viaTruss = src and src.viaTruss, viaBounce = src and src.viaBounce }
     end
-    for _, p in ipairs(T.platforms) do if p.level == level then add(p.x - p.sx / 2, p.x + p.sx / 2, p.y + p.sy / 2, p.z, p.sz, "platform", p) end end
-    for _, p in ipairs(T.crumbles) do if p.level == level and not p.grid then add(p.x - p.sx / 2, p.x + p.sx / 2, p.y + p.sy / 2, p.z, p.sz, "crumble") end end
+    for _, p in ipairs(T.platforms) do if p.level == level and not p.helix then add(p.x - p.sx / 2, p.x + p.sx / 2, p.y + p.sy / 2, p.z, p.sz, "platform", p) end end
+    for _, p in ipairs(T.crumbles) do if p.level == level and not p.grid and not p.helix then add(p.x - p.sx / 2, p.x + p.sx / 2, p.y + p.sy / 2, p.z, p.sz, "crumble") end end
+    for _, h in ipairs(T.helixes) do if h.level == level then add(h.x1, h.x2, h.top, h.z, h.w, "helix", { viaTruss = true }) end end
     for _, g in ipairs(T.grids) do if g.level == level then add(g.x1, g.x2, g.top, g.z, g.w, "grid") end end        -- (a floor of falling tiles counts as one piece)
     for _, m in ipairs(T.movers) do if m.level == level then add(math.min(m.x0, m.x1) - m.sx / 2, math.max(m.x0, m.x1) + m.sx / 2, m.y + m.sy / 2, m.z, m.sz, "mover") end end
     for _, l in ipairs(T.lifts) do if l.level == level then add(l.x - l.sx / 2, l.x + l.sx / 2, l.y0 + l.sy / 2, l.z, l.sz, "lift") end end

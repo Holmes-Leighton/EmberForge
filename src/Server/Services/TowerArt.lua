@@ -41,7 +41,7 @@ local function LevelLayout(T, i, isLast)
         spinners = Subset(T.spinners, i), crushers = Subset(T.crushers, i), checkpoints = Subset(T.checkpoints, i),
         trusses = Subset(T.trusses, i), bounces = Subset(T.bounces, i), sweepers = Subset(T.sweepers, i), walls = Subset(T.walls or {}, i),
         kills = Subset(T.kills or {}, i), lifts = Subset(T.lifts or {}, i), zmovers = Subset(T.zmovers or {}, i), orbiters = Subset(T.orbiters or {}, i),
-        pendulums = Subset(T.pendulums or {}, i), beamfields = Subset(T.beamfields or {}, i),
+        pendulums = Subset(T.pendulums or {}, i), beamfields = Subset(T.beamfields or {}, i), helixes = Subset(T.helixes or {}, i),
         base = T.base,
     }
     if isLast then lay.finish = T.finish end
@@ -478,6 +478,77 @@ local function Clouds(folder, T)
         CFrame = CFrame.new((lo + hi) / 2, T.base.y - 180, (zlo + zhi) / 2) }, group)
 end
 
+-- ── Zone gates, boss banners and chests ───────────────────────────────────────
+-- A gate you run through where a new zone begins: two pillars and a glowing lintel in the zone's colour, with the zone's name big across it.
+local function ZoneGate(group, cp, width, zone, color, zoneNumber)
+    local halfW = width / 2 + 2
+    local h = 26
+    local pillarColor = Color3.fromRGB(70, 66, 84)
+    for _, side in ipairs({ -1, 1 }) do
+        P({ Name = "GatePillar", Material = Enum.Material.Slate, Color = pillarColor, Size = Vector3.new(4, h, 4), CanCollide = false,
+            CFrame = CFrame.new(cp.x, cp.y - 3 + h / 2, cp.z + side * halfW) }, group)
+        P({ Name = "GateGlow", Material = Enum.Material.Neon, Color = color, Size = Vector3.new(4.4, 1.2, 4.4), CanCollide = false,
+            CFrame = CFrame.new(cp.x, cp.y - 3 + h - 2, cp.z + side * halfW) }, group)
+    end
+    local lintel = P({ Name = "GateLintel", Material = Enum.Material.Neon, Color = color, Size = Vector3.new(3, 3, halfW * 2 + 4), CanCollide = false,
+        CFrame = CFrame.new(cp.x, cp.y - 3 + h + 1.5, cp.z) }, group)
+    local light = Instance.new("PointLight")
+    light.Color, light.Range, light.Brightness = color, 60, 2
+    light.Parent = lintel
+    local anchor = P({ Name = "GateSign", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(cp.x, cp.y - 3 + h + 8, cp.z) }, group)
+    Sign(group, anchor, "ZONE " .. zoneNumber .. "\n" .. string.upper(zone.name), UDim2.new(0, 420, 0, 120), Vector3.new(0, 0, 0), color, 320)
+end
+
+-- A treasure chest: a gold-banded box with a glowing lid and a column of light, so you can see what a zone pays from the level below.
+local function Chest(group, pos, color, label)
+    local body = P({ Name = "ChestBody", Material = Enum.Material.Wood, Color = Color3.fromRGB(120, 78, 40), Size = Vector3.new(8, 4, 5), CanCollide = false, CFrame = CFrame.new(pos + Vector3.new(0, 2, 0)) }, group)
+    P({ Name = "ChestLid", Material = Enum.Material.Wood, Color = Color3.fromRGB(140, 92, 48), Size = Vector3.new(8, 2.2, 5), CanCollide = false, CFrame = CFrame.new(pos + Vector3.new(0, 5.1, 0)) }, group)
+    for _, dx in ipairs({ -2.6, 2.6 }) do
+        P({ Name = "ChestBand", Material = Enum.Material.Metal, Color = Color3.fromRGB(255, 205, 70), Size = Vector3.new(0.9, 6.6, 5.4), CanCollide = false, CFrame = CFrame.new(pos + Vector3.new(dx, 3.6, 0)) }, group)
+    end
+    P({ Name = "ChestLock", Material = Enum.Material.Neon, Color = color, Size = Vector3.new(1.4, 1.8, 0.4), CanCollide = false, CFrame = CFrame.new(pos + Vector3.new(0, 4, 2.6)) }, group)
+    local beam = P({ Name = "ChestBeam", Material = Enum.Material.Neon, Color = color, Transparency = 0.7, Size = Vector3.new(4, 60, 4), CanCollide = false, CFrame = CFrame.new(pos + Vector3.new(0, 32, 0)) }, group)
+    local light = Instance.new("PointLight")
+    light.Color, light.Range, light.Brightness = color, 30, 2
+    light.Parent = beam
+    local sparks = Instance.new("ParticleEmitter")
+    sparks.Color = ColorSequence.new(color)
+    sparks.Rate, sparks.Lifetime, sparks.Speed = 14, NumberRange.new(1.2, 2.2), NumberRange.new(3, 7)
+    sparks.SpreadAngle = Vector2.new(25, 25)
+    sparks.Size = NumberSequence.new(0.6, 0)
+    sparks.LightEmission = 1
+    sparks.Parent = body
+    if label then
+        local anchor = P({ Name = "ChestSign", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(pos + Vector3.new(0, 11, 0)) }, group)
+        Sign(group, anchor, label, UDim2.new(0, 260, 0, 60), Vector3.new(0, 0, 0), Color3.fromRGB(255, 226, 120), 200)
+    end
+    return body
+end
+
+-- A banner of crossed light above a boss level's start, so you see it coming: BOSS, and the boss's name.
+local function BossBanner(group, cp, width, name, color)
+    local halfW = width / 2 + 3
+    for _, side in ipairs({ -1, 1 }) do
+        P({ Name = "BossPylon", Material = Enum.Material.Metal, Color = Color3.fromRGB(40, 36, 44), Size = Vector3.new(3, 18, 3), CanCollide = false,
+            CFrame = CFrame.new(cp.x, cp.y - 3 + 9, cp.z + side * halfW) }, group)
+        local flame = P({ Name = "BossFlame", Material = Enum.Material.Neon, Color = color, Size = Vector3.new(4, 4, 4), Shape = Enum.PartType.Ball, CanCollide = false,
+            CFrame = CFrame.new(cp.x, cp.y - 3 + 20, cp.z + side * halfW) }, group)
+        local light = Instance.new("PointLight")
+        light.Color, light.Range, light.Brightness = color, 36, 2.5
+        light.Parent = flame
+    end
+    local anchor = P({ Name = "BossSign", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(cp.x, cp.y - 3 + 24, cp.z) }, group)
+    Sign(group, anchor, "BOSS\n" .. string.upper(name), UDim2.new(0, 340, 0, 100), Vector3.new(0, 0, 0), color, 280)
+end
+
+-- The platform holding a level's first checkpoint (its rest pad)
+local function RestPad(T, level, cp)
+    for _, p in ipairs(T.platforms) do
+        if p.level == level and math.abs(p.x - cp.x) < 0.01 then return p end
+    end
+    return nil
+end
+
 -- Builds the whole tower for a layout T under `parent`. Returns the folder.
 function TowerArt.Build(parent, T)
     local folder = Instance.new("Folder")
@@ -485,12 +556,13 @@ function TowerArt.Build(parent, T)
     Frame(folder, T)
     Clouds(folder, T)
     for i, lv in ipairs(T.levels) do
-        local color = LevelColor(i, T.total)
+        local zone = TowerData.ZONES[lv.zone]
+        local color, h = TowerData.ZoneColor(i, T.total)
         local theme = TowerArt.Themes[lv.theme] or TowerArt.Themes.slate
-        -- the big obbies are bright: each level is a saturated rainbow colour (by height) in smooth plastic with glowing white-ish edges; the design's theme only decides the extras (scaffold, pipes)
-        local h = 0.02 + 0.82 * (i - 1) / math.max(1, T.total - 1)
+        -- the big obbies are bright: each zone has its own saturated colour (its hue drifts a little up the zone) in smooth plastic with glowing white-ish edges;
+        -- the design's theme only decides the extras (scaffold, pipes)
         local look = {
-            material = Enum.Material.SmoothPlastic, color = Color3.fromHSV(h, 0.82, 1), rest = Color3.fromHSV(h, 0.38, 1),
+            material = Enum.Material.SmoothPlastic, color = color, rest = Color3.fromHSV(h, math.max(0.15, zone.sat * 0.45), 1),
             accent = Color3.fromHSV((h + 0.5) % 1, 0.35, 1), scaffold = theme.scaffold, beam = Color3.fromHSV(h, 0.9, 0.85),
         }
         local r = { id = "Tower", def = { tier = lv.tier, color = look.accent, look = look }, layout = LevelLayout(T, i, i == T.total) }
@@ -502,9 +574,20 @@ function TowerArt.Build(parent, T)
         -- the level's number, big on a sign above its start platform (readable from the level below)
         local cp = r.layout.checkpoints[1]
         if cp then
-            TowerArt.RainbowRing(group, cp.x, cp.y - 3 + 13, cp.z, 17, 26)
+            local pad = RestPad(T, i, cp)
+            local width = pad and pad.sz or 30
+            if lv.zoneStart and i > 1 then
+                ZoneGate(group, cp, width, zone, color, lv.zone)                       -- a gate at the start of every new zone
+                Chest(group, Vector3.new(cp.x - lv.dir * ((pad and pad.sx or 40) / 2 - 6), cp.y, cp.z + width / 2 - 6), color, "ZONE CLEAR CHEST")
+            elseif i == 1 then
+                ZoneGate(group, cp, width, zone, color, lv.zone)
+            else
+                TowerArt.RainbowRing(group, cp.x, cp.y - 3 + 13, cp.z, 17, 26)
+            end
+            if lv.boss then BossBanner(group, cp, width, lv.design or "Boss", color) end
             local anchor = P({ Name = "LevelSignAnchor", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(cp.x, cp.y + 14, cp.z) }, group)
-            Sign(group, anchor, "LEVEL " .. i .. "\n" .. (lv.design or ""), UDim2.new(0, 280, 0, 84), Vector3.new(0, 0, 0), color, 220)
+            local title = "LEVEL " .. i .. "\n" .. (lv.design or "")
+            Sign(group, anchor, title, UDim2.new(0, 280, 0, 84), Vector3.new(0, 0, 0), color, 220)
             local beam = P({ Name = "LevelBeam", Material = Enum.Material.Neon, Color = color, Transparency = 0.75, Size = Vector3.new(2, 40, 2), CanCollide = false,
                 CFrame = CFrame.new(cp.x, cp.y + 17, cp.z) }, group)
             local light = Instance.new("PointLight")
@@ -512,9 +595,12 @@ function TowerArt.Build(parent, T)
             light.Parent = beam
         end
     end
-    -- the summit: the drop-off ring and arch from the Courier art, in gold
+    -- the summit: the drop-off ring and arch from the Courier art, in gold, with the last zone's chest beside it
     local lastLayout = LevelLayout(T, T.total, true)
     CourierArt.Finish(folder, { id = "Tower", def = { tier = 3, color = Color3.fromRGB(255, 215, 90) }, layout = lastLayout })
+    if T.finish then
+        Chest(folder, Vector3.new(T.finish.x, T.finish.y - 3, T.finish.z + (T.finish.hz or 14) - 5), Color3.fromRGB(255, 215, 90), "SUMMIT CHEST")
+    end
     folder.Parent = parent
     return folder
 end
