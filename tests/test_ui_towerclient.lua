@@ -100,6 +100,26 @@ LocalPlayerMock:SetAttribute("TowerLevel", 13)
 step()
 expect(Look.Current() == "TowerFog", "and it stays foggy in every zone")
 
+print("== after a fall you face the way the level runs")
+local cam = workspace.CurrentCamera
+cam.CameraType = Enum.CameraType.Custom
+cam.CFrame = CFrame.new(0, 0, 0)
+fakeRemotes.TowerEvent.OnClientEvent:Fire("respawn", { reason = "fell", level = 7, penalty = 3, dir = -1, x = 500, y = 80, z = 20 })
+expect(cam.CFrame.Position.X == 514 and cam.CFrame.Position.Y == 87, "a level that runs west puts the camera east of the respawn point, behind you (x = " .. tostring(cam.CFrame.Position.X) .. ")")
+fakeRemotes.TowerEvent.OnClientEvent:Fire("respawn", { reason = "lava", level = 8, penalty = 3, dir = 1, x = 500, y = 80, z = 20 })
+expect(cam.CFrame.Position.X == 486, "a level that runs east puts it west of the point (x = " .. tostring(cam.CFrame.Position.X) .. ")")
+cam.CFrame = CFrame.new(0, 0, 0)
+LocalPlayerMock.Character = { FindFirstChild = function() return { Position = Vector3.new(7, 8, 9) } end, FindFirstChildOfClass = function() return nil end }
+fakeRemotes.TowerEvent.OnClientEvent:Fire("respawn", { reason = "fell", level = 9, penalty = 3, dir = -1 })
+expect(cam.CFrame.Position.X == 21, "an old-style event with no point still turns the camera, from where you stand (x = " .. tostring(cam.CFrame.Position.X) .. ")")
+LocalPlayerMock.Character = nil
+cam.CameraType = Enum.CameraType.Scriptable
+cam.CFrame = CFrame.new(1, 2, 3)
+fakeRemotes.TowerEvent.OnClientEvent:Fire("respawn", { reason = "fell", level = 7, penalty = 3, dir = 1, x = 500, y = 80, z = 20 })
+expect(cam.CFrame.Position.X == 1, "and a camera some other script is driving is left alone")
+local svc = SOURCES["src/Server/Services/TowerService.lua"]
+expect(svc:find("x = target.X, y = target.Y, z = target.Z", 1, true) ~= nil, "the server sends the exact respawn point")
+
 print("== leaving")
 fakeRemotes.TowerEvent.OnClientEvent:Fire("abandon", { reason = "left" })
 expect(hud.Enabled == false, "the HUD goes away")

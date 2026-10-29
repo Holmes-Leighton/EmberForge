@@ -54,7 +54,9 @@ expect(Look.Current() == "Void", "Apply switches mood")
 
 print("== audio resolves")
 expect(AudioData.Resolve("Click") ~= nil, "Click has a built-in fallback so it is never silent")
-expect(AudioData.Resolve("MazeRoar") == nil, "a sound with no uploaded id and no fallback is silent, not an error")
+AudioData.Sounds.ZzNotUploaded = { volume = 0.5 }                              -- (made up: the real sounds have ids once uploaded)
+expect(AudioData.Resolve("ZzNotUploaded") == nil, "a sound with no uploaded id and no fallback is silent, not an error")
+AudioData.Sounds.ZzNotUploaded = nil
 expect(AudioData.Resolve("NoSuchSound") == nil, "unknown names are ignored")
 expect(AudioData.LevelPitch(1, 30) == 1 and math.abs(AudioData.LevelPitch(30, 30) - 1.5) < 1e-9 and AudioData.LevelPitch(15, 30) > 1 and AudioData.LevelPitch(15, 30) < 1.5, "the tower ding rises from x1 to x1.5")
 local names = { "Click", "Notify", "Error", "LevelUp", "Achievement", "Collect", "CoinPop", "RewardChest", "Deploy", "Craft", "CraftRare", "Neon", "Smelt", "TradeDone",

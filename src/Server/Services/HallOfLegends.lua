@@ -7,16 +7,20 @@ local GolemModel = require(game.ReplicatedStorage.Shared.Modules.GolemModel)
 
 local HallOfLegends = {}
 
--- Spawn is at (0, 0.5, -60) and the hub keeps scenery off |x| < 60, -105 < z < -20 (WorldBuilder). The hall sits east of the spawn road, inside that clear patch, facing the spawn.
-HallOfLegends.CENTRE = { x = 34, z = -86 }
+-- The hall has its own plaza east of the spawn: a paved floor with a lit edge, the three statues in a row 36 studs apart (each statue's glowing ring is 21 wide, so they never touch),
+-- and the scenery scatter kept out of it (WorldBuilder reads HallOfLegends.AREA). The box sits clear of the forge plots (|z| < 62), the pad plaza (z < -105) and the spawn
+-- (x < 7), and short of the Cart Run road that starts near x = 160; tests check it against the cart routes too. It faces the spawn, a long way off but visible: the beams are 70 studs tall.
+HallOfLegends.AREA = { x1 = 40, x2 = 146, z1 = -104, z2 = -66 }
+HallOfLegends.CENTRE = { x = 93, z = -85 }
+HallOfLegends.SPACING = 36
 HallOfLegends.FACING = { x = 0, z = -60 }
 
 HallOfLegends.Statues = {
-    { id = "Supreme", dx = 0, dz = -4, scale = 2.4, element = "Void", tier = 4, options = { variant = "MegaNeon", stage = "Ancient" },
+    { id = "Supreme", dx = 0, dz = 0, scale = 2.4, element = "Void", tier = 4, options = { variant = "MegaNeon", stage = "Ancient" },
       title = "SUPREME GOLEM", how = "Fuse four Elite Golems, which come from fusing four Golems of the same kind.", color = Color3.fromRGB(190, 120, 255) },
-    { id = "Maze", dx = -18, dz = 6, scale = 1.9, element = "Maze", tier = 5, options = { stage = "Ancient" },
+    { id = "Maze", dx = -36, dz = 0, scale = 1.9, element = "Maze", tier = 5, options = { stage = "Ancient" },
       title = "MAZE GOLEM", how = "Earn its pieces by escaping the Hollow Maze. Rare, but worth every run.", color = Color3.fromRGB(110, 230, 140) },
-    { id = "Primordial", dx = 18, dz = 6, scale = 1.9, element = "All", tier = 5, options = { stage = "Ancient" },
+    { id = "Primordial", dx = 36, dz = 0, scale = 1.9, element = "All", tier = 5, options = { stage = "Ancient" },
       title = "PRIMORDIAL GOLEM", how = "The rarest Golem of all. Its blueprint comes from seasonal events.", color = Color3.fromRGB(255, 210, 90) },
 }
 
@@ -99,10 +103,27 @@ local function BuildAll(parent)
     folder.Name = "HallOfLegends"
     folder.Parent = parent
     state.folder = folder
+    local a = HallOfLegends.AREA
+    local cx, cz = (a.x1 + a.x2) / 2, (a.z1 + a.z2) / 2
+    local w, d = a.x2 - a.x1, a.z2 - a.z1
+    Part({ Name = "HallFloor", Material = Enum.Material.Marble, Color = Color3.fromRGB(70, 64, 74), Size = Vector3.new(w, 0.5, d), CFrame = CFrame.new(cx, 0.25, cz) }, folder)
+    for _, edge in ipairs({ a.z1 + 0.8, a.z2 - 0.8 }) do                                 -- a dashed run of gold light along the long edges, like the pad plaza's
+        for x = a.x1 + 8, a.x2 - 8, 14 do
+            Part({ Name = "HallEdge", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 205, 100), Transparency = 0.25, Size = Vector3.new(7, 0.3, 0.9),
+                CFrame = CFrame.new(x, 0.62, edge), CanCollide = false }, folder)
+        end
+    end
+    for _, corner in ipairs({ { a.x1 + 3, a.z1 + 3 }, { a.x1 + 3, a.z2 - 3 }, { a.x2 - 3, a.z1 + 3 }, { a.x2 - 3, a.z2 - 3 } }) do      -- a lit pillar at each corner marks the area
+        local post = Part({ Name = "HallPost", Material = Enum.Material.Slate, Color = Color3.fromRGB(86, 80, 90), Size = Vector3.new(3, 14, 3), CFrame = CFrame.new(corner[1], 7, corner[2]) }, folder)
+        local lamp = Part({ Name = "HallLamp", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 205, 100), Size = Vector3.new(3.6, 1.6, 3.6), CFrame = CFrame.new(corner[1], 14.8, corner[2]), CanCollide = false }, folder)
+        local light = Instance.new("PointLight")
+        light.Color, light.Range, light.Brightness = Color3.fromRGB(255, 205, 100), 34, 1.6
+        light.Parent = lamp
+    end
     for _, def in ipairs(HallOfLegends.Statues) do BuildStatue(folder, def) end
     -- a banner over the whole hall
     local c = HallOfLegends.CENTRE
-    local anchor = Part({ Name = "HallBanner", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(c.x, 38, c.z + 4) }, folder)
+    local anchor = Part({ Name = "HallBanner", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(c.x, 38, c.z) }, folder)
     Label(folder, anchor, "HALL OF LEGENDS\nWhat will you forge?", UDim2.new(0, 520, 0, 110), Color3.fromRGB(255, 226, 150), 220)
     return folder
 end

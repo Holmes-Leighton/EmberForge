@@ -55,7 +55,13 @@ def call(req):
         with urllib.request.urlopen(req, timeout=60) as r:
             return json.loads(r.read().decode() or "{}")
     except urllib.error.HTTPError as e:
-        raise RuntimeError("HTTP %d: %s" % (e.code, e.read().decode(errors="replace")[:300]))
+        body = e.read().decode(errors="replace")[:400]
+        hint = ""
+        if e.code in (401, 403):
+            hint = ("\n    Roblox refused the key. Check, on create.roblox.com/dashboard/credentials: (1) the key has the Assets API system with asset:read AND asset:write ticked;"
+                    "\n    (2) its IP list allows you (add 0.0.0.0/0); (3) the key's owner is the same account as ROBLOX_USER_ID (or the group, for ROBLOX_GROUP_ID);"
+                    "\n    (4) the key has not expired and was copied whole. A 403 that mentions the user or verification means the account must be verified to upload audio.")
+        raise RuntimeError("HTTP %d: %s%s" % (e.code, body, hint))
 
 
 def upload(key, creator, name, path):

@@ -11,6 +11,7 @@ local CartCourseData = require(game.ReplicatedStorage.Shared.Data.CartCourseData
 local TowerData = require(game.ReplicatedStorage.Shared.Data.TowerData)
 local MazeData  = require(game.ReplicatedStorage.Shared.Data.MazeData)
 local MoodData = require(game.ReplicatedStorage.Shared.Data.MoodData)
+local HallOfLegends = require(script.Parent.HallOfLegends)
 local SignArt = require(script.Parent.SignArt)
 
 local WorldBuilder = {}
@@ -767,11 +768,13 @@ local function BuildScenery(world)
         local onRoad    = math.abs(z - 60) < 10 or math.abs(x + 45) < 9
         local inPads    = math.abs(x) < 140 and z < -105 and z > -220
         local nearSpawn = math.abs(x) < 60 and z < -20 and z > -105
+        local hall = HallOfLegends.AREA
+        local inHall    = x > hall.x1 - 10 and x < hall.x2 + 10 and z > hall.z1 - 10 and z < hall.z2 + 10      -- the Hall of Legends plaza (with a margin)
         local inTunnels = z > 100
         local onCartRun = CartCourseData.NearRoute(x, z, 24)           -- the Cart Run courses (CartCourseData)
         local atPortal = (x - TowerData.PORTAL.x) ^ 2 + (z - TowerData.PORTAL.z) ^ 2 < TowerData.PORTAL_CLEAR ^ 2        -- the Sky Tower portal
             or (x - MazeData.PORTAL.x) ^ 2 + (z - MazeData.PORTAL.z) ^ 2 < MazeData.PORTAL_CLEAR ^ 2                 -- the Hollow Maze portal
-        if not (inPlots or onRoad or inPads or nearSpawn or inTunnels or onCartRun or atPortal) then
+        if not (inPlots or onRoad or inPads or nearSpawn or inHall or inTunnels or onCartRun or atPortal) then
             local roll = rng:NextNumber()
             if roll < 0.45 then
                 -- tapered: four narrowing segments, like the stalactites above

@@ -46,13 +46,22 @@ end
 
 -- After a respawn the character is turned to face the way the course runs, but the camera stays wherever it was pointing (often back at the fall). Swing it round behind
 -- the character, looking the way the course runs (the default camera carries on from the camera's current direction).
-local function FaceCourse(dir)
-    local cam, char = workspace.CurrentCamera, LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not (cam and root) or cam.CameraType ~= Enum.CameraType.Custom then return end
+local function FaceCourse(dir, at)
+    local cam = workspace.CurrentCamera
+    if not cam or cam.CameraType ~= Enum.CameraType.Custom then return end
     local d = (dir or 1) >= 0 and 1 or -1
-    local pos = root.Position
-    cam.CFrame = CFrame.lookAt(pos + Vector3.new(-d * 14, 7, 0), pos + Vector3.new(d * 10, 2, 0))
+    -- `at` is the exact respawn point the server sent: the character may not have arrived there yet when the event does (it was last seen where it fell), and the camera
+    -- scripts can re-aim a moment after a teleport, so the camera is set now and again just after
+    local function apply()
+        local char = LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        local pos = at or (root and root.Position)
+        if not pos then return end
+        cam.CFrame = CFrame.lookAt(pos + Vector3.new(-d * 14, 7, 0), pos + Vector3.new(d * 10, 2, 0))
+    end
+    apply()
+    task.delay(0.12, apply)
+    task.delay(0.4, apply)
 end
 
 local TowerController = {}
@@ -486,7 +495,7 @@ local function OnEvent(kind, p)
         Flash(Color3.fromRGB(255, 50, 30), 0.45)
         Snd("TowerFall")
         Shake(1.4, 0.45)
-        FaceCourse(p.dir)
+        FaceCourse(p.dir, p.x and Vector3.new(p.x, p.y or 0, p.z or 0) or nil)
     elseif kind == "summit" then
         Banner("SUMMIT!!", Color3.fromRGB(255, 215, 90))
         Flash(Color3.fromRGB(255, 215, 90), 0.4)
