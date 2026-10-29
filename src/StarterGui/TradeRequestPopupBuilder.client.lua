@@ -25,14 +25,15 @@ card.Name = "Card"
 card.AnchorPoint = Vector2.new(0.5, 0)
 card.Position = UDim2.new(0.5, 0, 0, 80)
 card.Size = UDim2.new(0, 420, 0, 184)
-card.BackgroundColor3 = Theme.Colors.Panel
 card.BorderSizePixel = 0
 card.Parent = gui
-Theme.AddCorner(card, Theme.Corner.Large)
-Theme.AddStroke(card, Theme.Colors.Success, 2, 0.1)
+Theme.StyleWindow(card, "Teal")
 ScaleUI.ApplyHud(card)
 
 local header = Theme.Label(card, "Trade request", Theme.TextSize.Heading, Theme.Colors.Success, Theme.Fonts.Heading, "Header")
+header.TextColor3 = Color3.fromRGB(255, 255, 255)
+header.TextStrokeColor3 = Theme.Palettes.Teal.TitleStroke
+header.TextStrokeTransparency = 0
 header.Position = UDim2.new(0, 16, 0, 8)
 header.Size = UDim2.new(1, -140, 0, 22)
 

@@ -19,19 +19,10 @@ local panel = Instance.new("Frame")
 panel.Name              = "Panel"
 panel.Size              = UDim2.new(0, 260, 0, 360)
 panel.Position          = UDim2.new(1, -272, 0.5, -180)
-panel.BackgroundColor3  = Theme.Colors.Background
-panel.BackgroundTransparency = 0.05
 panel.BorderSizePixel   = 0
 panel.Parent            = gui
-Theme.AddCorner(panel, Theme.Corner.Large)
+Theme.StyleWindow(panel, "Navy")
 
--- Top accent bar (ember colour)
-local accent = Instance.new("Frame")
-accent.Size             = UDim2.new(1, 0, 0, 4)
-accent.BackgroundColor3 = Theme.Colors.Ember
-accent.BorderSizePixel  = 0
-accent.Parent           = panel
-Theme.AddCorner(accent, Theme.Corner.Small)
 
 -- Visiting label
 local visitingLbl = Theme.Label(panel, "Visiting Forge", Theme.TextSize.Small,

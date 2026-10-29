@@ -28,32 +28,11 @@ local container = Instance.new("Frame")
 container.Name = "Container"
 container.Size = UDim2.new(0, 560, 0, 520)
 ScaleUI.Apply(container, 560, 520)
-container.BackgroundColor3 = Theme.Colors.Background
 container.BorderSizePixel = 0
 container.Parent = gui
-Theme.AddCorner(container, Theme.Corner.Large)
 
 -- Title bar
-local titleBar = Instance.new("Frame")
-titleBar.Name = "TitleBar"
-titleBar.Size = UDim2.new(1, 0, 0, 50)
-titleBar.BackgroundColor3 = Theme.Colors.Panel
-titleBar.BorderSizePixel = 0
-titleBar.Parent = container
-Theme.AddCorner(titleBar, Theme.Corner.Large)
-local tf=Instance.new("Frame"); tf.Size=UDim2.new(1,0,0,12); tf.Position=UDim2.new(0,0,1,-12)
-tf.BackgroundColor3=Theme.Colors.Panel; tf.BorderSizePixel=0; tf.Parent=titleBar
-
-local titleLabel = Theme.Label(titleBar, "🗿  Select a Golem", Theme.TextSize.Heading,
-    Theme.Colors.AccentBright, Theme.Fonts.Heading, "TitleLabel")
-titleLabel.Size = UDim2.new(0.85, 0, 1, 0)
-titleLabel.Position = UDim2.new(0, 14, 0, 0)
-titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-local closeBtn = Theme.Button(titleBar, "X", Theme.Colors.Danger, Color3.fromRGB(255,255,255), "CloseButton")
-closeBtn.Size = UDim2.new(0, 36, 0, 36)
-closeBtn.Position = UDim2.new(1, -44, 0, 7)
-closeBtn.MouseButton1Click:Connect(function() gui.Enabled = false end)
+local titleBar, titleLabel, closeBtn = Theme.WindowHeader(container, gui, "Select a Golem", "Navy", "TitleLabel")
 
 -- Filter row
 local filterRow = Instance.new("Frame")

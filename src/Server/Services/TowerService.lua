@@ -162,7 +162,7 @@ local function StartRun(player)
             end
             player:SetAttribute("TowerRespawns", rec.run.respawns)
             SetLavaAttributes(player, rec.run)
-            Fire(player, "respawn", { reason = reason, level = level, penalty = TowerData.RESPAWN_PENALTY, respawns = rec.run.respawns })
+            Fire(player, "respawn", { reason = reason, level = level, penalty = TowerData.RESPAWN_PENALTY, respawns = rec.run.respawns, dir = T.levels[level].dir })
         end,
         onSummit = function(seconds, respawns)
             local d = PlayerDataService.Get(player)

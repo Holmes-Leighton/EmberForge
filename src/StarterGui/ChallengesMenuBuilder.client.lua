@@ -31,47 +31,35 @@ local container = Instance.new("Frame")
 container.Name = "Container"
 container.Size = UDim2.new(0, 820, 0, 580)
 ScaleUI.Apply(container, 820, 580)
-container.BackgroundColor3 = Theme.Colors.Background
 container.BorderSizePixel = 0
 container.Parent = gui
-Theme.AddCorner(container, Theme.Corner.Large)
 
 -- Title bar
-local titleBar = Instance.new("Frame")
-titleBar.Size = UDim2.new(1, 0, 0, 50)
-titleBar.BackgroundColor3 = Theme.Colors.Panel
-titleBar.BorderSizePixel = 0
-titleBar.Parent = container
-Theme.AddCorner(titleBar, Theme.Corner.Large)
-local tf = Instance.new("Frame"); tf.Size=UDim2.new(1,0,0,12); tf.Position=UDim2.new(0,0,1,-12)
-tf.BackgroundColor3=Theme.Colors.Panel; tf.BorderSizePixel=0; tf.Parent=titleBar
-
-Theme.Label(titleBar, "🎯  Challenges", Theme.TextSize.Title,
-    Theme.Colors.AccentBright, Theme.Fonts.Title).Size = UDim2.new(0.5, 0, 1, 0)
+local titleBar, titleLbl, closeBtn = Theme.WindowHeader(container, gui, "Challenges", "Green", "Title")
 
 -- Reset timers
 local dailyResetLabel = Theme.Label(titleBar, "Daily reset: —", Theme.TextSize.Small,
     Theme.Colors.TextDim, Theme.Fonts.Body, "DailyResetLabel")
-dailyResetLabel.Size = UDim2.new(0, 180, 0, 20)
-dailyResetLabel.Position = UDim2.new(0.5, 0, 0, 8)
-
+dailyResetLabel.Size = UDim2.new(0, 190, 0, 20)
+dailyResetLabel.Position = UDim2.new(0, 26, 0, 8)
 local weeklyResetLabel = Theme.Label(titleBar, "Weekly reset: —", Theme.TextSize.Small,
     Theme.Colors.TextDim, Theme.Fonts.Body, "WeeklyResetLabel")
-weeklyResetLabel.Size = UDim2.new(0, 180, 0, 20)
-weeklyResetLabel.Position = UDim2.new(0.5, 0, 0, 26)
-
-local closeBtn = Theme.Button(titleBar, "X", Theme.Colors.Danger, Color3.fromRGB(255,255,255), "CloseButton")
-closeBtn.Size = UDim2.new(0, 36, 0, 36)
-closeBtn.Position = UDim2.new(1, -44, 0, 7)
-closeBtn.MouseButton1Click:Connect(function() gui.Enabled = false end)
+weeklyResetLabel.Size = UDim2.new(0, 190, 0, 20)
+weeklyResetLabel.Position = UDim2.new(0, 26, 0, 26)
+for _, l in ipairs({ dailyResetLabel, weeklyResetLabel }) do
+    l.TextColor3 = Color3.fromRGB(255, 255, 255)
+    l.TextStrokeColor3 = Theme.Outline
+    l.TextStrokeTransparency = 0.4
+end
 
 -- Tab bar
 local tabBar = Instance.new("Frame")
-tabBar.Size = UDim2.new(1, 0, 0, 40)
-tabBar.Position = UDim2.new(0, 0, 0, 50)
+tabBar.Size = UDim2.new(1, -20, 0, 40)
+tabBar.Position = UDim2.new(0, 10, 0, 50)
 tabBar.BackgroundColor3 = Theme.Colors.Panel
 tabBar.BorderSizePixel = 0
 tabBar.Parent = container
+Theme.AddCorner(tabBar, Theme.Corner.Medium)
 Theme.AddPadding(tabBar, 5, 6, 5, 8)
 Theme.AddListLayout(tabBar, Enum.FillDirection.Horizontal, 6)
 

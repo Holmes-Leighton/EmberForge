@@ -404,6 +404,20 @@ local function Standings()
     return list
 end
 
+-- The first maze of a server is built before the Golem meshes have finished loading, so its Zombie Golem starts as plain blocks. Once the mesh is there, swap it in
+-- (same place, same published numbers; the client picks the new model up by itself).
+local function UpgradeZombie()
+    local old = state.zombie
+    if not (old and old.Parent and old:GetAttribute("Block") and state.root and state.art) then return end
+    local assets = game:GetService("ReplicatedStorage"):FindFirstChild("GolemAssets")
+    if not (assets and assets:FindFirstChild("Zombie_Maze")) then return end
+    local fresh = MazeArt.Zombie(state.root, state.art.zombieHome)
+    if fresh:GetAttribute("Block") then fresh:Destroy() return end
+    old:Destroy()
+    state.zombie = fresh
+    lastZ.x, lastZ.z = nil, nil
+end
+
 -- The portal's status board: what you can do right now
 local function UpdatePortalStatus()
     local text = state.portalStatus
@@ -488,6 +502,7 @@ function MazeService.Init()
         while true do
             task.wait(1)
             pcall(UpdatePortalStatus)
+            pcall(UpgradeZombie)
             local clock = WallClock()
             -- the hunt is over: everyone is told how they did and brought home; a while later the next maze starts
             if not MazeRound.Running(state.round, clock) and MazeRound.Phase(state.round, clock) == "intermission" and next(runs) ~= nil then

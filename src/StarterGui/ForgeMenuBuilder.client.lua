@@ -32,45 +32,21 @@ local container = Instance.new("Frame")
 container.Name = "Container"
 container.Size = UDim2.new(0, 860, 0, 600)
 ScaleUI.Apply(container, 860, 600)
-container.BackgroundColor3 = Theme.Colors.Background
 container.BorderSizePixel = 0
 container.Parent = gui
-Theme.AddCorner(container, Theme.Corner.Large)
 
 -- ── Title bar ─────────────────────────────────────────────────────────────────
-local titleBar = Instance.new("Frame")
-titleBar.Size = UDim2.new(1, 0, 0, 50)
-titleBar.BackgroundColor3 = Theme.Colors.Panel
-titleBar.BorderSizePixel = 0
-titleBar.Parent = container
-Theme.AddCorner(titleBar, Theme.Corner.Large)
-
--- bottom fill to square off title bar bottom corners
-local titleFill = Instance.new("Frame")
-titleFill.Size = UDim2.new(1, 0, 0, 12)
-titleFill.Position = UDim2.new(0, 0, 1, -12)
-titleFill.BackgroundColor3 = Theme.Colors.Panel
-titleFill.BorderSizePixel = 0
-titleFill.Parent = titleBar
-
-local titleLbl = Theme.Label(titleBar, "🔥  Forge", Theme.TextSize.Title, Theme.Colors.Ember, Theme.Fonts.Title, "TitleLabel")
-titleLbl.Size = UDim2.new(0, 220, 1, 0)
-titleLbl.Position = UDim2.new(0, 16, 0, 0)
-titleLbl.TextXAlignment = Enum.TextXAlignment.Left
-
-local closeBtn = Theme.Button(titleBar, "X", Theme.Colors.Danger, Color3.fromRGB(255,255,255), "CloseButton")
-closeBtn.Size = UDim2.new(0, 36, 0, 36)
-closeBtn.Position = UDim2.new(1, -44, 0, 7)
-closeBtn.MouseButton1Click:Connect(function() gui.Enabled = false end)
+local titleBar, titleLbl, closeBtn = Theme.WindowHeader(container, gui, "Forge", "Orange", "TitleLabel")
 
 -- ── Tab bar ───────────────────────────────────────────────────────────────────
 local tabBar = Instance.new("Frame")
 tabBar.Name = "TabBar"
-tabBar.Size = UDim2.new(1, 0, 0, 38)
-tabBar.Position = UDim2.new(0, 0, 0, 50)
+tabBar.Size = UDim2.new(1, -20, 0, 38)
+tabBar.Position = UDim2.new(0, 10, 0, 50)
 tabBar.BackgroundColor3 = Theme.Colors.Panel
 tabBar.BorderSizePixel = 0
 tabBar.Parent = container
+Theme.AddCorner(tabBar, Theme.Corner.Medium)
 
 local tabLayout = Instance.new("UIListLayout")
 tabLayout.FillDirection = Enum.FillDirection.Horizontal

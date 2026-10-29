@@ -42,11 +42,16 @@ function RenameDialog.Open(opts)
     local panel = Theme.Panel(gui, "Panel", Theme.Colors.Background)
     panel.Size = UDim2.new(0, W, 0, H)
     ScaleUI.Apply(panel, W, H)
+    Theme.StyleWindow(panel, "Teal")
 
-    local title = Theme.Label(panel, "Name your " .. (opts.kind or "Golem"), Theme.TextSize.Heading + 2, Theme.Colors.AccentBright, Theme.Fonts.Title)
-    title.Position, title.Size = UDim2.new(0, 18, 0, 12), UDim2.new(1, -36, 0, 26)
-    local sub = Theme.Label(panel, opts.baseName or "", Theme.TextSize.Small, Theme.Colors.TextSecondary, Theme.Fonts.Body)
-    sub.Position, sub.Size = UDim2.new(0, 18, 0, 40), UDim2.new(1, -36, 0, 18)
+    local title = Theme.Label(panel, "~Name your " .. (opts.kind or "Golem") .. "~", Theme.TextSize.Heading + 6, Color3.fromRGB(255, 255, 255), Theme.Fonts.Title)
+    title.TextXAlignment = Enum.TextXAlignment.Center
+    title.TextStrokeColor3 = Theme.Palettes.Teal.TitleStroke
+    title.TextStrokeTransparency = 0
+    title.Position, title.Size = UDim2.new(0, 18, 0, 10), UDim2.new(1, -36, 0, 30)
+    local sub = Theme.Label(panel, opts.baseName or "", Theme.TextSize.Small, Color3.fromRGB(255, 255, 255), Theme.Fonts.Body)
+    sub.TextXAlignment = Enum.TextXAlignment.Center
+    sub.Position, sub.Size = UDim2.new(0, 18, 0, 42), UDim2.new(1, -36, 0, 18)
 
     local box = Instance.new("TextBox")
     box.Name = "NameBox"

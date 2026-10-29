@@ -43,42 +43,21 @@ scrim.Parent = gui
 local container = Instance.new("Frame")
 container.Name = "Container"
 container.Size = UDim2.new(0, W, 0, H)
-container.BackgroundColor3 = Theme.Colors.Background
 container.BorderSizePixel = 0
 container.Parent = gui
-Theme.AddCorner(container, Theme.Corner.Large)
 ScaleUI.Apply(container, W, H)
 
-local titleBar = Instance.new("Frame")
-titleBar.Size = UDim2.new(1, 0, 0, 50)
-titleBar.BackgroundColor3 = Theme.Colors.Panel
-titleBar.BorderSizePixel = 0
-titleBar.Parent = container
-Theme.AddCorner(titleBar, Theme.Corner.Large)
-local titleFill = Instance.new("Frame")
-titleFill.Size = UDim2.new(1, 0, 0, 12)
-titleFill.Position = UDim2.new(0, 0, 1, -12)
-titleFill.BackgroundColor3 = Theme.Colors.Panel
-titleFill.BorderSizePixel = 0
-titleFill.Parent = titleBar
-
-local titleLbl = Theme.Label(titleBar, "Trade", Theme.TextSize.Title, Theme.Colors.AccentBright, Theme.Fonts.Title, "TradeHeader")
-titleLbl.Position = UDim2.new(0, 16, 0, 0)
-titleLbl.Size = UDim2.new(0.6, 0, 1, 0)
+local titleBar, titleLbl, closeBtn = Theme.WindowHeader(container, gui, "Trade", "Teal", "TradeHeader", function() end)   -- the close handler is wired below
 
 local reportBtn = Theme.Button(titleBar, "Report", Theme.Colors.PanelAlt, Theme.Colors.Danger, "ReportButton")
 reportBtn.Size = UDim2.new(0, 80, 0, 32)
-reportBtn.Position = UDim2.new(1, -236, 0, 9)
+reportBtn.Position = UDim2.new(0, 120, 0, 9)
 reportBtn.TextSize = 13
 reportBtn.Visible = false
 local historyBtn = Theme.Button(titleBar, "History", Theme.Colors.PanelAlt, Theme.Colors.AccentBright, "HistoryButton")
 historyBtn.Size = UDim2.new(0, 90, 0, 32)
-historyBtn.Position = UDim2.new(1, -146, 0, 9)
+historyBtn.Position = UDim2.new(0, 22, 0, 9)
 historyBtn.TextSize = 13
-
-local closeBtn = Theme.Button(titleBar, "X", Theme.Colors.Danger, Color3.fromRGB(255, 255, 255), "CloseButton")
-closeBtn.Size = UDim2.new(0, 36, 0, 36)
-closeBtn.Position = UDim2.new(1, -44, 0, 7)
 
 -- ── Panes ─────────────────────────────────────────────────────────────────────
 local function MakePane(name, title, x, width)

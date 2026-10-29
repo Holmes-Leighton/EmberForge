@@ -207,6 +207,23 @@ local function Track(model)
         info.handle = Rest(base, model:FindFirstChild("PickHandle", true))
         info.pickHead = Rest(base, model:FindFirstChild("PickHead", true))
         info.head = Rest(base, model:FindFirstChild("Head", true))
+        -- whatever sits on the head (crowns, hats, helms, halos, brows, crests) turns and nods with it, or it would be left behind as the head moves
+        info.headRiders = {}
+        if info.head then
+            local hp, hrel = info.head.part, info.head.rel
+            local half = hp.Size / 2
+            local BODY = { Head = true, Torso = true, ArmL = true, ArmR = true, Leg = true, PickHandle = true, PickHead = true, GroundRing = true }
+            for _, d in ipairs(model:GetDescendants()) do
+                if d:IsA("BasePart") and d ~= hp and not BODY[d.Name] then
+                    local rel = base:ToObjectSpace(d.CFrame)
+                    local at = hrel:PointToObjectSpace(rel.Position)
+                    local named = d.Name:find("^Crown_") or d.Name:find("^Accessory_")
+                    if named or (math.abs(at.X) < half.X * 1.4 and at.Y > -half.Y * 0.5 and at.Y < half.Y * 2.4 and math.abs(at.Z) < half.Z * 1.5) then
+                        table.insert(info.headRiders, { part = d, rel = rel })
+                    end
+                end
+            end
+        end
         info.rest = base:ToObjectSpace(model:GetPivot())
         -- legs swing about the hip (the top of the leg) when the Golem walks; the one on the left of the body is side -1
         info.legs = {}
@@ -458,7 +475,9 @@ local function Step()
                         local nod = ((move == "inspect") and 0.35 * w or 0) + fx.slump * 0.3
                         nod = nod - (0.5 - headR) * 0.22 * mine                           -- a nod into each strike, a beat after the arm
                         local look = (move == "look" and math.sin(mk * math.pi * 3) * 0.7 * w or 0) - twist * 0.6       -- eyes stay forward as the torso twists
-                        h.part.CFrame = b * h.pivot * CFrame.Angles(nod, look, 0) * h.pivot:Inverse() * h.rel
+                        local delta = b * h.pivot * CFrame.Angles(nod, look, 0) * h.pivot:Inverse()
+                        h.part.CFrame = delta * h.rel
+                        for _, r in ipairs(info.headRiders) do r.part.CFrame = delta * r.rel end
                     end
                     if info.armL then
                         local a = info.armL

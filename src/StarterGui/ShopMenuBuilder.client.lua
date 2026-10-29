@@ -28,28 +28,11 @@ local container = Instance.new("Frame")
 container.Name = "Container"
 container.Size = UDim2.new(0, 740, 0, 610)
 ScaleUI.Apply(container, 740, 610)
-container.BackgroundColor3 = Theme.Colors.Background
 container.BorderSizePixel = 0
 container.Parent = gui
-Theme.AddCorner(container, Theme.Corner.Large)
 
 -- Title bar
-local titleBar = Instance.new("Frame")
-titleBar.Size = UDim2.new(1, 0, 0, 50)
-titleBar.BackgroundColor3 = Theme.Colors.Panel
-titleBar.BorderSizePixel = 0
-titleBar.Parent = container
-Theme.AddCorner(titleBar, Theme.Corner.Large)
-local tf = Instance.new("Frame"); tf.Size=UDim2.new(1,0,0,12); tf.Position=UDim2.new(0,0,1,-12)
-tf.BackgroundColor3=Theme.Colors.Panel; tf.BorderSizePixel=0; tf.Parent=titleBar
-
-Theme.Label(titleBar, "💎  Shop", Theme.TextSize.Title,
-    Theme.Colors.AccentBright, Theme.Fonts.Title).Size = UDim2.new(0.5, 0, 1, 0)
-
-local closeBtn = Theme.Button(titleBar, "X", Theme.Colors.Danger, Color3.fromRGB(255,255,255), "CloseButton")
-closeBtn.Size = UDim2.new(0, 36, 0, 36)
-closeBtn.Position = UDim2.new(1, -44, 0, 7)
-closeBtn.MouseButton1Click:Connect(function() gui.Enabled = false end)
+local titleBar, titleLbl, closeBtn = Theme.WindowHeader(container, gui, "Shop", "Blue", "Title")
 
 -- ── Section: Convenience ─────────────────────────────────────────────────────
 local function sectionLabel(text, y)

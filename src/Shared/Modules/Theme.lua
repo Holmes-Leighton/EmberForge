@@ -2,11 +2,11 @@
 local Theme = {}
 
 Theme.Colors = {
-    Background      = Color3.fromRGB(34, 26, 24),    -- warm dark brown
-    Panel           = Color3.fromRGB(52, 41, 36),    -- warm panel
-    PanelAlt        = Color3.fromRGB(70, 56, 48),    -- lighter panel
-    Row             = Color3.fromRGB(58, 46, 40),    -- list row
-    RowHover        = Color3.fromRGB(78, 62, 52),
+    Background      = Color3.fromRGB(52, 38, 104),   -- deep violet (fallback window body; windows pick a Palette)
+    Panel           = Color3.fromRGB(32, 24, 62),    -- dark inset card: reads on every window colour
+    PanelAlt        = Color3.fromRGB(64, 50, 112),   -- lighter inset (inactive tab / secondary button)
+    Row             = Color3.fromRGB(42, 32, 80),    -- list row
+    RowHover        = Color3.fromRGB(70, 56, 128),
 
     Accent          = Color3.fromRGB(245, 135, 25),  -- forge orange
     AccentBright    = Color3.fromRGB(255, 185, 70),  -- bright orange
@@ -14,8 +14,8 @@ Theme.Colors = {
 
     Gold            = Color3.fromRGB(255, 200, 60),  -- coins / XP
     TextPrimary     = Color3.fromRGB(250, 240, 228), -- main text
-    TextSecondary   = Color3.fromRGB(205, 192, 178), -- secondary text
-    TextDim         = Color3.fromRGB(140, 128, 116),   -- dimmed/disabled
+    TextSecondary   = Color3.fromRGB(226, 218, 240), -- secondary text
+    TextDim         = Color3.fromRGB(182, 172, 208), -- dimmed/disabled (still readable on a bright window body)
 
     Success         = Color3.fromRGB(70, 200, 100),
     Danger          = Color3.fromRGB(225, 70, 60),
@@ -68,6 +68,21 @@ Theme.Corner = {
     Small  = UDim.new(0, 8),
 }
 
+-- Near-black outline used on every window, button and tile.
+Theme.Outline = Color3.fromRGB(14, 9, 24)
+
+-- Window body colours (Top fades to Bottom; Rim is the light inner edge; TitleStroke outlines the ~Title~ text).
+Theme.Palettes = {
+    Purple = { Top = Color3.fromRGB(150, 84, 224), Bottom = Color3.fromRGB(84, 36, 160),  Rim = Color3.fromRGB(214, 170, 255), TitleStroke = Color3.fromRGB(52, 20, 104) },
+    Blue   = { Top = Color3.fromRGB(70, 152, 255), Bottom = Color3.fromRGB(28, 84, 196),  Rim = Color3.fromRGB(160, 214, 255), TitleStroke = Color3.fromRGB(12, 42, 116) },
+    Navy   = { Top = Color3.fromRGB(58, 72, 112),  Bottom = Color3.fromRGB(26, 34, 64),   Rim = Color3.fromRGB(130, 150, 205), TitleStroke = Color3.fromRGB(8, 12, 28) },
+    Pink   = { Top = Color3.fromRGB(232, 84, 138), Bottom = Color3.fromRGB(150, 30, 90),  Rim = Color3.fromRGB(255, 178, 212), TitleStroke = Color3.fromRGB(90, 12, 52) },
+    Teal   = { Top = Color3.fromRGB(62, 204, 176), Bottom = Color3.fromRGB(20, 120, 124), Rim = Color3.fromRGB(160, 244, 220), TitleStroke = Color3.fromRGB(6, 62, 70) },
+    Orange = { Top = Color3.fromRGB(255, 160, 52), Bottom = Color3.fromRGB(200, 82, 22),  Rim = Color3.fromRGB(255, 220, 150), TitleStroke = Color3.fromRGB(104, 40, 8) },
+    Tan    = { Top = Color3.fromRGB(222, 178, 128), Bottom = Color3.fromRGB(160, 114, 74), Rim = Color3.fromRGB(246, 218, 170), TitleStroke = Color3.fromRGB(74, 44, 20) },
+    Green  = { Top = Color3.fromRGB(96, 208, 84),  Bottom = Color3.fromRGB(38, 134, 52),  Rim = Color3.fromRGB(186, 242, 164), TitleStroke = Color3.fromRGB(14, 66, 24) },
+}
+
 -- ── Factory helpers ────────────────────────────────────────────────────────────
 
 function Theme.AddCorner(parent, size)
@@ -114,6 +129,8 @@ function Theme.Label(parent, text, size, color, font, name)
     lbl.Text = text or ""
     lbl.TextSize = size or Theme.TextSize.Body
     lbl.TextColor3 = color or Theme.Colors.TextPrimary
+    lbl.TextStrokeColor3 = Theme.Outline             -- dark outline keeps text readable on any window colour
+    lbl.TextStrokeTransparency = (size or Theme.TextSize.Body) >= 14 and 0.55 or 0.8
     lbl.Font = font or Theme.Fonts.Body
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.TextWrapped = true
@@ -121,7 +138,7 @@ function Theme.Label(parent, text, size, color, font, name)
     return lbl
 end
 
--- Chunky cartoon button: dark outline, top-lit gradient, outlined text, springy hover / press.
+-- Chunky cartoon button: thick dark outline, top-lit gradient, outlined text, springy hover / press.
 function Theme.Button(parent, text, bgColor, textColor, name)
     local btn = Instance.new("TextButton")
     btn.Name = name or "Button"
@@ -130,13 +147,13 @@ function Theme.Button(parent, text, bgColor, textColor, name)
     btn.Text = text or ""
     btn.TextSize = Theme.TextSize.Body
     btn.TextColor3 = textColor or Color3.fromRGB(255, 255, 255)
-    btn.TextStrokeColor3 = Color3.fromRGB(20, 12, 8)
-    btn.TextStrokeTransparency = 0.55
+    btn.TextStrokeColor3 = Theme.Outline
+    btn.TextStrokeTransparency = 0.25
     btn.Font = Theme.Fonts.Heading
     btn.AutoButtonColor = false
     btn.Parent = parent
     Theme.AddCorner(btn, Theme.Corner.Small)
-    Theme.AddStroke(btn, Color3.fromRGB(20, 14, 12), 2)
+    Theme.AddStroke(btn, Theme.Outline, 3)
 
     local grad = Instance.new("UIGradient")
     grad.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(190, 190, 190))
@@ -157,6 +174,7 @@ function Theme.Button(parent, text, bgColor, textColor, name)
     return btn
 end
 
+-- Inset card with a light rim, like the lighter panels inside the reference windows.
 function Theme.Panel(parent, name, bgColor)
     local f = Instance.new("Frame")
     f.Name = name or "Panel"
@@ -164,7 +182,7 @@ function Theme.Panel(parent, name, bgColor)
     f.BorderSizePixel = 0
     f.Parent = parent
     Theme.AddCorner(f, Theme.Corner.Medium)
-    Theme.AddStroke(f, Color3.fromRGB(24, 17, 14), 2, 0.35)
+    Theme.AddStroke(f, Color3.fromRGB(190, 160, 255), 2, 0.55)
     return f
 end
 
@@ -174,7 +192,7 @@ function Theme.ScrollFrame(parent, name)
     sf.BackgroundTransparency = 1
     sf.BorderSizePixel = 0
     sf.ScrollBarThickness = 6
-    sf.ScrollBarImageColor3 = Theme.Colors.Accent
+    sf.ScrollBarImageColor3 = Color3.fromRGB(255, 205, 80)
     sf.CanvasSize = UDim2.new(0, 0, 0, 0)
     sf.AutomaticCanvasSize = Enum.AutomaticSize.Y
     sf.Parent = parent
@@ -202,6 +220,84 @@ function Theme.Stripe(parent, color)
     s.Parent = parent
     Theme.AddCorner(s, Theme.Corner.Small)
     return s
+end
+
+-- ── Windows (the look of the reference screenshots) ───────────────────────────
+-- Dresses a window frame: thick dark outline, gradient body in the palette's colour, light inner rim.
+-- Any UICorner / UIGradient the builder already added is replaced.
+function Theme.StyleWindow(container, paletteName)
+    local pal = Theme.Palettes[paletteName] or Theme.Palettes.Purple
+    for _, c in ipairs(container:GetChildren()) do
+        if c:IsA("UICorner") or c:IsA("UIGradient") or c:IsA("UIStroke") then c:Destroy() end
+    end
+    container.BackgroundColor3 = Color3.fromRGB(255, 255, 255)      -- the gradient supplies the colour
+    container.BackgroundTransparency = 0
+    local grad = Instance.new("UIGradient")
+    grad.Color = ColorSequence.new(pal.Top, pal.Bottom)
+    grad.Rotation = 90
+    grad.Parent = container
+    Theme.AddCorner(container, UDim.new(0, 20))
+    Theme.AddStroke(container, Theme.Outline, 5)
+
+    local rim = Instance.new("Frame")
+    rim.Name = "Rim"
+    rim.Size = UDim2.new(1, -12, 1, -12)
+    rim.Position = UDim2.new(0, 6, 0, 6)
+    rim.BackgroundTransparency = 1
+    rim.BorderSizePixel = 0
+    rim.Parent = container
+    Theme.AddCorner(rim, UDim.new(0, 15))
+    Theme.AddStroke(rim, pal.Rim, 2, 0.6)
+    return pal
+end
+
+-- The red X, top right of a window.
+function Theme.CloseButton(parent, onClick)
+    local btn = Theme.Button(parent, "X", Color3.fromRGB(214, 36, 44), Color3.fromRGB(255, 255, 255), "CloseButton")
+    btn.AnchorPoint = Vector2.new(1, 0)
+    btn.Size = UDim2.new(0, 40, 0, 40)
+    btn.Position = UDim2.new(1, -10, 0, 8)
+    btn.TextSize = 24
+    btn.Font = Enum.Font.GothamBlack
+    btn.ZIndex = 5
+    if onClick then btn.MouseButton1Click:Connect(onClick) end
+    return btn
+end
+
+-- Dresses a window and gives it a "~Title~" and the red X in one go. Returns titleBar (a transparent
+-- 50px strip, so content laid out below it stays where it was), the title label and the close button.
+-- `gui` is the ScreenGui the X switches off; pass `onClose` instead for a window that closes differently.
+function Theme.WindowHeader(container, gui, title, paletteName, labelName, onClose)
+    local pal = Theme.StyleWindow(container, paletteName)
+
+    local titleBar = Instance.new("Frame")
+    titleBar.Name = "TitleBar"
+    titleBar.Size = UDim2.new(1, 0, 0, 50)
+    titleBar.BackgroundTransparency = 1
+    titleBar.BorderSizePixel = 0
+    titleBar.Parent = container
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Name = labelName or "Title"
+    lbl.BackgroundTransparency = 1
+    lbl.Text = "~" .. title .. "~"
+    lbl.Font = Enum.Font.GothamBlack
+    lbl.TextSize = 30
+    lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    lbl.TextStrokeColor3 = pal.TitleStroke
+    lbl.TextStrokeTransparency = 0
+    lbl.TextXAlignment = Enum.TextXAlignment.Center
+    lbl.TextScaled = true                                   -- long titles shrink to fit instead of running under the X
+    lbl.Size = UDim2.new(1, -140, 1, -6)
+    lbl.Position = UDim2.new(0, 70, 0, 3)
+    lbl.Parent = titleBar
+    local fit = Instance.new("UITextSizeConstraint")
+    fit.MinTextSize = 14
+    fit.MaxTextSize = 30
+    fit.Parent = lbl
+
+    local close = Theme.CloseButton(container, onClose or function() gui.Enabled = false end)
+    return titleBar, lbl, close
 end
 
 -- Screen-covering dark scrim

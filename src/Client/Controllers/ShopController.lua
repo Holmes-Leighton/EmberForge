@@ -226,7 +226,7 @@ function ShopController.RefreshSeason()
     local passTier = data.SeasonPassTier or 0
 
     local header = seasonGui:FindFirstChild("SeasonHeader", true)
-    if header then header.Text = season.displayName end
+    if header then header.Text = "~" .. season.displayName .. "~" end
     local weekLabel = seasonGui:FindFirstChild("WeekLabel", true)
     if weekLabel then weekLabel.Text = string.format("Week %d of %d", status.currentWeek or 1, status.totalWeeks or season.durationWeeks) end
 

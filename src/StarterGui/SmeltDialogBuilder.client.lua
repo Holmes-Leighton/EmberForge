@@ -28,28 +28,11 @@ local container = Instance.new("Frame")
 container.Name = "Container"
 container.Size = UDim2.new(0, 520, 0, 540)
 ScaleUI.Apply(container, 520, 540)
-container.BackgroundColor3 = Theme.Colors.Background
 container.BorderSizePixel = 0
 container.Parent = gui
-Theme.AddCorner(container, Theme.Corner.Large)
 
 -- Title bar
-local titleBar = Instance.new("Frame")
-titleBar.Size = UDim2.new(1, 0, 0, 50)
-titleBar.BackgroundColor3 = Theme.Colors.Panel
-titleBar.BorderSizePixel = 0
-titleBar.Parent = container
-Theme.AddCorner(titleBar, Theme.Corner.Large)
-local tf=Instance.new("Frame"); tf.Size=UDim2.new(1,0,0,12); tf.Position=UDim2.new(0,0,1,-12)
-tf.BackgroundColor3=Theme.Colors.Panel; tf.BorderSizePixel=0; tf.Parent=titleBar
-
-Theme.Label(titleBar, "⚗  Choose Material to Smelt", Theme.TextSize.Heading,
-    Theme.Colors.AccentBright, Theme.Fonts.Heading).Size = UDim2.new(0.85, 0, 1, 0)
-
-local closeBtn = Theme.Button(titleBar, "X", Theme.Colors.Danger, Color3.fromRGB(255,255,255), "CloseButton")
-closeBtn.Size = UDim2.new(0, 36, 0, 36)
-closeBtn.Position = UDim2.new(1, -44, 0, 7)
-closeBtn.MouseButton1Click:Connect(function() gui.Enabled = false end)
+local titleBar, titleLbl, closeBtn = Theme.WindowHeader(container, gui, "Choose Material to Smelt", "Navy", "Title")
 
 -- Material list scroll
 local scroll = Theme.ScrollFrame(container, "MaterialScroll")

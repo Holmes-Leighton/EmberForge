@@ -222,6 +222,7 @@ function MazeArt.Zombie(parent, home)
     else
         model = Instance.new("Model")
         model.Name = "MazeZombie"
+        model:SetAttribute("Block", true)                           -- (the plain block zombie: MazeService swaps it for the mesh one once that has loaded)
         local green, dark = Color3.fromRGB(96, 140, 110), Color3.fromRGB(60, 90, 72)
         local function B(name, size, c, pos) return P({ Name = name, Material = Enum.Material.Slate, Color = c, Size = size, CanCollide = false, CanQuery = false, CFrame = CFrame.new(pos) }, model) end
         B("Torso", Vector3.new(4, 5, 2.4), green, Vector3.new(0, 6, 0))

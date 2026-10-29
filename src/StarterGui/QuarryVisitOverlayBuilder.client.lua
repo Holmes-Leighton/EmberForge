@@ -22,20 +22,11 @@ local panel = Instance.new("Frame")
 panel.Name = "Panel"
 panel.Size = UDim2.new(0, 250, 0, 214)
 panel.Position = UDim2.new(1, -262, 0.5, -107)
-panel.BackgroundColor3 = Theme.Colors.Background
-panel.BackgroundTransparency = 0.05
 panel.BorderSizePixel = 0
 panel.Parent = gui
-Theme.AddCorner(panel, Theme.Corner.Large)
-Theme.AddStroke(panel, Theme.Colors.Info, 2, 0.3)
+Theme.StyleWindow(panel, "Blue")
 ScaleUI.ApplyHud(panel)
 
-local accent = Instance.new("Frame")
-accent.Size = UDim2.new(1, 0, 0, 4)
-accent.BackgroundColor3 = Theme.Colors.Info
-accent.BorderSizePixel = 0
-accent.Parent = panel
-Theme.AddCorner(accent, Theme.Corner.Small)
 
 local visiting = Theme.Label(panel, "Visiting Quarry", Theme.TextSize.Small, Theme.Colors.TextDim, Theme.Fonts.Body, "VisitingLabel")
 visiting.Position, visiting.Size = UDim2.new(0, 10, 0, 6), UDim2.new(1, -20, 0, 20)

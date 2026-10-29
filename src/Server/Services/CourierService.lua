@@ -183,7 +183,7 @@ local function StartRun(player, course)
                 player:SetAttribute("CourierLavaX0", rec.run.lavaX0)
                 player:SetAttribute("CourierLavaT0", rec.run.lavaT0)
             end
-            Fire(player, "respawn", { reason = reason, checkpoint = cpIndex - 1, respawns = rec.run.respawns, penalty = CourierData.RESPAWN_PENALTY })
+            Fire(player, "respawn", { reason = reason, checkpoint = cpIndex - 1, respawns = rec.run.respawns, penalty = CourierData.RESPAWN_PENALTY, dir = 1 })
         end,
         onFinish = function(seconds, respawns)
             local d = PlayerDataService.Get(player)

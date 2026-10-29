@@ -47,36 +47,15 @@ scrim.Parent = gui
 local container = Instance.new("Frame")
 container.Name = "Container"
 container.Size = UDim2.new(0, W, 0, H)
-container.BackgroundColor3 = Theme.Colors.Background
 container.BorderSizePixel = 0
 container.Parent = gui
-Theme.AddCorner(container, Theme.Corner.Large)
 ScaleUI.Apply(container, W, H)
 
-local titleBar = Instance.new("Frame")
-titleBar.Size = UDim2.new(1, 0, 0, 50)
-titleBar.BackgroundColor3 = Theme.Colors.Panel
-titleBar.BorderSizePixel = 0
-titleBar.Parent = container
-Theme.AddCorner(titleBar, Theme.Corner.Large)
-local tfill = Instance.new("Frame")
-tfill.Size = UDim2.new(1, 0, 0, 12)
-tfill.Position = UDim2.new(0, 0, 1, -12)
-tfill.BackgroundColor3 = Theme.Colors.Panel
-tfill.BorderSizePixel = 0
-tfill.Parent = titleBar
-
-local title = Theme.Label(titleBar, "Forge Market", Theme.TextSize.Title, Theme.Colors.Gold, Theme.Fonts.Title, "Title")
-title.Position = UDim2.new(0, 16, 0, 0)
-title.Size = UDim2.new(0.4, 0, 1, 0)
+local titleBar, title, closeBtn = Theme.WindowHeader(container, gui, "Forge Market", "Navy", "Title")
 local coinsLbl = Theme.Label(titleBar, "", Theme.TextSize.Heading, Theme.Colors.Gold, Theme.Fonts.Heading, "CoinsLabel")
-coinsLbl.Position = UDim2.new(0.42, 0, 0, 0)
-coinsLbl.Size = UDim2.new(0.4, -50, 1, 0)
-coinsLbl.TextXAlignment = Enum.TextXAlignment.Right
-local closeBtn = Theme.Button(titleBar, "X", Theme.Colors.Danger, Color3.fromRGB(255, 255, 255), "CloseButton")
-closeBtn.Size = UDim2.new(0, 36, 0, 36)
-closeBtn.Position = UDim2.new(1, -44, 0, 7)
-closeBtn.MouseButton1Click:Connect(function() gui.Enabled = false end)
+coinsLbl.Position = UDim2.new(0, 26, 0, 0)
+coinsLbl.Size = UDim2.new(0.3, 0, 1, 0)
+coinsLbl.TextXAlignment = Enum.TextXAlignment.Left
 
 -- Tabs + actions
 local bar = Instance.new("Frame")
@@ -446,19 +425,21 @@ local box = Instance.new("Frame")
 box.AnchorPoint = Vector2.new(0.5, 0.5)
 box.Position = UDim2.new(0.5, 0, 0.5, 0)
 box.Size = UDim2.new(0, 520, 0, 470)
-box.BackgroundColor3 = Theme.Colors.Background
 box.BorderSizePixel = 0
 box.ZIndex = 11
 box.Parent = dlg
-Theme.AddCorner(box, Theme.Corner.Large)
+Theme.StyleWindow(box, "Navy")
 
-local dTitle = Theme.Label(box, "List an item", Theme.TextSize.Title, Theme.Colors.Gold, Theme.Fonts.Title)
-dTitle.Position = UDim2.new(0, 16, 0, 10)
-dTitle.Size = UDim2.new(1, -60, 0, 30)
+local dTitle = Theme.Label(box, "~List an item~", Theme.TextSize.Title, Color3.fromRGB(255, 255, 255), Theme.Fonts.Title)
+dTitle.Position = UDim2.new(0, 60, 0, 10)
+dTitle.Size = UDim2.new(1, -120, 0, 30)
+dTitle.TextXAlignment = Enum.TextXAlignment.Center
+dTitle.TextStrokeColor3 = Theme.Palettes.Navy.TitleStroke
+dTitle.TextStrokeTransparency = 0
 dTitle.ZIndex = 12
-local dClose = Theme.Button(box, "X", Theme.Colors.Danger, Color3.fromRGB(255, 255, 255))
-dClose.Size = UDim2.new(0, 32, 0, 32)
-dClose.Position = UDim2.new(1, -42, 0, 8)
+local dClose = Theme.CloseButton(box)
+dClose.Size = UDim2.new(0, 34, 0, 34)
+dClose.Position = UDim2.new(1, -10, 0, 8)
 dClose.ZIndex = 12
 dClose.MouseButton1Click:Connect(function() dlg.Visible = false end)
 

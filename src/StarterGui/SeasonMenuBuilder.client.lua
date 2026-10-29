@@ -28,52 +28,26 @@ local container = Instance.new("Frame")
 container.Name = "Container"
 container.Size = UDim2.new(0, 860, 0, 560)
 ScaleUI.Apply(container, 860, 560)
-container.BackgroundColor3 = Theme.Colors.Background
 container.BorderSizePixel = 0
 container.Parent = gui
-Theme.AddCorner(container, Theme.Corner.Large)
 
 -- ── Title bar ─────────────────────────────────────────────────────────────────
-local titleBar = Instance.new("Frame")
-titleBar.Size = UDim2.new(1, 0, 0, 60)
-titleBar.BackgroundColor3 = Theme.Colors.Panel
-titleBar.BorderSizePixel = 0
-titleBar.Parent = container
-Theme.AddCorner(titleBar, Theme.Corner.Large)
-local tf = Instance.new("Frame"); tf.Size=UDim2.new(1,0,0,12); tf.Position=UDim2.new(0,0,1,-12)
-tf.BackgroundColor3=Theme.Colors.Panel; tf.BorderSizePixel=0; tf.Parent=titleBar
-
--- Flame gradient on title bar
-local grad = Instance.new("UIGradient")
-grad.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 30, 10)),
-    ColorSequenceKeypoint.new(0.5, Theme.Colors.Panel),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 20, 60)),
-})
-grad.Rotation = 0
-grad.Parent = titleBar
-
-local seasonHeader = Theme.Label(titleBar, "🌟  Season 1 — The First Forge",
-    Theme.TextSize.Title, Theme.Colors.Gold, Theme.Fonts.Title, "SeasonHeader")
-seasonHeader.Size = UDim2.new(0.65, 0, 0, 34)
-seasonHeader.Position = UDim2.new(0, 16, 0, 6)
-seasonHeader.TextXAlignment = Enum.TextXAlignment.Left
+local titleBar, seasonHeader, closeBtn = Theme.WindowHeader(container, gui, "Season", "Purple", "SeasonHeader")
+seasonHeader.Position = UDim2.new(0, 190, 0, 0)       -- between the week label and the pass buttons
+seasonHeader.Size = UDim2.new(0, 250, 1, 0)
 
 local weekLabel = Theme.Label(titleBar, "Week 1 of 7", Theme.TextSize.Body,
-    Theme.Colors.TextSecondary, Theme.Fonts.Body, "WeekLabel")
-weekLabel.Size = UDim2.new(0.3, 0, 0, 20)
-weekLabel.Position = UDim2.new(0, 16, 0, 36)
-
-local closeBtn = Theme.Button(titleBar, "X", Theme.Colors.Danger, Color3.fromRGB(255,255,255), "CloseButton")
-closeBtn.Size = UDim2.new(0, 36, 0, 36)
-closeBtn.Position = UDim2.new(1, -44, 0, 12)
-closeBtn.MouseButton1Click:Connect(function() gui.Enabled = false end)
+    Color3.fromRGB(255, 255, 255), Theme.Fonts.Heading, "WeekLabel")
+weekLabel.Size = UDim2.new(0, 160, 0, 20)
+weekLabel.Position = UDim2.new(0, 26, 0, 16)
+weekLabel.TextStrokeColor3 = Theme.Outline
+weekLabel.TextStrokeTransparency = 0.4
 
 -- ── Pass purchase buttons ─────────────────────────────────────────────────────
 local passBtnRow = Instance.new("Frame")
 passBtnRow.Name = "PassBtnRow"
 passBtnRow.Size = UDim2.new(0, 350, 0, 44)
-passBtnRow.Position = UDim2.new(1, -358, 0, 10)
+passBtnRow.Position = UDim2.new(1, -418, 0, 3)     -- left of the red X
 passBtnRow.BackgroundTransparency = 1
 passBtnRow.Parent = titleBar
 

@@ -105,10 +105,8 @@ scrim.MouseButton1Click:Connect(function() gui.Enabled = false end)
 local box = Instance.new("Frame")
 box.Name = "Container"
 box.Size = UDim2.new(0, BOX_W, 0, BOX_H)
-box.BackgroundColor3 = Theme.Colors.Background
 box.BorderSizePixel = 0
 box.Parent = gui
-Theme.AddCorner(box, Theme.Corner.Large)
 ScaleUI.Apply(box, BOX_W, BOX_H)
 
 -- swallow clicks on the box so they don't hit the scrim
@@ -121,25 +119,7 @@ shield.ZIndex = 0
 shield.Parent = box
 
 -- Title bar
-local titleBar = Instance.new("Frame")
-titleBar.Size = UDim2.new(1, 0, 0, 50)
-titleBar.BackgroundColor3 = Theme.Colors.Panel
-titleBar.BorderSizePixel = 0
-titleBar.Parent = box
-Theme.AddCorner(titleBar, Theme.Corner.Large)
-local titleFill = Instance.new("Frame")
-titleFill.Size = UDim2.new(1, 0, 0, 12)
-titleFill.Position = UDim2.new(0, 0, 1, -12)
-titleFill.BackgroundColor3 = Theme.Colors.Panel
-titleFill.BorderSizePixel = 0
-titleFill.Parent = titleBar
-local title = Theme.Label(titleBar, "Golem Anvil", Theme.TextSize.Title, Theme.Colors.AccentBright, Theme.Fonts.Title, "Title")
-title.Position = UDim2.new(0, 16, 0, 0)
-title.Size = UDim2.new(0.6, 0, 1, 0)
-local closeBtn = Theme.Button(titleBar, "X", Theme.Colors.Danger, Color3.fromRGB(255, 255, 255), "CloseButton")
-closeBtn.Size = UDim2.new(0, 36, 0, 36)
-closeBtn.Position = UDim2.new(1, -44, 0, 7)
-closeBtn.MouseButton1Click:Connect(function() gui.Enabled = false end)
+local titleBar, title, closeBtn = Theme.WindowHeader(box, gui, "Golem Anvil", "Tan", "Title")
 
 -- Left: list of Golems
 local listHeader = Theme.Label(box, "Choose a Golem", Theme.TextSize.Heading, Theme.Colors.TextSecondary, Theme.Fonts.Heading)

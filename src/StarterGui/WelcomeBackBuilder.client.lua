@@ -28,13 +28,15 @@ local card = Instance.new("Frame")
 card.Name = "Card"
 card.Size = UDim2.new(0, 440, 0, 330)
 ScaleUI.Apply(card, 440, 330)
-card.BackgroundColor3 = Theme.Colors.Background
 card.BorderSizePixel = 0
 card.Parent = gui
-Theme.AddCorner(card, Theme.Corner.Large)
-Theme.AddStroke(card, Theme.Colors.Accent, 2, 0.3)
+Theme.StyleWindow(card, "Orange")
 
 local title = Theme.Label(card, "Welcome back!", Theme.TextSize.Title, Theme.Colors.AccentBright, Theme.Fonts.Title, "Title")
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextStrokeColor3 = Theme.Palettes.Orange.TitleStroke
+title.TextStrokeTransparency = 0
+title.TextXAlignment = Enum.TextXAlignment.Center
 title.Position = UDim2.new(0, 22, 0, 16)
 title.Size = UDim2.new(1, -44, 0, 34)
 
