@@ -131,6 +131,28 @@ expect(cam.CFrame.Position.X == 1, "and a camera some other script is driving is
 local svc = SOURCES["src/Server/Services/TowerService.lua"]
 expect(svc:find("x = target.X, y = target.Y, z = target.Z", 1, true) ~= nil, "the server sends the exact respawn point")
 
+print("== portals: you arrive facing the right way")
+local cam2 = workspace.CurrentCamera
+cam2.CameraType = Enum.CameraType.Custom
+cam2.CFrame = CFrame.new(0, 0, 0)
+fakeRemotes.TowerEvent.OnClientEvent:Fire("abandon", { reason = "left" })
+fakeRemotes.TowerEvent.OnClientEvent:Fire("start", { total = 30, roundEnds = os.time() + 600, mutator = { id = "classic", name = "Classic Climb", desc = "" }, skips = 3,
+    faceAt = { x = -7983, y = 1504, z = 0 } })
+expect(cam2.CFrame.Position.X == -7983 - 14, "entering the tower puts the camera behind the lobby point, looking east into the tower (x = " .. tostring(cam2.CFrame.Position.X) .. ")")
+-- leaving through a portal: only touched once you are actually standing at the hub spawn
+cam2.CFrame = CFrame.new(1, 2, 3)
+LocalPlayerMock.Character = { FindFirstChild = function() return { Position = Vector3.new(500, 80, 500) } end, FindFirstChildOfClass = function() return nil end }
+fakeRemotes.TowerEvent.OnClientEvent:Fire("abandon", { reason = "left" })
+expect(cam2.CFrame.Position.X == 1, "a player who is not at the spawn is left alone when the climb ends")
+local homeRoot = setmetatable({ Position = Vector3.new(0, 6, -60) }, { __newindex = function(t, k, v) if k == "CFrame" then t.turned = (t.turned or 0) + 1 end rawset(t, k, v) end })
+LocalPlayerMock.Character = { FindFirstChild = function() return homeRoot end, FindFirstChildOfClass = function() return nil end }
+fakeRemotes.TowerEvent.OnClientEvent:Fire("start", { total = 30, roundEnds = os.time() + 600, skips = 3 })
+cam2.CFrame = CFrame.new(1, 2, 3)
+fakeRemotes.TowerEvent.OnClientEvent:Fire("abandon", { reason = "left" })
+expect(homeRoot.turned and homeRoot.turned >= 1, "back at the hub spawn the character is turned to face the pads")
+expect(cam2.CFrame.Position.Z == -60 + 14 and cam2.CFrame.Position.X == 0, "and the camera sits behind them (south of the spawn), looking toward the anvil (z = " .. tostring(cam2.CFrame.Position.Z) .. ")")
+LocalPlayerMock.Character = nil
+
 print("== leaving")
 fakeRemotes.TowerEvent.OnClientEvent:Fire("abandon", { reason = "left" })
 expect(hud.Enabled == false, "the HUD goes away")

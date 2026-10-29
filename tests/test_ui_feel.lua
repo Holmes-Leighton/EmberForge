@@ -54,6 +54,20 @@ end
 local TD = load("game/ReplicatedStorage/Shared/Data/TowerData")
 for i, z in ipairs(TD.ZONES) do expect(z.val <= 1.0 and (z.id == "Ember" or z.val <= 0.92), "zone " .. z.id .. " is not near-white (value " .. z.val .. ")") end
 
+print("== Feel.FaceDirection")
+local Feel = load("SPS/EmberForge/Controllers/Feel")
+local fcam = workspace.CurrentCamera
+fcam.CameraType = Enum.CameraType.Custom
+fcam.CFrame = CFrame.new(0, 0, 0)
+Feel.FaceDirection(0, -1, Vector3.new(10, 5, 20))
+expect(fcam.CFrame.Position.X == 10 and fcam.CFrame.Position.Z == 34 and fcam.CFrame.Position.Y == 12, "facing north (-z) puts the camera south of the point, 14 back and 7 up")
+Feel.FaceDirection(3, 4, Vector3.new(0, 0, 0))
+expect(math.abs(fcam.CFrame.Position.X + 8.4) < 1e-6 and math.abs(fcam.CFrame.Position.Z + 11.2) < 1e-6, "any direction works, and is normalised (3,4 -> back by 8.4, 11.2)")
+fcam.CFrame = CFrame.new(9, 9, 9)
+Feel.FaceDirection(0, 0, Vector3.new(1, 1, 1))
+expect(fcam.CFrame.Position.X == 9, "no direction means nothing happens")
+expect(Feel.HOME.Z == -60 and Feel.HOME_DIR[2] == -1, "home is the hub spawn, facing the anvil")
+
 print("== LookController blends to a mood")
 local Look = load("SPS/EmberForge/Controllers/LookController")
 Look.Init()

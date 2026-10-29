@@ -55,7 +55,7 @@ end
 local function SendHome(player)
     local root = Root(player)
     if root then
-        root.CFrame = CFrame.new(SPAWN_HOME)
+        root.CFrame = CFrame.lookAt(SPAWN_HOME, SPAWN_HOME + Vector3.new(0, 0, -1))          -- (facing the Golem Anvil and the pads, where the game starts)
         root.AssemblyLinearVelocity = Vector3.zero
     end
 end
@@ -240,7 +240,8 @@ local function StartRun(player)
     Analytics.TimeTo(player, data, "FirstTower")
     Fire(player, "start", { total = T.total, roundEnds = state.round.endsAt, best = (TowerRewards.State(data, Today()).towerBest or 0), seed = state.round.seed,
         dailyTarget = TowerData.DailyTarget(Today(), T.total), dailyDone = TowerRewards.DailyDone(data, Today()),
-        mutator = MutatorInfo(state.mutator), zone = 1, skips = TowerData.SKIPS_PER_ROUND, skipOwned = data.TowerSkips or 0 })
+        mutator = MutatorInfo(state.mutator), zone = 1, skips = TowerData.SKIPS_PER_ROUND, skipOwned = data.TowerSkips or 0,
+        faceAt = { x = LobbyPoint().Position.X, y = LobbyPoint().Position.Y, z = LobbyPoint().Position.Z } })
 end
 
 -- ── Skipping a level (a Robux Developer Product; the credits are kept in the player's data as TowerSkips) ─────────────────────────────────

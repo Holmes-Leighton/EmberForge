@@ -36,6 +36,15 @@ end
 -- lifts (up and down), depth movers (toward and away), orbiting platforms, swinging blades and the beam pads' circles: all driven by the same shared clock and
 -- the same functions (CourierLayout) the server judges with
 local lifts, zmovers, orbiters, pendulums, beams = {}, {}, {}, {}, {}
+local rotors, blinkers = {}, {}
+local function AddRotor(part)
+    rotors[part] = { x = part:GetAttribute("CX") or part.Position.X, z = part:GetAttribute("CZ") or part.Position.Z, y = (part:GetAttribute("Y") or part.Position.Y) + 0.6,
+        radius = part:GetAttribute("Radius") or 10, arms = part:GetAttribute("Arms") or 2, index = part:GetAttribute("Index") or 1, omega = part:GetAttribute("Omega") or 0.6,
+        phase = part:GetAttribute("Phase") or 0, width = part:GetAttribute("Width") or 5.5, thick = part.Size.Y }
+end
+local function AddBlinker(part)
+    blinkers[part] = { period = part:GetAttribute("Period") or 4, duty = part:GetAttribute("Duty") or 0.65, phase = part:GetAttribute("Phase") or 0 }
+end
 local function AddLift(part)
     lifts[part] = { x = part:GetAttribute("X") or part.Position.X, z = part:GetAttribute("Z") or part.Position.Z, y0 = part:GetAttribute("Y0") or part.Position.Y,
         y1 = part:GetAttribute("Y1") or part.Position.Y, period = part:GetAttribute("Period") or 6, phase = part:GetAttribute("Phase") or 0 }
@@ -125,6 +134,30 @@ local function StepWorld(dt, now)
     end
     for part, m in pairs(zmovers) do
         if part.Parent then MoveCarrying(part, CFrame.new(m.x, m.y, CourierLayout.ZMoverZ(m, now))) else zmovers[part] = nil end
+    end
+    for part, r in pairs(rotors) do
+        if part.Parent then
+            -- the arm turns about its hub; a player standing on it is carried round with it (turned by the same angle), judged from where the arm was a moment ago
+            local char = LocalPlayer.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            local a0, a1 = CourierLayout.RotorArm(r, r.index, now - dt), nil
+            local _, mx, mz
+            a1, mx, mz = CourierLayout.RotorArm(r, r.index, now)
+            if root and CourierLayout.OnRotorArm(r, r.index, now - dt, root.Position.X, root.Position.Y - 3, root.Position.Z) then
+                local nx, nz = CourierLayout.RotateAbout(r.x, r.z, root.Position.X, root.Position.Z, r.omega * dt)
+                root.CFrame = CFrame.new(nx, root.Position.Y, nz) * CFrame.Angles(0, -r.omega * dt, 0) * root.CFrame.Rotation
+            end
+            part.CFrame = CFrame.new(mx, r.y - 0.6, mz) * CFrame.Angles(0, -a1, 0)
+        else rotors[part] = nil end
+    end
+    for part, b in pairs(blinkers) do
+        if part.Parent then
+            local state = CourierLayout.BlinkState(b, now)
+            part.CanCollide = state ~= "gone"
+            if state == "solid" then part.Transparency = 0
+            elseif state == "warn" then part.Transparency = (math.floor(now * 8) % 2 == 0) and 0.15 or 0.7        -- flickers: it is about to go
+            else part.Transparency = 0.92 end                                                                       -- a faint ghost shows where it will come back
+        else blinkers[part] = nil end
     end
     for part, o in pairs(orbiters) do
         if part.Parent then
@@ -429,6 +462,7 @@ local function OnEvent(kind, p)
         hudTitle.Text = string.upper(p.course) .. (p.lava and "   (lava chase!)" or "")
         Banner("GO!", Color3.fromRGB(255, 232, 120))
         Sparks(Color3.fromRGB(255, 220, 120), 25)
+        FaceCourse(1)                                                -- (the courses run east)
     elseif kind == "checkpoint" then
         Banner(string.format("Checkpoint %d/%d", p.index, p.total), Color3.fromRGB(150, 255, 170))
         Sparks(Color3.fromRGB(150, 255, 170), 35)
@@ -456,7 +490,7 @@ function CourierController.Init()
     for _, p in ipairs(CollectionService:GetTagged("EFCourierSpinner")) do AddSpinner(p) end
     CollectionService:GetInstanceAddedSignal("EFCourierSpinner"):Connect(AddSpinner)
     for _, u in ipairs(CollectionService:GetTagged("EFCourierCrusher")) do AddCrusher(u) end
-    for tag, add in pairs({ EFCourierLift = AddLift, EFCourierZMover = AddZMover, EFCourierOrbit = AddOrbiter, EFCourierPendulum = AddPendulum, EFCourierBeam = AddBeam }) do
+    for tag, add in pairs({ EFCourierLift = AddLift, EFCourierZMover = AddZMover, EFCourierOrbit = AddOrbiter, EFCourierRotor = AddRotor, EFCourierBlink = AddBlinker, EFCourierPendulum = AddPendulum, EFCourierBeam = AddBeam }) do
         for _, p in ipairs(CollectionService:GetTagged(tag)) do add(p) end
         CollectionService:GetInstanceAddedSignal(tag):Connect(add)
     end

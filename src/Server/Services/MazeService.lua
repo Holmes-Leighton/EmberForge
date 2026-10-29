@@ -53,7 +53,7 @@ end
 local function SendHome(player)
     local root = Root(player)
     if root then
-        root.CFrame = CFrame.new(SPAWN_HOME)
+        root.CFrame = CFrame.lookAt(SPAWN_HOME, SPAWN_HOME + Vector3.new(0, 0, -1))          -- (facing the Golem Anvil and the pads, where the game starts)
         root.AssemblyLinearVelocity = Vector3.zero
     end
 end
@@ -268,6 +268,7 @@ local function StartRun(player)
         opensAt = ToServerTime(r.opensAt), wakesAt = ToServerTime(r.wakesAt), endsAt = ToServerTime(r.endsAt), sections = MazeData.SECTIONS, seed = r.seed,
         best = MazeRewards.State(data, Today()).mazeBest or 0, dailyTarget = MazeData.DailyTarget(Today()), dailyDone = MazeRewards.DailyDone(data, Today()),
         zombieHome = state.art.zombieHome, mazeBase = MazeData.BASE, hideMax = MazeData.HIDE_MAX,
+        faceAt = { x = state.art.lobbySpawn.Position.X, y = state.art.lobbySpawn.Position.Y, z = state.art.lobbySpawn.Position.Z },
     })
     Analytics.Funnel(player, data, "maze", 6, "FirstMazeEntered")
     Analytics.TimeTo(player, data, "FirstMaze")
@@ -364,7 +365,7 @@ local function StepZombie(dt)
                 local others = false
                 for _, r in pairs(runs) do if r ~= rec and not r.caught and not r.escaped then others = true end end
                 if not others then ResetZombie() end
-                Fire(rec.player, "retry", {})
+                Fire(rec.player, "retry", { faceAt = { x = state.art.lobbySpawn.Position.X, y = state.art.lobbySpawn.Position.Y, z = state.art.lobbySpawn.Position.Z } })
             end)
         end
     end

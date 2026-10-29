@@ -9,6 +9,7 @@ local CollectionService = game:GetService("CollectionService")
 
 local SignArt = require(script.Parent.SignArt)
 local TowerSkin = require(script.Parent.TowerSkin)
+local CourierLayout = require(game.ReplicatedStorage.Shared.Modules.CourierLayout)
 
 local CourierArt = {}
 
@@ -41,6 +42,8 @@ local function Sign(parent, adornee, text, size, offset, color, maxDistance)
     lbl.Parent = gui
     return lbl
 end
+
+local THICK_ARM = 1.2      -- how thick a windmill arm is
 
 local function Clock(seconds)
     seconds = math.floor(seconds)
@@ -253,6 +256,26 @@ local function BuildObstacles(folder, r)
         moving("OrbitPlatform", Vector3.new(o.sx, o.sy, o.sz), CFrame.new(o.x + o.radius, o.y, o.z), "EFCourierOrbit", { CX = o.x, CZ = o.z, Y = o.y, Radius = o.radius, Omega = o.omega, Phase = o.phase })
         P({ Name = "OrbitHub", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Neon, Color = r.def.color or Color3.fromRGB(255, 190, 80), Transparency = 0.5, Size = Vector3.new(0.3, o.radius * 2, o.radius * 2),
             CanCollide = false, CFrame = CFrame.new(o.x, o.y - 0.6, o.z) * CFrame.Angles(0, 0, math.pi / 2) }, group)      -- the track the platform circles on
+    end
+    -- ── windmills: the arms turn (driven by the client on the shared clock); the hub is an ordinary platform drawn with the rest ──
+    for _, rt in ipairs(L.rotors or {}) do
+        for i = 1, rt.arms do
+            local a, mx, mz = CourierLayout.RotorArm(rt, i, 0)
+            local arm = moving("WindmillArm", Vector3.new(rt.radius, THICK_ARM, rt.width), CFrame.new(mx, rt.y - THICK_ARM / 2, mz) * CFrame.Angles(0, -a, 0), "EFCourierRotor",
+                { CX = rt.x, CZ = rt.z, Y = rt.y - THICK_ARM / 2, Radius = rt.radius, Arms = rt.arms, Index = i, Omega = rt.omega, Phase = rt.phase, Width = rt.width }, Color3.fromRGB(235, 170, 70))
+            P({ Name = "WindmillTip", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 240, 150), Size = Vector3.new(0.4, 0.3, rt.width), CanCollide = false,
+                CFrame = arm.CFrame * CFrame.new(rt.radius / 2 - 0.4, THICK_ARM / 2 + 0.1, 0) }, arm)
+        end
+        P({ Name = "WindmillHub", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, Color = Color3.fromRGB(70, 70, 80), Size = Vector3.new(1.4, rt.hub * 2 + 1, rt.hub * 2 + 1), CanCollide = false,
+            CFrame = CFrame.new(rt.x, rt.y - 1.5, rt.z) * CFrame.Angles(0, 0, math.pi / 2) }, group)
+    end
+    -- ── vanishing platforms: solid, then flickering, then gone (the client sets them from the shared clock) ──
+    for _, b in ipairs(L.blinkers or {}) do
+        local part = P({ Name = "VanishingPlatform", Material = Enum.Material.Neon, Color = Color3.fromRGB(150, 235, 255), Size = Vector3.new(b.sx, b.sy, b.sz), CFrame = CFrame.new(b.x, b.y, b.z) }, group)
+        part:SetAttribute("Period", b.period)
+        part:SetAttribute("Duty", b.duty)
+        part:SetAttribute("Phase", b.phase)
+        CollectionService:AddTag(part, "EFCourierBlink")
     end
     -- ── swinging blades ──
     for _, p in ipairs(L.pendulums or {}) do

@@ -13,6 +13,8 @@
 --   sweepers   { x, y(top of the platform), z, amp, period, phase, thick }   a bar sliding across Z
 --   walls      { x, y(top of the platform), z, sx, sy, sz }   a solid wall on a platform: tall ones to weave round (slalom), low ones to jump (hurdle)
 --   (platforms may also carry conveyor = speed, ice = true, viaTruss / viaBounce = true on the landing of a ladder or bounce)
+--   rotors     { x, y(top), z, radius, arms, width, omega, phase, hub }   a windmill: arms turning round a hub, carrying you; the hub is a small solid platform (platforms, rotor = true)
+--   blinkers   { x, y, z, sx, sy, sz, period, duty, phase }   a platform that is solid for `duty` of every `period` seconds, flickers as a warning, then vanishes
 --   helixes    { x1, x2, top, bottom, z, w, ledges, radius, ledge, rise }   a spiral of ledges (each also in platforms / crumbles with helix = true), climbed as one piece
 --   checkpoints{ x, y, z }   places to respawn (the first is the start)
 --   finish     { x, y, z, hx, hz }  the drop-off zone
@@ -206,6 +208,55 @@ function Modules.ladder(L, cur, p)
     cur.x = x0 + (p.footLen or 8) + 1.5 + (p.landLen or 9)
 end
 
+-- A windmill: `arms` arms of length `radius` turning round a small solid hub, `omega` radians a second (negative turns the other way). Jump onto an arm when its tip swings
+-- up to the platform you stand on (it passes every 2 pi / (arms x omega) seconds), ride it in to the hub, wait for an arm to point at the landing, and jump off. The hub is a
+-- real platform (flagged rotor = true); the arms are drawn and turned by the client on the shared clock (CourierLayout.RotorArm).
+function Modules.rotor(L, cur, p)
+    local R, hub = p.radius or 10, p.hub or 3
+    local gap = p.gap or 3.5
+    local hx = cur.x + gap + R
+    Plat(L, hx - hub, 2 * hub, cur.y, cur.z, 2 * hub, { rotor = true })
+    table.insert(L.rotors, { x = hx, y = cur.y, z = cur.z, radius = R, arms = p.arms or 2, width = p.armWidth or 5.5, omega = p.omega or 0.6, phase = p.phase or 0, hub = hub, gap = gap })
+    local lx = hx + R + gap
+    Plat(L, lx, p.landing or 10, cur.y, cur.z, p.landingWidth or 12)
+    cur.x = lx + (p.landing or 10)
+end
+
+-- Platforms that vanish and come back: each is solid for `duty` of every `period` seconds, flickers in its last moments, then is gone until its turn comes round. They are staggered
+-- along the row so each one is solid for a while after the next one appears (the overlap is p.overlap of a period, 0.3 by default), so there is always time to hop on.
+function Modules.blink(L, cur, p)
+    local period, duty = p.period or 4, p.duty or 0.65
+    local stagger = period * (duty - (p.overlap or 0.3))
+    for i = 1, p.n do
+        local x0 = cur.x + p.gap
+        table.insert(L.blinkers, { x = x0 + p.len / 2, y = cur.y - THICK / 2, z = cur.z, sx = p.len, sy = THICK, sz = p.width, period = period, duty = duty, phase = (p.phase or 0) + (i - 1) * stagger })
+        cur.x = x0 + p.len
+    end
+end
+
+-- A chimney: a shaft between two tall walls climbed by zig-zagging up small ledges, one on each side in turn, each higher than the last. A hard, vertical climb (not a staircase):
+-- every hop is sideways and up. `ice` makes the ledges slippery. The way out is a landing at the top, and the walls are flagged shaft = true.
+function Modules.chimney(L, cur, p)
+    local len, width, off, gap = p.len or 4, p.width or 4, p.off or 3.6, p.gap or 1.2
+    local x0 = cur.x + (p.gap0 or 3)
+    local y0 = cur.y
+    local x = x0
+    for i = 1, p.n do
+        cur.y += p.rise
+        local side = (i % 2 == 1) and -1 or 1
+        Plat(L, x, len, cur.y, cur.z + side * off, width, p.ice and { ice = true } or nil)
+        x += len + gap
+    end
+    local top = x - gap
+    local landing = p.landing or 9
+    Plat(L, top + 1.2, landing, cur.y, cur.z, 2 * off + width + 1)
+    local length = (top + 1.2 + landing) - x0
+    for _, side in ipairs({ -1, 1 }) do
+        table.insert(L.walls, { x = x0 + length / 2, y = y0, z = cur.z + side * (off + width / 2 + 0.7), sx = length + 2, sy = p.n * p.rise + 8, sz = 1.2, shaft = true })
+    end
+    cur.x = top + 1.2 + landing
+end
+
 -- A spiral: `n` square ledges (p.width on a side) winding round a hub of radius p.radius, each one `p.rise` higher than the last, so you climb a full level in a corkscrew
 -- instead of a staircase. It sweeps p.sweep radians (an odd multiple of pi, default 1.5 turns), so the last ledge lies due east and the course carries on east from it.
 -- `pattern` has a letter per ledge: "p" plain, "c" crumbles shortly after you land, "i" ice; the last must be "p". p.cw winds the other way.
@@ -368,7 +419,7 @@ function CourierLayout.Build(course)
     local L = {
         base = course.base, zRange = course.zRange or 14,
         platforms = {}, movers = {}, crumbles = {}, spinners = {}, crushers = {}, checkpoints = {}, trusses = {}, bounces = {}, sweepers = {}, walls = {}, kills = {}, grids = {},
-        lifts = {}, zmovers = {}, orbiters = {}, pendulums = {}, beamfields = {}, helixes = {},
+        lifts = {}, zmovers = {}, orbiters = {}, pendulums = {}, beamfields = {}, helixes = {}, rotors = {}, blinkers = {},
     }
     local cur = { x = course.base.x, y = course.base.y, z = course.base.z }
     for _, m in ipairs(course.modules) do
@@ -399,6 +450,35 @@ function CourierLayout.OrbitPos(o, t)
     local a = o.phase + o.omega * t
     return o.x + o.radius * math.cos(a), o.z + o.radius * math.sin(a)
 end
+-- The windmill's arm i (1-based) at time t: the angle it points at (counter-clockwise in the x-z plane: 0 is +x), and where its middle is. An arm is a box `radius` long.
+function CourierLayout.RotorArm(r, i, t)
+    local a = (r.phase + r.omega * t + (i - 1) * 2 * math.pi / r.arms) % (2 * math.pi)
+    return a, r.x + math.cos(a) * r.radius / 2, r.z + math.sin(a) * r.radius / 2
+end
+-- Is the point (x, y, z) standing on arm i of the windmill at time t? (y is the player's feet or root; `top` is the arm's top)
+function CourierLayout.OnRotorArm(r, i, t, x, y, z)
+    local a = CourierLayout.RotorArm(r, i, t)
+    local dx, dz = x - r.x, z - r.z
+    local along = dx * math.cos(a) + dz * math.sin(a)                       -- along the arm from the hub
+    local across = -dx * math.sin(a) + dz * math.cos(a)
+    return along >= -0.6 and along <= r.radius + 0.6 and math.abs(across) <= r.width / 2 + 0.6 and y > r.y - 0.6 and y < r.y + 6
+end
+-- Turn the point (x, z) by `d` radians about (cx, cz), the same way the arms turn
+function CourierLayout.RotateAbout(cx, cz, x, z, d)
+    local dx, dz = x - cx, z - cz
+    local c, s = math.cos(d), math.sin(d)
+    return cx + dx * c - dz * s, cz + dx * s + dz * c
+end
+-- A vanishing platform at time t: "solid", "warn" (still solid, flickering: it is about to go) or "gone"
+CourierLayout.BLINK_WARN = 0.8
+function CourierLayout.BlinkState(b, t)
+    local u = (t - b.phase) % b.period
+    local on = b.duty * b.period
+    if u < on - CourierLayout.BLINK_WARN then return "solid" end
+    if u < on then return "warn" end
+    return "gone"
+end
+
 -- The blade's centre (x, y) at time t: it hangs `length` below its pivot and swings through +-amp radians along the course
 function CourierLayout.PendulumBlade(p, t)
     local a = p.amp * math.sin(2 * math.pi * (t + p.phase) / p.period)
@@ -445,6 +525,7 @@ function CourierLayout.WalkOrder(L)
         add(m.x0 - m.sx / 2, m.x1 + m.sx / 2, m.y + m.sy / 2, m.z, m.sz, "mover")
     end
     for _, l in ipairs(L.lifts) do add(l.x - l.sx / 2, l.x + l.sx / 2, l.y0 + l.sy / 2, l.z, l.sz, "lift") end
+    for _, b in ipairs(L.blinkers or {}) do add(b.x - b.sx / 2, b.x + b.sx / 2, b.y + b.sy / 2, b.z, b.sz, "blink") end
     for _, m in ipairs(L.zmovers) do add(m.x - m.sx / 2, m.x + m.sx / 2, m.y + m.sy / 2, (m.z0 + m.z1) / 2, m.sz + math.abs(m.z1 - m.z0), "zmover") end
     for _, o in ipairs(L.orbiters) do add(o.x - o.radius - o.sx / 2, o.x + o.radius + o.sx / 2, o.y + o.sy / 2, o.z, 2 * o.radius + o.sz, "orbit") end
     table.sort(out, function(a, b) return a.x1 < b.x1 end)

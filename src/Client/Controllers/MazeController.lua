@@ -568,6 +568,7 @@ local function OnEvent(kind, p)
         hud.Enabled = true
         hiddenAt, hideMax = nil, p.hideMax or MazeData.HIDE_MAX
         curMood, lastZState, lastZSlowed = nil, nil, nil
+        if p.faceAt then Feel.FaceCourse(1, Vector3.new(p.faceAt.x, p.faceAt.y, p.faceAt.z)) end        -- (the lobby faces east, at the gate)
         Feel.Scene("Maze")
         Banner("GET READY...", Color3.fromRGB(150, 255, 170))
     elseif kind == "gateopen" then
@@ -600,6 +601,7 @@ local function OnEvent(kind, p)
         end
     elseif kind == "retry" then
         Banner("TRY AGAIN!", Color3.fromRGB(150, 255, 170))
+        if p.faceAt then Feel.FaceCourse(1, Vector3.new(p.faceAt.x, p.faceAt.y, p.faceAt.z)) end
     elseif kind == "caught" then
         Banner("CAUGHT!", Color3.fromRGB(255, 70, 60))
         Flash(Color3.fromRGB(200, 20, 20), 0.6)
@@ -646,6 +648,7 @@ local function OnEvent(kind, p)
         ClearCards()
         danger.BackgroundTransparency = 1
         hiddenAt, curMood = nil, nil
+        Feel.FaceHome()                                              -- (back through the portal: face the way the game starts)
         Feel.Scene("Hub")
         Feel.Mood(nil)                                               -- the lighting goes back to following where you stand
         if kind == "roundover" and (p.best or 0) <= 0 and (p.coins or 0) == 0 and not p.escaped then

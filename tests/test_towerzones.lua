@@ -169,7 +169,7 @@ for seed = 1, 60 do
         -- the first ledge can be reached from the platform before it
         local entry = ledges[1]
         local best = math.huge
-        for _, list in ipairs({ tw.platforms, tw.crumbles }) do          -- (what you step off can be a platform or a crumbling one)
+        for _, list in ipairs({ tw.platforms, tw.crumbles, tw.blinkers }) do          -- (what you step off can be a platform, a crumbling one or a vanishing one)
             for _, p in ipairs(list) do
                 if p.level == h.level and not p.helix and math.abs((p.y + p.sy / 2) - (entry.top - h.rise)) < 0.01 then
                     best = math.min(best, rectDist({ x = p.x, z = p.z, sx = p.sx, sz = p.sz }, entry))
@@ -216,6 +216,82 @@ for seed = 1, 40 do
     end
 end
 expect(wrong == 0, "in all " .. checked .. " levels the way ahead is the way the respawn turns you (" .. wrong .. " wrong)")
+
+print("== levels are no longer dead-straight rows")
+local weaving, levelsChecked = 0, 0
+for seed = 1, 20 do
+    local tw = build(seed * 5 + 3)
+    for i, lv in ipairs(tw.levels) do
+        local lo, hi = 1e9, -1e9
+        for _, p in ipairs(tw.platforms) do if p.level == i and not p.helix then lo = math.min(lo, p.z) hi = math.max(hi, p.z) end end
+        levelsChecked += 1
+        if hi - lo > 4 then weaving += 1 end
+    end
+end
+expect(weaving / levelsChecked > 0.2, "at least 20% of levels weave from side to side (" .. string.format("%.0f%%", 100 * weaving / levelsChecked) .. ")")
+local widest = 0
+for seed = 1, 20 do
+    local tw = build(seed * 5 + 3)
+    local lo, hi = 1e9, -1e9
+    for _, p in ipairs(tw.platforms) do lo = math.min(lo, p.z - p.sz / 2) hi = math.max(hi, p.z + p.sz / 2) end
+    widest = math.max(widest, hi - lo)
+end
+expect(widest < 160, "and the tower stays compact sideways (" .. math.floor(widest) .. " studs)")
+
+print("== the same design is not the same every time")
+local lengths = {}
+for seed = 1, 60 do
+    local tw = build(seed * 3 + 1)
+    for i, lv in ipairs(tw.levels) do
+        if lv.design == "Spinner Hall" or lv.design == "Hurdle Run" or lv.design == "Blade Swing" then
+            lengths[lv.design] = lengths[lv.design] or {}
+            local len = lv.endX - lv.startX
+            lengths[lv.design][math.floor(math.abs(len) / 3)] = true
+        end
+    end
+end
+for name, set in pairs(lengths) do
+    local n = 0 for _ in pairs(set) do n += 1 end
+    expect(n >= 4, name .. " comes in " .. n .. " different lengths across 60 towers")
+end
+
+print("== some levels play by their own rule")
+local modCount, kinds, early, adjacent, onBoss, perTower = 0, {}, 0, 0, 0, {}
+for seed = 1, 80 do
+    local tw = build(seed * 7 + 2)
+    local n = 0
+    for i, lv in ipairs(tw.levels) do
+        if lv.modifier then
+            n += 1
+            modCount += 1
+            kinds[lv.modifier] = (kinds[lv.modifier] or 0) + 1
+            if i < TD.LEVEL_MOD_FIRST then early += 1 end
+            if lv.boss or i == #tw.levels then onBoss += 1 end
+            if tw.levels[i + 1] and tw.levels[i + 1].modifier then adjacent += 1 end
+            expect(TD.LevelMods[lv.modifier] ~= nil, "(level " .. i .. " of seed " .. seed .. " names a real twist)")
+        end
+    end
+    perTower[#perTower + 1] = n
+end
+local lo, hi, sum = 99, 0, 0
+for _, n in ipairs(perTower) do lo, hi, sum = math.min(lo, n), math.max(hi, n), sum + n end
+expect(early == 0 and onBoss == 0 and adjacent == 0, "never on levels 1-2, a boss or the summit, and never two in a row")
+expect(sum / #perTower >= 3 and sum / #perTower <= 9, "about one level in four on average (" .. string.format("%.1f", sum / #perTower) .. " per tower, from " .. lo .. " to " .. hi .. ")")
+expect(kinds.moon and kinds.dash and kinds.dark and kinds.heavy, "all four twists turn up (moon " .. tostring(kinds.moon) .. ", dash " .. tostring(kinds.dash) .. ", dark " .. tostring(kinds.dark) .. ", heavy " .. tostring(kinds.heavy) .. ")")
+
+print("== every twist is still makeable")
+local CL = load("game/ReplicatedStorage/Shared/Modules/CourierLayout")
+local heavyReach = CL.JUMP_REACH_FLAT * math.sqrt(TD.LevelMods.heavy.jump)
+expect(heavyReach >= CD.Limits[3].maxGap + 0.5, "Heavy Boots still clears the widest hop (reach " .. string.format("%.1f", heavyReach) .. " vs gap " .. CD.Limits[3].maxGap .. ")")
+expect(CL.JUMP_HEIGHT * TD.LevelMods.heavy.jump >= CD.Limits[3].maxRise + 1.5, "and the steepest rise (" .. string.format("%.1f", CL.JUMP_HEIGHT * TD.LevelMods.heavy.jump) .. " vs " .. CD.Limits[3].maxRise .. ")")
+local both = TD.CombineMods(TD.MutatorById.turbo, TD.LevelMods.dash)
+expect(math.abs(both.walk - 1.3 * 1.3) < 1e-9, "a Dash level in a Turbo round multiplies (x" .. both.walk .. ")")
+local w = TD.MovementFor(both, 36, true, 50, 7.2)
+expect(w <= TD.MAX_WALK, "but never past the anti-cheat's limit (" .. w .. ")")
+local mix = TD.CombineMods(TD.MutatorById.moon, TD.LevelMods.heavy)
+expect(math.abs(mix.jump - 1.35 * 0.85) < 1e-9, "Moon Jump and Heavy Boots cancel part-way (x" .. string.format("%.2f", mix.jump) .. ")")
+expect(TD.CombineMods(TD.MutatorById.fog, TD.LevelMods.dark).fog and TD.CombineMods(nil, TD.LevelMods.dark).dark, "fog and dark flags carry through")
+expect(next(TD.CombineMods(nil, nil)) == nil, "no twist at all combines to nothing")
 
 print("== mutators")
 expect(#TD.Mutators == 6 and TD.MutatorById.moon.jump == 1.35 and TD.MutatorById.turbo.walk == 1.3, "six mutators with their numbers")

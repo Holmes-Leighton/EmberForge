@@ -417,6 +417,7 @@ local function OnEvent(kind, p)
         mutator = p.mutator
         skipsLeft, skipOwned = p.skips or 0, p.skipOwned or 0
         curZone = nil                                               -- (so the strip and the sky are set for the zone you start in)
+        if p.faceAt then require(script.Parent.Feel).FaceCourse(1, Vector3.new(p.faceAt.x, p.faceAt.y, p.faceAt.z)) end        -- (the lobby faces east, into the tower)
         hud.Enabled = true
         Scene("Tower")
         Snd("TowerStart")
@@ -503,6 +504,7 @@ local function OnEvent(kind, p)
         hud.Enabled = false
         if lava then lava:Destroy() lava = nil end
         mutator, curZone = nil, nil
+        require(script.Parent.Feel).FaceHome()                      -- (back through the portal: face the way the game starts)
         Scene("Hub")
         Mood(nil)                                                   -- the lighting goes back to following where you stand
         if kind == "roundover" and p.best <= 1 and (p.coins or 0) == 0 and not p.summit then

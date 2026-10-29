@@ -41,7 +41,7 @@ local function LevelLayout(T, i, isLast)
         spinners = Subset(T.spinners, i), crushers = Subset(T.crushers, i), checkpoints = Subset(T.checkpoints, i),
         trusses = Subset(T.trusses, i), bounces = Subset(T.bounces, i), sweepers = Subset(T.sweepers, i), walls = Subset(T.walls or {}, i),
         kills = Subset(T.kills or {}, i), lifts = Subset(T.lifts or {}, i), zmovers = Subset(T.zmovers or {}, i), orbiters = Subset(T.orbiters or {}, i),
-        pendulums = Subset(T.pendulums or {}, i), beamfields = Subset(T.beamfields or {}, i), helixes = Subset(T.helixes or {}, i),
+        pendulums = Subset(T.pendulums or {}, i), beamfields = Subset(T.beamfields or {}, i), helixes = Subset(T.helixes or {}, i), rotors = Subset(T.rotors or {}, i), blinkers = Subset(T.blinkers or {}, i),
         base = T.base,
     }
     if isLast then lay.finish = T.finish end

@@ -8,7 +8,7 @@ local function build(seed, levels) return TL.Build({ levels = levels or 30, seed
 print("== shape")
 local T = build(7)
 expect(#T.levels == 30 and T.finish ~= nil, "30 levels and a finish")
-expect(T.height > 600 and T.height < 900, "it climbs high (" .. math.floor(T.height) .. " studs)")
+expect(T.height > 600 and T.height < 1100, "it climbs high (" .. math.floor(T.height) .. " studs)")
 expect(#T.checkpoints == 30, "one checkpoint at the start of every level (" .. #T.checkpoints .. ")")
 local flips = 0
 for i = 2, #T.levels do if T.levels[i].dir ~= T.levels[i - 1].dir then flips += 1 end end
@@ -59,7 +59,9 @@ for seed = 1, 60 do
                 local gap = (lv.dir == 1) and (near - lastEnd) or (lastEnd - near)
                 local rise = piece.viaTruss and 0 or (piece.top - lastTop)           -- a ladder carries its own height (checked below)
                 local side = math.abs(piece.z - lastZ) - (piece.w + lastW) / 2
-                if gap > lim.maxGap + 1e-6 or rise > lim.maxRise + 1e-6 or side > 1.0 then
+                -- a hop is judged by the real distance between the two edges: forward and sideways together (a chimney's ledges are sideways hops)
+                local dist = math.sqrt(math.max(gap, 0) ^ 2 + math.max(side, 0) ^ 2)
+                if dist > lim.maxGap + 1e-6 or rise > lim.maxRise + 1e-6 then
                     failures[#failures + 1] = string.format("seed %d level %d: gap %.1f rise %.1f side %.1f (limits %.1f / %.1f)", seed, lv.index, gap, rise, side, lim.maxGap, lim.maxRise)
                 end
                 worstGap[lv.designTier] = math.max(worstGap[lv.designTier] or 0, gap)
@@ -202,7 +204,7 @@ for seed = 1, 40 do
         local last, firstRest
         local restCp = tw.checkpoints[lvB.firstCheckpoint]
         for _, p in ipairs(tw.platforms) do
-            if p.level == i and (not last or p.y > last.y) then last = p end
+            if p.level == i and (not last or p.y >= last.y) then last = p end
             if p.level == i + 1 and math.abs(p.x - restCp.x) < 0.01 then firstRest = p end       -- (the rest platform is the one holding the level's first checkpoint)
         end
         local dy = firstRest.y + firstRest.sy / 2 - (last.y + last.sy / 2)
@@ -248,7 +250,9 @@ for seed = 1, 20 do
     local tw = build(seed * 5 + 1, 30)
     for _, w in ipairs(tw.walls) do
         local lim = CD.Limits[tw.levels[w.level].designTier]
-        if w.open then
+        if w.shaft then
+            -- (the tall walls of a chimney are the sides of a shaft, not obstacles: they are climbed beside, never hopped)
+        elseif w.open then
             wallsSeen += 1
             expect(w.open >= lim.minWidth + 1.5 and w.open >= 5, "seed " .. seed .. ": a slalom wall leaves a gap you can walk through (" .. w.open .. ")")
             expect(w.sy > 6, "and is too tall to jump over (" .. w.sy .. ")")

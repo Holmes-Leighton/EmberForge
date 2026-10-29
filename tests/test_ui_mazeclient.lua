@@ -130,6 +130,21 @@ fire("section", { section = 4, name = "Storm", coins = 80, xp = 30,
 for _ = 1, 6 do step() end
 expect(cardText():find("MAZE CACHE") ~= nil, "a cache card announces a milestone")
 
+print("== portals: you arrive facing the right way")
+local mcam = workspace.CurrentCamera
+mcam.CameraType = Enum.CameraType.Custom
+mcam.CFrame = CFrame.new(0, 0, 0)
+fire("start", { hideMax = 8, faceAt = { x = -8024, y = 1504, z = -7 } })
+expect(mcam.CFrame.Position.X == -8024 - 14, "entering the maze faces the gate: the camera sits behind the lobby point (x = " .. tostring(mcam.CFrame.Position.X) .. ")")
+mcam.CFrame = CFrame.new(0, 0, 0)
+fire("retry", { faceAt = { x = -8024, y = 1504, z = -7 } })
+expect(mcam.CFrame.Position.X == -8024 - 14, "and so does trying again after being caught")
+local back = setmetatable({ Position = Vector3.new(0, 6, -60) }, { __newindex = function(t, k, v) if k == "CFrame" then t.turned = (t.turned or 0) + 1 end rawset(t, k, v) end })
+LocalPlayerMock.Character = { FindFirstChild = function() return back end, FindFirstChildOfClass = function() return nil end }
+fire("abandon", { reason = "left" })
+expect(back.turned and back.turned >= 1, "leaving the maze through a portal turns you to face the pads once you are back at the spawn")
+LocalPlayerMock.Character = nil
+
 print("== caught, escape and leaving")
 Sound.Log = {}
 Sound.ResetThrottle()

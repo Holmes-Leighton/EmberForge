@@ -12,6 +12,7 @@ TowerLayout.LEVEL_RISE   = TowerLayout.CLIMB_LEDGES * 3.4        -- about how fa
 TowerLayout.LEVEL_Z_STEP = 18           -- each level sits this much further along Z than the one below
 TowerLayout.CENTRE_OFFSET = 110       -- the middle of the tower, east of the first level's start
 TowerLayout.DRIFT        = 70        -- a level that ends further than this from the middle turns the next one back
+TowerLayout.Z_RANGE       = 9         -- how far a level may weave sideways from its middle (it was 0: every level was a dead-straight row)
 TowerLayout.Z_PATTERN    = { 0, 1, 2, 1 }    -- the sideways shift (in LEVEL_Z_STEPs) of levels 1, 2, 3, 4, then repeating: always one step from the level below
 
 -- How hard each level is (1 easy .. 3 hard): a sawtooth, not a ramp. Every zone starts a notch easier than the one before ended and builds to its boss level, so there is always a
@@ -218,6 +219,49 @@ local DESIGNS = {
     { name = "Weave & Hurdle", theme = "glass", tier = 3,
       modules = { { "slalom", { gap = 3, len = 40, width = 20, n = 4, open = 6, wallH = 10 } },
                   { "slalom", { gap = 4, len = 34, width = 18, n = 4, hurdle = true, wallH = 3.5 } } } },
+    -- windmills, vanishing platforms and wall chimneys: the pieces the big tower games are built on
+    { name = "Windmill", theme = "metal", tier = 1,
+      modules = { { "rotor", { gap = 3.5, radius = 10, arms = 2, omega = 0.45, armWidth = 6, landing = 12, landingWidth = 14 } },
+                  { "steps", { n = 2, gap = 4, len = 9, width = 10, rises = { 0, 1 }, zigs = { 0, 0 } } } } },
+    { name = "Blink Steps", theme = "glass", tier = 1,
+      modules = { { "blink", { n = 5, gap = 3.5, len = 8, width = 9, period = 4.4, duty = 0.72 } },
+                  { "steps", { n = 2, gap = 4, len = 9, width = 10, rises = { 0, 1 }, zigs = { 0, 0 } } } } },
+    { name = "Chimney Climb", theme = "sandstone", tier = 1,
+      modules = { { "chimney", { n = 9, rise = 2.9, len = 4, width = 4, off = 3.6 } } }, connector = {} },
+    { name = "Double Windmill", theme = "neon", tier = 2,
+      modules = { { "rotor", { gap = 3.5, radius = 10, arms = 2, omega = 0.6, armWidth = 5.5, landing = 8, landingWidth = 14 } },
+                  { "rotor", { gap = 4, radius = 10, arms = 3, omega = -0.7, armWidth = 5.5, landing = 10, landingWidth = 14 } } } },
+    { name = "Blink Bridge", theme = "glass", tier = 2,
+      modules = { { "blink", { n = 7, gap = 4, len = 6, width = 8, period = 3.8, duty = 0.66 } } } },
+    { name = "Wall Chimney", theme = "slate", tier = 2,
+      modules = { { "chimney", { n = 9, rise = 3.4, len = 4, width = 3.8, off = 3.6 } } }, connector = {} },
+    { name = "Walls & Windmill", theme = "metal", tier = 2,
+      modules = { { "slalom", { gap = 3, len = 36, width = 20, n = 4, open = 7, wallH = 9 } },
+                  { "rotor", { gap = 4, radius = 10, arms = 3, omega = 0.65, armWidth = 5.5, landing = 10, landingWidth = 14 } } } },
+    { name = "Vanishing Hurdles", theme = "dark", tier = 2,
+      modules = { { "slalom", { gap = 3, len = 26, width = 16, n = 3, hurdle = true, wallH = 3.2 } },
+                  { "blink", { n = 4, gap = 4, len = 7, width = 9, period = 3.8, duty = 0.66 } } } },
+    { name = "Ice Chimney", theme = "ice", tier = 2,
+      modules = { { "chimney", { n = 9, rise = 3.3, len = 4, width = 4, off = 3.6, ice = true } } }, connector = {} },
+    { name = "Windmill Gauntlet", theme = "neon", tier = 3,
+      modules = { { "rotor", { gap = 4, radius = 11, arms = 3, omega = 0.8, armWidth = 5.5, landing = 8, landingWidth = 14 } },
+                  { "sweeper", { gap = 4, len = 32, width = 5, n = 2, amp = 3.5, period = 3.2, stagger = 1.6 } },
+                  { "rotor", { gap = 4, radius = 11, arms = 2, omega = -0.8, armWidth = 5, landing = 10, landingWidth = 14 } } } },
+    { name = "Blink Run", theme = "dark", tier = 3,
+      modules = { { "blink", { n = 9, gap = 4.5, len = 6, width = 7, period = 3.6, duty = 0.62 } },
+                  { "pendulum", { gap = 3, len = 28, width = 8, n = 3, period = 2.8, amp = 1.0, stagger = 0.9 } } } },
+    { name = "Chimney Storm", theme = "neon", tier = 3,
+      modules = { { "chimney", { n = 10, rise = 3.7, len = 3.6, width = 3.6, off = 3.4 } },
+                  { "spinner", { gap = 4, len = 30, width = 20, radius = 9, omega = 1.6, bars = 2 } } }, connector = "helix" },
+    { name = "Pillar Stairs", theme = "slate", tier = 3,
+      modules = { { "steps", { n = 8, gap = 3.5, len = 3.2, width = 3.4, rises = { 3.8, 3.8, 3.8, 3.8, 3.8, 3.8, 3.8, 3.8 }, zigs = { 0, 0, 0, 0, 0, 0, 0, 0 } } } }, connector = {} },
+    { name = "Wall Gauntlet", theme = "lava", tier = 3,
+      modules = { { "slalom", { gap = 3, len = 46, width = 20, n = 6, open = 5.5, wallH = 10 } },
+                  { "pendulum", { gap = 3, len = 30, width = 9, n = 3, period = 2.8, amp = 1.0, stagger = 0.9 } },
+                  { "strips", { gap = 4, len = 30, width = 16, n = 3, strip = 2.0 } } } },
+    { name = "Frozen Chimney", theme = "ice", tier = 3,
+      modules = { { "chimney", { n = 8, rise = 3.8, len = 3.6, width = 3.6, off = 3.4, ice = true } },
+                  { "sweeper", { gap = 4, len = 30, width = 5, n = 2, amp = 3.2, period = 3.2, stagger = 1.6 } } }, connector = "helix" },
 }
 TowerLayout.Designs = DESIGNS
 
@@ -253,12 +297,14 @@ end
 local BOSSES = {
     Stone = { name = "Boulder Run", theme = "sandstone", tier = 2, boss = "Stone",
       modules = { { "slalom", { gap = 3, len = 50, width = 18, n = 6, hurdle = true, wallH = 3.0 } },
+                  { "chimney", { n = 6, rise = 3.3, len = 4, width = 4, off = 3.6 } },
                   { "strips", { gap = 4, len = 40, width = 16, n = 5, strip = 2.2 } },
                   { "spinner", { gap = 4, len = 36, width = 24, radius = 10, omega = 1.3, bars = 2 } } },
       connector = "helix" },
     Ember = { name = "Magma Gauntlet", theme = "lava", tier = 3, boss = "Ember",
       modules = { { "bounce", { gap = 4, padLen = 10, width = 12, span = 9, rise = 12, power = 86, hspeed = 28, landLen = 14, landWidth = 14 } },
                   { "sweeper", { gap = 4, len = 40, width = 5, n = 3, amp = 4, period = 3.0, stagger = 1.5 } },
+                  { "blink", { n = 6, gap = 4.5, len = 6, width = 8, period = 3.6, duty = 0.64 } },
                   { "killfloor", { gap = 3, pattern = { "..X.X.X..", ".X..X..X.", "X..X..X.." } } },
                   { "spinner", { gap = 4, len = 38, width = 24, radius = 11, omega = 1.8, bars = 2 } } },
       connector = "helix" },
@@ -268,7 +314,7 @@ local BOSSES = {
       connector = "none" },
     Storm = { name = "Storm Core", theme = "neon", tier = 3, boss = "Storm",
       modules = { { "beams", { gap = 3, len = 46, width = 28, count = 12, rmin = 1.9, rmax = 2.7, period = 2.6, warn = 1.0, fire = 0.7 } },
-                  { "orbit", { radius = 10, len = 7, width = 7, omega = 0.8, landing = 8 } },
+                  { "rotor", { gap = 4, radius = 11, arms = 3, omega = 0.8, armWidth = 5.5, landing = 8, landingWidth = 14 } },
                   { "pendulum", { gap = 3, len = 40, width = 8, n = 4, period = 2.8, amp = 1.0, stagger = 0.9 } } },
       connector = "helix" },
     Void = { name = "The Hollow Crown", theme = "dark", tier = 3, boss = "Void",
@@ -309,6 +355,7 @@ end
 
 -- The connector modules for a level, and its kind. `want` forces a kind ("helix" for a boss, "none" when the level's own obstacle is the way up).
 local function ConnectorModules(design, tier, rng, want)
+    if not want and type(design.connector) == "string" then want = design.connector end         -- (a design can name its way up: "helix", "none")
     if want == "none" then return {}, "none" end
     local kind = want
     if not kind then
@@ -362,6 +409,29 @@ end
 
 local function Copy(q) local c = {} for k, v in pairs(q) do c[k] = v end return c end
 
+-- Modules whose `len` can be stretched or shortened without breaking a jump (it only changes how far apart their obstacles are along a long platform)
+local SCALABLE = { slalom = true, strips = true, spinner = true, crusher = true, sweeper = true, conveyor = true, beam = true, pendulum = true }
+local WEAVES = { steps = true, ice = true }
+local function Varied(m, scale, flip, weave)
+    local p = Copy(m[2])
+    if SCALABLE[m[1]] and p.len then p.len = math.floor(p.len * scale * 2 + 0.5) / 2 end
+    local zigs = p.zigs
+    local flat = true
+    for _, v in ipairs(zigs or {}) do if v ~= 0 then flat = false end end
+    if WEAVES[m[1]] and not p.noWeave and weave and (zigs == nil or flat) and (p.width or 8) >= 6 then
+        -- a straight row of stepping stones weaves from side to side: positions alternate -a, +a, -a ... (each zig is the move from the last one)
+        zigs = { -weave }
+        for k = 2, math.max(2, p.n or 4) do zigs[k] = (k % 2 == 0) and 2 * weave or -2 * weave end
+    end
+    if flip and zigs then
+        local z = {}
+        for k, v in ipairs(zigs) do z[k] = -v end
+        zigs = z
+    end
+    p.zigs = zigs
+    return { m[1], p }
+end
+
 -- How big the start platform of a level is: a wide gateway plaza when a new zone begins, a roomy one before a boss, a plain one otherwise
 local function RestSize(level, total, rng)
     if level == 1 or TowerData.IsZoneStart(level, total) then return 40, 34 end
@@ -375,11 +445,12 @@ function TowerLayout.Build(opts)
     local base = opts.base or { x = 0, y = 100, z = 0 }
     local rng = Rng(seed)
     local T = { levels = {}, platforms = {}, movers = {}, crumbles = {}, spinners = {}, crushers = {}, checkpoints = {}, levelOfCheckpoint = {},
-        trusses = {}, bounces = {}, sweepers = {}, walls = {}, kills = {}, grids = {}, lifts = {}, zmovers = {}, orbiters = {}, pendulums = {}, beamfields = {}, helixes = {},
+        trusses = {}, bounces = {}, sweepers = {}, walls = {}, kills = {}, grids = {}, lifts = {}, zmovers = {}, orbiters = {}, pendulums = {}, beamfields = {}, helixes = {}, rotors = {}, blinkers = {},
         base = base, seed = seed, total = total }
 
     local startX, y, z, dir = base.x, base.y, base.z, 1
     local lastDesign = 0
+    local lastModified = false
     local decks = {}
     for i = 1, total do
         local tier = TowerLayout.TierOf(i, total)
@@ -405,8 +476,19 @@ function TowerLayout.Build(opts)
         end
 
         local restLen, restWidth = RestSize(i, total, rng)
+        -- the same design looks different from tower to tower and level to level: its long pieces are stretched or shortened, and its sideways weave is mirrored half the time
+        local scale = boss and 1 or (0.9 + 0.35 * ((rng(101) - 1) / 100))
+        local flip = (not boss) and rng(2) == 1
+        local weave = (not boss) and rng(100) <= 70 and (2 + rng(3)) or nil                  -- (a sideways weave for stepping stones, most levels: 3, 4 or 5 studs each way)
         local modules = { { "rest", { len = restLen, width = restWidth } } }
-        for _, m in ipairs(design.modules) do modules[#modules + 1] = m end
+        for _, m in ipairs(design.modules) do modules[#modules + 1] = boss and m or Varied(m, scale, flip, weave) end
+        -- a rule twist for this level? (never early, never a boss, never two in a row)
+        local modifier
+        if not boss and i >= TowerData.LEVEL_MOD_FIRST and i < total and not lastModified and rng(100) <= TowerData.LEVEL_MOD_CHANCE then
+            local r = rng(10)
+            modifier = (r <= 3 and "moon") or (r <= 6 and "dash") or (r <= 8 and "dark") or "heavy"
+        end
+        lastModified = modifier ~= nil
         local connectorKind = "top"
         if i < total then
             local want = boss and design.connector or nil
@@ -416,7 +498,7 @@ function TowerLayout.Build(opts)
         else
             modules[#modules + 1] = { "finish", { gap = 4, len = 32, width = 28 } }
         end
-        local layout = CourierLayout.Build({ base = { x = 0, y = y, z = z }, modules = modules, zRange = 0 })
+        local layout = CourierLayout.Build({ base = { x = 0, y = y, z = z }, modules = modules, zRange = TowerLayout.Z_RANGE })
 
         local function wx(x) return startX + dir * x end
         local function put(list, src, fn)
@@ -444,6 +526,8 @@ function TowerLayout.Build(opts)
         put(T.zmovers, layout.zmovers, function(c, q) c.x = wx(q.x) end)
         put(T.orbiters, layout.orbiters, function(c, q) c.x = wx(q.x) end)
         put(T.pendulums, layout.pendulums, function(c, q) c.x = wx(q.x) end)
+        put(T.rotors, layout.rotors, function(c, q) c.x = wx(q.x) end)
+        put(T.blinkers, layout.blinkers, function(c, q) c.x = wx(q.x) end)
         put(T.helixes, layout.helixes, function(c, q)
             local a, b = wx(q.x1), wx(q.x2)
             c.x1, c.x2 = math.min(a, b), math.max(a, b)
@@ -461,13 +545,16 @@ function TowerLayout.Build(opts)
         end
         T.levels[i] = { index = i, tier = tier, designTier = design.tier, design = design.name, theme = design.theme, y = y, dir = dir, z = z,
             firstCheckpoint = firstCp, startX = startX, endX = wx(layout.endX), lava = i > total / 3,
-            zone = zoneIndex, zoneId = zoneId, boss = boss, zoneStart = TowerData.IsZoneStart(i, total), connector = connectorKind, designKey = designKey }
+            zone = zoneIndex, zoneId = zoneId, boss = boss, modifier = modifier, zoneStart = TowerData.IsZoneStart(i, total), connector = connectorKind, designKey = designKey }
         if layout.finish then T.finish = { x = wx(layout.finish.x), y = layout.finish.y, z = layout.finish.z, hx = layout.finish.hx, hz = layout.finish.hz } end
 
         startX = wx(layout.endX)
         local lastPlat = layout.platforms[#layout.platforms]
         y = lastPlat.y + lastPlat.sy / 2
-        z = base.z + TowerLayout.Z_PATTERN[(i % #TowerLayout.Z_PATTERN) + 1] * TowerLayout.LEVEL_Z_STEP
+        -- the next level starts one step sideways from where this one ended (so the way up always lands on its wide start pad), heading back toward the middle if it has wandered
+        local drift = lastPlat.z - base.z
+        local sign = (drift > TowerLayout.Z_RANGE) and -1 or ((drift < -TowerLayout.Z_RANGE) and 1 or ((i % 2 == 0) and 1 or -1))
+        z = lastPlat.z + sign * TowerLayout.LEVEL_Z_STEP
         -- zig-zag, but if the tower has drifted sideways (levels differ in length) head back toward the middle, so it stays compact
         local centre = base.x + TowerLayout.CENTRE_OFFSET
         if startX > centre + TowerLayout.DRIFT then dir = -1
@@ -485,7 +572,9 @@ function TowerLayout.WalkOrder(T, level)
     local function add(x1, x2, top, z, w, kind, src)
         out[#out + 1] = { x1 = math.min(x1, x2), x2 = math.max(x1, x2), top = top, z = z, w = w, kind = kind, viaTruss = src and src.viaTruss, viaBounce = src and src.viaBounce }
     end
-    for _, p in ipairs(T.platforms) do if p.level == level and not p.helix then add(p.x - p.sx / 2, p.x + p.sx / 2, p.y + p.sy / 2, p.z, p.sz, "platform", p) end end
+    for _, p in ipairs(T.platforms) do if p.level == level and not p.helix and not p.rotor then add(p.x - p.sx / 2, p.x + p.sx / 2, p.y + p.sy / 2, p.z, p.sz, "platform", p) end end
+    for _, r in ipairs(T.rotors) do if r.level == level then add(r.x - r.radius, r.x + r.radius, r.y, r.z, 2 * r.radius, "rotor") end end       -- (a windmill is one piece you ride; its hub is not a stepping stone)
+    for _, b in ipairs(T.blinkers) do if b.level == level then add(b.x - b.sx / 2, b.x + b.sx / 2, b.y + b.sy / 2, b.z, b.sz, "blink") end end
     for _, p in ipairs(T.crumbles) do if p.level == level and not p.grid and not p.helix then add(p.x - p.sx / 2, p.x + p.sx / 2, p.y + p.sy / 2, p.z, p.sz, "crumble") end end
     for _, h in ipairs(T.helixes) do if h.level == level then add(h.x1, h.x2, h.top, h.z, h.w, "helix", { viaTruss = true }) end end
     for _, g in ipairs(T.grids) do if g.level == level then add(g.x1, g.x2, g.top, g.z, g.w, "grid") end end        -- (a floor of falling tiles counts as one piece)

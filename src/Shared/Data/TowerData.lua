@@ -122,6 +122,29 @@ function TowerData.MovementFor(mut, walkSpeed, useJumpPower, jumpPower, jumpHeig
     return walk, power, height
 end
 
+-- ── Level twists: about one level in four plays by its own rule, so levels differ in how they FEEL, not only in what is on them ────────────
+-- Never on levels 1-2, a boss or the summit, and never two in a row. Each only changes how you move or see (all still makeable: a lower jump is checked against the tier limits).
+TowerData.LevelMods = {
+    moon  = { id = "moon",  name = "Low Gravity", desc = "Jumps are 40% higher on this level.",              jump = 1.4 },
+    dash  = { id = "dash",  name = "Dash Level",  desc = "You run 30% faster on this level.",                walk = 1.3 },
+    dark  = { id = "dark",  name = "Lights Out",  desc = "It is dark here. Follow the glow.",                dark = true },
+    heavy = { id = "heavy", name = "Heavy Boots", desc = "Jumps are 15% lower on this level. Plan each hop.", jump = 0.85 },
+}
+TowerData.LEVEL_MOD_CHANCE = 30            -- percent, per eligible level
+TowerData.LEVEL_MOD_FIRST  = 3             -- the first level that can have one
+
+-- A level twist and the round's mutator together: speeds and jump heights multiply. Returns a table MovementFor understands, plus fog / dark flags.
+function TowerData.CombineMods(a, b)
+    local out = {}
+    for _, m in ipairs({ a or {}, b or {} }) do
+        if m.walk then out.walk = (out.walk or 1) * m.walk end
+        if m.jump then out.jump = (out.jump or 1) * m.jump end
+        if m.fog then out.fog = true end
+        if m.dark then out.dark = true end
+    end
+    return out
+end
+
 -- Skipping a level (a Robux Developer Product, see ProductData): at most this many a round, never from the last level
 TowerData.SKIPS_PER_ROUND = 3
 

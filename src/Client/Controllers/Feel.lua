@@ -40,27 +40,46 @@ function Feel.Shake(strength, seconds)
     end)
 end
 
--- After a respawn on a course (Sky Tower, Courier Run): face the way the course runs. `dir` is +1 (east) or -1 (west); `at` is the exact respawn point if the server sent it.
--- Three things can turn you the wrong way, so all three are set, now and again just after the teleport lands: the camera (it stays pointing wherever it was, often back at the fall,
--- and a player still holding "forward" is turned to match it), the character itself, and any spin it carried. A camera some other script is driving is left alone.
-function Feel.FaceCourse(dir, at)
+-- Where the hub spawn is, and which way you face leaving a portal back to it (toward the Golem Anvil and the mining pads, where the game starts)
+Feel.HOME = Vector3.new(0, 6, -60)
+Feel.HOME_DIR = { 0, -1 }
+
+-- Face the direction (dx, dz): after a respawn on a course, or stepping out of a portal. Three things can turn you the wrong way, so all three are set, now and again just
+-- after the teleport lands: the camera (it stays pointing wherever it was, and a player still holding "forward" is turned to match it), the character itself, and any spin it
+-- carried. `at` is the exact arrival point if the server sent it. With `onlyThere` nothing is touched until the character is actually standing at `at` (used for "back home",
+-- where the player may have gone somewhere else entirely). A camera some other script is driving is left alone.
+function Feel.FaceDirection(dx, dz, at, onlyThere)
+    local m = math.sqrt(dx * dx + dz * dz)
+    if m < 1e-6 then return end
+    dx, dz = dx / m, dz / m
     local cam = workspace.CurrentCamera
-    local d = (dir or 1) >= 0 and 1 or -1
     local function apply()
         local char = Players.LocalPlayer.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
+        local there = root and at and (root.Position - at).Magnitude < 8
+        if onlyThere and not there then return end
         local pos = at or (root and root.Position)
         if cam and pos and cam.CameraType == Enum.CameraType.Custom then
-            cam.CFrame = CFrame.lookAt(pos + Vector3.new(-d * 14, 7, 0), pos + Vector3.new(d * 10, 2, 0))
+            cam.CFrame = CFrame.lookAt(pos + Vector3.new(-dx * 14, 7, -dz * 14), pos + Vector3.new(dx * 10, 2, dz * 10))
         end
-        if root and at and (root.Position - at).Magnitude < 8 then              -- (only once it has actually arrived at the respawn point)
-            root.CFrame = CFrame.lookAt(root.Position, root.Position + Vector3.new(d, 0, 0))
+        if there then                                                          -- (only once it has actually arrived)
+            root.CFrame = CFrame.lookAt(root.Position, root.Position + Vector3.new(dx, 0, dz))
             root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
         end
     end
     apply()
     task.delay(0.12, apply)
     task.delay(0.4, apply)
+end
+
+-- A course that runs east (+1) or west (-1): the Sky Tower's levels and the Courier Run
+function Feel.FaceCourse(dir, at)
+    Feel.FaceDirection((dir or 1) >= 0 and 1 or -1, 0, at)
+end
+
+-- Stepped out of a portal into the hub: face the way the game starts
+function Feel.FaceHome()
+    Feel.FaceDirection(Feel.HOME_DIR[1], Feel.HOME_DIR[2], Feel.HOME, true)
 end
 
 return Feel
