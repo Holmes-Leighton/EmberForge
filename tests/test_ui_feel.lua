@@ -39,6 +39,21 @@ for z = 1, 5 do if seen[z] ~= 6 then even = false end end
 expect(even, "five zones of six levels")
 expect(MoodData.MazeMood(1) == "MazeStone" and MoodData.MazeMood(5) == "MazeVoid" and MoodData.MazeMood(9) == "MazeVoid", "maze sections map to moods, clamped")
 
+print("== no mood is blinding")
+local worst, worstName = 0, nil
+for name, m in pairs(MoodData.Moods) do
+    local light = m.brightness * 2 ^ m.exposure
+    if light > worst then worst, worstName = light, name end
+    expect(light <= MoodData.MAX_LIGHT, name .. " lights the world at " .. string.format("%.2f", light) .. " (limit " .. MoodData.MAX_LIGHT .. ")")
+    expect(m.bloomI <= 0.9 and m.bloomThreshold >= 0.85, name .. " does not bloom everything (intensity " .. m.bloomI .. ", threshold " .. m.bloomThreshold .. ")")
+end
+for _, z in ipairs(MoodData.TOWER_ZONES) do
+    local m = MoodData.Moods["Tower" .. z]
+    expect(m.brightness * 2 ^ m.exposure <= 2.3 and m.bloomI <= 0.6, "tower zone " .. z .. " is kept calmer still, so platforms show against the sky")
+end
+local TD = load("game/ReplicatedStorage/Shared/Data/TowerData")
+for i, z in ipairs(TD.ZONES) do expect(z.val <= 1.0 and (z.id == "Ember" or z.val <= 0.92), "zone " .. z.id .. " is not near-white (value " .. z.val .. ")") end
+
 print("== LookController blends to a mood")
 local Look = load("SPS/EmberForge/Controllers/LookController")
 Look.Init()

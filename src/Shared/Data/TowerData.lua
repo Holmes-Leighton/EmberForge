@@ -50,10 +50,10 @@ TowerData.BUNDLES_PER_DAY = 12          -- material bundles are paid for this ma
 -- The tower is five zones, one per Golem element, each a fifth of the climb (six levels of 30). Each has its own colours and sky (MoodData); the last level of a zone is a
 -- BOSS level (a hand-made set piece), and clearing a zone pays a chest of that element's material.
 TowerData.ZONES = {
-    { id = "Stone", name = "Granite Steps",     hue = 0.09, sat = 0.42, val = 0.95, material = { id = "GraniteShard",   qty = 14 } },
+    { id = "Stone", name = "Granite Steps",     hue = 0.09, sat = 0.50, val = 0.84, material = { id = "GraniteShard",   qty = 14 } },
     { id = "Ember", name = "Ember Ascent",      hue = 0.03, sat = 0.88, val = 1.00, material = { id = "IgniteOre",      qty = 12 } },
-    { id = "Frost", name = "Frostspire",        hue = 0.55, sat = 0.55, val = 1.00, material = { id = "GlacialCrystal", qty = 10 } },
-    { id = "Storm", name = "Stormrift Heights", hue = 0.74, sat = 0.62, val = 1.00, material = { id = "ChargedFlint",   qty = 8 } },
+    { id = "Frost", name = "Frostspire",        hue = 0.55, sat = 0.60, val = 0.88, material = { id = "GlacialCrystal", qty = 10 } },
+    { id = "Storm", name = "Stormrift Heights", hue = 0.74, sat = 0.62, val = 0.92, material = { id = "ChargedFlint",   qty = 8 } },
     { id = "Void",  name = "The Hollow Crown",  hue = 0.84, sat = 0.78, val = 0.88, material = { id = "ShadowDust",     qty = 6 } },
 }
 TowerData.ZONE_COUNT = #TowerData.ZONES

@@ -4,7 +4,8 @@
 local MoodData = {}
 
 MoodData.SHADOWS = true            -- real shadows give the world depth; set false if low-end phones struggle
-MoodData.BLEND_SECONDS = 1.6       -- how long a change of mood takes to fade in
+MoodData.BLEND_SECONDS = 1.6
+MoodData.MAX_LIGHT = 2.6          -- the most any mood may light the world: brightness x 2^exposure (a test holds every mood to it; the old murky cavern was 1.0)       -- how long a change of mood takes to fade in
 
 local function M(t) return t end
 
@@ -12,49 +13,50 @@ local function M(t) return t end
 -- tint / sat / contrast: the colour grade. bloom: glow on bright things (intensity, size, threshold).
 MoodData.Moods = {
     -- the hub: a warm, bright cavern (was a murky brown)
-    Hub = M{ ambient = { 150, 112, 96 }, outdoor = { 150, 112, 96 }, brightness = 2.2, exposure = 0.35,
+    Hub = M{ ambient = { 150, 112, 96 }, outdoor = { 150, 112, 96 }, brightness = 2.0, exposure = 0.25,
         density = 0.28, offset = 0.1, haze = 1.2, atmColor = { 214, 150, 112 }, atmDecay = { 130, 66, 44 },
         tint = { 255, 238, 220 }, sat = 0.18, contrast = 0.12, bloomI = 0.55, bloomSize = 28, bloomThreshold = 1.0 },
 
     -- the six mining caves, one colour each
-    Ember = M{ ambient = { 160, 96, 70 }, outdoor = { 160, 96, 70 }, brightness = 2.2, exposure = 0.3,
+    Ember = M{ ambient = { 160, 96, 70 }, outdoor = { 160, 96, 70 }, brightness = 2.0, exposure = 0.25,
         density = 0.34, offset = 0.1, haze = 1.6, atmColor = { 230, 120, 70 }, atmDecay = { 150, 50, 30 },
         tint = { 255, 226, 205 }, sat = 0.24, contrast = 0.14, bloomI = 0.7, bloomSize = 30, bloomThreshold = 0.95 },
-    Stone = M{ ambient = { 128, 124, 120 }, outdoor = { 128, 124, 120 }, brightness = 2.1, exposure = 0.3,
+    Stone = M{ ambient = { 128, 124, 120 }, outdoor = { 128, 124, 120 }, brightness = 2.0, exposure = 0.2,
         density = 0.28, offset = 0.1, haze = 1.0, atmColor = { 170, 160, 150 }, atmDecay = { 100, 92, 86 },
         tint = { 250, 244, 236 }, sat = 0.12, contrast = 0.12, bloomI = 0.4, bloomSize = 24, bloomThreshold = 1.0 },
-    Frost = M{ ambient = { 120, 150, 184 }, outdoor = { 120, 150, 184 }, brightness = 2.4, exposure = 0.4,
+    Frost = M{ ambient = { 120, 150, 184 }, outdoor = { 120, 150, 184 }, brightness = 2.1, exposure = 0.2,
         density = 0.26, offset = 0.1, haze = 0.9, atmColor = { 170, 205, 240 }, atmDecay = { 100, 140, 190 },
         tint = { 232, 244, 255 }, sat = 0.2, contrast = 0.1, bloomI = 0.6, bloomSize = 30, bloomThreshold = 0.95 },
-    Storm = M{ ambient = { 112, 108, 150 }, outdoor = { 112, 108, 150 }, brightness = 2.0, exposure = 0.3,
+    Storm = M{ ambient = { 112, 108, 150 }, outdoor = { 112, 108, 150 }, brightness = 2.0, exposure = 0.25,
         density = 0.32, offset = 0.1, haze = 1.4, atmColor = { 150, 140, 210 }, atmDecay = { 80, 70, 140 },
         tint = { 240, 236, 255 }, sat = 0.22, contrast = 0.16, bloomI = 0.75, bloomSize = 32, bloomThreshold = 0.9 },
-    Void = M{ ambient = { 96, 70, 130 }, outdoor = { 96, 70, 130 }, brightness = 1.8, exposure = 0.25,
+    Void = M{ ambient = { 96, 70, 130 }, outdoor = { 96, 70, 130 }, brightness = 1.8, exposure = 0.2,
         density = 0.4, offset = 0.1, haze = 1.8, atmColor = { 120, 70, 190 }, atmDecay = { 50, 24, 96 },
         tint = { 238, 228, 255 }, sat = 0.2, contrast = 0.18, bloomI = 0.85, bloomSize = 34, bloomThreshold = 0.9 },
-    DeepForge = M{ ambient = { 150, 120, 80 }, outdoor = { 150, 120, 80 }, brightness = 2.3, exposure = 0.35,
+    DeepForge = M{ ambient = { 150, 120, 80 }, outdoor = { 150, 120, 80 }, brightness = 2.0, exposure = 0.25,
         density = 0.3, offset = 0.1, haze = 1.2, atmColor = { 230, 190, 100 }, atmDecay = { 140, 96, 40 },
         tint = { 255, 240, 214 }, sat = 0.22, contrast = 0.14, bloomI = 0.7, bloomSize = 30, bloomThreshold = 0.95 },
 
-    -- the Sky Tower: open sky, bright and airy, a colour per zone as you climb (the element of each zone)
-    TowerLobby = M{ ambient = { 170, 175, 190 }, outdoor = { 170, 175, 190 }, brightness = 3, exposure = 0.45,
+    -- the Sky Tower: open sky, a colour per zone as you climb (the element of each zone). Kept well under MoodData.MAX_LIGHT: the first version was so bright the pale
+    -- zones washed out and platforms could not be seen against the sky.
+    TowerLobby = M{ ambient = { 170, 175, 190 }, outdoor = { 170, 175, 190 }, brightness = 2.1, exposure = 0.05,
         density = 0.2, offset = 0.0, haze = 0.5, atmColor = { 190, 215, 245 }, atmDecay = { 150, 170, 210 },
-        tint = { 255, 252, 246 }, sat = 0.2, contrast = 0.08, bloomI = 0.5, bloomSize = 26, bloomThreshold = 1.0 },
-    TowerStone = M{ ambient = { 170, 168, 160 }, outdoor = { 170, 168, 160 }, brightness = 3, exposure = 0.4,
+        tint = { 255, 252, 246 }, sat = 0.2, contrast = 0.14, bloomI = 0.3, bloomSize = 26, bloomThreshold = 1.1 },
+    TowerStone = M{ ambient = { 170, 168, 160 }, outdoor = { 170, 168, 160 }, brightness = 2.0, exposure = 0.0,
         density = 0.22, offset = 0.0, haze = 0.6, atmColor = { 205, 200, 190 }, atmDecay = { 160, 150, 140 },
-        tint = { 255, 250, 240 }, sat = 0.18, contrast = 0.1, bloomI = 0.45, bloomSize = 24, bloomThreshold = 1.0 },
-    TowerEmber = M{ ambient = { 190, 150, 120 }, outdoor = { 190, 150, 120 }, brightness = 3, exposure = 0.45,
+        tint = { 255, 250, 240 }, sat = 0.18, contrast = 0.16, bloomI = 0.25, bloomSize = 24, bloomThreshold = 1.1 },
+    TowerEmber = M{ ambient = { 190, 150, 120 }, outdoor = { 190, 150, 120 }, brightness = 2.1, exposure = 0.05,
         density = 0.28, offset = 0.0, haze = 0.9, atmColor = { 250, 170, 110 }, atmDecay = { 200, 100, 60 },
-        tint = { 255, 232, 210 }, sat = 0.26, contrast = 0.12, bloomI = 0.7, bloomSize = 30, bloomThreshold = 0.95 },
-    TowerFrost = M{ ambient = { 160, 185, 215 }, outdoor = { 160, 185, 215 }, brightness = 3.2, exposure = 0.5,
+        tint = { 255, 232, 210 }, sat = 0.26, contrast = 0.18, bloomI = 0.4, bloomSize = 30, bloomThreshold = 1.05 },
+    TowerFrost = M{ ambient = { 160, 185, 215 }, outdoor = { 160, 185, 215 }, brightness = 2.1, exposure = 0.05,
         density = 0.24, offset = 0.0, haze = 0.7, atmColor = { 190, 225, 255 }, atmDecay = { 140, 180, 230 },
-        tint = { 236, 246, 255 }, sat = 0.22, contrast = 0.08, bloomI = 0.6, bloomSize = 28, bloomThreshold = 0.95 },
-    TowerStorm = M{ ambient = { 140, 135, 185 }, outdoor = { 140, 135, 185 }, brightness = 2.7, exposure = 0.4,
+        tint = { 236, 246, 255 }, sat = 0.22, contrast = 0.14, bloomI = 0.35, bloomSize = 28, bloomThreshold = 1.1 },
+    TowerStorm = M{ ambient = { 140, 135, 185 }, outdoor = { 140, 135, 185 }, brightness = 1.9, exposure = 0.05,
         density = 0.34, offset = 0.0, haze = 1.2, atmColor = { 170, 160, 235 }, atmDecay = { 100, 90, 170 },
-        tint = { 238, 234, 255 }, sat = 0.26, contrast = 0.16, bloomI = 0.8, bloomSize = 32, bloomThreshold = 0.9 },
-    TowerVoid = M{ ambient = { 110, 85, 150 }, outdoor = { 110, 85, 150 }, brightness = 2.3, exposure = 0.3,
+        tint = { 238, 234, 255 }, sat = 0.26, contrast = 0.22, bloomI = 0.5, bloomSize = 32, bloomThreshold = 1.0 },
+    TowerVoid = M{ ambient = { 110, 85, 150 }, outdoor = { 110, 85, 150 }, brightness = 1.7, exposure = 0.0,
         density = 0.42, offset = 0.0, haze = 1.6, atmColor = { 130, 85, 200 }, atmDecay = { 70, 40, 120 },
-        tint = { 238, 226, 255 }, sat = 0.24, contrast = 0.2, bloomI = 0.9, bloomSize = 34, bloomThreshold = 0.85 },
+        tint = { 238, 226, 255 }, sat = 0.24, contrast = 0.26, bloomI = 0.55, bloomSize = 34, bloomThreshold = 0.95 },
 
     -- the Foggy Peaks mutator: the zone's sky is swallowed by thick fog (you can only see a short way ahead)
     TowerFog = M{ ambient = { 150, 154, 170 }, outdoor = { 150, 154, 170 }, brightness = 2.2, exposure = 0.2,

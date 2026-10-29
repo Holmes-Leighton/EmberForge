@@ -562,7 +562,7 @@ function TowerArt.Build(parent, T)
         -- the big obbies are bright: each zone has its own saturated colour (its hue drifts a little up the zone) in smooth plastic with glowing white-ish edges;
         -- the design's theme only decides the extras (scaffold, pipes)
         local look = {
-            material = Enum.Material.SmoothPlastic, color = color, rest = Color3.fromHSV(h, math.max(0.15, zone.sat * 0.45), 1),
+            material = Enum.Material.SmoothPlastic, color = color, rest = Color3.fromHSV(h, math.max(0.2, zone.sat * 0.5), 0.9),         -- (not white: a near-white pad glowing against a bright sky could not be seen)
             accent = Color3.fromHSV((h + 0.5) % 1, 0.35, 1), scaffold = theme.scaffold, beam = Color3.fromHSV(h, 0.9, 0.85),
         }
         local r = { id = "Tower", def = { tier = lv.tier, color = look.accent, look = look }, layout = LevelLayout(T, i, i == T.total) }

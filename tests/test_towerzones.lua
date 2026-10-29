@@ -197,6 +197,26 @@ expect(widest < 700, "towers stay compact with spirals and plazas (widest " .. m
 local h30 = build(7).height
 expect(h30 > 650 and h30 < 1000, "a 30-level tower is " .. math.floor(h30) .. " studs tall")
 
+print("== every level faces the way it leads (so a respawn never points you backwards)")
+local wrong, checked = 0, 0
+for seed = 1, 40 do
+    for _, n in ipairs({ 30, 60 }) do
+        local tw = build(seed * 13 + 1, n)
+        for i, lv in ipairs(tw.levels) do
+            local cp = tw.checkpoints[lv.firstCheckpoint]
+            local far = 0
+            for _, list in ipairs({ tw.platforms, tw.crumbles }) do
+                for _, p in ipairs(list) do
+                    if p.level == i then local d = p.x - cp.x if math.abs(d) > math.abs(far) then far = d end end
+                end
+            end
+            checked += 1
+            if (far >= 0 and 1 or -1) ~= lv.dir then wrong += 1 end
+        end
+    end
+end
+expect(wrong == 0, "in all " .. checked .. " levels the way ahead is the way the respawn turns you (" .. wrong .. " wrong)")
+
 print("== mutators")
 expect(#TD.Mutators == 6 and TD.MutatorById.moon.jump == 1.35 and TD.MutatorById.turbo.walk == 1.3, "six mutators with their numbers")
 local seenM, repeatM = {}, false

@@ -113,6 +113,17 @@ LocalPlayerMock.Character = { FindFirstChild = function() return { Position = Ve
 fakeRemotes.TowerEvent.OnClientEvent:Fire("respawn", { reason = "fell", level = 9, penalty = 3, dir = -1 })
 expect(cam.CFrame.Position.X == 21, "an old-style event with no point still turns the camera, from where you stand (x = " .. tostring(cam.CFrame.Position.X) .. ")")
 LocalPlayerMock.Character = nil
+-- the character itself is turned too, but only once it has reached the respawn point
+local turned = 0
+local nearRoot = setmetatable({ Position = Vector3.new(500, 80, 21) }, { __newindex = function(t, k, v) if k == "CFrame" then turned += 1 end rawset(t, k, v) end })
+LocalPlayerMock.Character = { FindFirstChild = function() return nearRoot end, FindFirstChildOfClass = function() return nil end }
+fakeRemotes.TowerEvent.OnClientEvent:Fire("respawn", { reason = "burned", level = 5, penalty = 3, dir = -1, x = 500, y = 80, z = 20 })
+expect(turned >= 1, "a character that has arrived at the respawn point is turned to face the course (" .. turned .. " times, a yellow-strip respawn)")
+turned = 0
+nearRoot.Position = Vector3.new(500, 40, 20)                              -- (still down where it fell)
+fakeRemotes.TowerEvent.OnClientEvent:Fire("respawn", { reason = "burned", level = 5, penalty = 3, dir = -1, x = 500, y = 80, z = 20 })
+expect(turned == 0, "but one still far away is left alone until it gets there")
+LocalPlayerMock.Character = nil
 cam.CameraType = Enum.CameraType.Scriptable
 cam.CFrame = CFrame.new(1, 2, 3)
 fakeRemotes.TowerEvent.OnClientEvent:Fire("respawn", { reason = "fell", level = 7, penalty = 3, dir = 1, x = 500, y = 80, z = 20 })

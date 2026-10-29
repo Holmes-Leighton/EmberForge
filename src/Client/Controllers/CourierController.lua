@@ -19,14 +19,7 @@ local LocalPlayer = Players.LocalPlayer
 
 -- After a respawn the character is turned to face the way the course runs, but the camera stays wherever it was pointing (often back at the fall). Swing it round behind
 -- the character, looking the way the course runs (the default camera carries on from the camera's current direction).
-local function FaceCourse(dir)
-    local cam, char = workspace.CurrentCamera, LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not (cam and root) or cam.CameraType ~= Enum.CameraType.Custom then return end
-    local d = (dir or 1) >= 0 and 1 or -1
-    local pos = root.Position
-    cam.CFrame = CFrame.lookAt(pos + Vector3.new(-d * 14, 7, 0), pos + Vector3.new(d * 10, 2, 0))
-end
+local function FaceCourse(dir, at) require(script.Parent.Feel).FaceCourse(dir, at) end
 local movers, spinners, crushers = {}, {}, {}
 local MOVE_TIME = 0.3
 
