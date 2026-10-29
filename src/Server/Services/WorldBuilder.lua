@@ -10,6 +10,7 @@ local MiningZoneData = require(game.ReplicatedStorage.Shared.Data.MiningZoneData
 local CartCourseData = require(game.ReplicatedStorage.Shared.Data.CartCourseData)
 local TowerData = require(game.ReplicatedStorage.Shared.Data.TowerData)
 local MazeData  = require(game.ReplicatedStorage.Shared.Data.MazeData)
+local MoodData = require(game.ReplicatedStorage.Shared.Data.MoodData)
 local SignArt = require(script.Parent.SignArt)
 
 local WorldBuilder = {}
@@ -1030,32 +1031,43 @@ function WorldBuilder.Build()
     BuildScenery(world)
     BuildDressing(world)
 
-    -- Lighting: a lit cavern (no sun reaches in, so the ambient light does the work): warm rust ambient,
-    -- a rusty haze for depth, and a gentle warm grade
+    -- Lighting: the starting look is the Hub mood (MoodData); LookController on each client then blends to the mood of wherever the player is
+    -- (a colour per cave, open sky in the Tower, darker maze sections). Shadows are on: they give the world depth.
+    local hub = MoodData.Moods.Hub
+    local function Col(t) return Color3.fromRGB(t[1], t[2], t[3]) end
     Lighting.ClockTime = 14
-    Lighting.Brightness = 1
-    Lighting.Ambient = Color3.fromRGB(112, 84, 74)
-    Lighting.OutdoorAmbient = Color3.fromRGB(112, 84, 74)
-    Lighting.GlobalShadows = false
+    Lighting.Brightness = hub.brightness
+    Lighting.ExposureCompensation = hub.exposure
+    Lighting.Ambient = Col(hub.ambient)
+    Lighting.OutdoorAmbient = Col(hub.outdoor)
+    Lighting.GlobalShadows = MoodData.SHADOWS
     local atm = Lighting:FindFirstChildOfClass("Atmosphere")
     if not atm then
         atm = Instance.new("Atmosphere")
         atm.Parent = Lighting
     end
-    atm.Density = 0.3
-    atm.Offset = 0.1
-    atm.Color = Color3.fromRGB(196, 136, 104)
-    atm.Decay = Color3.fromRGB(104, 52, 36)
+    atm.Density = hub.density
+    atm.Offset = hub.offset
+    atm.Color = Col(hub.atmColor)
+    atm.Decay = Col(hub.atmDecay)
     atm.Glare = 0
-    atm.Haze = 1.6
+    atm.Haze = hub.haze
     local cc = Lighting:FindFirstChildOfClass("ColorCorrectionEffect")
     if not cc then
         cc = Instance.new("ColorCorrectionEffect")
         cc.Parent = Lighting
     end
-    cc.Contrast = 0.16
-    cc.Saturation = -0.04
-    cc.TintColor = Color3.fromRGB(255, 240, 228)
+    cc.Contrast = hub.contrast
+    cc.Saturation = hub.sat
+    cc.TintColor = Col(hub.tint)
+    local bloom = Lighting:FindFirstChildOfClass("BloomEffect")
+    if not bloom then
+        bloom = Instance.new("BloomEffect")
+        bloom.Parent = Lighting
+    end
+    bloom.Intensity = hub.bloomI
+    bloom.Size = hub.bloomSize
+    bloom.Threshold = hub.bloomThreshold
 end
 
 return WorldBuilder

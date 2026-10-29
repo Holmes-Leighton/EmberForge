@@ -241,6 +241,7 @@ local function CraftOnce(player, blueprintId, skinId)
 
             RemoteEvents.GolemCrafted:FireClient(player, golem, leveled and level or nil)
             Analytics.Funnel(player, PlayerDataService.Get(player), "craft", 2, "FirstGolemCrafted")
+            Analytics.TimeTo(player, PlayerDataService.Get(player), "FirstGolem")
             Analytics.Custom(player, "GolemCrafted", 1, { tier = golem.tier, element = golem.element })
 
             if leveled then
@@ -277,6 +278,7 @@ RemoteEvents.DeployGolem.OnServerEvent:Connect(function(player, golemId, zoneId)
         if ok then
             ChallengeService.TrackEvent(player, "GolemDeploy", { count = 1 })
             Analytics.Funnel(player, PlayerDataService.Get(player), "deploy", 3, "FirstGolemDeployed")
+            Analytics.TimeTo(player, PlayerDataService.Get(player), "FirstDeploy")
         end
         RemoteEvents.GolemDeployed:FireClient(player, ok, golemId, zoneId, err)
     end)
@@ -540,6 +542,14 @@ end)
 
 RemoteEvents.MarkCosmeticsSeen.OnServerEvent:Connect(function(player)
     SafeCall(player, function() CosmeticService.MarkAllSeen(player) end)
+end)
+
+RemoteEvents.SetAutoRepair.OnServerEvent:Connect(function(player, on)
+    SafeCall(player, function()
+        if GolemService.SetAutoRepair(player, on) then
+            Tell(player, "Auto-repair", on and "Tired Golems are repaired for you (it uses the usual repair materials)." or "Auto-repair is off: repair tired Golems yourself.")
+        end
+    end)
 end)
 
 RemoteEvents.SetForgeAccess.OnServerEvent:Connect(function(player, friendsOnly)

@@ -4,6 +4,7 @@ local GolemData        = require(game.ReplicatedStorage.Shared.Data.GolemData)
 local RecipeData       = require(game.ReplicatedStorage.Shared.Data.RecipeData)
 local GameConfig       = require(game.ReplicatedStorage.Shared.Data.GameConfig)
 local CraftRules       = require(game.ReplicatedStorage.Shared.Modules.CraftRules)
+local GolemMotion      = require(game.ReplicatedStorage.Shared.Modules.GolemMotion)
 local Utils            = require(game.ReplicatedStorage.Shared.Modules.Utils)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 
@@ -246,6 +247,39 @@ function GolemService.RepairGolem(player, golemId)
     targetGolem._durabilitySeconds = maxDur
     PlayerDataService.MarkDirty(player)
     return true, nil
+end
+
+-- ── Auto-repair ──────────────────────────────────────────────────────────────
+-- Worn-out Golems used to stop, walk home and wait for you to stand next to them: a chore nobody wants. With Auto-repair (on unless the player turns it off in the Style
+-- menu) a Golem that reaches the "tired" mark is repaired where it stands, paying exactly what a manual repair costs. If the materials are not there it falls back to the
+-- old way (it carries on until it wears out, then waits to be repaired by hand).
+function GolemService.AutoRepairOn(data)
+    return not (data and data.Settings and data.Settings.AutoRepair == false)
+end
+
+function GolemService.SetAutoRepair(player, on)
+    local data = PlayerDataService.Get(player)
+    if not data or type(on) ~= "boolean" then return false end
+    data.Settings = data.Settings or {}
+    data.Settings.AutoRepair = on
+    PlayerDataService.MarkDirty(player)
+    return true
+end
+
+-- Repairs every deployed Golem that has dropped to the tired mark. Returns the list of { golem, cost } it repaired.
+function GolemService.AutoRepair(player)
+    local data = PlayerDataService.Get(player)
+    local done = {}
+    if not data or not GolemService.AutoRepairOn(data) then return done end
+    for _, g in ipairs(data.Golems or {}) do
+        if g.deployed and GolemMotion.DurabilityOf(g) <= GolemMotion.LOW then
+            local cost = GolemService.RepairCost(g)
+            if cost and GolemService.RepairGolem(player, g.id) then
+                table.insert(done, { golem = g, cost = cost })
+            end
+        end
+    end
+    return done
 end
 
 -- ── Helpers ──────────────────────────────────────────────────────────────────

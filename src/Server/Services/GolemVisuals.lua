@@ -282,6 +282,14 @@ local function Reconcile()
     local seen = {}
     for _, player in ipairs(Players:GetPlayers()) do
         local data = PlayerDataService.Get(player)
+        local repaired = GolemService.AutoRepair(player)            -- tired Golems are repaired where they stand (unless the player turned that off)
+        if #repaired > 0 then
+            local GolemNames = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
+            local names = {}
+            for _, r in ipairs(repaired) do table.insert(names, GolemNames.Describe(r.golem).shortName) end
+            RemoteEvents.Notify:FireClient(player, "Auto-repaired", #names == 1 and string.format("Your %s was repaired for %s.", names[1], CostText(repaired[1].golem))
+                or string.format("%d Golems were repaired (%s).", #names, table.concat(names, ", ")))
+        end
         for _, g in ipairs(data and data.Golems or {}) do
             if g.deployed and g.zoneId then
                 seen[g.id] = true
@@ -308,7 +316,7 @@ local function Reconcile()
                         if level == 2 then
                             RemoteEvents.Notify:FireClient(player, "Golem stopped", string.format("Your %s has worn out and is walking back to your forge. Repair it there: stand by it and press E.", name))
                         else
-                            RemoteEvents.Notify:FireClient(player, "Golem getting tired", string.format("Your %s is wearing down. Repair it soon (stand by it and press E).", name))
+                            RemoteEvents.Notify:FireClient(player, "Golem getting tired", string.format("Your %s is wearing down and auto-repair could not pay for it. Repair it soon (stand by it and press E), or keep the repair materials in your Bag.", name))
                         end
                     end
                     e.warned = level

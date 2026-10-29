@@ -75,6 +75,7 @@ local function DefaultData()
         MaterialMagnetExpiry = 0,
         LuckBoostExpiry      = 0,
         GrowthBoostExpiry    = 0,           -- Growth Tonic: Golems grow 2x until then
+        TowerSkips           = 0,           -- bought Sky Tower level skips not yet used
         -- Cosmetics & receipts
         PurchasedSlots  = 0,           -- extra Golem slots bought with Robux (packs of 5, stackable)
         UnlockedPads    = {},          -- padId -> true (bought with Robux)

@@ -33,6 +33,7 @@ local CartCourseService  = require(script.Services.CartCourseService)
 local CourierService     = require(script.Services.CourierService)
 local TowerService       = require(script.Services.TowerService)
 local MazeService        = require(script.Services.MazeService)
+local HallOfLegends     = require(script.Services.HallOfLegends)
 local CollectService     = require(script.Services.CollectService)
 local Utils              = require(game.ReplicatedStorage.Shared.Modules.Utils)
 local GolemNames         = require(game.ReplicatedStorage.Shared.Modules.GolemNames)
@@ -44,6 +45,7 @@ LiveOpsService.Init()
 AdminService.Init(LiveOpsService, function(p, title, msg) RemoteEvents.Notify:FireClient(p, title, msg) end)
 WorldBuilder.Build()
 PadService.Init()
+HallOfLegends.Init(workspace:WaitForChild("EmberWorld"))   -- the three giant statues beside the spawn: what you are playing towards
 GolemAssetLoader.Init()           -- starts loading uploaded Golem art (if any ids are set) before Golems are shown
 GolemVisuals.Init()
 CartBountyService.Init()           -- the Mine Cart Delivery bounty
@@ -192,6 +194,9 @@ local function OnPlayerAdded(player)
             RemoteEvents.Notify:FireClient(player, e.name or "Event", e.blurb or string.format("%s x%g is active!", e.kind == "xp" and "XP" or "Resource drops", e.multiplier))
         end
     end)
+
+    -- Sessions, retention and the first-join funnel step (see AnalyticsHelper)
+    pcall(Analytics.Session, player, data, os.time())
 
     -- Assign a forge plot in the shared world
     ForgeZoneService.OnPlayerAdded(player)

@@ -27,7 +27,11 @@ FeatureGates.InMenu = {
 
 -- HUD tiles that stay hidden until the player is far enough along (the opposite of a lock: nothing to show yet)
 FeatureGates.Reveal = {
-    AscendButton = { kind = "forge", level = 10 },       -- Ascension lives in the Build menu until Forge Level 10 (AscensionData.FORGE_LEVEL)
+    AscendButton   = { kind = "forge", level = 10 },     -- Ascension lives in the Build menu until Forge Level 10 (AscensionData.FORGE_LEVEL)
+    -- a brand-new player sees only what they can use at once: Pets (a locked teaser), Rewards and My Forge. The rest of the side column arrives as they level.
+    SeasonButton   = { kind = "player", level = 2 },
+    StyleButton    = { kind = "player", level = 2 },
+    LeaderboardBtn = { kind = "player", level = 3 },
 }
 
 function FeatureGates.Revealed(buttonName, data)
@@ -35,6 +39,18 @@ function FeatureGates.Revealed(buttonName, data)
     if not def then return true end
     local have = def.kind == "forge" and ((data and data.ForgeLevel) or 1) or ((data and data.PlayerLevel) or 1)
     return have >= def.level
+end
+
+-- The rows of the player card (top-left panel) a player needs yet: a new player sees their level, coins, forge, Golems and the next goal, and the Mastery, Smelter and Speed
+-- rows appear when they start to matter. Returns { RowName = true/false }.
+function FeatureGates.CardRows(data)
+    data = data or {}
+    local level = data.PlayerLevel or 1
+    return {
+        MasteryRow = level >= 3,
+        SmeltRow   = level >= 2 or #(data.SmeltQueue or {}) > 0,
+        SpeedRow   = level >= 2 or (data.SpeedLevel or 0) > 0,
+    }
 end
 
 -- Options that only work in a particular place. Checked after the level rules; `need` is a value of the player's "EFPlace" attribute

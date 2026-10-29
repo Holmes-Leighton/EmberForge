@@ -36,4 +36,51 @@ expect(GS.RepairGolem(p, "nope") == false, "an unknown Golem is refused")
 g.deployed, g._durabilitySeconds = false, max * 0.1
 for _, req in ipairs(cost) do d.Inventory[req.id] = req.qty end
 expect(GS.RepairGolem(p, "g1") == true and g._durabilitySeconds == max, "a Golem resting in the Forge can still be repaired")
+print("== auto-repair")
+local GM = load("game/ReplicatedStorage/Shared/Modules/GolemMotion")
+local p2 = newPlayer(2, "Mender"); local d2 = PDS.Load(p2)
+local function worn(id, fraction, deployed)
+    local gg = { id = id, blueprintId = "BP_Ember_T1", element = "Ember", tier = 1, deployed = deployed ~= false, zoneId = "EmberDepths",
+        _durabilitySeconds = max * fraction, _maxDurabilitySeconds = max }
+    table.insert(d2.Golems, gg)
+    return gg
+end
+local function stock(n)
+    for _, req in ipairs(cost) do d2.Inventory[req.id] = (d2.Inventory[req.id] or 0) + req.qty * n end
+end
+expect(GS.AutoRepairOn(d2), "auto-repair is on for a new player")
+local tired = worn("a1", 0.2)
+local fresh = worn("a2", 0.9)
+local resting = worn("a3", 0.1, false)
+d2.Inventory = {}
+expect(#GS.AutoRepair(p2) == 0 and tired._durabilitySeconds == max * 0.2, "without the materials nothing is repaired (it falls back to the old way)")
+stock(1)
+local done = GS.AutoRepair(p2)
+expect(#done == 1 and done[1].golem == tired, "a tired deployed Golem is repaired (" .. #done .. ")")
+expect(tired._durabilitySeconds == max, "back to full")
+expect(fresh._durabilitySeconds == max * 0.9, "a Golem that is not tired is left alone")
+expect(resting._durabilitySeconds == max * 0.1, "and so is one resting in the forge")
+local spent = true
+for _, req in ipairs(cost) do if (d2.Inventory[req.id] or 0) ~= 0 then spent = false end end
+expect(spent, "it cost exactly what a manual repair costs")
+expect(#GS.AutoRepair(p2) == 0, "and does nothing again until the Golem is worn once more")
+local t2, t3 = worn("a4", 0.05), worn("a5", 0.0)
+stock(2)
+expect(#GS.AutoRepair(p2) == 2 and t2._durabilitySeconds == max and t3._durabilitySeconds == max, "several tired Golems are all repaired, one after another")
+local t4, t5 = worn("a6", 0.1), worn("a7", 0.1)
+stock(1)
+local partial = GS.AutoRepair(p2)
+expect(#partial == 1, "with materials for only one, one is repaired and the other waits (" .. #partial .. ")")
+expect(GS.SetAutoRepair(p2, false) == true and not GS.AutoRepairOn(d2), "it can be turned off")
+local t6 = worn("a8", 0.1)
+stock(1)
+expect(#GS.AutoRepair(p2) == 0 and t6._durabilitySeconds == max * 0.1, "off means nothing is repaired for you")
+expect(GS.SetAutoRepair(p2, "yes") == false and not GS.AutoRepairOn(d2), "only true or false is accepted")
+GS.SetAutoRepair(p2, true)
+expect(#GS.AutoRepair(p2) == 1, "and back on it repairs again")
+local atLow = worn("a9", GM.LOW)
+stock(3)                                                    -- (the one left waiting earlier is repaired too)
+GS.AutoRepair(p2)
+expect(atLow._durabilitySeconds == max, "the tired mark itself counts (" .. GM.LOW .. ")")
+
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")

@@ -38,6 +38,8 @@ local DEFINITIONS = {
     TowerEvent          = "event",   -- server → client (kind: start | level | respawn | summit | standings | roundover | abandon | speedup, payload table)
     MazeEvent           = "event",   -- server → client (kind: start | gateopen | wake | section | caught | escape | standings | roundover | abandon | speedup, payload table)
     CourierEvent        = "event",   -- server → client (kind: start | checkpoint | respawn | finish | abandon, payload table)
+    MazeUseItem         = "event",   -- client → server: use the item you are carrying in the Hollow Maze
+    TowerSkip           = "event",   -- client → server: skip up one Sky Tower level (uses a purchased skip, or offers to buy one)
     LeaveChallenge      = "event",   -- client → server: the "Back to the Forge" button in the Sky Tower / Hollow Maze
 
     -- Trading
@@ -90,6 +92,7 @@ local DEFINITIONS = {
     -- Style & access
     EquipCosmetic       = "event",   -- client → server (slot, id or nil)
     SetForgeAccess      = "event",   -- client → server (friendsOnly: boolean)
+    SetAutoRepair       = "event",   -- client → server (on: boolean): repair tired Golems automatically
     GoToMyForge         = "event",   -- client → server
     ShopOffer           = "event",   -- server → client: (kind, key, reason) a contextual purchase offer
 

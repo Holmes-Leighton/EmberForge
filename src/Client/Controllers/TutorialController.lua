@@ -1,5 +1,5 @@
--- First-run onboarding: a paged "How to Play" guide, a step-by-step objective tracker that advances as the player does each thing,
--- and a Help button to reopen the guide. Players who already own a Golem skip the tracker.
+-- First-run onboarding: a one-page welcome, a three-step objective tracker (stand on the pad, forge a Golem, deploy it) that advances as the player does each thing,
+-- and a Help button that opens the full guide. Players who already own a Golem skip the tracker. The welcome gift arrives when the first haul is banked.
 
 local Players     = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -14,22 +14,16 @@ local TutorialController = {}
 
 -- The tracker: do these in order. Each one advances by itself when the game sees you do it.
 local STEPS = {
-    { title = "Stand on the Starter Pad", hint = "Head for the beam of light under the Mining Pads gate and stand on the Starter Pad. It mines for you: you need 10 Basic Ore and 5 Coal." },
-    { title = "Forge your first Golem", hint = "Follow the arrow to the Golem Anvil near spawn, face it and press E. Pick a Golem from the list and press Forge." },
-    { title = "Deploy your Golem",    hint = "Open the 🔥 Forge menu (bottom bar, or press F) and send your Golem to its mining zone." },
-    { title = "Collect resources",    hint = "Golems mine on their own. Watch the totals build up above the button, then press ⛏ Collect." },
-    { title = "Sell your spare materials", hint = "Open the 🏪 Market (M), choose Sell Surplus and sell some spare ore to the Supplier for coins." },
-    { title = "Push a mine cart",     hint = "Follow the arrow to a mine cart, walk behind it to push it along its rail to the glowing depot. It pays a coin bounty. Bigger Cart Run courses wait in the south of the cavern." },
-    { title = "Check your Quests",    hint = "Open 📋 Quests (Q). Daily and weekly challenges pay coins, XP and materials. Press Claim when one is done." },
+    { title = "Stand on the Starter Pad", hint = "Stand in the beam of light under the Mining Pads gate: it gives you free ore and coal." },
+    { title = "Forge your first Golem",   hint = "Follow the arrow to the Golem Anvil, press E and forge a Golem." },
+    { title = "Send it to work",          hint = "Open the Forge (F) and deploy your Golem. It mines by itself from now on." },
 }
 
 -- The guide: one short page at a time. `lines` use bold lead-ins (RichText).
 local PAGES = {
-    { heading = "🔥  Your goal", lines = {
-        "<b>Golems mine for you</b>, even while you are away from the game.",
-        "You turn what they mine into <b>stronger Golems</b>, which mine more and open up new mining zones.",
-        "Grow your <b>Forge</b>, build your own <b>Quarry</b>, trade with other players and climb the <b>Leaderboard</b>.",
-        "Come back, craft and send them out again: that is the loop.",
+    { heading = "🔥  Welcome to EmberForge", lines = {
+        "<b>Forge Golems.</b> They mine for you, even while you are away.",
+        "Turn what they mine into <b>stronger Golems</b> and open up new caves.",
     } },
     { heading = "🚀  Your first ten minutes", lines = {
         "<b>1.</b>  Stand on the glowing <b>Starter Pad</b> under the Mining Pads gate. It gives free Basic Ore and Coal.",
@@ -80,8 +74,8 @@ local guide = {}        -- the pieces of the guide window
 local stepIndex = 1
 local active = false
 local pageIndex = 1
-local CORE_STEPS = 4                -- steps 1-4 are the core loop (the welcome gift comes after step 4); the rest are bonus steps
-local QUICK_PAGES = { 1, 2 }        -- what a brand-new player sees: goal + first ten minutes. The Help button opens the full guide.
+local CORE_STEPS = 3                -- all three steps are the core loop; the welcome gift follows the first haul
+local QUICK_PAGES = { 1 }           -- what a brand-new player sees: one short page (the tracker explains the rest as they go). The Help button opens the full guide.
 local shownPages = {}               -- indexes into PAGES for the guide window as it is now open
 
 -- ── The guide ─────────────────────────────────────────────────────────────────
@@ -295,21 +289,6 @@ local function PointerFor(step)
             local anvil = world and world:FindFirstChild("GolemAnvil")
             return anvil and (anvil.Position + Vector3.new(0, 40, 0)) or nil
         end }
-    elseif step == 6 then
-        return { name = "Mine cart", position = function()
-            local char = Players.LocalPlayer.Character
-            local root = char and char:FindFirstChild("HumanoidRootPart")
-            if not root then return nil end
-            local best, bestD
-            for _, cart in ipairs(game:GetService("CollectionService"):GetTagged("EFCart")) do          -- the road carts (the Cart Run ones are far away)
-                local body = cart.PrimaryPart
-                if body then
-                    local d = (body.Position - root.Position).Magnitude
-                    if not bestD or d < bestD then best, bestD = body, d end
-                end
-            end
-            return best and (best.Position + Vector3.new(0, 14, 0)) or nil
-        end }
     end
     return nil
 end
@@ -335,15 +314,12 @@ end
 local function Advance(fromStep)
     if not active or stepIndex ~= fromStep then return end
     stepIndex += 1
-    if fromStep == CORE_STEPS then
-        RemoteEvents.ClaimTutorialReward:FireServer()          -- the server checks it and pays the welcome gift once
-    end
     if stepIndex > #STEPS then
         active = false
         tracker.Visible = false
         TutorialPointer.Clear()
         local HUDController = require(script.Parent.HUDController)
-        HUDController.ShowNotification("Tutorial complete!", "You're up and running. Press ? Help any time to read the guide again.")
+        HUDController.ShowNotification("You're up and running!", "Your Golem mines by itself: watch the ore roll in. Press ? Help any time for the full guide.")
     else
         ShowStep()
     end
@@ -368,15 +344,23 @@ function TutorialController.Init(playerData)
                     if g and g:IsA("ScreenGui") and g.Enabled then open = true break end
                 end
                 tracker.Visible = not open and STEPS[stepIndex] ~= nil
-                -- opening the Quests window is the last step
-                local quests = PlayerGui:FindFirstChild("ChallengesMenu")
-                if open and stepIndex == 7 and quests and quests.Enabled then Advance(7) end
             end
         end
     end)
 
-    -- Players who already own a Golem have done the basics: skip the tracker
-    if playerData and playerData.Golems and #playerData.Golems > 0 then return end
+    -- Players who already own a Golem have done the basics: skip the tracker (but a player who set a Golem working and left before the gift arrived still gets it on their next haul)
+    if playerData and playerData.Golems and #playerData.Golems > 0 then
+        if not playerData.TutorialRewarded then
+            local asked = false
+            RemoteEvents.ResourcesCollected.OnClientEvent:Connect(function(gains, elapsed)
+                if not asked and gains and (elapsed == -1 or elapsed == -2) and next(gains) ~= nil then
+                    asked = true
+                    RemoteEvents.ClaimTutorialReward:FireServer()
+                end
+            end)
+        end
+        return
+    end
 
     active = true
     OpenGuide(1, true)       -- two short pages; the rest of the guide is behind the Help button
@@ -384,14 +368,18 @@ function TutorialController.Init(playerData)
 
     -- Steps follow the server's events
     local ore, coal = 0, 0
+    local deployed, claimed = false, false
     RemoteEvents.ResourcesCollected.OnClientEvent:Connect(function(gains, elapsed)
         if not gains then return end
         if stepIndex == 1 then
             ore  += gains.BasicOre or 0
             coal += gains.Coal or 0
             if ore >= 10 and coal >= 5 then Advance(1) end
-        elseif stepIndex == 4 and (elapsed == -1 or elapsed == -2) and next(gains) ~= nil then   -- -1 = asked for, -2 = banked by itself
-            Advance(4)
+        end
+        -- the first haul the Golem banks by itself ends the tutorial for real: the server checks it did craft, deploy and bank, then pays the welcome gift once
+        if deployed and not claimed and (elapsed == -1 or elapsed == -2) and next(gains) ~= nil then
+            claimed = true
+            RemoteEvents.ClaimTutorialReward:FireServer()
         end
     end)
     -- A player who gets ahead of the tip (buys ore, crafts at the forge, deploys early) skips the steps they've already done
@@ -399,12 +387,10 @@ function TutorialController.Init(playerData)
         if golem then for s = stepIndex, 2 do Advance(s) end end
     end)
     RemoteEvents.GolemDeployed.OnClientEvent:Connect(function(ok)
-        if ok then for s = stepIndex, 3 do Advance(s) end end
-    end)
-    -- the Supplier sale and the cart delivery both announce themselves with a notification
-    RemoteEvents.Notify.OnClientEvent:Connect(function(title)
-        if title == "Sold" then Advance(5)
-        elseif title == "Mine Cart Delivery" or (type(title) == "string" and title:find(" complete!", 1, true)) then Advance(6) end
+        if ok then
+            deployed = true
+            for s = stepIndex, 3 do Advance(s) end
+        end
     end)
 end
 

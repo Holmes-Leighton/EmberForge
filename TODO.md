@@ -81,6 +81,17 @@
       effects (confetti, glow, a count-up), progress bars and "next goal" hints on each menu, less text and more pictures, and a consistent look across Forge, Bag,
       Market, Quests, Shop, Pets, Season, Style and Guild. Check on a phone: bigger touch targets. Code: `Theme.lua` (shared look) and the `*MenuBuilder.client.lua` files.
 
+## Game feel pass (from the design review) - what is left for you
+- [ ] **Upload the sounds.** All 34 sounds and 3 music loops are generated into `audio/` (`python tools/make_audio.py`) but Roblox cannot play them until they are uploaded:
+      create an Open Cloud API key (Assets, read + write), `set ROBLOX_API_KEY=...` and `set ROBLOX_USER_ID=...`, then `python tools/upload_audio.py`. It writes the ids to
+      `src/Shared/Data/AudioIds.lua`. Until then only Click and Notify use built-in Roblox sounds; the rest are silent. If Roblox refuses .wav, convert to .mp3/.ogg and change MIME in the script.
+      Not heard by a human yet: listen to them and regenerate any that are harsh (`tools/make_audio.py`).
+- [ ] **Create the Sky Tower level-skip Developer Product** and paste its id into `ProductData.Products.TowerSkip` (id 0 = not for sale yet).
+- [ ] Look at it in Studio: the mood lighting (`MoodData.lua`, shadows are now on: `MoodData.SHADOWS`), the zone gates/chests/boss banners (`TowerArt.lua`), the Hall of Legends statues beside the
+      spawn (`HallOfLegends.lua`), the Maze orbs/crates/room pillars (`MazeArt.lua`). Everything is tested in mocks only.
+- [ ] Playtest with real people (5 of them, not you) and watch the funnel (`AnalyticsHelper`: Joined, FirstGolemCrafted ... FirstMazeEscape, Retention days 1/3/7/14, TimeTo events).
+- [ ] Balance guesses to tune with real play: Tower mutators and zone chests, Maze hearing radii (`MazeData.HEAR_*`), item durations, the 30-piece Maze Golem pace.
+
 ## Monetisation
 - [x] Developer Product and Game Pass ids are set in `ProductData.lua` (10 passes, 12 products).
 - [ ] Buy one cheap product and one pass on the published place and confirm the item arrives (`LAUNCH_GUIDE.md` phase 4).

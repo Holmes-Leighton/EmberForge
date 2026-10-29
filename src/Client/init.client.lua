@@ -59,6 +59,8 @@ require(script.Controllers.PadTreadmill).Init()              -- standing on a pa
 require(script.Controllers.SpeedSparks).Init()              -- sparks from the feet of fast players
 require(script.Controllers.DecorAnimator).Init()           -- the forge decorations' orbiting, floating, spinning and flashing pieces
 SoundController.Init()
+require(script.Controllers.RewardFx).Sound = SoundController   -- the coin pops
+require(script.Controllers.LookController).Init()            -- the lighting blends to the mood of wherever you are
 BadgeController.Init()
 OfferController.Init()
 PetController.Init()

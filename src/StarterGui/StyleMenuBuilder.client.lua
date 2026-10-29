@@ -147,6 +147,12 @@ local function Reload()
                 RemoteEvents.SetForgeAccess:FireServer(not friendsOnly)
                 task.delay(0.4, Reload)
             end)
+        local autoRepair = not (data.Settings and data.Settings.AutoRepair == false)
+        Row("Auto-repair", autoRepair and "Tired Golems are repaired for you (uses the usual repair materials)" or "Off: repair tired Golems yourself", Theme.Colors.Success,
+            autoRepair and "Turn off" or "Turn on", Theme.Colors.Accent, function()
+                RemoteEvents.SetAutoRepair:FireServer(not autoRepair)
+                task.delay(0.4, Reload)
+            end)
         Row("Go to my forge", "Teleport your character to your forge plot", Theme.Colors.Ember, "Teleport", Theme.Colors.Success, function()
             RemoteEvents.GoToMyForge:FireServer()
             gui.Enabled = false

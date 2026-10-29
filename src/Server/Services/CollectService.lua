@@ -59,6 +59,7 @@ function CollectService.Collect(player, marker)
     end
     if counts then ChallengeService.TrackEvent(player, "GolemCollect", { count = 1 }) end
     Analytics.Funnel(player, data, "collect", 4, "FirstCollect")
+    Analytics.TimeTo(player, data, "FirstCollect")
     RemoteEvents.ResourcesCollected:FireClient(player, gains, marker or CollectService.MANUAL)
     return total, gains
 end

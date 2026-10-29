@@ -94,10 +94,34 @@ local function XPForLevel(level)
     return math.floor(100 * level ^ 1.8)
 end
 
+-- The player card's rows, top to bottom, and their heights. Rows a new player does not need yet are hidden and the rest close up (FeatureGates.CardRows).
+local CARD_ROWS = { { "ForgeRow", 30 }, { "MasteryRow", 30 }, { "GolemRow", 56 }, { "SmeltRow", 32 }, { "SpeedRow", 40, 4 }, { "GoalRow", 48 } }
+local CARD_TOP, CARD_GAP = 122, 6
+
+function HUDController.LayoutCard(data)
+    local mainFrame = hudGui and hudGui:FindFirstChild("MainFrame")
+    if not mainFrame then return end
+    local show = require(game.ReplicatedStorage.Shared.Data.FeatureGates).CardRows(data)
+    local y = CARD_TOP
+    for _, r in ipairs(CARD_ROWS) do
+        local row = mainFrame:FindFirstChild(r[1])
+        if row then
+            local visible = show[r[1]] ~= false
+            row.Visible = visible
+            if visible then
+                row.Position = UDim2.new(0, 10, 0, y)
+                y += r[2] + (r[3] or CARD_GAP)
+            end
+        end
+    end
+    mainFrame.Size = UDim2.new(mainFrame.Size.X.Scale, mainFrame.Size.X.Offset, 0, y + 4)
+end
+
 function HUDController.Refresh(data)
     if not hudGui then return end
     local mainFrame = hudGui:FindFirstChild("MainFrame")
     if not mainFrame then return end
+    HUDController.LayoutCard(data)
 
     local function setLabel(name, text)
         local lbl = mainFrame:FindFirstChild(name, true)
@@ -110,6 +134,12 @@ function HUDController.Refresh(data)
     setLabel("PlayerLevelLabel", tostring(data.PlayerLevel or 1))           -- sits in the gold level badge
     setLabel("ForgeLevelLabel",  "Forge " .. (data.ForgeLevel or 1))
     setLabel("CoinsLabel",       Utils.FormatNumber(data.EmberCoins or 0))   -- "EMBER COINS" is the caption under it
+    -- coins went up: fly coins to the purse and count the number up (not on the first refresh, nor when coins were spent)
+    local coinsNow = data.EmberCoins or 0
+    if HUDController._coins and coinsNow > HUDController._coins then
+        require(script.Parent.RewardFx).CoinBurst(coinsNow - HUDController._coins, hudGui, HUDController._coins, coinsNow)
+    end
+    HUDController._coins = coinsNow
     -- Golems: deployed / usable slots, flagging any that have worn out
     local deployed, broken = 0, 0
     for _, g in ipairs(data.Golems or {}) do
