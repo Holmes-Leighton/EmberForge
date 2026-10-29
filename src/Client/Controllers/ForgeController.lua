@@ -124,9 +124,9 @@ function ForgeController._CreateBlueprintCard(bp, data, yOffset, events)
     reqs.Position = UDim2.new(0, 8, 0, 32)
     reqs.BackgroundTransparency = 1
     reqs.Text = reqText
-    reqs.TextColor3 = Color3.fromRGB(180, 180, 180)
-    reqs.Font = Enum.Font.Code
-    reqs.TextSize = 11
+    reqs.TextColor3 = Color3.fromRGB(238, 232, 248)
+    reqs.Font = Enum.Font.RobotoMono
+    reqs.TextSize = 13
     reqs.TextXAlignment = Enum.TextXAlignment.Left
     reqs.TextYAlignment = Enum.TextYAlignment.Top
     reqs.TextWrapped = true
@@ -170,7 +170,7 @@ function ForgeController._CreateBlueprintCard(bp, data, yOffset, events)
         end)
     else
         craftBtn.AutoButtonColor = false
-        craftBtn.TextColor3 = Color3.fromRGB(150, 135, 125)
+        craftBtn.TextColor3 = Color3.fromRGB(205, 196, 222)
     end
 
     -- Craft All (only useful when more than one can be made)
@@ -436,21 +436,10 @@ function ForgeController._RenderUpgrades()
     if nextFd then
         local xp, need, base = data.ForgeXP or 0, nextFd.xpRequired, fd.xpRequired
         local frac = math.clamp((xp - base) / math.max(1, need - base), 0, 1)
-        local bg = Instance.new("Frame")
-        bg.Size = UDim2.new(1, -28, 0, 14)
-        bg.Position = UDim2.new(0, 14, 0, 74)
-        bg.BackgroundColor3 = Theme.Colors.Background
-        bg.BorderSizePixel = 0
-        bg.Parent = card
-        Theme.AddCorner(bg, UDim.new(0, 7))
-        local fill = Instance.new("Frame")
-        fill.Size = UDim2.new(frac, 0, 1, 0)
-        fill.BackgroundColor3 = Theme.Colors.Ember
-        fill.BorderSizePixel = 0
-        fill.Parent = bg
-        Theme.AddCorner(fill, UDim.new(0, 7))
-        Text(card, string.format("%d / %d Forge XP to level %d", xp - base, need - base, level + 1), 92, Theme.TextSize.Small, Theme.Colors.TextSecondary)
-        Text(card, "Next: " .. nextFd.unlocks.description, 112, Theme.TextSize.Small, Theme.Colors.Gold, nil, 32)
+        Theme.ProgressBar(card, frac, string.format("%d / %d Forge XP to level %d", xp - base, need - base, level + 1), {
+            height = 24, size = UDim2.new(1, -28, 0, 24), position = UDim2.new(0, 14, 0, 76), color = Theme.Colors.Ember,
+        })
+        Text(card, "Next: " .. nextFd.unlocks.description, 110, Theme.TextSize.Small, Theme.Colors.Gold, nil, 32)
     else
         Text(card, "Maximum Forge level reached.", 80, nil, Theme.Colors.Gold)
     end
@@ -494,19 +483,9 @@ function ForgeController._RenderUpgrades()
             local n = Theme.Label(mc, string.format("%s  Lv %d", element, lvl), Theme.TextSize.Body, Theme.Colors[element], Theme.Fonts.Heading)
             n.Position = UDim2.new(0, 14, 0, y)
             n.Size = UDim2.new(0, 120, 0, 20)
-            local bg = Instance.new("Frame")
-            bg.Position = UDim2.new(0, 140, 0, y + 5)
-            bg.Size = UDim2.new(0, 220, 0, 10)
-            bg.BackgroundColor3 = Theme.Colors.Background
-            bg.BorderSizePixel = 0
-            bg.Parent = mc
-            Theme.AddCorner(bg, UDim.new(0, 5))
-            local fill = Instance.new("Frame")
-            fill.Size = UDim2.new(frac, 0, 1, 0)
-            fill.BackgroundColor3 = Theme.Colors[element]
-            fill.BorderSizePixel = 0
-            fill.Parent = bg
-            Theme.AddCorner(fill, UDim.new(0, 5))
+            Theme.ProgressBar(mc, frac, nextXP and string.format("%d / %d XP", xp - thresholds[lvl], nextXP - thresholds[lvl]) or "MAX", {
+                height = 20, size = UDim2.new(0, 220, 0, 20), position = UDim2.new(0, 140, 0, y + 1), color = Theme.Colors[element],
+            })
             local t = Theme.Label(mc, lvl >= 20 and "MAX  -  all bonuses unlocked" or
                 (nextBonus and string.format("Lv %d: %s", nextBonus, BONUS[nextBonus]) or ""),
                 Theme.TextSize.Small, Theme.Colors.TextSecondary, Theme.Fonts.Body)
@@ -614,7 +593,7 @@ function ForgeController._BuildDeployPanel()
     for _, g in ipairs(golems) do
         local card = Instance.new("Frame")
         card.Name = g.id
-        card.Size = UDim2.new(1, -8, 0, 54)
+        card.Size = UDim2.new(1, -8, 0, 72)
         card.BackgroundColor3 = Theme.Colors.Panel
         card.BorderSizePixel = 0
         card.Parent = scroll
@@ -648,17 +627,11 @@ function ForgeController._BuildDeployPanel()
         local dur = math.max(0, g._durabilitySeconds or maxDur)
         local frac = math.clamp(dur / maxDur, 0, 1)
         local broken = dur <= 0
-        local barBg = Instance.new("Frame")
-        barBg.Size = UDim2.new(0.4, 0, 0, 5)
-        barBg.Position = UDim2.new(0, 60, 1, -9)
-        barBg.BackgroundColor3 = Theme.Colors.Background
-        barBg.BorderSizePixel = 0
-        barBg.Parent = card
-        local barFill = Instance.new("Frame")
-        barFill.Size = UDim2.new(frac, 0, 1, 0)
-        barFill.BackgroundColor3 = broken and Color3.fromRGB(220, 60, 50) or (frac < 0.25 and Color3.fromRGB(230, 170, 40) or Theme.Colors.Success)
-        barFill.BorderSizePixel = 0
-        barFill.Parent = barBg
+        Theme.ProgressBar(card, frac, broken and "BROKEN" or string.format("Durability %d%%", math.floor(frac * 100 + 0.5)), {
+            height = 18, size = UDim2.new(0.4, 0, 0, 18), position = UDim2.new(0, 60, 0, 48),
+            color = broken and Color3.fromRGB(220, 60, 50) or (frac < 0.25 and Color3.fromRGB(230, 170, 40) or Theme.Colors.Success),
+            name = "DurabilityBar",
+        })
         if broken then
             status.Text = "BROKEN - repair it to mine again"
             status.TextColor3 = Color3.fromRGB(230, 90, 70)

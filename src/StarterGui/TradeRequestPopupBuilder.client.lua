@@ -77,7 +77,7 @@ declineBtn.TextSize = 14
 local blockBtn = Theme.Button(card, "Block this player", Theme.Colors.Panel, Theme.Colors.TextDim, "Block")
 blockBtn.Size = UDim2.new(0, 130, 0, 20)
 blockBtn.Position = UDim2.new(0, 114, 0, 120)
-blockBtn.TextSize = 11
+blockBtn.TextSize = 13
 blockBtn.BackgroundTransparency = 1
 local currentFrom
 

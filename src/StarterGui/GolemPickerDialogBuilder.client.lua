@@ -55,7 +55,7 @@ for _, elem in ipairs(elementFilters) do
         elem == "All" and Theme.Colors.Accent or Theme.Colors.PanelAlt,
         elem == "All" and Color3.fromRGB(255,255,255) or elemColor, elem .. "Filter")
     fb.Size = UDim2.new(0, 64, 0, 28)
-    fb.TextSize = 11
+    fb.TextSize = 13
     filterBtns[elem] = fb
 end
 

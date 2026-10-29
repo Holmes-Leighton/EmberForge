@@ -337,7 +337,7 @@ function ShopController._CreateWeekCard(parent, season, week, passTier, status)
             local btn = Theme.Button(slot, text, color, Color3.fromRGB(255, 255, 255))
             btn.Size = UDim2.new(1, -16, 0, 26)
             btn.Position = UDim2.new(0, 8, 1, -32)
-            btn.TextSize = 11
+            btn.TextSize = 12
             btn.AutoButtonColor = state == "claim"
             if state == "claim" then
                 btn.MouseButton1Click:Connect(function()

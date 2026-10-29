@@ -186,22 +186,10 @@ local function Row(name, sub, color, buttonText, buttonColor, onClick, enabled, 
 end
 
 local function ProgressBar(fraction, label)
-    local bar = Instance.new("Frame")
-    bar.Size = UDim2.new(1, -8, 0, 30)
-    bar.BackgroundColor3 = Theme.Colors.PanelAlt
-    bar.BorderSizePixel = 0
-    bar.Parent = content
-    Theme.AddCorner(bar, UDim.new(0, 15))
-    local fill = Instance.new("Frame")
-    fill.Size = UDim2.new(math.clamp(fraction, 0, 1), 0, 1, 0)
-    fill.BackgroundColor3 = fraction >= 1 and Theme.Colors.Success or Theme.Colors.Accent
-    fill.BorderSizePixel = 0
-    fill.Parent = bar
-    Theme.AddCorner(fill, UDim.new(0, 15))
-    local t = Theme.Label(bar, label, Theme.TextSize.Body, Color3.fromRGB(255, 255, 255), Theme.Fonts.Heading)
-    t.Size = UDim2.new(1, 0, 1, 0)
-    t.TextXAlignment = Enum.TextXAlignment.Center
-    t.ZIndex = 3
+    local bar = Theme.ProgressBar(content, fraction, label, {
+        height = 30, size = UDim2.new(1, -8, 0, 30),
+        color = fraction >= 1 and Theme.Colors.Success or Theme.Colors.Accent,
+    })
     return bar
 end
 

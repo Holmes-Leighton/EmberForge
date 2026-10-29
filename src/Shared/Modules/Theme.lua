@@ -51,15 +51,15 @@ Theme.Colors = {
 Theme.Fonts = {
     Title    = Enum.Font.GothamBlack,
     Heading  = Enum.Font.GothamBlack,
-    Body     = Enum.Font.GothamMedium,
-    Mono     = Enum.Font.Code,
+    Body     = Enum.Font.GothamBold,   -- (GothamMedium was too thin to read on a bright window)
+    Mono     = Enum.Font.RobotoMono,   -- (Code is too thin to read either)
 }
 
 Theme.TextSize = {
     Title   = 24,
     Heading = 17,
     Body    = 14,
-    Small   = 12,
+    Small   = 13,
 }
 
 Theme.Corner = {
@@ -130,7 +130,7 @@ function Theme.Label(parent, text, size, color, font, name)
     lbl.TextSize = size or Theme.TextSize.Body
     lbl.TextColor3 = color or Theme.Colors.TextPrimary
     lbl.TextStrokeColor3 = Theme.Outline             -- dark outline keeps text readable on any window colour
-    lbl.TextStrokeTransparency = (size or Theme.TextSize.Body) >= 14 and 0.55 or 0.8
+    lbl.TextStrokeTransparency = (size or Theme.TextSize.Body) >= 14 and 0.3 or 0.45
     lbl.Font = font or Theme.Fonts.Body
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.TextWrapped = true
@@ -298,6 +298,55 @@ function Theme.WindowHeader(container, gui, title, paletteName, labelName, onClo
 
     local close = Theme.CloseButton(container, onClose or function() gui.Enabled = false end)
     return titleBar, lbl, close
+end
+
+-- Chunky progress bar with its text INSIDE it (outlined white, readable on any fill).
+-- opts (all optional): height (default 24), color (fill), name / fillName / labelName, position.
+-- Returns bar (the track), fill, label.
+function Theme.ProgressBar(parent, fraction, text, opts)
+    opts = opts or {}
+    local height = opts.height or 24
+    local frac = math.clamp(fraction or 0, 0, 1)
+    local radius = UDim.new(0, math.floor(height / 2))
+
+    local bar = Instance.new("Frame")
+    bar.Name = opts.name or "ProgressBar"
+    bar.Size = opts.size or UDim2.new(1, 0, 0, height)
+    if opts.position then bar.Position = opts.position end
+    bar.BackgroundColor3 = Color3.fromRGB(20, 14, 38)
+    bar.BorderSizePixel = 0
+    bar.Parent = parent
+    Theme.AddCorner(bar, radius)
+    Theme.AddStroke(bar, Theme.Outline, 2)
+
+    local fill = Instance.new("Frame")
+    fill.Name = opts.fillName or "Fill"
+    fill.Size = UDim2.new(frac, 0, 1, 0)
+    fill.BackgroundColor3 = opts.color or Theme.Colors.Accent
+    fill.BorderSizePixel = 0
+    fill.Parent = bar
+    Theme.AddCorner(fill, radius)
+    local grad = Instance.new("UIGradient")                       -- top-lit, like the buttons
+    grad.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(180, 180, 180))
+    grad.Rotation = 90
+    grad.Parent = fill
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Name = opts.labelName or "BarLabel"
+    lbl.BackgroundTransparency = 1
+    lbl.Size = UDim2.new(1, -12, 1, 0)
+    lbl.Position = UDim2.new(0, 6, 0, 0)
+    lbl.Text = text or ""
+    lbl.Font = Enum.Font.GothamBlack
+    lbl.TextSize = math.clamp(math.floor(height * 0.6), 12, 18)
+    lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    lbl.TextStrokeColor3 = Theme.Outline
+    lbl.TextStrokeTransparency = 0.15
+    lbl.TextXAlignment = Enum.TextXAlignment.Center
+    lbl.TextTruncate = Enum.TextTruncate.AtEnd
+    lbl.ZIndex = 3
+    lbl.Parent = bar
+    return bar, fill, lbl
 end
 
 -- Screen-covering dark scrim

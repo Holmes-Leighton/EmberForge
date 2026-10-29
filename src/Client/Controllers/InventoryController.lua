@@ -140,7 +140,7 @@ function InventoryController._CreateMaterialRow(matId, qty, mat, yOff, pending)
     row.Name = matId
     row.Size = UDim2.new(1, -10, 0, 40)
     row.Position = UDim2.new(0, 5, 0, yOff + 2)
-    row.BackgroundColor3 = Color3.fromRGB(35, 30, 25)
+    row.BackgroundColor3 = Color3.fromRGB(32, 24, 62)
     row.BorderSizePixel = 0
 
     local corner = Instance.new("UICorner")
@@ -247,7 +247,7 @@ function InventoryController._CreateCollectionCard(data, yOff)
     card.Name = "CollectionCard"
     card.Size = UDim2.new(1, -10, 0, COLLECTION_HEIGHT)
     card.Position = UDim2.new(0, 5, 0, yOff + 2)
-    card.BackgroundColor3 = Color3.fromRGB(35, 30, 25)
+    card.BackgroundColor3 = Color3.fromRGB(32, 24, 62)
     card.BorderSizePixel = 0
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 6)
@@ -274,7 +274,7 @@ function InventoryController._CreateCollectionCard(data, yOff)
         lbl.RichText = true
         lbl.Text = row.text
         lbl.TextColor3 = Color3.fromRGB(200, 195, 188)
-        lbl.Font = Enum.Font.Code
+        lbl.Font = Enum.Font.RobotoMono
         lbl.TextSize = 12
         lbl.TextXAlignment = Enum.TextXAlignment.Left
         lbl.Parent = card
@@ -300,7 +300,7 @@ function InventoryController._BuildGolemList()
     for _, golem in ipairs(data.Golems or {}) do
         local card = InventoryController._CreateGolemCard(golem, yOff)
         card.Parent = scroll
-        yOff = yOff + 100
+        yOff = yOff + 116
     end
     scroll.CanvasSize = UDim2.new(0, 0, 0, yOff + 5)
 end
@@ -319,9 +319,9 @@ function InventoryController._CreateGolemCard(golem, yOff)
 
     local card = Instance.new("Frame")
     card.Name = golem.id
-    card.Size = UDim2.new(1, -10, 0, 95)
+    card.Size = UDim2.new(1, -10, 0, 108)
     card.Position = UDim2.new(0, 5, 0, yOff + 2)
-    card.BackgroundColor3 = Color3.fromRGB(35, 30, 25)
+    card.BackgroundColor3 = Color3.fromRGB(32, 24, 62)
     card.BorderSizePixel = 0
 
     local corner = Instance.new("UICorner")
@@ -367,50 +367,32 @@ function InventoryController._CreateGolemCard(golem, yOff)
         statsLbl.Position = UDim2.new(0, 70, 0, 30)
         statsLbl.BackgroundTransparency = 1
         statsLbl.Text = statsText
-        statsLbl.TextColor3 = Color3.fromRGB(180, 175, 170)
-        statsLbl.Font = Enum.Font.Code
-        statsLbl.TextSize = 11
+        statsLbl.TextColor3 = Color3.fromRGB(240, 234, 250)
+        statsLbl.Font = Enum.Font.GothamMedium
+        statsLbl.TextSize = 13
         statsLbl.TextXAlignment = Enum.TextXAlignment.Left
         statsLbl.Parent = card
     end
 
-    -- Life stage and how far it is to the next one (a thin bar along the bottom of the card)
+    -- Life stage and how far it is to the next one (a bar along the bottom of the card, with the text inside it)
     local stageText = desc.stage.id
         .. (desc.stageHoursLeft and string.format("  -  %d%% to %s", math.floor(desc.stageProgress * 100), GolemData.Stages[desc.stageIndex + 1].id) or "  -  fully grown")
-    local stageLbl = Instance.new("TextLabel")
-    stageLbl.Name = "StageLabel"
-    stageLbl.Size = UDim2.new(1, -170, 0, 14)
-    stageLbl.Position = UDim2.new(0, 70, 0, 46)
-    stageLbl.BackgroundTransparency = 1
-    stageLbl.Text = stageText
-    stageLbl.TextColor3 = desc.stage.color
-    stageLbl.Font = Enum.Font.GothamMedium
-    stageLbl.TextSize = 11
-    stageLbl.TextXAlignment = Enum.TextXAlignment.Left
-    stageLbl.Parent = card
-    local barBack = Instance.new("Frame")
-    barBack.Name = "GrowthBar"
-    barBack.Size = UDim2.new(1, -78, 0, 4)
-    barBack.Position = UDim2.new(0, 70, 1, -7)
-    barBack.BackgroundColor3 = Color3.fromRGB(20, 18, 15)
-    barBack.BorderSizePixel = 0
-    barBack.Parent = card
-    local barFill = Instance.new("Frame")
-    barFill.Size = UDim2.new(desc.stageProgress, 0, 1, 0)
-    barFill.BackgroundColor3 = desc.stage.color
-    barFill.BorderSizePixel = 0
-    barFill.Parent = barBack
+    local Theme = require(game.ReplicatedStorage.Shared.Modules.Theme)
+    local bar = Theme.ProgressBar(card, desc.stageProgress, stageText, {
+        height = 18, size = UDim2.new(1, -78, 0, 18), position = UDim2.new(0, 70, 1, -24),
+        color = desc.stage.color, name = "GrowthBar", labelName = "StageLabel",
+    })
 
     -- A special Golem's unique skill
     if desc.skill then
         local skillLbl = Instance.new("TextLabel")
-        skillLbl.Size = UDim2.new(1, -170, 0, 28)
-        skillLbl.Position = UDim2.new(0, 70, 0, 60)
+        skillLbl.Size = UDim2.new(1, -170, 0, 26)
+        skillLbl.Position = UDim2.new(0, 70, 0, 58)
         skillLbl.BackgroundTransparency = 1
         skillLbl.Text = "✦ " .. desc.skill.name .. ": " .. desc.skill.text
         skillLbl.TextColor3 = Color3.fromRGB(255, 214, 120)
         skillLbl.Font = Enum.Font.GothamMedium
-        skillLbl.TextSize = 11
+        skillLbl.TextSize = 12
         skillLbl.TextWrapped = true
         skillLbl.TextXAlignment = Enum.TextXAlignment.Left
         skillLbl.TextYAlignment = Enum.TextYAlignment.Top

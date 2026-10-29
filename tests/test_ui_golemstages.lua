@@ -176,12 +176,12 @@ print("== the inventory card shows the stage and a growth bar")
 local Inv = load("SPS/EmberForge/Controllers/InventoryController")
 local function card(g) return Inv._CreateGolemCard(g, 0) end
 local infantCard = card({ id = "a", element = "Ember", tier = 1, grown = 1800 })
-local lbl = infantCard:FindFirstChild("StageLabel")
+local lbl = infantCard:FindFirstChild("StageLabel", true)
 expect(lbl and lbl.Text:find("Infant") and lbl.Text:find("50%% to Young"), "Infant card: " .. tostring(lbl and lbl.Text))
-expect(math.abs(infantCard:FindFirstChild("GrowthBar"):GetChildren()[1].Size.X.Scale - 0.5) < 1e-6, "the growth bar is half full")
-expect(card({ id = "b", element = "Stone", tier = 2 }):FindFirstChild("StageLabel").Text:find("Adult"), "an old Golem's card says Adult")
+expect(math.abs(infantCard:FindFirstChild("GrowthBar"):FindFirstChild("Fill").Size.X.Scale - 0.5) < 1e-6, "the growth bar is half full")
+expect(card({ id = "b", element = "Stone", tier = 2 }):FindFirstChild("StageLabel", true).Text:find("Adult"), "an old Golem's card says Adult")
 local ancientCard = card({ id = "c", element = "Frost", tier = 3, grown = 999 * 3600 })
-expect(ancientCard:FindFirstChild("StageLabel").Text:find("fully grown") and ancientCard:FindFirstChild("GrowthBar"):GetChildren()[1].Size.X.Scale == 1, "an Ancient's card is fully grown")
+expect(ancientCard:FindFirstChild("StageLabel", true).Text:find("fully grown") and ancientCard:FindFirstChild("GrowthBar"):FindFirstChild("Fill").Size.X.Scale == 1, "an Ancient's card is fully grown")
 
 print("== the collection card")
 local seenData = { Golems = { { element = "Ember", tier = 1, grown = 60 * 3600 } }, GolemsSeen = { ["Frost:Infant"] = true } }

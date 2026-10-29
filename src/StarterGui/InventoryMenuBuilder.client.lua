@@ -47,6 +47,7 @@ matHeader.BackgroundColor3 = Theme.Colors.Panel
 matHeader.BorderSizePixel = 0
 matHeader.Parent = leftPane
 Theme.AddCorner(matHeader, Theme.Corner.Small)
+Theme.AddPadding(matHeader, 0, 0, 0, 10)
 
 Theme.Label(matHeader, "Materials", Theme.TextSize.Heading,
     Theme.Colors.AccentBright, Theme.Fonts.Heading).Size = UDim2.new(1, -8, 1, 0)
@@ -71,6 +72,7 @@ golemHeader.BackgroundColor3 = Theme.Colors.Panel
 golemHeader.BorderSizePixel = 0
 golemHeader.Parent = rightPane
 Theme.AddCorner(golemHeader, Theme.Corner.Small)
+Theme.AddPadding(golemHeader, 0, 0, 0, 10)
 
 Theme.Label(golemHeader, "Golems", Theme.TextSize.Heading,
     Theme.Colors.AccentBright, Theme.Fonts.Heading).Size = UDim2.new(1, -8, 1, 0)

@@ -249,7 +249,7 @@ function ChallengesController._AddEmptyState(scroll, text)
     lbl.Size = UDim2.new(1, -16, 0, 60)
     lbl.BackgroundTransparency = 1
     lbl.Text = text
-    lbl.TextColor3 = Color3.fromRGB(100, 92, 84)
+    lbl.TextColor3 = Color3.fromRGB(238, 232, 248)
     lbl.Font = Enum.Font.Gotham
     lbl.TextSize = 14
     lbl.TextXAlignment = Enum.TextXAlignment.Center

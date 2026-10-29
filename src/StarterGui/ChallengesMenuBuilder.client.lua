@@ -129,7 +129,7 @@ local function BuildChallengeCard(scroll, challenge, progress, claimed, layoutOr
     local card = Instance.new("Frame")
     card.Name = challenge.id
     card.LayoutOrder = layoutOrder or 0
-    card.Size = UDim2.new(1, -8, 0, 88)
+    card.Size = UDim2.new(1, -8, 0, 100)
     card.BackgroundColor3 = cardColor
     card.BorderSizePixel = 0
     card.Parent = scroll
@@ -184,30 +184,13 @@ local function BuildChallengeCard(scroll, challenge, progress, claimed, layoutOr
         end
     end
 
-    -- Progress bar background
-    local barBg = Instance.new("Frame")
-    barBg.Name = "ProgressBarBg"
-    barBg.Size = UDim2.new(0.68, 0, 0, 8)
-    barBg.Position = UDim2.new(0, 10, 0, 70)
-    barBg.BackgroundColor3 = Theme.Colors.PanelAlt
-    barBg.BorderSizePixel = 0
-    barBg.Parent = card
-    Theme.AddCorner(barBg, Theme.Corner.Small)
-
+    -- Progress bar, with the count inside it
     local fillPct = math.min(progress / challenge.target, 1)
-    local barFill = Instance.new("Frame")
-    barFill.Name = "ProgressBarFill"
-    barFill.Size = UDim2.new(fillPct, 0, 1, 0)
-    barFill.BackgroundColor3 = isComplete and Theme.Colors.Success or Theme.Colors.Accent
-    barFill.BorderSizePixel = 0
-    barFill.Parent = barBg
-    Theme.AddCorner(barFill, Theme.Corner.Small)
-
-    -- Progress text
-    local progressLbl = Theme.Label(card, progress .. " / " .. challenge.target,
-        Theme.TextSize.Small, Theme.Colors.TextDim, Theme.Fonts.Mono, "ProgressLabel")
-    progressLbl.Size = UDim2.new(0, 80, 0, 16)
-    progressLbl.Position = UDim2.new(0, 10, 0, 68)
+    Theme.ProgressBar(card, fillPct, progress .. " / " .. challenge.target, {
+        height = 22, size = UDim2.new(0.68, 0, 0, 22), position = UDim2.new(0, 10, 0, 70),
+        color = isComplete and Theme.Colors.Success or Theme.Colors.Accent,
+        name = "ProgressBarBg", fillName = "ProgressBarFill", labelName = "ProgressLabel",
+    })
 
     -- Claim button
     local claimBtn = Theme.Button(card,

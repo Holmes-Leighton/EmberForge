@@ -54,7 +54,7 @@ for _, cat in ipairs(CATEGORIES) do
         cat.id == activeCategory and Theme.Colors.Accent or Theme.Colors.PanelAlt,
         Color3.fromRGB(255, 255, 255), cat.id .. "Tab")
     btn.Size     = UDim2.new(1 / #CATEGORIES, -6, 0, 30)      -- the tabs share the row, however many there are
-    btn.TextSize = 11
+    btn.TextSize = 13
     tabBtns[cat.id] = btn
 end
 

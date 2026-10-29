@@ -73,29 +73,13 @@ milestonePanel.BorderSizePixel = 0
 milestonePanel.Parent = container
 Theme.AddCorner(milestonePanel, Theme.Corner.Medium)
 
-local communityLabel = Theme.Label(milestonePanel,
-    "Community Progress: 0 / 500,000 crafts  —  Unlock: 2× drop rate for all players for 48 hrs",
-    Theme.TextSize.Small, Theme.Colors.TextSecondary, Theme.Fonts.Body, "CommunityLabel")
-communityLabel.Size = UDim2.new(1, -10, 0, 20)
-communityLabel.Position = UDim2.new(0, 10, 0, 4)
-
--- Progress bar
-local milestoneBarBg = Instance.new("Frame")
-milestoneBarBg.Name = "MilestoneBarBg"
-milestoneBarBg.Size = UDim2.new(1, -16, 0, 12)
-milestoneBarBg.Position = UDim2.new(0, 8, 0, 30)
-milestoneBarBg.BackgroundColor3 = Theme.Colors.PanelAlt
-milestoneBarBg.BorderSizePixel = 0
-milestoneBarBg.Parent = milestonePanel
-Theme.AddCorner(milestoneBarBg, Theme.Corner.Small)
-
-local milestoneBarFill = Instance.new("Frame")
-milestoneBarFill.Name = "MilestoneBarFill"
-milestoneBarFill.Size = UDim2.new(0, 0, 1, 0)
-milestoneBarFill.BackgroundColor3 = Theme.Colors.Gold
-milestoneBarFill.BorderSizePixel = 0
-milestoneBarFill.Parent = milestoneBarBg
-Theme.AddCorner(milestoneBarFill, Theme.Corner.Small)
+-- The text lives inside the bar; ShopController sets CommunityLabel.Text and MilestoneBarFill.Size
+Theme.ProgressBar(milestonePanel, 0,
+    "Community Progress: 0 / 500,000 crafts  —  Unlock: 2× drop rate for all players for 48 hrs", {
+        height = 34, size = UDim2.new(1, -16, 0, 34), position = UDim2.new(0, 8, 0, 9),
+        color = Theme.Colors.Gold,
+        name = "MilestoneBarBg", fillName = "MilestoneBarFill", labelName = "CommunityLabel",
+    })
 
 -- ── Track label row ───────────────────────────────────────────────────────────
 local trackLabelRow = Instance.new("Frame")

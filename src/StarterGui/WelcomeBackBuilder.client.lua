@@ -40,7 +40,7 @@ title.TextXAlignment = Enum.TextXAlignment.Center
 title.Position = UDim2.new(0, 22, 0, 16)
 title.Size = UDim2.new(1, -44, 0, 34)
 
-local away = Theme.Label(card, "", Theme.TextSize.Heading, Theme.Colors.TextSecondary, Theme.Fonts.Body, "Away")
+local away = Theme.Label(card, "", Theme.TextSize.Heading, Color3.fromRGB(255, 255, 255), Theme.Fonts.Body, "Away")
 away.Position = UDim2.new(0, 22, 0, 54)
 away.Size = UDim2.new(1, -44, 0, 24)
 
@@ -53,7 +53,7 @@ haulLabel.Size = UDim2.new(1, -28, 1, -16)
 haulLabel.TextYAlignment = Enum.TextYAlignment.Top
 haulLabel.RichText = true
 
-local note = Theme.Label(card, "", Theme.TextSize.Small, Theme.Colors.TextDim, Theme.Fonts.Body, "Note")
+local note = Theme.Label(card, "", Theme.TextSize.Small, Color3.fromRGB(255, 255, 255), Theme.Fonts.Body, "Note")
 note.Position = UDim2.new(0, 22, 0, 214)
 note.Size = UDim2.new(1, -44, 0, 36)
 

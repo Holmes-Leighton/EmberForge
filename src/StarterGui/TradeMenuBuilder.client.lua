@@ -300,13 +300,13 @@ local function Render()
     historyFrame.Visible = showingHistory
     historyBtn.Text = showingHistory and "Back" or "History"
     if not active then
-        titleLbl.Text = "Trade"
+        titleLbl.Text = "~Trade~"
         reportBtn.Visible = false
         return
     end
 
     reportBtn.Visible = true
-    titleLbl.Text = "Trade with " .. tostring(view.partnerName)
+    titleLbl.Text = "~Trade with " .. tostring(view.partnerName) .. "~"
     theirHdr.Text = tostring(view.partnerName) .. "'s offer"
 
     Clear(yourList)
@@ -315,7 +315,7 @@ local function Render()
         local rm = Theme.Button(row, "Remove", Theme.Colors.PanelAlt, Theme.Colors.Danger)
         rm.Size = UDim2.new(0, 66, 0, 22)
         rm.Position = UDim2.new(1, -72, 0.5, -11)
-        rm.TextSize = 11
+        rm.TextSize = 13
         rm.MouseButton1Click:Connect(function() RemoteEvents.RemoveTradeItem:FireServer(tradeId, i) end)
     end
     if #view.yourItems == 0 then
