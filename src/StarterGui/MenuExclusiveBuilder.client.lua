@@ -11,13 +11,23 @@ local MENUS = {
     SeasonMenu = true, ChallengesMenu = true, StyleMenu = true, LeaderboardMenu = true, AnvilMenu = true, PetsMenu = true, GuildMenu = true, BuildMenu = true, QuarryMenu = true, RewardsMenu = true,
 }
 
+local slide = {}      -- (the window's slide-in tween, so a quick reopen cancels it instead of starting from where it had got to)
+
 local function PopIn(gui)
     pcall(function()
         local box = gui:FindFirstChild("Container")
         if box then
-            local home = box.Position
+            -- (the resting place is remembered on the window itself: reading it each time let a reopen, or a second copy of this script,
+            --  take the half-slid or pushed-down spot as "home", so every opening left the menu lower than the last)
+            local home = box:GetAttribute("HomePosition")
+            if typeof(home) ~= "UDim2" then
+                home = box.Position
+                box:SetAttribute("HomePosition", home)
+            end
+            if slide[box] then slide[box]:Cancel() end
             box.Position = home + UDim2.new(0, 0, 0, 36)
-            TweenService:Create(box, TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Position = home }):Play()
+            slide[box] = TweenService:Create(box, TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Position = home })
+            slide[box]:Play()
         end
         local scrim = gui:FindFirstChild("Scrim") or gui:FindFirstChildWhichIsA("GuiObject")
         if scrim and scrim ~= box and scrim.BackgroundTransparency < 1 then
