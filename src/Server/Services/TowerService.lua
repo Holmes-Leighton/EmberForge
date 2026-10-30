@@ -48,9 +48,10 @@ local function Root(player)
     return player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 end
 
+-- (the Hollow Maze is built at the same height on the far side of the world, so the height alone would count a maze runner as a climber, and the tower's round change would send them home mid-run)
 local function InTower(player)
     local root = Root(player)
-    return root ~= nil and root.Position.Y > TowerData.BASE.y - 200
+    return root ~= nil and root.Position.Y > TowerData.BASE.y - 200 and math.abs(root.Position.X - TowerData.BASE.x) < 1000
 end
 
 local function SendHome(player)
@@ -417,6 +418,25 @@ local function NewRound(world, round)
     BuildTower(world, round)
 end
 
+-- The clock says a new round has begun: build its tower. A build that fails part-way (a script timeout on a slow server, say) must not kill the loop that calls this, which would leave the
+-- tower torn down for good: the old (ended) round is put back, so nobody can walk into a half-built tower, and it is tried again a few seconds later.
+local RETRY_AFTER = 5
+local function AdvanceRound(world, clock)
+    if state.retryAt and clock < state.retryAt then return end
+    for _, e in ipairs((TowerRound.Step(state.round, clock))) do
+        if e.kind == "new" then
+            local before = state.round
+            local ok, err = pcall(NewRound, world, e.round)
+            if ok then
+                state.retryAt = nil
+            else
+                warn("[TowerService] the new tower could not be built, trying again: " .. tostring(err))
+                state.round, state.retryAt = before, clock + RETRY_AFTER
+            end
+        end
+    end
+end
+
 function TowerService.Init()
     local world = workspace:FindFirstChild("EmberWorld")
     if not world then
@@ -457,10 +477,7 @@ function TowerService.Init()
                     SendHome(rec.player)
                 end
             end
-            local events, round = TowerRound.Step(state.round, clock)
-            for _, e in ipairs(events) do
-                if e.kind == "new" then NewRound(world, e.round) end
-            end
+            AdvanceRound(world, clock)
             if next(runs) ~= nil and ServerNow() - lastStandings >= STANDINGS_EVERY then
                 lastStandings = ServerNow()
                 local list = Standings()
@@ -475,7 +492,7 @@ function TowerService.Init()
     end)
 end
 
-TowerService._internals = { runs = runs, state = state, StartRun = StartRun, Tick = Tick, EndRun = EndRun }        -- (for the tests)
+TowerService._internals = { runs = runs, state = state, StartRun = StartRun, Tick = Tick, EndRun = EndRun, AdvanceRound = AdvanceRound }        -- (for the tests)
 
 -- True while this player is up in the tower (the rest of the game uses it to refuse things that make no sense mid-climb, like collecting mined resources)
 function TowerService.InTower(player) return InTower(player) end

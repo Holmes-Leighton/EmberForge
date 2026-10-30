@@ -188,4 +188,22 @@ expect(MI.Hidden(recD) and dRoot.Anchored == true, "(another player hiding)")
 I.EndRun(recD, "left", false)
 expect(dRoot.Anchored == false and h.occupant == nil and h.prompt.ActionText == "Hide", "leaving while hidden frees the player and the crate")
 
+print("== a maze that fails to build does not end the rounds")
+-- (seen in Studio: a script timeout half way through building the next maze left the world empty, and the loop that changes rounds died with it)
+local MA = load("SSS/EmberForge/Services/MazeArt")
+local realBuild = MA.Build
+local world = workspace:FindFirstChild("EmberWorld")
+local oldRound = S.round
+S.round.nextStart = os.time() - 1                                  -- the round is over: the next maze is due
+MA.Build = function() error("Script timeout: exhausted allowed execution time") end
+local okAdvance = pcall(I.AdvanceRound, world, os.time())
+expect(okAdvance, "a failed build is caught, not thrown at the round loop")
+expect(S.round == oldRound, "the old round is put back, so nobody is let into a half-built maze")
+MA.Build = realBuild
+I.AdvanceRound(world, os.time())
+expect(S.round == oldRound, "it waits a few seconds before trying again")
+advance(6)
+I.AdvanceRound(world, os.time())
+expect(S.round ~= oldRound and S.round.nextStart > os.time() and S.layout ~= nil and #S.orbs == #MD.SECTIONS * MD.PICKUPS_PER_SECTION, "and then the new maze is built (round " .. tostring(S.round.index) .. ")")
+
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")

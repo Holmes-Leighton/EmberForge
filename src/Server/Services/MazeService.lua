@@ -506,6 +506,25 @@ local function NewRound(world, round)
     BuildMaze(world, round)
 end
 
+-- The clock says a new round has begun: build its maze. A build that fails part-way (a script timeout on a slow server, say) must not kill the loop that calls this, which would leave the maze
+-- torn down for good: the old (ended) round is put back, so nobody can walk into a half-built maze, and it is tried again a few seconds later.
+local RETRY_AFTER = 5
+local function AdvanceRound(world, clock)
+    if state.retryAt and clock < state.retryAt then return end
+    for _, e in ipairs((MazeRound.Step(state.round, clock))) do
+        if e.kind == "new" then
+            local before = state.round
+            local ok, err = pcall(NewRound, world, e.round)
+            if ok then
+                state.retryAt = nil
+            else
+                warn("[MazeService] the new maze could not be built, trying again: " .. tostring(err))
+                state.round, state.retryAt = before, clock + RETRY_AFTER
+            end
+        end
+    end
+end
+
 local function Standings()
     local list = {}
     for _, rec in pairs(runs) do
@@ -663,10 +682,7 @@ function MazeService.Init()
                     SendHome(rec.player)
                 end
             end
-            local events = MazeRound.Step(state.round, clock)
-            for _, e in ipairs(events) do
-                if e.kind == "new" then NewRound(world, e.round) end
-            end
+            AdvanceRound(world, clock)
             if next(runs) ~= nil and ServerNow() - lastStandings >= STANDINGS_EVERY then
                 lastStandings = ServerNow()
                 local list = Standings()
@@ -687,6 +703,6 @@ function MazeService.Layout() return state.layout end
 function MazeService.Round() return state.round end
 
 -- (for the tests)
-MazeService._internals = { runs = runs, state = state, Tick = Tick, StepZombie = StepZombie, UpdateOrbs = UpdateOrbs, ToggleHide = ToggleHide, EndRun = EndRun, Targets = Targets }
+MazeService._internals = { runs = runs, state = state, Tick = Tick, StepZombie = StepZombie, UpdateOrbs = UpdateOrbs, ToggleHide = ToggleHide, EndRun = EndRun, Targets = Targets, AdvanceRound = AdvanceRound }
 
 return MazeService

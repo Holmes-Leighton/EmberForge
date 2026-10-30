@@ -113,4 +113,34 @@ expect(near(bHum.JumpPower, 50 * math.sqrt(1.35 * 0.85)), "Moon Jump and Heavy B
 I.EndRun(recB, "left", false)
 expect(bHum.WalkSpeed == 16 and bHum.JumpPower == 50, "and all is put back")
 
+print("== the maze is not the tower")
+-- both are built 1500 studs up, on opposite sides of the world: a maze runner must not count as a climber (the tower's round change sends climbers home)
+local MD = load("game/ReplicatedStorage/Shared/Data/MazeData")
+expect(MD.BASE.y == TD.BASE.y, "(the maze and the tower share a height)")
+local M1, mRoot = player(301)
+mRoot.CFrame = CFrame.new(MD.BASE.x + 100, MD.BASE.y + 3, MD.BASE.z)
+expect(not Tower.InTower(M1), "a player in the Hollow Maze is not in the Sky Tower")
+local T1, tRoot = player(302)
+tRoot.CFrame = CFrame.new(TD.BASE.x + 100, TD.BASE.y + 3, TD.BASE.z)
+expect(Tower.InTower(T1), "a player in the Sky Tower is")
+local H1, hRoot = player(303)
+hRoot.CFrame = CFrame.new(0, 6, -60)
+expect(not Tower.InTower(H1), "and a player at home is not")
+
+print("== a tower that fails to build does not end the rounds")
+local realTowerBuild = TowerArt.Build
+local world = workspace:FindFirstChild("EmberWorld")
+local oldRound = S.round
+S.round.nextStart = os.time() - 1
+TowerArt.Build = function() error("Script timeout: exhausted allowed execution time") end
+local okAdvance = pcall(I.AdvanceRound, world, os.time())
+expect(okAdvance, "a failed build is caught, not thrown at the round loop")
+expect(S.round == oldRound, "the old round is put back")
+TowerArt.Build = realTowerBuild
+I.AdvanceRound(world, os.time())
+expect(S.round == oldRound, "it waits a few seconds before trying again")
+advance(6)
+I.AdvanceRound(world, os.time())
+expect(S.round ~= oldRound and S.round.nextStart > os.time() and S.layout ~= nil, "and then the new tower is built (round " .. tostring(S.round.index) .. ")")
+
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")
