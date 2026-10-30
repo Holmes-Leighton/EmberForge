@@ -67,5 +67,16 @@ for path, src in files.items():
             print("%s: RemoteEvents[%r] is not declared" % (os.path.relpath(path, ROOT), name))
             problems += 1
 
+# The UI builder scripts must not sit under StarterGui: Roblox re-runs scripts there on every respawn, and their ResetOnSpawn = false screens are never removed, so each death
+# stacked another full copy of the HUD and every menu. They live under StarterPlayerScripts (run once per join).
+import json
+proj = json.load(open(os.path.join(ROOT, "default.project.json"), encoding="utf8"))["tree"]
+if "$path" in proj.get("StarterGui", {}):
+    print("default.project.json: StarterGui must not map a folder of scripts (they would re-run on every respawn); use StarterPlayerScripts")
+    problems += 1
+if "src/StarterGui" not in json.dumps(proj.get("StarterPlayer", {})):
+    print("default.project.json: src/StarterGui is not mapped under StarterPlayer.StarterPlayerScripts")
+    problems += 1
+
 print("cross-reference check:", "OK" if problems == 0 else "%d problem(s)" % problems)
 sys.exit(1 if problems else 0)

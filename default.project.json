@@ -20,12 +20,14 @@
         "$className": "StarterPlayerScripts",
         "EmberForge": {
           "$path": "src/Client"
+        },
+        "EmberForgeUI": {
+          "$path": "src/StarterGui"
         }
       }
     },
     "StarterGui": {
-      "$className": "StarterGui",
-      "$path": "src/StarterGui"
+      "$className": "StarterGui"
     },
     "ReplicatedFirst": {
       "$className": "ReplicatedFirst",

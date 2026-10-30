@@ -61,5 +61,7 @@ expect(steps[5] == "FirstTowerEntered" and steps[6] == "FirstMazeEntered" and st
     "and the Tower and Maze steps 5-9")
 local init = SOURCES["src/Server/init.server.lua"]
 expect(init:find("Analytics.Session", 1, true) ~= nil, "joining calls Analytics.Session")
+-- (it was called for a while without ever being required: every join then threw there, before the forge plot and the pets were set up)
+expect(init:find("local Analytics%s*=%s*require%(script%.Services%.AnalyticsHelper%)") ~= nil, "and the server entry point requires AnalyticsHelper first")
 
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")
