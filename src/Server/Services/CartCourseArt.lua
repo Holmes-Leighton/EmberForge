@@ -282,9 +282,9 @@ local function BuildStart(folder, r)
     local post = Vector3.new(x + rx * (W / 2 + 6) - tx * 8, y + 9, z + rz * (W / 2 + 6) - tz * 8)
     P({ Name = "SignPost", Material = Enum.Material.Wood, Color = TIMBER, Size = Vector3.new(2, 18, 2), CFrame = CFrame.new(post) }, unit)
     local anchor = P({ Name = "SignAnchor", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(post + Vector3.new(0, 12, 0)) }, unit)
-    local text = string.format("CART RUN: %s\n%s  Level %d+  Par %s\nPush the cart to the depot!", r.name, Stars(r.def.tier), r.def.minLevel,
+    local text = string.format("CART RUN: %s\n%s  Level %d+  Par %s", r.name, Stars(r.def.tier), r.def.minLevel,
         string.format("%d:%02d", math.floor(r.par) // 60, math.floor(r.par) % 60))
-    Label(unit, anchor, text, UDim2.new(0, 300, 0, 90), Vector3.new(0, 0, 0), color, 90)
+    Label(unit, anchor, text, UDim2.new(0, 300, 0, 64), Vector3.new(0, 0, 0), color, 90)
     P({ Name = "StartBeam", Material = Enum.Material.Neon, Color = color, Transparency = 0.65, Size = Vector3.new(3, 90, 3), CanCollide = false,
         CFrame = CFrame.new(post + Vector3.new(0, 36, 0)) }, unit)
     local light = Instance.new("PointLight")
@@ -376,10 +376,13 @@ end
 
 -- A signpost near the spawn pointing east to the courses, which start 180 studs and more away along the south wall. A tall beam over the first course's start
 -- (see BuildStart) can be seen from here, and the sign names the three courses with the level each needs.
+-- Where it stands, and how far its board reaches along z (12) and its posts back from the board (3). It was at x = 48 until the Hall of Legends got its plaza (x 40 to 146), which it
+-- stood in, a few studs from the Maze statue, hiding its plaque from the spawn: it now stands west of the plaza (a test keeps it clear).
+CartCourseArt.SIGNPOST = { x = 26, z = -74, halfWidth = 12, depth = 3 }
 function CartCourseArt.BuildSignpost(parent)
     local unit = Instance.new("Model")
     unit.Name = "CartRunSignpost"
-    local base = Vector3.new(48, 0, -74)
+    local base = Vector3.new(CartCourseArt.SIGNPOST.x, 0, CartCourseArt.SIGNPOST.z)
     -- the board faces west, towards the spawn; the posts stand BEHIND it (so nothing covers the lettering) and the words sit on a dark panel
     local boardPos = base + Vector3.new(0, 16, 0)
     local face = CFrame.lookAt(boardPos, boardPos + Vector3.new(-1, 0, 0))
@@ -438,7 +441,7 @@ function CartCourseArt.BuildCart(parent, r, index)
     body.Size = solid
     body.CFrame = CFrame.new(center.Position.X, 0.5 + solid.Y / 2, center.Position.Z)
     body.PivotOffset = CFrame.new(-center.Position.X, -solid.Y / 2, -center.Position.Z)
-    Label(model, body, string.format("%s  (level %d+)  Push me to the depot!", r.name, r.def.minLevel), UDim2.new(0, 280, 0, 44), Vector3.new(0, solid.Y / 2 + 2, 0), nil, 90)
+    Label(model, body, string.format("%s  (level %d+)  Push me to the depot!", r.name, r.def.minLevel), UDim2.new(0, 280, 0, 44), Vector3.new(0, solid.Y / 2 + 2, 0), nil, 32)        -- (only close up: from a distance it printed over the start sign, which says the same)
     model:SetAttribute("CourseId", r.id)
     model:SetAttribute("PathS", 0)
     model:SetAttribute("PathV", 0)

@@ -432,6 +432,20 @@ local function Varied(m, scale, flip, weave)
     return { m[1], p }
 end
 
+-- The kinds of piece a design is made of (its module names), and whether two designs are made of exactly the same kinds
+local function KindsOf(design)
+    local set = {}
+    for _, m in ipairs(design.modules) do set[m[1]] = true end
+    return set
+end
+local function SameKinds(a, b)
+    if not (a and b) then return false end
+    for k in pairs(a) do if not b[k] then return false end end
+    for k in pairs(b) do if not a[k] then return false end end
+    return true
+end
+TowerLayout.RECENT = 3         -- a design is not dealt again until this many levels have gone by
+
 -- How big the start platform of a level is: a wide gateway plaza when a new zone begins, a roomy one before a boss, a plain one otherwise
 local function RestSize(level, total, rng)
     if level == 1 or TowerData.IsZoneStart(level, total) then return 40, 34 end
@@ -449,7 +463,8 @@ function TowerLayout.Build(opts)
         base = base, seed = seed, total = total }
 
     local startX, y, z, dir = base.x, base.y, base.z, 1
-    local lastDesign = 0
+    local recent = {}                  -- the last few designs dealt (never dealt again straight away)
+    local lastKinds = nil              -- the kinds of piece on the level before (the next one must not be made of the very same)
     local lastModified = false
     local decks = {}
     for i = 1, total do
@@ -461,18 +476,26 @@ function TowerLayout.Build(opts)
         if boss then
             design = BOSSES[zoneId]
             designKey = "boss" .. zoneId
+            lastKinds = KindsOf(design)
         else
             local key = tier .. zoneId
             decks[key] = decks[key] or {}
             local pick
-            for _ = 1, 4 do                                                -- deal the next design of this deck (reshuffling when it runs out); never the same twice in a row
+            -- deal the next design of this deck (reshuffling when it runs out), but not one seen in the last few levels, and not one made of exactly the same kinds of piece as the
+            -- level before; one that does not suit goes back under the pile and comes up again later (after a dozen tries the next one is taken, so a small deck can never stall)
+            for attempt = 1, 12 do
                 if #decks[key] == 0 then decks[key] = Deck(tier, zoneId, rng) end
                 pick = table.remove(decks[key])
-                if pick ~= lastDesign then break end
+                local bad = SameKinds(KindsOf(DESIGNS[pick]), lastKinds)
+                for _, r in ipairs(recent) do if r == pick then bad = true end end
+                if not bad or attempt == 12 then break end
+                table.insert(decks[key], 1, pick)
             end
-            lastDesign = pick
+            table.insert(recent, pick)
+            if #recent > TowerLayout.RECENT then table.remove(recent, 1) end
             design = DESIGNS[pick]
             designKey = pick
+            lastKinds = KindsOf(design)
         end
 
         local restLen, restWidth = RestSize(i, total, rng)

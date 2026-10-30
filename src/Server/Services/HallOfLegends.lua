@@ -33,17 +33,28 @@ local function Part(props, parent)
     return p
 end
 
-local function Label(parent, anchor, text, size, color, maxDistance)
+-- A floating label sized in STUDS (a scale size on a billboard), not pixels: a pixel-sized label stays the same width on screen however far away you are, so from a distance
+-- three of them side by side overlapped each other (and the statues behind). In studs they shrink with distance like everything else, and stay inside their own statue's width.
+-- `lines` = { { text, colour, fraction of the height, font? } ... } stacked top to bottom.
+local function Label(parent, anchor, lines, widthStuds, heightStuds, maxDistance)
     local gui = Instance.new("BillboardGui")
-    gui.Adornee, gui.Size, gui.MaxDistance, gui.AlwaysOnTop = anchor, size, maxDistance or 150, false
+    gui.Adornee, gui.Size, gui.MaxDistance, gui.AlwaysOnTop = anchor, UDim2.fromScale(widthStuds, heightStuds), maxDistance or 150, false
     gui.Parent = anchor
-    local lbl = Instance.new("TextLabel")
-    lbl.Size, lbl.BackgroundTransparency, lbl.Text = UDim2.new(1, 0, 1, 0), 1, text
-    lbl.TextColor3, lbl.TextStrokeTransparency, lbl.Font = color, 0.2, Enum.Font.GothamBold
-    lbl.TextScaled, lbl.TextWrapped = true, true
-    lbl.Parent = gui
-    return lbl
+    local y = 0
+    for _, ln in ipairs(lines) do
+        local lbl = Instance.new("TextLabel")
+        lbl.Size, lbl.Position, lbl.BackgroundTransparency, lbl.Text = UDim2.new(1, 0, ln[3], 0), UDim2.new(0, 0, y, 0), 1, ln[1]
+        lbl.TextColor3, lbl.TextStrokeTransparency, lbl.Font = ln[2], 0.2, ln[4] or Enum.Font.GothamBold
+        lbl.TextScaled, lbl.TextWrapped = true, true
+        lbl.Parent = gui
+        y += ln[3]
+    end
+    return gui
 end
+
+HallOfLegends.PLAQUE_WIDTH = 32        -- studs: inside the 36 between statues, so neighbouring plaques never touch
+HallOfLegends.PLAQUE_RANGE = 70        -- studs: seen from the spawn the three statues are in a line pointing at you, so their plaques would pile up; the banner shows from far off,
+                                       -- the plaques only once you are close enough to be standing in front of them, where they are side by side
 
 -- One statue: a marble plinth with a glowing ring, the Golem standing on it, a beam of light overhead and a plaque. Returns the model (the Golem may be nil if it could not be built).
 local function BuildStatue(parent, def)
@@ -87,12 +98,16 @@ local function BuildStatue(parent, def)
         gm.Parent = group
     end
 
-    -- the plaque
-    local anchor = Part({ Name = "PlaqueAnchor", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(x, plinthH + 11 + def.scale * 2.2, z) }, group)
-    Label(group, anchor, def.title, UDim2.new(0, 360, 0, 58), def.color, 170)
-    local anchor2 = Part({ Name = "HowAnchor", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(x, plinthH + 6, z) }, group)
-    Label(group, anchor2, def.how, UDim2.new(0, 330, 0, 64), Color3.fromRGB(240, 232, 215), 60)
-    return group, gm
+    -- the plaque: one label, floating just above the Golem's head (measured from the model, since the three are different sizes), its name over how to get it
+    local top = plinthH + 11 + def.scale * 2.2
+    if gm then
+        local ok2, cf, size = pcall(function() return gm:GetBoundingBox() end)
+        if ok2 and cf and size then top = math.max(top, cf.Position.Y + size.Y / 2) end
+    end
+    local plaqueH = 12
+    local anchor = Part({ Name = "PlaqueAnchor", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(x, top + 2 + plaqueH / 2, z) }, group)
+    Label(group, anchor, { { def.title, def.color, 0.34 }, { def.how, Color3.fromRGB(240, 232, 215), 0.66, Enum.Font.GothamMedium } }, HallOfLegends.PLAQUE_WIDTH, plaqueH, HallOfLegends.PLAQUE_RANGE)
+    return group, gm, top + 2 + plaqueH
 end
 
 local state = { folder = nil, version = -1 }
@@ -120,11 +135,16 @@ local function BuildAll(parent)
         light.Color, light.Range, light.Brightness = Color3.fromRGB(255, 205, 100), 34, 1.6
         light.Parent = lamp
     end
-    for _, def in ipairs(HallOfLegends.Statues) do BuildStatue(folder, def) end
-    -- a banner over the whole hall
+    local highest = 0
+    for _, def in ipairs(HallOfLegends.Statues) do
+        local _, _, plaqueTop = BuildStatue(folder, def)
+        highest = math.max(highest, plaqueTop)
+    end
+    -- a banner over the whole hall, above the highest plaque so nothing sits in front of anything
     local c = HallOfLegends.CENTRE
-    local anchor = Part({ Name = "HallBanner", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(c.x, 38, c.z) }, folder)
-    Label(folder, anchor, "HALL OF LEGENDS\nWhat will you forge?", UDim2.new(0, 520, 0, 110), Color3.fromRGB(255, 226, 150), 220)
+    local bannerH = 13
+    local anchor = Part({ Name = "HallBanner", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(c.x, highest + 12 + bannerH / 2, c.z) }, folder)
+    Label(folder, anchor, { { "HALL OF LEGENDS", Color3.fromRGB(255, 226, 150), 0.6 }, { "What will you forge?", Color3.fromRGB(255, 240, 200), 0.4, Enum.Font.GothamMedium } }, 70, bannerH, 260)
     return folder
 end
 

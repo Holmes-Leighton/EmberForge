@@ -10,6 +10,11 @@ local P, Sign = CourierArt.P, CourierArt.Sign
 local TIMBER = Color3.fromRGB(100, 70, 44)
 
 -- Each level design has its own look: platform material and colours, and the glow colour of its edges
+-- How far away each kind of sign can be read (studs). They are pixel-sized, so every sign in range is the same size on screen however far off it is: with the old 220-320 stud
+-- ranges, looking up or down the tower showed a dozen at once, piled up toward the vanishing point and printed over each other. Levels are 22-47 studs apart, so these show
+-- the sign of the level you are on and one or two either side.
+TowerArt.SIGN_RANGE = { level = 70, gate = 150, boss = 150, chest = 70 }
+
 TowerArt.Themes = {
     wood      = { material = Enum.Material.Wood,         color = Color3.fromRGB(150, 104, 64),  rest = Color3.fromRGB(190, 140, 90),  accent = Color3.fromRGB(255, 190, 90), scaffold = true },
     sandstone = { material = Enum.Material.Sandstone,    color = Color3.fromRGB(196, 150, 100), rest = Color3.fromRGB(220, 180, 120), accent = Color3.fromRGB(255, 220, 130) },
@@ -496,7 +501,7 @@ local function ZoneGate(group, cp, width, zone, color, zoneNumber)
     light.Color, light.Range, light.Brightness = color, 60, 2
     light.Parent = lintel
     local anchor = P({ Name = "GateSign", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(cp.x, cp.y - 3 + h + 8, cp.z) }, group)
-    Sign(group, anchor, "ZONE " .. zoneNumber .. "\n" .. string.upper(zone.name), UDim2.new(0, 420, 0, 120), Vector3.new(0, 0, 0), color, 320)
+    Sign(group, anchor, "ZONE " .. zoneNumber .. "\n" .. string.upper(zone.name), UDim2.new(0, 420, 0, 120), Vector3.new(0, 0, 0), color, TowerArt.SIGN_RANGE.gate)
 end
 
 -- A treasure chest: a gold-banded box with a glowing lid and a column of light, so you can see what a zone pays from the level below.
@@ -520,7 +525,7 @@ local function Chest(group, pos, color, label)
     sparks.Parent = body
     if label then
         local anchor = P({ Name = "ChestSign", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(pos + Vector3.new(0, 11, 0)) }, group)
-        Sign(group, anchor, label, UDim2.new(0, 260, 0, 60), Vector3.new(0, 0, 0), Color3.fromRGB(255, 226, 120), 200)
+        Sign(group, anchor, label, UDim2.new(0, 260, 0, 60), Vector3.new(0, 0, 0), Color3.fromRGB(255, 226, 120), TowerArt.SIGN_RANGE.chest)
     end
     return body
 end
@@ -538,7 +543,7 @@ local function BossBanner(group, cp, width, name, color)
         light.Parent = flame
     end
     local anchor = P({ Name = "BossSign", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(cp.x, cp.y - 3 + 24, cp.z) }, group)
-    Sign(group, anchor, "BOSS\n" .. string.upper(name), UDim2.new(0, 340, 0, 100), Vector3.new(0, 0, 0), color, 280)
+    Sign(group, anchor, "BOSS\n" .. string.upper(name), UDim2.new(0, 340, 0, 100), Vector3.new(0, 0, 0), color, TowerArt.SIGN_RANGE.boss)
 end
 
 -- The platform holding a level's first checkpoint (its rest pad)
@@ -551,6 +556,7 @@ end
 
 -- ── Something different at the start of every level, and a different view beside it ──────────────────────────────────────────────────────
 -- Five ways to mark a level's start (the rainbow ring was on every ordinary level). Stepping 3 round a ring of 5 never gives the same kind to two levels in a row.
+TowerArt.REST_LIFT = 0.06
 TowerArt.ENTRANCES = { "ring", "arch", "lanterns", "banners", "torches" }
 function TowerArt.EntranceKind(level, seed)
     return TowerArt.ENTRANCES[((level * 3 + (seed or 0)) % #TowerArt.ENTRANCES) + 1]
@@ -680,6 +686,19 @@ function TowerArt.Build(parent, T)
             accent = Color3.fromHSV((h + 0.5) % 1, 0.35, 1), scaffold = theme.scaffold, beam = Color3.fromHSV(h, 0.9, 0.85),
         }
         local r = { id = "Tower", def = { tier = lv.tier, color = look.accent, look = look }, layout = LevelLayout(T, i, i == T.total) }
+        -- a level's rest pad overlaps the end of the level before (the course turns back on itself), at exactly the same height: two surfaces in two shades of the zone colour
+        -- would shimmer where they cross. So the pad is drawn a hair taller (a copy: the layout, and so every jump, is untouched).
+        local cp0 = r.layout.checkpoints[1]
+        if i > 1 and cp0 then
+            for k, pl in ipairs(r.layout.platforms) do
+                if math.abs(pl.x - cp0.x) < 0.01 then
+                    local c = table.clone(pl)
+                    c.sy, c.y = pl.sy + TowerArt.REST_LIFT, pl.y + TowerArt.REST_LIFT / 2
+                    r.layout.platforms[k] = c
+                    break
+                end
+            end
+        end
         local group = Instance.new("Folder")
         group.Name = "Level" .. i
         group.Parent = folder
@@ -705,7 +724,7 @@ function TowerArt.Build(parent, T)
             if lv.boss then BossBanner(group, cp, width, lv.design or "Boss", color) end
             local anchor = P({ Name = "LevelSignAnchor", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(cp.x, cp.y + 14, cp.z) }, group)
             local title = "LEVEL " .. i .. "\n" .. (lv.design or "")
-            Sign(group, anchor, title, UDim2.new(0, 280, 0, 84), Vector3.new(0, 0, 0), color, 220)
+            Sign(group, anchor, title, UDim2.new(0, 280, 0, 84), Vector3.new(0, 0, 0), color, TowerArt.SIGN_RANGE.level)
             local beam = P({ Name = "LevelBeam", Material = Enum.Material.Neon, Color = color, Transparency = 0.75, Size = Vector3.new(2, 40, 2), CanCollide = false,
                 CFrame = CFrame.new(cp.x, cp.y + 17, cp.z) }, group)
             local light = Instance.new("PointLight")

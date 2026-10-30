@@ -94,4 +94,67 @@ expect(islandPos(T) == islandPos(T), "the scenery is the same every time for the
 local T2 = TL.Build({ levels = 30, seed = 22, base = TD.BASE })
 expect(islandPos(T) ~= islandPos(T2), "and different from tower to tower")
 
+print("== no two surfaces fight")
+-- where one level's rest pad overlaps the end of the level before (the course turns back on itself) they sit at the same height; two shades of colour sharing a surface shimmer
+local pads = {}
+for _, lvFolder in ipairs(parent:FindFirstChild("SkyTower"):GetChildren()) do
+    local n = lvFolder.Name:match("^Level(%d+)$")
+    if n then
+        for _, d in ipairs(lvFolder:GetDescendants()) do
+            if d:IsA("BasePart") and d.CanCollide ~= false and d.Name:lower():find("platform") and not d.Name:find("Windmill") then
+                pads[#pads + 1] = { level = tonumber(n), x = d.CFrame.Position.X, y = d.CFrame.Position.Y, z = d.CFrame.Position.Z, sx = d.Size.X, sy = d.Size.Y, sz = d.Size.Z }
+            end
+        end
+    end
+end
+local sharing = 0
+for a = 1, #pads do
+    for b = a + 1, #pads do
+        local p1, p2 = pads[a], pads[b]
+        if p1.level ~= p2.level then
+            local ox = math.min(p1.x + p1.sx / 2, p2.x + p2.sx / 2) - math.max(p1.x - p1.sx / 2, p2.x - p2.sx / 2)
+            local oz = math.min(p1.z + p1.sz / 2, p2.z + p2.sz / 2) - math.max(p1.z - p1.sz / 2, p2.z - p2.sz / 2)
+            if ox > 0.1 and oz > 0.1 and math.abs((p1.y + p1.sy / 2) - (p2.y + p2.sy / 2)) < 0.02 then sharing += 1 end
+        end
+    end
+end
+expect(#pads > 100 and sharing == 0, "no platform of one level shares its top surface with another level's where they overlap (" .. sharing .. " do, of " .. #pads .. " platforms)")
+local windmillClean = true
+for _, d in ipairs(parent:GetDescendants()) do
+    if d.Name == "WindmillArm" then
+        local armTop = d.CFrame.Position.Y + d.Size.Y / 2
+        for _, pl in ipairs(pads) do
+            if math.abs(pl.x - d.CFrame.Position.X) < 14 and math.abs(pl.z - d.CFrame.Position.Z) < 14 and math.abs((pl.y + pl.sy / 2) - armTop) < 0.02 then windmillClean = false end
+        end
+    end
+end
+expect(windmillClean, "and a windmill arm never rides exactly level with a platform's top")
+
+print("== signs do not pile up")
+local maxRange, signCount = 0, 0
+for _, d in ipairs(parent:GetDescendants()) do
+    if d:IsA("BillboardGui") then
+        signCount += 1
+        maxRange = math.max(maxRange, d.MaxDistance)
+    end
+end
+expect(signCount > 30 and maxRange <= Art.SIGN_RANGE.gate, "every sign in the tower can only be read within " .. maxRange .. " studs (" .. signCount .. " signs), so looking up the tower never shows a dozen at once")
+local lvl = 0
+for _, d in ipairs(parent:GetDescendants()) do
+    if d.Name == "Sign" and d:IsA("BillboardGui") and d.Adornee and d.Adornee.Name == "LevelSignAnchor" then lvl += 1 expect(d.MaxDistance == Art.SIGN_RANGE.level, "a level sign is readable within " .. Art.SIGN_RANGE.level .. " studs") break end
+end
+local yStep = 1e9
+local lastY
+for _, c in ipairs(parent:FindFirstChild("SkyTower"):GetChildren()) do
+    if c.Name:find("^Level%d+$") then
+        for _, d in ipairs(c:GetDescendants()) do
+            if d.Name == "LevelSignAnchor" then
+                if lastY then yStep = math.min(yStep, math.abs(d.CFrame.Position.Y - lastY)) end
+                lastY = d.CFrame.Position.Y
+            end
+        end
+    end
+end
+expect(Art.SIGN_RANGE.level < 4 * yStep, "so at most three or four level signs are in range of any spot (the closest levels are " .. string.format("%.0f", yStep) .. " studs apart)")
+
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")

@@ -44,6 +44,7 @@ local function Sign(parent, adornee, text, size, offset, color, maxDistance)
 end
 
 local THICK_ARM = 1.2      -- how thick a windmill arm is
+local ARM_LIFT = 0.06      -- an arm rides this far above the hub's top, so the two never share a surface (they would shimmer)
 
 local function Clock(seconds)
     seconds = math.floor(seconds)
@@ -261,8 +262,8 @@ local function BuildObstacles(folder, r)
     for _, rt in ipairs(L.rotors or {}) do
         for i = 1, rt.arms do
             local a, mx, mz = CourierLayout.RotorArm(rt, i, 0)
-            local arm = moving("WindmillArm", Vector3.new(rt.radius, THICK_ARM, rt.width), CFrame.new(mx, rt.y - THICK_ARM / 2, mz) * CFrame.Angles(0, -a, 0), "EFCourierRotor",
-                { CX = rt.x, CZ = rt.z, Y = rt.y - THICK_ARM / 2, Radius = rt.radius, Arms = rt.arms, Index = i, Omega = rt.omega, Phase = rt.phase, Width = rt.width }, Color3.fromRGB(235, 170, 70))
+            local arm = moving("WindmillArm", Vector3.new(rt.radius, THICK_ARM, rt.width), CFrame.new(mx, rt.y - THICK_ARM / 2 + ARM_LIFT, mz) * CFrame.Angles(0, -a, 0), "EFCourierRotor",
+                { CX = rt.x, CZ = rt.z, Y = rt.y - THICK_ARM / 2 + ARM_LIFT, Radius = rt.radius, Arms = rt.arms, Index = i, Omega = rt.omega, Phase = rt.phase, Width = rt.width }, Color3.fromRGB(235, 170, 70))
             P({ Name = "WindmillTip", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 240, 150), Size = Vector3.new(0.4, 0.3, rt.width), CanCollide = false,
                 CFrame = arm.CFrame * CFrame.new(rt.radius / 2 - 0.4, THICK_ARM / 2 + 0.1, 0) }, arm)
         end

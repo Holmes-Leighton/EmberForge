@@ -80,9 +80,44 @@ expect(count("HallFloor") == 1 and count("HallPost") == 4 and count("HallLamp") 
 expect(count("HallEdge") >= 12, "and a dashed light along its edges (" .. count("HallEdge") .. ")")
 expect(count("Plinth") == 3 and count("StatueBeam") == 3 and count("StatueRing") == 3, "three plinths, beams and glowing rings")
 expect(count("PlaqueAnchor") == 3 and count("HallBanner") == 1, "three plaques and a banner over the hall")
+-- the labels: sized in studs (so they shrink with distance instead of piling up on screen), one per statue, inside the statue's own width, and the banner clear above them
+local guis, pixelSized, widest, plaqueTop = 0, 0, 0, 0
+for _, d in ipairs(parent:GetDescendants()) do
+    if d:IsA("BillboardGui") then
+        guis += 1
+        if d.Size.X.Offset ~= 0 or d.Size.Y.Offset ~= 0 then pixelSized += 1 end
+        if d.Adornee and d.Adornee.Name == "PlaqueAnchor" then
+            widest = math.max(widest, d.Size.X.Scale)
+            plaqueTop = math.max(plaqueTop, d.Adornee.CFrame.Position.Y + d.Size.Y.Scale / 2)
+        end
+    end
+end
+expect(guis == 4 and pixelSized == 0, "four labels in all (a plaque per statue and the banner), every one sized in studs (" .. guis .. ", " .. pixelSized .. " in pixels)")
+expect(widest <= Hall.SPACING - 3, "a plaque is " .. widest .. " studs wide, inside the " .. Hall.SPACING .. " between statues: neighbours never touch")
+local bannerAnchor
+for _, d in ipairs(parent:GetDescendants()) do if d.Name == "HallBanner" then bannerAnchor = d end end
+expect(bannerAnchor and bannerAnchor.CFrame.Position.Y - 6.5 >= plaqueTop + 6, "the banner floats above the highest plaque (" .. tostring(bannerAnchor and bannerAnchor.CFrame.Position.Y) .. " vs plaque top " .. plaqueTop .. ")")
+local plaqueRange, bannerRange = 0, 0
+for _, d in ipairs(parent:GetDescendants()) do
+    if d:IsA("BillboardGui") and d.Adornee then
+        if d.Adornee.Name == "PlaqueAnchor" then plaqueRange = math.max(plaqueRange, d.MaxDistance) else bannerRange = d.MaxDistance end
+    end
+end
+expect(plaqueRange <= 80 and bannerRange >= 200, "the plaques only show up close (" .. plaqueRange .. " studs: from the spawn the row of statues points at you and they would overlap), the banner from far off (" .. bannerRange .. ")")
+expect(count("HowAnchor") == 0, "and the how-to-get-it text is part of the plaque, not a second label down among the Golem's legs")
 Hall.Build(parent)
 local folders = 0
 for _, ch in ipairs(parent:GetChildren()) do if ch.Name == "HallOfLegends" then folders += 1 end end
 expect(folders == 1, "building again replaces the hall rather than doubling it")
+
+print("== nothing else stands in the plaza")
+local CartArt = load("SSS/EmberForge/Services/CartCourseArt")
+local sp = CartArt.SIGNPOST
+local margin = 6
+expect(sp.x + sp.depth + margin <= A.x1 or sp.x - sp.depth - margin >= A.x2 or sp.z + sp.halfWidth + margin <= A.z1 or sp.z - sp.halfWidth - margin >= A.z2,
+    "the Cart Runs signpost (x " .. sp.x .. ", z " .. sp.z .. ", " .. sp.halfWidth * 2 .. " studs wide) stands clear of the hall (x " .. A.x1 .. " to " .. A.x2 .. ", z " .. A.z1 .. " to " .. A.z2 .. ") by at least " .. margin .. " studs")
+local up = Instance.new("Folder")
+local okSign = pcall(function() return CartArt.BuildSignpost(up) end)
+expect(okSign, "and it still builds")
 
 print(FAILED and ("FAILED: " .. FAILED) or "ALL PASSED")
