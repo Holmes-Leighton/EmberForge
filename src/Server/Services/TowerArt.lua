@@ -549,6 +549,120 @@ local function RestPad(T, level, cp)
     return nil
 end
 
+-- ── Something different at the start of every level, and a different view beside it ──────────────────────────────────────────────────────
+-- Five ways to mark a level's start (the rainbow ring was on every ordinary level). Stepping 3 round a ring of 5 never gives the same kind to two levels in a row.
+TowerArt.ENTRANCES = { "ring", "arch", "lanterns", "banners", "torches" }
+function TowerArt.EntranceKind(level, seed)
+    return TowerArt.ENTRANCES[((level * 3 + (seed or 0)) % #TowerArt.ENTRANCES) + 1]
+end
+
+local function Entrance(group, cp, width, kind, color)
+    local halfW = math.max(width / 2, 14) + 1
+    local y0 = cp.y - 3
+    local warm = Color3.fromHSV(0.1, 0.7, 1)
+    if kind == "ring" then
+        TowerArt.RainbowRing(group, cp.x, y0 + 13, cp.z, 17, 26)
+    elseif kind == "arch" then
+        for _, side in ipairs({ -1, 1 }) do
+            P({ Name = "ArchPillar", Material = Enum.Material.Slate, Color = Color3.fromRGB(86, 82, 100), Size = Vector3.new(3, 20, 3), CanCollide = false, CFrame = CFrame.new(cp.x, y0 + 10, cp.z + side * halfW) }, group)
+            P({ Name = "ArchGlow", Material = Enum.Material.Neon, Color = color, Size = Vector3.new(3.4, 1, 3.4), CanCollide = false, CFrame = CFrame.new(cp.x, y0 + 20.5, cp.z + side * halfW) }, group)
+        end
+        P({ Name = "ArchLintel", Material = Enum.Material.Neon, Color = color, Size = Vector3.new(1.6, 1.6, halfW * 2 + 3), CanCollide = false, CFrame = CFrame.new(cp.x, y0 + 21.5, cp.z) }, group)
+    elseif kind == "lanterns" then
+        local n = 7
+        for k = 1, n do
+            local t = (k - 1) / (n - 1)
+            local z = cp.z + (t * 2 - 1) * halfW
+            local y = y0 + 22 - 5 * math.sin(math.pi * t)                       -- a string hung between two posts: it sags in the middle
+            P({ Name = "Lantern", Shape = Enum.PartType.Ball, Material = Enum.Material.Neon, Color = (k % 2 == 0) and color or warm,
+                Size = Vector3.new(2.6, 2.6, 2.6), CanCollide = false, CFrame = CFrame.new(cp.x, y, z) }, group)
+        end
+        for _, side in ipairs({ -1, 1 }) do
+            P({ Name = "LanternPost", Material = Enum.Material.Wood, Color = TIMBER, Size = Vector3.new(1.4, 22, 1.4), CanCollide = false, CFrame = CFrame.new(cp.x, y0 + 11, cp.z + side * halfW) }, group)
+        end
+    elseif kind == "banners" then
+        for _, side in ipairs({ -1, 1 }) do
+            P({ Name = "BannerPole", Material = Enum.Material.Metal, Color = Color3.fromRGB(60, 56, 70), Size = Vector3.new(1.2, 24, 1.2), CanCollide = false, CFrame = CFrame.new(cp.x, y0 + 12, cp.z + side * halfW) }, group)
+            P({ Name = "BannerTip", Shape = Enum.PartType.Ball, Material = Enum.Material.Neon, Color = color, Size = Vector3.new(2.4, 2.4, 2.4), CanCollide = false, CFrame = CFrame.new(cp.x, y0 + 25, cp.z + side * halfW) }, group)
+            P({ Name = "BannerCloth", Material = Enum.Material.Fabric, Color = color, Size = Vector3.new(0.4, 12, 5), CanCollide = false, CFrame = CFrame.new(cp.x, y0 + 16, cp.z + side * (halfW - 3)) }, group)
+        end
+    else                                                                      -- torches: two fire posts each side
+        for _, side in ipairs({ -1, 1 }) do
+            for _, dx in ipairs({ -5, 5 }) do
+                P({ Name = "TorchPost", Material = Enum.Material.Wood, Color = TIMBER, Size = Vector3.new(1.2, 7, 1.2), CanCollide = false, CFrame = CFrame.new(cp.x + dx, y0 + 3.5, cp.z + side * halfW) }, group)
+                local flame = P({ Name = "TorchFlame", Shape = Enum.PartType.Ball, Material = Enum.Material.Neon, Color = warm, Size = Vector3.new(2.6, 3.4, 2.6), CanCollide = false, CFrame = CFrame.new(cp.x + dx, y0 + 8.4, cp.z + side * halfW) }, group)
+                if dx > 0 then
+                    local light = Instance.new("PointLight")
+                    light.Color, light.Range, light.Brightness = warm, 28, 1.6
+                    light.Parent = flame
+                end
+            end
+        end
+    end
+end
+
+-- A floating island beside the course with the zone's own scenery on it, a different one on each level: standing rock (Granite Steps), obsidian spires with glowing cores (Ember),
+-- ice crystals (Frost), crackling storm orbs (Storm) and drifting cubes (Void). It sits well off to one side (never in the climbing space) and nothing on it is solid.
+TowerArt.BACKDROP_MIN, TowerArt.BACKDROP_MAX = 56, 90                       -- how far from the level's centre line the island sits (studs; its own radius is at most 22)
+local function Backdrop(group, T, lv, i, lo, hi, cy, zc, color)
+    local rng = Random.new(T.seed * 31 + i * 977)
+    local side = (i % 2 == 0) and 1 or -1
+    if rng:NextInteger(1, 4) == 1 then side = -side end
+    local cx = lo + (hi - lo) * rng:NextNumber(0.2, 0.8)
+    local cz = zc + side * rng:NextNumber(TowerArt.BACKDROP_MIN, TowerArt.BACKDROP_MAX)
+    local y = cy + rng:NextNumber(-8, 22)
+    local d = rng:NextNumber(26, 44)
+    local rock = Color3.fromRGB(78, 74, 86)
+    P({ Name = "BackdropIsland", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Slate, Color = rock, Size = Vector3.new(5, d, d), CanCollide = false, CastShadow = false,
+        CFrame = CFrame.new(cx, y, cz) * CFrame.Angles(0, 0, math.pi / 2) }, group)
+    P({ Name = "BackdropUnder", Shape = Enum.PartType.Ball, Material = Enum.Material.Slate, Color = Color3.fromRGB(58, 54, 66), Size = Vector3.new(d * 0.8, d * 0.9, d * 0.8), CanCollide = false, CastShadow = false,
+        CFrame = CFrame.new(cx, y - d * 0.35, cz) }, group)
+    P({ Name = "BackdropTop", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Grass, Color = Color3.fromHSV(select(2, TowerData.ZoneColor(i, T.total)), 0.35, 0.6), Size = Vector3.new(0.8, d - 2, d - 2), CanCollide = false, CastShadow = false,
+        CFrame = CFrame.new(cx, y + 2.7, cz) * CFrame.Angles(0, 0, math.pi / 2) }, group)
+    local top = y + 3.1
+    local zone = lv.zone
+    local n = rng:NextInteger(3, 6)
+    for k = 1, n do
+        local ang = rng:NextNumber(0, 2 * math.pi)
+        local r = rng:NextNumber(0, d * 0.32)
+        local px, pz = cx + math.cos(ang) * r, cz + math.sin(ang) * r
+        local tilt = CFrame.Angles(rng:NextNumber(-0.25, 0.25), rng:NextNumber(0, 3), rng:NextNumber(-0.25, 0.25))
+        if zone == 1 then                                                     -- standing rock
+            local hgt = rng:NextNumber(10, 26)
+            P({ Name = "BackdropRock", Material = Enum.Material.Slate, Color = Color3.fromRGB(120 + k * 6, 116 + k * 6, 118), Size = Vector3.new(rng:NextNumber(4, 8), hgt, rng:NextNumber(4, 8)), CanCollide = false,
+                CFrame = CFrame.new(px, top + hgt / 2, pz) * tilt }, group)
+        elseif zone == 2 then                                                 -- obsidian with a glowing core
+            local hgt = rng:NextNumber(12, 30)
+            P({ Name = "BackdropSpire", Material = Enum.Material.Basalt, Color = Color3.fromRGB(44, 34, 38), Size = Vector3.new(6, hgt, 6), CanCollide = false, CFrame = CFrame.new(px, top + hgt / 2, pz) * tilt }, group)
+            local core = P({ Name = "BackdropCore", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 96, 40), Size = Vector3.new(1.6, hgt * 0.9, 6.2), CanCollide = false, CFrame = CFrame.new(px, top + hgt / 2, pz) * tilt }, group)
+            if k == 1 then
+                local light = Instance.new("PointLight")
+                light.Color, light.Range, light.Brightness = Color3.fromRGB(255, 120, 60), 50, 1.5
+                light.Parent = core
+            end
+        elseif zone == 3 then                                                 -- ice crystals
+            local hgt = rng:NextNumber(8, 24)
+            P({ Name = "BackdropIce", Material = Enum.Material.Ice, Color = Color3.fromRGB(170, 220, 250), Transparency = 0.2, Size = Vector3.new(rng:NextNumber(3, 6), hgt, rng:NextNumber(3, 6)), CanCollide = false,
+                CFrame = CFrame.new(px, top + hgt / 2, pz) * CFrame.Angles(rng:NextNumber(-0.5, 0.5), rng:NextNumber(0, 3), rng:NextNumber(-0.5, 0.5)) }, group)
+        elseif zone == 4 then                                                 -- a storm orb with a bolt
+            local s = rng:NextNumber(5, 9)
+            local orb = P({ Name = "BackdropOrb", Shape = Enum.PartType.Ball, Material = Enum.Material.Neon, Color = Color3.fromRGB(190, 170, 255), Size = Vector3.new(s, s, s), CanCollide = false,
+                CFrame = CFrame.new(px, top + 8 + k * 3, pz) }, group)
+            P({ Name = "BackdropBolt", Material = Enum.Material.Neon, Color = Color3.fromRGB(240, 235, 255), Size = Vector3.new(0.6, 16, 0.6), CanCollide = false,
+                CFrame = CFrame.new(px, top + 8 + k * 3 - s / 2 - 7, pz) * CFrame.Angles(0, 0, rng:NextNumber(-0.3, 0.3)) }, group)
+            if k == 1 then
+                local light = Instance.new("PointLight")
+                light.Color, light.Range, light.Brightness = Color3.fromRGB(190, 170, 255), 50, 1.5
+                light.Parent = orb
+            end
+        else                                                                  -- drifting cubes
+            local s = rng:NextNumber(4, 9)
+            P({ Name = "BackdropCube", Material = (k % 3 == 0) and Enum.Material.Neon or Enum.Material.SmoothPlastic, Color = (k % 3 == 0) and color or Color3.fromRGB(46, 36, 70),
+                Size = Vector3.new(s, s, s), CanCollide = false, CFrame = CFrame.new(px, top + rng:NextNumber(6, 30), pz) * CFrame.Angles(rng:NextNumber(0, 3), rng:NextNumber(0, 3), rng:NextNumber(0, 3)) }, group)
+        end
+    end
+end
+
 -- Builds the whole tower for a layout T under `parent`. Returns the folder.
 function TowerArt.Build(parent, T)
     local folder = Instance.new("Folder")
@@ -571,6 +685,10 @@ function TowerArt.Build(parent, T)
         group.Parent = folder
         CourierArt.Platforms(group, r)
         CourierArt.Obstacles(group, r)
+        local lo, hi, zsum, n = 1e9, -1e9, 0, 0
+        for _, p in ipairs(r.layout.platforms) do lo, hi, zsum, n = math.min(lo, p.x), math.max(hi, p.x), zsum + p.z, n + 1 end
+        local cp1 = r.layout.checkpoints[1]
+        if n > 0 and cp1 then Backdrop(group, T, lv, i, lo, hi, cp1.y, zsum / n, color) end       -- (scenery beside the course, different on every level)
         -- the level's number, big on a sign above its start platform (readable from the level below)
         local cp = r.layout.checkpoints[1]
         if cp then
@@ -582,7 +700,7 @@ function TowerArt.Build(parent, T)
             elseif i == 1 then
                 ZoneGate(group, cp, width, zone, color, lv.zone)
             else
-                TowerArt.RainbowRing(group, cp.x, cp.y - 3 + 13, cp.z, 17, 26)
+                Entrance(group, cp, width, TowerArt.EntranceKind(i, T.seed), color)           -- (a different kind of doorway from the level before)
             end
             if lv.boss then BossBanner(group, cp, width, lv.design or "Boss", color) end
             local anchor = P({ Name = "LevelSignAnchor", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(cp.x, cp.y + 14, cp.z) }, group)

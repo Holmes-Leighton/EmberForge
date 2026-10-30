@@ -5,7 +5,8 @@ local MoodData = {}
 
 MoodData.SHADOWS = true            -- real shadows give the world depth; set false if low-end phones struggle
 MoodData.BLEND_SECONDS = 1.6
-MoodData.MAX_LIGHT = 2.6          -- the most any mood may light the world: brightness x 2^exposure (a test holds every mood to it; the old murky cavern was 1.0)       -- how long a change of mood takes to fade in
+MoodData.MIN_LIGHT = 0.8          -- and the least any tower mood may (a test holds the darkest, "Lights Out", to it so platforms can always be seen)
+MoodData.MAX_LIGHT = 2.6         -- the most any mood may light the world: brightness x 2^exposure (a test holds every mood to it; the old murky cavern was 1.0)       -- how long a change of mood takes to fade in
 
 local function M(t) return t end
 
@@ -57,6 +58,11 @@ MoodData.Moods = {
     TowerVoid = M{ ambient = { 110, 85, 150 }, outdoor = { 110, 85, 150 }, brightness = 1.7, exposure = 0.0,
         density = 0.42, offset = 0.0, haze = 1.6, atmColor = { 130, 85, 200 }, atmDecay = { 70, 40, 120 },
         tint = { 238, 226, 255 }, sat = 0.24, contrast = 0.26, bloomI = 0.55, bloomSize = 34, bloomThreshold = 0.95 },
+
+    -- a "Lights Out" level: the sky goes dark, but not so dark that a platform can't be seen (a test holds it above MIN_LIGHT); neon and glowing things stand out
+    TowerDark = M{ ambient = { 74, 82, 128 }, outdoor = { 74, 82, 128 }, brightness = 1.0, exposure = -0.1,
+        density = 0.46, offset = 0.0, haze = 2.4, atmColor = { 40, 48, 96 }, atmDecay = { 20, 24, 60 },
+        tint = { 226, 232, 255 }, sat = 0.3, contrast = 0.22, bloomI = 0.9, bloomSize = 36, bloomThreshold = 0.85 },
 
     -- the Foggy Peaks mutator: the zone's sky is swallowed by thick fog (you can only see a short way ahead)
     TowerFog = M{ ambient = { 150, 154, 170 }, outdoor = { 150, 154, 170 }, brightness = 2.2, exposure = 0.2,

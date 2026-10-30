@@ -6,6 +6,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 
 local ProductData = require(game.ReplicatedStorage.Shared.Data.ProductData)
 local TowerData   = require(game.ReplicatedStorage.Shared.Data.TowerData)
+local SpeedData   = require(game.ReplicatedStorage.Shared.Data.SpeedData)
 local TowerLayout = require(game.ReplicatedStorage.Shared.Modules.TowerLayout)
 local CourierData = require(game.ReplicatedStorage.Shared.Data.CourierData)
 local CartBountyData = require(game.ReplicatedStorage.Shared.Data.CartBountyData)
@@ -69,15 +70,31 @@ local function MutatorInfo(m)
     return { id = m.id, name = m.name, desc = m.desc, fog = m.fog == true, walk = m.walk, jump = m.jump, lava = m.lava, pay = m.pay, penalty = m.penalty }
 end
 
--- This round's twist on how a climber moves (Turbo, Moon Jump): remembered so it can be put back when the climb ends
-local function ApplyMovement(player, rec)
+-- The twist on level `level` (Low Gravity, Dash, Heavy Boots, Lights Out), or nil
+local function LevelRule(level)
+    local lv = state.layout and state.layout.levels[level]
+    return lv and lv.modifier and TowerData.LevelMods[lv.modifier] or nil
+end
+
+local function RuleInfo(rule)
+    return rule and { id = rule.id, name = rule.name, desc = rule.desc, dark = rule.dark == true } or nil
+end
+
+-- How a climber moves on `level`: this round's twist (Turbo, Moon Jump) and the level's own twist together. Done on every new level; what the player had is remembered so it can be
+-- put back when the climb ends. The Sky Tower is built for the plain walk (no speed-training bonus there, see PadService), so that is what the multipliers act on. The level's rule
+-- is also put on the player as the TowerRule attribute, which the client reads for the banner and the lights.
+local function ApplyMovement(player, rec, level)
     local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-    local mut = state.mutator
-    if not hum or not (mut.walk or mut.jump) then return end
-    rec.saved = { walk = hum.WalkSpeed, useJumpPower = hum.UseJumpPower, jumpPower = hum.JumpPower, jumpHeight = hum.JumpHeight }
-    local walk, power, height = TowerData.MovementFor(mut, hum.WalkSpeed, hum.UseJumpPower, hum.JumpPower, hum.JumpHeight)
+    local rule = LevelRule(level or 1)
+    player:SetAttribute("TowerRule", rule and rule.id or nil)
+    if not hum then return end
+    local both = TowerData.CombineMods(state.mutator, rule)
+    if not (both.walk or both.jump) and not rec.saved then return end        -- (a plain level in a plain round: nothing to change, nothing to put back)
+    rec.saved = rec.saved or { walk = hum.WalkSpeed, useJumpPower = hum.UseJumpPower, jumpPower = hum.JumpPower, jumpHeight = hum.JumpHeight }
+    local s = rec.saved
+    local walk, power, height = TowerData.MovementFor(both, SpeedData.BASE_WALK, s.useJumpPower, s.jumpPower, s.jumpHeight)
     hum.WalkSpeed = walk
-    if hum.UseJumpPower then hum.JumpPower = power else hum.JumpHeight = height end
+    if s.useJumpPower then hum.JumpPower = power else hum.JumpHeight = height end
 end
 
 local function RestoreMovement(rec)
@@ -90,7 +107,7 @@ local function RestoreMovement(rec)
 end
 
 local function ClearAttributes(player)
-    for _, name in ipairs({ "TowerLevel", "TowerTotal", "TowerStart", "TowerRespawns", "TowerLavaY0", "TowerLavaT0", "TowerLavaRise" }) do
+    for _, name in ipairs({ "TowerLevel", "TowerTotal", "TowerStart", "TowerRespawns", "TowerLavaY0", "TowerLavaT0", "TowerLavaRise", "TowerRule" }) do
         player:SetAttribute(name, nil)
     end
 end
@@ -121,7 +138,7 @@ local function PayLevel(rec, level)
     local total = state.layout.total
     local best = roundBest[player.UserId] or 0
     if level <= best then
-        Fire(player, "level", { level = level, total = total, repeatLevel = true, seconds = TowerRunner.Elapsed(rec.run, ServerNow()) })
+        Fire(player, "level", { level = level, total = total, repeatLevel = true, rule = RuleInfo(LevelRule(level)), seconds = TowerRunner.Elapsed(rec.run, ServerNow()) })
         return
     end
     roundBest[player.UserId] = level
@@ -142,7 +159,7 @@ local function PayLevel(rec, level)
         capped = result.capped, playerLevelUp = leveled and newLevel or nil, courierLevel = result.courierLevel, courierLevelUp = result.levelUps > 0,
         seconds = TowerRunner.Elapsed(rec.run, ServerNow()), daily = daily,
         zone = state.layout.levels[level].zone, zoneStart = state.layout.levels[level].zoneStart, boss = state.layout.levels[level].boss,
-        zoneClear = result.zoneClear,
+        zoneClear = result.zoneClear, rule = RuleInfo(LevelRule(level)),
     })
 end
 
@@ -183,6 +200,7 @@ local function StartRun(player)
         onLevel = function(level, seconds)
             PayLevel(rec, level)
             player:SetAttribute("TowerLevel", level)
+            ApplyMovement(player, rec, level)
             SetLavaAttributes(player, rec.run)
         end,
         onRespawn = function(reason, level, cp)
@@ -228,7 +246,7 @@ local function StartRun(player)
         end,
     }, now, state.mutator)
     runs[player.UserId] = rec
-    ApplyMovement(player, rec)
+    ApplyMovement(player, rec, 1)
     player:SetAttribute("TowerLevel", 1)
     player:SetAttribute("TowerTotal", T.total)
     player:SetAttribute("TowerStart", now)
@@ -257,6 +275,7 @@ local function DoSkip(rec)
         root.AssemblyLinearVelocity = Vector3.zero
     end
     rec.player:SetAttribute("TowerLevel", level)
+    ApplyMovement(rec.player, rec, level)
     SetLavaAttributes(rec.player, run)
     PayLevel(rec, level)
     Fire(rec.player, "skipped", { level = level, left = TowerData.SKIPS_PER_ROUND - rec.skips })
@@ -322,6 +341,7 @@ local function DevJump()
             root.AssemblyLinearVelocity = Vector3.zero
         end
         rec.player:SetAttribute("TowerLevel", n)
+        ApplyMovement(rec.player, rec, n)
         SetLavaAttributes(rec.player, run)
     end
 end
@@ -454,6 +474,8 @@ function TowerService.Init()
         roundBest[player.UserId] = nil
     end)
 end
+
+TowerService._internals = { runs = runs, state = state, StartRun = StartRun, Tick = Tick, EndRun = EndRun }        -- (for the tests)
 
 -- True while this player is up in the tower (the rest of the game uses it to refuse things that make no sense mid-climb, like collecting mined resources)
 function TowerService.InTower(player) return InTower(player) end

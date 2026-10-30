@@ -117,7 +117,7 @@ local badgeScale = nil
 local roundEnds, total = nil, 30
 local dailyTarget, dailyDone = nil, false
 local lava
-local mutator, curZone, curMood = nil, nil, nil
+local mutator, curZone, curMood, curRule = nil, nil, nil, nil
 local zoneLbl, skipBtn, skipSub
 local skipsLeft, skipOwned = 0, 0
 
@@ -308,15 +308,20 @@ local function Update(now)
     levelLbl.Text = string.format("LEVEL %d / %d", level, total)
     levelLbl.TextColor3 = LevelColor(level)
     -- the zone you are climbing: its name on the strip, and the sky and light change to match
+    -- (and a level with its own rule, "Lights Out", has its own dark sky; the rule is named on the strip too)
     local zone = TowerData.ZoneOf(level, total)
-    if zone ~= curZone then
-        curZone = zone
+    local rule = TowerData.LevelMods[LocalPlayer:GetAttribute("TowerRule") or ""]
+    if zone ~= curZone or rule ~= curRule then
+        curZone, curRule = zone, rule
         local z = TowerData.ZONES[zone]
         zoneLbl.TextColor3 = LevelColor(level)
-        local mood = (mutator and mutator.fog) and "TowerFog" or MoodData.TowerMood(level, total)
+        zoneLbl.Text = string.format("ZONE %d  -  %s%s%s", zone, string.upper(z.name), mutator and mutator.id ~= "classic" and ("   |   " .. mutator.name:upper()) or "",
+            rule and ("   |   " .. rule.name:upper()) or "")
+    end
+    local mood = (rule and rule.dark) and "TowerDark" or ((mutator and mutator.fog) and "TowerFog" or MoodData.TowerMood(level, total))
+    if mood ~= curMood then
         curMood = mood
         Mood(mood)
-        zoneLbl.Text = string.format("ZONE %d  -  %s%s", zone, string.upper(z.name), mutator and mutator.id ~= "classic" and ("   |   " .. mutator.name:upper()) or "")
     end
     skipBtn.Visible = skipsLeft > 0 and level < total
     skipSub.Visible = skipBtn.Visible
@@ -416,7 +421,7 @@ local function OnEvent(kind, p)
         dailyTarget, dailyDone = p.dailyTarget, p.dailyDone
         mutator = p.mutator
         skipsLeft, skipOwned = p.skips or 0, p.skipOwned or 0
-        curZone = nil                                               -- (so the strip and the sky are set for the zone you start in)
+        curZone, curMood, curRule = nil, nil, nil                   -- (so the strip and the sky are set for the zone you start in)
         if p.faceAt then require(script.Parent.Feel).FaceCourse(1, Vector3.new(p.faceAt.x, p.faceAt.y, p.faceAt.z)) end        -- (the lobby faces east, into the tower)
         hud.Enabled = true
         Scene("Tower")
@@ -446,6 +451,13 @@ local function OnEvent(kind, p)
             end)
         elseif p.zoneStart and p.level > 1 then
             task.delay(0.6, function() Banner(string.format("ZONE %d  -  %s", p.zone or 1, string.upper(TowerData.ZONES[p.zone or 1].name)), col) end)
+        end
+        if p.rule then
+            -- this level plays by its own rule: say so as you arrive (after the level and zone banners; bosses never have a rule)
+            task.delay(1.6, function()
+                Banner(string.format("%s: %s", p.rule.name, p.rule.desc or ""), Color3.fromRGB(190, 160, 255))
+                Snd("TowerStart", { pitch = p.rule.dark and 0.7 or 1.25, volume = 0.7 })
+            end)
         end
         if p.boss then
             task.delay(0.9, function()
@@ -503,7 +515,7 @@ local function OnEvent(kind, p)
     elseif kind == "roundover" or kind == "abandon" then
         hud.Enabled = false
         if lava then lava:Destroy() lava = nil end
-        mutator, curZone = nil, nil
+        mutator, curZone, curMood, curRule = nil, nil, nil, nil
         require(script.Parent.Feel).FaceHome()                      -- (back through the portal: face the way the game starts)
         Scene("Hub")
         Mood(nil)                                                   -- the lighting goes back to following where you stand

@@ -47,6 +47,15 @@ for name, m in pairs(MoodData.Moods) do
     expect(light <= MoodData.MAX_LIGHT, name .. " lights the world at " .. string.format("%.2f", light) .. " (limit " .. MoodData.MAX_LIGHT .. ")")
     expect(m.bloomI <= 0.9 and m.bloomThreshold >= 0.85, name .. " does not bloom everything (intensity " .. m.bloomI .. ", threshold " .. m.bloomThreshold .. ")")
 end
+local dark = MoodData.Moods.TowerDark
+expect(dark ~= nil, "the Lights Out level has its own mood")
+local darkLight = dark.brightness * 2 ^ dark.exposure
+expect(darkLight >= MoodData.MIN_LIGHT, "which is dark but not black: it lights the world at " .. string.format("%.2f", darkLight) .. " (floor " .. MoodData.MIN_LIGHT .. ")")
+for _, z in ipairs(MoodData.TOWER_ZONES) do
+    local m = MoodData.Moods["Tower" .. z]
+    expect(darkLight < m.brightness * 2 ^ m.exposure - 0.5, "and it is clearly darker than the " .. z .. " sky")
+end
+expect(dark.bloomI >= 0.8, "with strong glow, so neon pieces stand out")
 for _, z in ipairs(MoodData.TOWER_ZONES) do
     local m = MoodData.Moods["Tower" .. z]
     expect(m.brightness * 2 ^ m.exposure <= 2.3 and m.bloomI <= 0.6, "tower zone " .. z .. " is kept calmer still, so platforms show against the sky")

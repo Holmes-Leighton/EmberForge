@@ -89,6 +89,9 @@
 - [ ] **Create the Sky Tower level-skip Developer Product** and paste its id into `ProductData.Products.TowerSkip` (id 0 = not for sale yet).
 - [ ] Look at it in Studio: the mood lighting (`MoodData.lua`, shadows are now on: `MoodData.SHADOWS`), the zone gates/chests/boss banners (`TowerArt.lua`), the Hall of Legends statues beside the
       spawn (`HallOfLegends.lua`), the Maze orbs/crates/room pillars (`MazeArt.lua`). Everything is tested in mocks only.
+- [ ] Look at the new Sky Tower pieces in Studio: windmills (ride an arm in, jump off at the landing), vanishing platforms, wall chimneys, and the level rules (Low Gravity, Dash, Heavy Boots,
+      Lights Out: `TowerData.LevelMods`, applied per level in `TowerService.ApplyMovement`, the dark sky is `MoodData.TowerDark`). Mocks prove the maths and fairness only. Studio shortcut: set
+      workspace attribute `DevTowerLevel` to jump to a level. Each level now also has its own doorway (ring, arch, lanterns, banners, torches: `TowerArt.EntranceKind`) and a floating scenery island beside the course in its zone's style (`TowerArt` Backdrop): look at the island distance and size in Studio.
 - [ ] Playtest with real people (5 of them, not you) and watch the funnel (`AnalyticsHelper`: Joined, FirstGolemCrafted ... FirstMazeEscape, Retention days 1/3/7/14, TimeTo events).
 - [ ] Balance guesses to tune with real play: Tower mutators and zone chests, Maze hearing radii (`MazeData.HEAR_*`), item durations, the 30-piece Maze Golem pace.
 
