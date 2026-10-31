@@ -58,6 +58,17 @@ local function SendHome(player)
     end
 end
 
+-- Put the root at `pos` keeping the way it faces (a bare CFrame.new(pos) turns the player to face north every time),
+-- or turned to look along `lookDir` when that is given
+local function MoveKeepingFacing(root, pos, lookDir)
+    if lookDir and Vector3.new(lookDir.X, 0, lookDir.Z).Magnitude > 0.01 then
+        root.CFrame = CFrame.lookAt(pos, pos + Vector3.new(lookDir.X, 0, lookDir.Z))
+    else
+        local now = root.CFrame
+        root.CFrame = now and CFrame.new(pos) * now.Rotation or CFrame.new(pos)
+    end
+end
+
 local function SendToLobby(player)
     local root = Root(player)
     if root and state.art then
@@ -92,7 +103,9 @@ local function Unhide(rec, silent)
     local root = Root(rec.player)
     if root then
         root.Anchored = false
-        if h then root.CFrame = CFrame.new(h.outX or h.x, (h.y or root.Position.Y) + 3, h.outZ or h.z) end      -- step out into the middle of the cell
+        if h then      -- step out into the middle of the cell, facing away from the crate
+            MoveKeepingFacing(root, Vector3.new(h.outX or h.x, (h.y or root.Position.Y) + 3, h.outZ or h.z), Vector3.new((h.outX or h.x) - h.x, 0, (h.outZ or h.z) - h.z))
+        end
         root.AssemblyLinearVelocity = Vector3.zero
     end
     rec.player:SetAttribute("MazeHidden", nil)
@@ -121,7 +134,7 @@ local function ToggleHide(player, h)
     end
     h.occupant = player.UserId
     rec.hideout = h
-    root.CFrame = CFrame.new(h.x, (h.y or root.Position.Y) + 3, h.z)
+    MoveKeepingFacing(root, Vector3.new(h.x, (h.y or root.Position.Y) + 3, h.z))
     root.AssemblyLinearVelocity = Vector3.zero
     root.Anchored = true
     rec.lastPos = nil
@@ -421,7 +434,7 @@ local function Tick()
             end
             if jumped and not rec.caught then
                 -- a teleport inside the maze (or a long lag spike): put them back where they were seen, no penalty beyond that
-                root.CFrame = CFrame.new(rec.lastGood or p) * CFrame.Angles(0, 0, 0)
+                MoveKeepingFacing(root, rec.lastGood or p)
                 rec.lastPos = rec.lastGood or p
             elseif not rec.caught and not rec.escaped then
                 rec.lastGood = p
