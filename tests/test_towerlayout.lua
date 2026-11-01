@@ -210,7 +210,7 @@ for seed = 1, 40 do
         local dy = firstRest.y + firstRest.sy / 2 - (last.y + last.sy / 2)
         local dz = math.abs(firstRest.z - last.z) - (firstRest.sz + last.sz) / 2
         local xOverlap = math.min(firstRest.x + firstRest.sx / 2, last.x + last.sx / 2) - math.max(firstRest.x - firstRest.sx / 2, last.x - last.sx / 2)
-        if math.abs(dy) > 0.01 or dz > 3 or xOverlap < 0 then bad[#bad + 1] = string.format("seed %d, %d to %d: dy %.2f dz %.1f overlap %.1f", seed, i, i + 1, dy, dz, xOverlap) end
+        if math.abs(dy) > 0.01 or dz > 3 or xOverlap < -0.01 then bad[#bad + 1] = string.format("seed %d, %d to %d: dy %.2f dz %.1f overlap %.1f", seed, i, i + 1, dy, dz, xOverlap) end
     end
 end
 expect(#bad == 0, "every climb lands on the next level's rest platform (" .. #bad .. " bad" .. (bad[1] and (": " .. bad[1]) or "") .. ")")
@@ -230,6 +230,45 @@ for seed = 1, 10 do
     end
 end
 expect(clash == 0, "levels more than one apart never overlap vertically (" .. clash .. " clashes)")
+
+print("== nothing hangs over the way up")
+-- A level's start plaza used to be hung over the staircase or spiral that led up to it, and tall pieces (chimney walls, crushers) poked into the level above. Every tower is checked:
+-- nothing of one level may sit in the 12 studs of free space above anything another level has you stand on.
+local overhead, firstOverhead, checked = 0, nil, 0
+for seed = 1, 40 do
+    for _, levels in ipairs({ 30, 60 }) do
+        if levels == 30 or seed <= 8 then
+            local tw = build(seed * 41 + 9, levels)
+            local per = {}
+            for i = 1, #tw.levels do per[i] = TL.Solids(tw, i, nil, i) end
+            for a = 1, #tw.levels do
+                for b = a + 1, math.min(#tw.levels, a + 3) do
+                    local n, first = TL.Clashes(per[a], per[b])
+                    overhead += n
+                    if n > 0 and not firstOverhead then firstOverhead = "seed " .. seed .. ": " .. first end
+                end
+            end
+            checked += 1
+        end
+    end
+end
+expect(overhead == 0, "no level hangs over another's footing (" .. checked .. " towers, " .. overhead .. " clashes" .. (firstOverhead and (": " .. firstOverhead) or "") .. ")")
+local plazaOver = 0
+for seed = 1, 30 do
+    local tw = build(seed * 13 + 1, 30)
+    for i = 2, #tw.levels do
+        local lv, prev = tw.levels[i], tw.levels[i - 1]
+        local cp = tw.checkpoints[lv.firstCheckpoint]
+        local pad
+        for _, p in ipairs(tw.platforms) do if p.level == i and math.abs(p.x - cp.x) < 0.01 then pad = p end end
+        -- the plaza lies wholly beyond the end of the level below (on the far side of where it finished)
+        local lo, hi = pad.x - pad.sx / 2, pad.x + pad.sx / 2
+        local beyond = (prev.dir == 1) and (lo >= prev.endX - 0.01 or lv.dir == prev.dir) or (hi <= prev.endX + 0.01 or lv.dir == prev.dir)
+        if not beyond then plazaOver += 1 end
+        if not pad.lane then plazaOver += 1 end
+    end
+end
+expect(plazaOver == 0, "every start plaza is out past the end of the climb below it (" .. plazaOver .. " over it)")
 
 print("== obstacles stay fair")
 local fair = true

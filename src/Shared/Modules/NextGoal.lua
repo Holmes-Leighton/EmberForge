@@ -5,7 +5,7 @@ local GameConfig   = require(script.Parent.Parent.Data.GameConfig)
 
 local NextGoal = {}
 
-local function XPForLevel(level) return math.floor(100 * level ^ 1.8) end
+local function XPForLevel(level) if level <= 1 then return 0 end return math.floor(100 * level ^ 1.8) end
 
 local function Pretty(n)
     n = math.max(0, math.ceil(n))

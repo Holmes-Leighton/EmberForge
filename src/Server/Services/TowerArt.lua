@@ -15,6 +15,10 @@ local TIMBER = Color3.fromRGB(100, 70, 44)
 -- the sign of the level you are on and one or two either side.
 TowerArt.SIGN_RANGE = { level = 70, gate = 150, boss = 150, chest = 70 }
 
+-- How high anything decorative may stand above a level's floor. The next level's floor is at least 22 studs up, so a tall gate, ring or beam would stick through it. (Nothing here is
+-- solid, but a beam through the level above is exactly what made the levels look as if they were on top of each other.)
+TowerArt.DECOR_TOP = 18
+
 TowerArt.Themes = {
     wood      = { material = Enum.Material.Wood,         color = Color3.fromRGB(150, 104, 64),  rest = Color3.fromRGB(190, 140, 90),  accent = Color3.fromRGB(255, 190, 90), scaffold = true },
     sandstone = { material = Enum.Material.Sandstone,    color = Color3.fromRGB(196, 150, 100), rest = Color3.fromRGB(220, 180, 120), accent = Color3.fromRGB(255, 220, 130) },
@@ -487,7 +491,7 @@ end
 -- A gate you run through where a new zone begins: two pillars and a glowing lintel in the zone's colour, with the zone's name big across it.
 local function ZoneGate(group, cp, width, zone, color, zoneNumber)
     local halfW = width / 2 + 2
-    local h = 26
+    local h = TowerArt.DECOR_TOP - 1.5                                        -- (the lintel sits on top of the pillars)
     local pillarColor = Color3.fromRGB(70, 66, 84)
     for _, side in ipairs({ -1, 1 }) do
         P({ Name = "GatePillar", Material = Enum.Material.Slate, Color = pillarColor, Size = Vector3.new(4, h, 4), CanCollide = false,
@@ -500,7 +504,7 @@ local function ZoneGate(group, cp, width, zone, color, zoneNumber)
     local light = Instance.new("PointLight")
     light.Color, light.Range, light.Brightness = color, 60, 2
     light.Parent = lintel
-    local anchor = P({ Name = "GateSign", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(cp.x, cp.y - 3 + h + 8, cp.z) }, group)
+    local anchor = P({ Name = "GateSign", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(cp.x, cp.y - 3 + h + 5, cp.z) }, group)
     Sign(group, anchor, "ZONE " .. zoneNumber .. "\n" .. string.upper(zone.name), UDim2.new(0, 420, 0, 120), Vector3.new(0, 0, 0), color, TowerArt.SIGN_RANGE.gate)
 end
 
@@ -512,7 +516,7 @@ local function Chest(group, pos, color, label)
         P({ Name = "ChestBand", Material = Enum.Material.Metal, Color = Color3.fromRGB(255, 205, 70), Size = Vector3.new(0.9, 6.6, 5.4), CanCollide = false, CFrame = CFrame.new(pos + Vector3.new(dx, 3.6, 0)) }, group)
     end
     P({ Name = "ChestLock", Material = Enum.Material.Neon, Color = color, Size = Vector3.new(1.4, 1.8, 0.4), CanCollide = false, CFrame = CFrame.new(pos + Vector3.new(0, 4, 2.6)) }, group)
-    local beam = P({ Name = "ChestBeam", Material = Enum.Material.Neon, Color = color, Transparency = 0.7, Size = Vector3.new(4, 60, 4), CanCollide = false, CFrame = CFrame.new(pos + Vector3.new(0, 32, 0)) }, group)
+    local beam = P({ Name = "ChestBeam", Material = Enum.Material.Neon, Color = color, Transparency = 0.7, Size = Vector3.new(4, TowerArt.DECOR_TOP, 4), CanCollide = false, CFrame = CFrame.new(pos + Vector3.new(0, TowerArt.DECOR_TOP / 2 + 2, 0)) }, group)
     local light = Instance.new("PointLight")
     light.Color, light.Range, light.Brightness = color, 30, 2
     light.Parent = beam
@@ -524,7 +528,7 @@ local function Chest(group, pos, color, label)
     sparks.LightEmission = 1
     sparks.Parent = body
     if label then
-        local anchor = P({ Name = "ChestSign", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(pos + Vector3.new(0, 11, 0)) }, group)
+        local anchor = P({ Name = "ChestSign", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(pos + Vector3.new(0, 9, 0)) }, group)
         Sign(group, anchor, label, UDim2.new(0, 260, 0, 60), Vector3.new(0, 0, 0), Color3.fromRGB(255, 226, 120), TowerArt.SIGN_RANGE.chest)
     end
     return body
@@ -534,15 +538,15 @@ end
 local function BossBanner(group, cp, width, name, color)
     local halfW = width / 2 + 3
     for _, side in ipairs({ -1, 1 }) do
-        P({ Name = "BossPylon", Material = Enum.Material.Metal, Color = Color3.fromRGB(40, 36, 44), Size = Vector3.new(3, 18, 3), CanCollide = false,
-            CFrame = CFrame.new(cp.x, cp.y - 3 + 9, cp.z + side * halfW) }, group)
+        P({ Name = "BossPylon", Material = Enum.Material.Metal, Color = Color3.fromRGB(40, 36, 44), Size = Vector3.new(3, 14, 3), CanCollide = false,
+            CFrame = CFrame.new(cp.x, cp.y - 3 + 7, cp.z + side * halfW) }, group)
         local flame = P({ Name = "BossFlame", Material = Enum.Material.Neon, Color = color, Size = Vector3.new(4, 4, 4), Shape = Enum.PartType.Ball, CanCollide = false,
-            CFrame = CFrame.new(cp.x, cp.y - 3 + 20, cp.z + side * halfW) }, group)
+            CFrame = CFrame.new(cp.x, cp.y - 3 + 15.5, cp.z + side * halfW) }, group)
         local light = Instance.new("PointLight")
         light.Color, light.Range, light.Brightness = color, 36, 2.5
         light.Parent = flame
     end
-    local anchor = P({ Name = "BossSign", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(cp.x, cp.y - 3 + 24, cp.z) }, group)
+    local anchor = P({ Name = "BossSign", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(cp.x, cp.y - 3 + 19, cp.z) }, group)
     Sign(group, anchor, "BOSS\n" .. string.upper(name), UDim2.new(0, 340, 0, 100), Vector3.new(0, 0, 0), color, TowerArt.SIGN_RANGE.boss)
 end
 
@@ -567,30 +571,30 @@ local function Entrance(group, cp, width, kind, color)
     local y0 = cp.y - 3
     local warm = Color3.fromHSV(0.1, 0.7, 1)
     if kind == "ring" then
-        TowerArt.RainbowRing(group, cp.x, y0 + 13, cp.z, 17, 26)
+        TowerArt.RainbowRing(group, cp.x, y0 + 9.5, cp.z, 8.5, 20)
     elseif kind == "arch" then
         for _, side in ipairs({ -1, 1 }) do
-            P({ Name = "ArchPillar", Material = Enum.Material.Slate, Color = Color3.fromRGB(86, 82, 100), Size = Vector3.new(3, 20, 3), CanCollide = false, CFrame = CFrame.new(cp.x, y0 + 10, cp.z + side * halfW) }, group)
-            P({ Name = "ArchGlow", Material = Enum.Material.Neon, Color = color, Size = Vector3.new(3.4, 1, 3.4), CanCollide = false, CFrame = CFrame.new(cp.x, y0 + 20.5, cp.z + side * halfW) }, group)
+            P({ Name = "ArchPillar", Material = Enum.Material.Slate, Color = Color3.fromRGB(86, 82, 100), Size = Vector3.new(3, 16, 3), CanCollide = false, CFrame = CFrame.new(cp.x, y0 + 8, cp.z + side * halfW) }, group)
+            P({ Name = "ArchGlow", Material = Enum.Material.Neon, Color = color, Size = Vector3.new(3.4, 1, 3.4), CanCollide = false, CFrame = CFrame.new(cp.x, y0 + 16.5, cp.z + side * halfW) }, group)
         end
-        P({ Name = "ArchLintel", Material = Enum.Material.Neon, Color = color, Size = Vector3.new(1.6, 1.6, halfW * 2 + 3), CanCollide = false, CFrame = CFrame.new(cp.x, y0 + 21.5, cp.z) }, group)
+        P({ Name = "ArchLintel", Material = Enum.Material.Neon, Color = color, Size = Vector3.new(1.6, 1.6, halfW * 2 + 3), CanCollide = false, CFrame = CFrame.new(cp.x, y0 + 17.5, cp.z) }, group)
     elseif kind == "lanterns" then
         local n = 7
         for k = 1, n do
             local t = (k - 1) / (n - 1)
             local z = cp.z + (t * 2 - 1) * halfW
-            local y = y0 + 22 - 5 * math.sin(math.pi * t)                       -- a string hung between two posts: it sags in the middle
+            local y = y0 + 17 - 4 * math.sin(math.pi * t)                       -- a string hung between two posts: it sags in the middle
             P({ Name = "Lantern", Shape = Enum.PartType.Ball, Material = Enum.Material.Neon, Color = (k % 2 == 0) and color or warm,
                 Size = Vector3.new(2.6, 2.6, 2.6), CanCollide = false, CFrame = CFrame.new(cp.x, y, z) }, group)
         end
         for _, side in ipairs({ -1, 1 }) do
-            P({ Name = "LanternPost", Material = Enum.Material.Wood, Color = TIMBER, Size = Vector3.new(1.4, 22, 1.4), CanCollide = false, CFrame = CFrame.new(cp.x, y0 + 11, cp.z + side * halfW) }, group)
+            P({ Name = "LanternPost", Material = Enum.Material.Wood, Color = TIMBER, Size = Vector3.new(1.4, 18, 1.4), CanCollide = false, CFrame = CFrame.new(cp.x, y0 + 9, cp.z + side * halfW) }, group)
         end
     elseif kind == "banners" then
         for _, side in ipairs({ -1, 1 }) do
-            P({ Name = "BannerPole", Material = Enum.Material.Metal, Color = Color3.fromRGB(60, 56, 70), Size = Vector3.new(1.2, 24, 1.2), CanCollide = false, CFrame = CFrame.new(cp.x, y0 + 12, cp.z + side * halfW) }, group)
-            P({ Name = "BannerTip", Shape = Enum.PartType.Ball, Material = Enum.Material.Neon, Color = color, Size = Vector3.new(2.4, 2.4, 2.4), CanCollide = false, CFrame = CFrame.new(cp.x, y0 + 25, cp.z + side * halfW) }, group)
-            P({ Name = "BannerCloth", Material = Enum.Material.Fabric, Color = color, Size = Vector3.new(0.4, 12, 5), CanCollide = false, CFrame = CFrame.new(cp.x, y0 + 16, cp.z + side * (halfW - 3)) }, group)
+            P({ Name = "BannerPole", Material = Enum.Material.Metal, Color = Color3.fromRGB(60, 56, 70), Size = Vector3.new(1.2, 18, 1.2), CanCollide = false, CFrame = CFrame.new(cp.x, y0 + 9, cp.z + side * halfW) }, group)
+            P({ Name = "BannerTip", Shape = Enum.PartType.Ball, Material = Enum.Material.Neon, Color = color, Size = Vector3.new(2.4, 2.4, 2.4), CanCollide = false, CFrame = CFrame.new(cp.x, y0 + 18.5, cp.z + side * halfW) }, group)
+            P({ Name = "BannerCloth", Material = Enum.Material.Fabric, Color = color, Size = Vector3.new(0.4, 9, 5), CanCollide = false, CFrame = CFrame.new(cp.x, y0 + 12.5, cp.z + side * (halfW - 3)) }, group)
         end
     else                                                                      -- torches: two fire posts each side
         for _, side in ipairs({ -1, 1 }) do
@@ -712,7 +716,7 @@ function TowerArt.Build(parent, T)
         local cp = r.layout.checkpoints[1]
         if cp then
             local pad = RestPad(T, i, cp)
-            local width = pad and pad.sz or 30
+            local width = pad and (pad.lane or pad.sz) or 30            -- (a start plaza is stretched sideways to reach the climb below: the gate and signs frame the lane, not the whole slab)
             if lv.zoneStart and i > 1 then
                 ZoneGate(group, cp, width, zone, color, lv.zone)                       -- a gate at the start of every new zone
                 Chest(group, Vector3.new(cp.x - lv.dir * ((pad and pad.sx or 40) / 2 - 6), cp.y, cp.z + width / 2 - 6), color, "ZONE CLEAR CHEST")
@@ -725,8 +729,8 @@ function TowerArt.Build(parent, T)
             local anchor = P({ Name = "LevelSignAnchor", Transparency = 1, CanCollide = false, Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(cp.x, cp.y + 14, cp.z) }, group)
             local title = "LEVEL " .. i .. "\n" .. (lv.design or "")
             Sign(group, anchor, title, UDim2.new(0, 280, 0, 84), Vector3.new(0, 0, 0), color, TowerArt.SIGN_RANGE.level)
-            local beam = P({ Name = "LevelBeam", Material = Enum.Material.Neon, Color = color, Transparency = 0.75, Size = Vector3.new(2, 40, 2), CanCollide = false,
-                CFrame = CFrame.new(cp.x, cp.y + 17, cp.z) }, group)
+            local beam = P({ Name = "LevelBeam", Material = Enum.Material.Neon, Color = color, Transparency = 0.75, Size = Vector3.new(2, TowerArt.DECOR_TOP, 2), CanCollide = false,
+                CFrame = CFrame.new(cp.x, cp.y - 3 + TowerArt.DECOR_TOP / 2, cp.z) }, group)
             local light = Instance.new("PointLight")
             light.Color, light.Range, light.Brightness = color, 40, 1.4
             light.Parent = beam

@@ -125,6 +125,7 @@ function TowerRunner.Step(run, now, px, py, pz)
             end
         end
     end
+    local prev = (run.lastPos and run.lastT and now - run.lastT <= 0.5) and run.lastPos or nil          -- (the line walked since the last sample, for the death tiles; not across a long gap)
     run.lastPos, run.lastT = { px, py, pz }, now
 
     local cp = StartCp(run, run.highest)
@@ -145,7 +146,8 @@ function TowerRunner.Step(run, now, px, py, pz)
             end
         end
         for _, k in ipairs(run.byLevel[lv].kills) do
-            if math.abs(px - k.x) <= 4 and CourierRunner.KillTileHits(k, px, py, pz) then
+            local near = math.abs(px - k.x) <= 4 or (prev ~= nil and math.abs(prev[1] - k.x) <= 4 + k.sx / 2)
+            if near and (CourierRunner.KillTileHits(k, px, py, pz) or (prev ~= nil and CourierRunner.KillTileCrossed(k, prev[1], prev[2], prev[3], px, py, pz))) then
                 Respawn(run, now, "burned")
                 return
             end

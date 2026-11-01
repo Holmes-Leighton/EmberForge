@@ -7,7 +7,9 @@ local PlayerDataService = require(script.Parent.PlayerDataService)
 local ProgressionService = {}
 
 -- XP required to reach a given player level (quadratic curve)
+-- (total XP at which a level begins; level 1 begins at 0, which is where everyone starts)
 local function XPForLevel(level)
+    if level <= 1 then return 0 end
     return math.floor(100 * level ^ 1.8)
 end
 

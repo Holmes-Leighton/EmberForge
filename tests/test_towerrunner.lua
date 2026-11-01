@@ -180,6 +180,26 @@ Runner.Step(krun, 9500, kcp.x, kcp.y, kcp.z)
 Runner.Step(krun, 9500.1, k1.x, k1.y + 3, k1.z)
 expect(#klog.respawns == 1 and klog.respawns[1].reason == "burned" and klog.respawns[1].level == k1.level, "stepping on a death tile sends you back to the start of the level, not lower")
 
+-- a quick runner (Turbo / Dash: 20.8 studs/s, 2 studs a sample) can clear a thin strip between two samples without either landing on it: the line walked is checked too
+local strip = { x = 100, y = 20, z = 140, sx = 2.0, sz = 16, style = "strip" }
+expect(not CRun2.KillTileHits(strip, 98.5, 23, 140) and not CRun2.KillTileHits(strip, 101.5, 23, 140), "two samples either side of a thin strip both miss it")
+expect(CRun2.KillTileCrossed(strip, 98.5, 23, 140, 101.5, 23, 140), "but running straight through it between them is a hit")
+expect(not CRun2.KillTileCrossed(strip, 98.5, 27.5, 140, 101.5, 27.5, 140), "jumping clear over it (in the air at both samples) is still safe")
+expect(not CRun2.KillTileCrossed(strip, 98.5, 23, 160, 101.5, 23, 160), "running past the end of it is safe")
+do
+    local sT = kTower
+    local sk
+    for _, k in ipairs(sT.kills) do if k.style == "strip" then sk = k break end end
+    if not sk then for seed = 1, 20 do sT = TL.Build({ levels = 30, seed = seed, base = TD.BASE }) for _, k in ipairs(sT.kills) do if k.style == "strip" then sk = k break end end if sk then break end end end
+    local srun, slog = newRun(9600, sT)
+    srun.highest = sk.level
+    local scp = sT.checkpoints[sT.levels[sk.level].firstCheckpoint]
+    Runner.Step(srun, 9600, scp.x, scp.y, scp.z)
+    Runner.Step(srun, 9600.1, sk.x - 1.7, sk.y + 3, sk.z)
+    Runner.Step(srun, 9600.2, sk.x + 1.7, sk.y + 3, sk.z)
+    expect(#slog.respawns == 1 and slog.respawns[1].reason == "burned", "a runner who steps clean over a yellow strip between two samples is still sent back")
+end
+
 print("== sweeper bars")
 local CRun = load("SSS/EmberForge/Services/CourierRunner")
 local sw = { x = 100, y = 20, z = 140, amp = 4, period = 3, phase = 0, thick = 1.6 }

@@ -35,6 +35,15 @@ local function Clamp(v, lo, hi) return math.max(lo, math.min(hi, v)) end
 -- Each module takes the layout L, the cursor { x = far edge of the last platform, y = its top, z = its centre } and its params, and moves the cursor on.
 local Modules = {}
 
+-- A start plaza for a level that is not the first: a wide pad whose checkpoint (and the course after it) sits at the cursor's z, but whose slab is stretched sideways by `zoff`
+-- so it also reaches the exit of the climb before it. `lane` is the width the level's own gate and signs should frame.
+function Modules.plaza(L, cur, p)
+    local x0 = cur.x + (p.gap or 0)
+    Plat(L, x0, p.len, cur.y, cur.z + (p.zoff or 0), p.width, { lane = p.lane })
+    table.insert(L.checkpoints, { x = x0 + p.len / 2, y = cur.y + 3, z = cur.z })
+    cur.x = x0 + p.len
+end
+
 -- A wide safe platform with a checkpoint in the middle
 function Modules.rest(L, cur, p)
     local x0 = cur.x + (p.gap or 0)
@@ -252,7 +261,7 @@ function Modules.chimney(L, cur, p)
     Plat(L, top + 1.2, landing, cur.y, cur.z, 2 * off + width + 1)
     local length = (top + 1.2 + landing) - x0
     for _, side in ipairs({ -1, 1 }) do
-        table.insert(L.walls, { x = x0 + length / 2, y = y0, z = cur.z + side * (off + width / 2 + 0.7), sx = length + 2, sy = p.n * p.rise + 8, sz = 1.2, shaft = true })
+        table.insert(L.walls, { x = x0 - 0.5 + length / 2, y = y0, z = cur.z + side * (off + width / 2 + 0.7), sx = length + 1, sy = p.n * p.rise + 8, sz = 1.2, shaft = true })     -- (from just behind the first ledge to the end of the landing, and no further: the next level's plaza begins there)
     end
     cur.x = top + 1.2 + landing
 end
@@ -484,6 +493,9 @@ function CourierLayout.PendulumBlade(p, t)
     local a = p.amp * math.sin(2 * math.pi * (t + p.phase) / p.period)
     return p.x + p.length * math.sin(a), p.pivotY - p.length * math.cos(a), a
 end
+-- How tall a beam of light stands above its pad. It used to reach 70 studs, which also zapped anyone walking on the Tower level above the pad; 16 is clear of a full jump
+-- (7.2 plus the character), so the beam is still something to jump away from, not over.
+CourierLayout.BEAM_HEIGHT = 16
 -- Which circles of a beam field are charging or firing at time t: a list of { idx, state = "warn" | "fire", k = how far through the charge 0..1 } (empty between shots).
 -- Several independent "lanes" each shoot on their own irregular clock: a shot starts at a random moment inside its slot, some slots stay silent, and which circle is
 -- chosen is random, so there is no pattern to learn. Every shot still warns for `warn` seconds before it fires, so it is always dodgeable.

@@ -63,6 +63,18 @@ function CourierRunner.KillTileHits(k, px, py, pz)
     return math.abs(px - k.x) <= k.sx / 2 and math.abs(pz - k.z) <= k.sz / 2 and py - k.y > -0.5 and py - k.y < 4.2
 end
 
+-- Did the player pass through this deadly tile between two position samples? The server only sees a climber ten times a second: at 16 studs/s that is 1.6 studs between samples, and
+-- a Turbo or Dash climber (20.8) covers more than a 2-stud strip in one, so checking the samples alone lets a quick runner straight through. This walks the line between them.
+function CourierRunner.KillTileCrossed(k, ax, ay, az, bx, by, bz)
+    local dx, dy, dz = bx - ax, by - ay, bz - az
+    local steps = math.max(1, math.ceil(math.sqrt(dx * dx + dy * dy + dz * dz) / 0.6))
+    for s = 1, steps do
+        local t = s / steps
+        if CourierRunner.KillTileHits(k, ax + dx * t, ay + dy * t, az + dz * t) then return true end
+    end
+    return false
+end
+
 -- Where a sweeper's bar is along Z at time t (it slides back and forth across its beam)
 function CourierRunner.SweeperZ(sw, t)
     return sw.z + sw.amp * math.sin(2 * math.pi * (t + sw.phase) / sw.period)
@@ -87,7 +99,7 @@ end
 function CourierRunner.BeamHits(f, t, px, py, pz)
     if px < f.x1 - 6 or px > f.x2 + 6 then return false end
     local h = py - f.y
-    if h <= -1 or h >= 70 then return false end
+    if h <= -1 or h >= CourierLayout.BEAM_HEIGHT then return false end
     for _, s in ipairs(CourierLayout.BeamState(f, t)) do
         if s.state == "fire" then
             local c = f.circles[s.idx]

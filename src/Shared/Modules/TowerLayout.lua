@@ -1,5 +1,5 @@
 -- Builds a Sky Tower from a seed: a stack of levels, each one of the hand-designed LEVEL DESIGNS below (a named idea with its own obstacles and its own look), joined by a
--- climb or a ladder to the next. Levels alternate direction and step sideways, so the tower zig-zags upward and no two levels overlap.
+-- climb or a ladder to the next. Levels alternate direction and step sideways, so the tower zig-zags upward and nothing of one level hangs over where another is walked.
 -- Pure maths with no Roblox types: tests prove every jump on every seed, and the server and clients build identical towers from the same seed.
 local CourierLayout = require(script.Parent.CourierLayout)
 local TowerData     = require(game.ReplicatedStorage.Shared.Data.TowerData)
@@ -9,7 +9,8 @@ local TowerLayout = {}
 TowerLayout.CLIMB_LEDGES = 8
 TowerLayout.CLIMB_RISE   = { 2.9, 3.4, 3.8 }      -- per ledge, by tier: each under that tier's limit (CourierData.Limits), so early climbs are gentle
 TowerLayout.LEVEL_RISE   = TowerLayout.CLIMB_LEDGES * 3.4        -- about how far each level goes up (varies a little with the tier)
-TowerLayout.LEVEL_Z_STEP = 18           -- each level sits this much further along Z than the one below
+TowerLayout.LEVEL_Z_STEPS = { 20, 24, 28, 32, 36, 42 }    -- how far sideways (along Z) each level's lane sits from the exit of the level below: the first that leaves every level clear is used
+TowerLayout.HEADROOM     = 12           -- the free space a player needs above anything they can stand on: a full jump (7.2) plus the character
 TowerLayout.CENTRE_OFFSET = 110       -- the middle of the tower, east of the first level's start
 TowerLayout.DRIFT        = 70        -- a level that ends further than this from the middle turns the next one back
 TowerLayout.Z_RANGE       = 9         -- how far a level may weave sideways from its middle (it was 0: every level was a dead-straight row)
@@ -282,6 +283,72 @@ local function ClimbFor(tier, rng)
     return { "climbmix", { pattern = s.pattern, gap = s.gap, rise = TowerLayout.CLIMB_RISE[tier], len = s.len, width = s.width, narrow = s.narrow, delay = s.delay } }
 end
 
+-- ── Clearance ─────────────────────────────────────────────────────────────────
+-- Every solid or swept volume of a level as a box in world space { level, kind, x1, x2, y1, y2, z1, z2, walk }, `walk` for the ones a player can stand on. `src` is a CourierLayout
+-- layout (local x, mapped to the world by `wx`) or a whole tower (already in the world, with `level` set on every item and the one wanted passed as `only`).
+-- Used while building (to space the levels out) and by the tests (to prove nothing hangs over the way up).
+local GRAV = 196.2
+function TowerLayout.Solids(src, level, wx, only)
+    wx = wx or function(x) return x end
+    local out = {}
+    local function add(items, kind, fn)
+        for _, it in ipairs(items or {}) do
+            if only == nil or it.level == only then
+                local x1, x2, y1, y2, z1, z2, walk = fn(it)
+                local a, b = wx(x1), wx(x2)
+                out[#out + 1] = { level = level or it.level, kind = kind, x1 = math.min(a, b), x2 = math.max(a, b), y1 = y1, y2 = y2, z1 = z1, z2 = z2, walk = walk }
+            end
+        end
+    end
+    add(src.platforms, "platform", function(p) return p.x - p.sx / 2, p.x + p.sx / 2, p.y - p.sy / 2, p.y + p.sy / 2, p.z - p.sz / 2, p.z + p.sz / 2, true end)
+    add(src.crumbles, "crumble", function(p) return p.x - p.sx / 2, p.x + p.sx / 2, p.y - p.sy / 2, p.y + p.sy / 2, p.z - p.sz / 2, p.z + p.sz / 2, true end)
+    add(src.blinkers, "blink", function(p) return p.x - p.sx / 2, p.x + p.sx / 2, p.y - p.sy / 2, p.y + p.sy / 2, p.z - p.sz / 2, p.z + p.sz / 2, true end)
+    add(src.movers, "mover", function(m) return math.min(m.x0, m.x1) - m.sx / 2, math.max(m.x0, m.x1) + m.sx / 2, m.y - m.sy / 2, m.y + m.sy / 2, m.z - m.sz / 2, m.z + m.sz / 2, true end)
+    add(src.lifts, "lift", function(l) return l.x - l.sx / 2, l.x + l.sx / 2, l.y0 - l.sy / 2, l.y1 + l.sy / 2, l.z - l.sz / 2, l.z + l.sz / 2, true end)
+    add(src.zmovers, "zmover", function(m) return m.x - m.sx / 2, m.x + m.sx / 2, m.y - m.sy / 2, m.y + m.sy / 2, math.min(m.z0, m.z1) - m.sz / 2, math.max(m.z0, m.z1) + m.sz / 2, true end)
+    add(src.orbiters, "orbit", function(o) return o.x - o.radius - o.sx / 2, o.x + o.radius + o.sx / 2, o.y - o.sy / 2, o.y + o.sy / 2, o.z - o.radius - o.sz / 2, o.z + o.radius + o.sz / 2, true end)
+    add(src.rotors, "rotor", function(r) return r.x - r.radius, r.x + r.radius, r.y - 1.2, r.y, r.z - r.radius, r.z + r.radius, true end)
+    add(src.walls, "wall", function(w) return w.x - w.sx / 2, w.x + w.sx / 2, w.y, w.y + w.sy, w.z - w.sz / 2, w.z + w.sz / 2 end)
+    add(src.crushers, "crusher", function(c) return c.x - c.sx / 2, c.x + c.sx / 2, c.y, c.y + 2 * c.height + 3, c.z - c.sz / 2, c.z + c.sz / 2 end)       -- (open, the block is lifted height + 3 clear)
+    add(src.pendulums, "pendulum", function(p) return p.x - p.length - 4, p.x + p.length + 4, p.y, p.pivotY + 1.6, p.z - p.width / 2 - 3, p.z + p.width / 2 + 3 end)
+    add(src.spinners, "spinner", function(s2) return s2.x - s2.radius, s2.x + s2.radius, s2.y, s2.y + 3.4, s2.z - s2.radius, s2.z + s2.radius end)
+    add(src.sweepers, "sweeper", function(s2) return s2.x - 1, s2.x + 1, s2.y, s2.y + 3.2, s2.z - s2.amp - 1.7, s2.z + s2.amp + 1.7 end)
+    add(src.trusses, "ladder", function(t) return t.x - 1, t.x + 1, t.y, t.y + t.height, t.z - 1, t.z + 1 end)
+    add(src.bounces, "bounce", function(b)       -- the whole flight: up to the top of the throw, and forward the way the level runs
+        return b.x - 2, b.x + 2 + (b.dir or 1) * 30, b.y, b.y + b.power * b.power / (2 * GRAV) + 5.5, b.z - 2, b.z + 2
+    end)
+    return out
+end
+
+local function Overlap(a1, a2, b1, b2) return math.min(a2, b2) - math.max(a1, b1) end
+TowerLayout.CLASH_TOL = 0.4
+
+-- The places where something of one level hangs in the free space above something another level has you stand on (or, for the second list, the other way round).
+-- Returns the number of clashes and a description of the first. Things of the same level, and a pad sitting flush at the height of the ledge beside it, never clash.
+function TowerLayout.Clashes(A, B)
+    local n, first = 0, nil
+    local function pass(W, S)
+        for _, a in ipairs(W) do
+            if a.walk then
+                local ty = a.y2
+                for _, b in ipairs(S) do
+                    if b.level ~= a.level and not (b.walk and b.y2 <= ty + 0.1 and b.y1 < ty) then
+                        local ox, oz = Overlap(a.x1, a.x2, b.x1, b.x2), Overlap(a.z1, a.z2, b.z1, b.z2)
+                        local oy = Overlap(ty, ty + TowerLayout.HEADROOM, b.y1, b.y2)
+                        if ox > TowerLayout.CLASH_TOL and oz > TowerLayout.CLASH_TOL and oy > TowerLayout.CLASH_TOL then
+                            n += 1
+                            first = first or string.format("level %d %s has level %d %s overhead (%.1f x %.1f x %.1f)", a.level, a.kind, b.level, b.kind, ox, oz, oy)
+                        end
+                    end
+                end
+            end
+        end
+    end
+    pass(A, B)
+    pass(B, A)
+    return n, first
+end
+
 -- A tiny deterministic random number generator (so server and clients agree without sharing state)
 local function Rng(seed)
     local s = (seed * 2654435761 + 12345) % 4294967296
@@ -463,6 +530,8 @@ function TowerLayout.Build(opts)
         base = base, seed = seed, total = total }
 
     local startX, y, z, dir = base.x, base.y, base.z, 1
+    local prevEnd, prevDir, exitZ, exitHalf, nextSign = nil, 1, base.z, 5, -1       -- where the level below ended, which way it ran, and where its exit is (for the start plaza)
+    local levelSolids = {}             -- every level's solids in world space, so a new level can be checked against the ones below
     local recent = {}                  -- the last few designs dealt (never dealt again straight away)
     local lastKinds = nil              -- the kinds of piece on the level before (the next one must not be made of the very same)
     local lastModified = false
@@ -503,7 +572,7 @@ function TowerLayout.Build(opts)
         local scale = boss and 1 or (0.9 + 0.35 * ((rng(101) - 1) / 100))
         local flip = (not boss) and rng(2) == 1
         local weave = (not boss) and rng(100) <= 70 and (2 + rng(3)) or nil                  -- (a sideways weave for stepping stones, most levels: 3, 4 or 5 studs each way)
-        local modules = { { "rest", { len = restLen, width = restWidth } } }
+        local modules = {}
         for _, m in ipairs(design.modules) do modules[#modules + 1] = boss and m or Varied(m, scale, flip, weave) end
         -- a rule twist for this level? (never early, never a boss, never two in a row)
         local modifier
@@ -521,9 +590,42 @@ function TowerLayout.Build(opts)
         else
             modules[#modules + 1] = { "finish", { gap = 4, len = 32, width = 28 } }
         end
-        local layout = CourierLayout.Build({ base = { x = 0, y = y, z = z }, modules = modules, zRange = TowerLayout.Z_RANGE })
+        -- The level's lane is how far sideways it sits from the exit of the level below. Its start plaza is built beyond the end of that climb (never over it: a pad hung above a spiral
+        -- or staircase leaves no room to jump) and stretched sideways to reach the exit. The lane is the first of LEVEL_Z_STEPS that leaves nothing of this level hanging over what the
+        -- last two levels have you stand on, or the other way round (a measured check, so it holds for every design and seed).
+        local function Make(lane)
+            local mods = {}
+            if i == 1 then
+                mods[1] = { "rest", { len = restLen, width = restWidth } }
+            else
+                local lo = math.min(lane - restWidth / 2, exitZ - exitHalf - 1)
+                local hi = math.max(lane + restWidth / 2, exitZ + exitHalf + 1)
+                mods[1] = { "plaza", { len = restLen, width = hi - lo, zoff = (lo + hi) / 2 - lane, lane = restWidth } }
+            end
+            for _, m in ipairs(modules) do mods[#mods + 1] = m end
+            return CourierLayout.Build({ base = { x = 0, y = y, z = lane }, modules = mods, zRange = TowerLayout.Z_RANGE })
+        end
+        local layout
+        if i == 1 then
+            layout = Make(z)
+        else
+            startX = (dir == -prevDir) and (prevEnd + prevDir * restLen) or prevEnd           -- (turning back: the plaza lies out past the end of the climb)
+            local function place(x) return startX + dir * x end
+            local best
+            for _, step in ipairs(TowerLayout.LEVEL_Z_STEPS) do
+                local lane = exitZ + nextSign * step
+                local lay = Make(lane)
+                local mine = TowerLayout.Solids(lay, i, place)
+                local n = 0
+                for k = math.max(1, i - 2), i - 1 do n += (TowerLayout.Clashes(mine, levelSolids[k])) end
+                if not best or n < best.n then best = { n = n, lay = lay, lane = lane } end
+                if n == 0 then break end
+            end
+            layout, z = best.lay, best.lane
+        end
 
         local function wx(x) return startX + dir * x end
+        levelSolids[i] = TowerLayout.Solids(layout, i, wx)
         local function put(list, src, fn)
             for _, item in ipairs(src) do
                 local c = Copy(item)
@@ -571,17 +673,17 @@ function TowerLayout.Build(opts)
             zone = zoneIndex, zoneId = zoneId, boss = boss, modifier = modifier, zoneStart = TowerData.IsZoneStart(i, total), connector = connectorKind, designKey = designKey }
         if layout.finish then T.finish = { x = wx(layout.finish.x), y = layout.finish.y, z = layout.finish.z, hx = layout.finish.hx, hz = layout.finish.hz } end
 
-        startX = wx(layout.endX)
+        prevEnd, prevDir = wx(layout.endX), dir
         local lastPlat = layout.platforms[#layout.platforms]
         y = lastPlat.y + lastPlat.sy / 2
-        -- the next level starts one step sideways from where this one ended (so the way up always lands on its wide start pad), heading back toward the middle if it has wandered
+        exitZ, exitHalf = lastPlat.z, lastPlat.sz / 2
+        -- the next level's lane is a step sideways from where this one ended, heading back toward the middle if the tower has wandered
         local drift = lastPlat.z - base.z
-        local sign = (drift > TowerLayout.Z_RANGE) and -1 or ((drift < -TowerLayout.Z_RANGE) and 1 or ((i % 2 == 0) and 1 or -1))
-        z = lastPlat.z + sign * TowerLayout.LEVEL_Z_STEP
+        nextSign = (drift > TowerLayout.Z_RANGE) and -1 or ((drift < -TowerLayout.Z_RANGE) and 1 or ((i % 2 == 0) and 1 or -1))
         -- zig-zag, but if the tower has drifted sideways (levels differ in length) head back toward the middle, so it stays compact
         local centre = base.x + TowerLayout.CENTRE_OFFSET
-        if startX > centre + TowerLayout.DRIFT then dir = -1
-        elseif startX < centre - TowerLayout.DRIFT then dir = 1
+        if prevEnd > centre + TowerLayout.DRIFT then dir = -1
+        elseif prevEnd < centre - TowerLayout.DRIFT then dir = 1
         else dir = -dir end
     end
     T.top = T.finish

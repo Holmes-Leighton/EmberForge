@@ -119,6 +119,20 @@ local owned = {}
 for _, id in ipairs(dl.OwnedCosmetics) do owned[id] = true end
 expect(owned.TitleBadge_Apprentice and owned.ForgeSkin_Bronze and owned.GolemAccessory_MinerHelm, "cosmetic rewards for every level passed")
 
+print("== the XP bar")
+local p3 = newPlayer(3, "Newcomer"); local d4 = PDS.Load(p3)
+local pr0 = Prog.GetPlayerLevelProgress(p3)
+expect(d4.PlayerLevel == 1 and d4.PlayerXP == 0 and pr0.progress == 0, "a new player starts level 1 at 0 XP")
+Prog.AddPlayerXP(p3, 50)                                  -- (a live XP event may double it: read what was really granted)
+local got = d4.PlayerXP
+local pr1 = Prog.GetPlayerLevelProgress(p3)
+expect(math.abs(pr1.progress - got / 348) < 1e-9, "the bar counts from 0 XP, where level 1 starts (" .. string.format("%.3f", pr1.progress) .. " for " .. got .. " XP; level 2 is 348 XP in)")
+expect(pr1.toNext == 348 - got, "XP to the next level counts from where you are (" .. tostring(pr1.toNext) .. ")")
+local lv2, n2 = Prog.AddPlayerXP(p3, math.ceil((348 - got) / (got / 50)))
+expect(lv2 and n2 == 2, "passing 348 XP in total is level 2")
+local pr3 = Prog.GetPlayerLevelProgress(p3)
+expect(pr3.level == 2 and pr3.progress >= 0 and pr3.progress < 1 and pr3.toNext > 0, "and the bar for level 3 begins at 348 XP")
+
 print("== Forge level advancements")
 local FD = load("game/ReplicatedStorage/Shared/Data/ForgeData")
 local t1, t5, t10 = FD.TotalPerks(1), FD.TotalPerks(5), FD.TotalPerks(10)

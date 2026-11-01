@@ -256,6 +256,7 @@ do
             if s.state == "fire" then
                 local c = f.circles[s.idx]
                 if not CR.BeamHits(f, t, c.x, f.y + 3, c.z) then bad = "a firing circle does not kill" end
+                if CR.BeamHits(f, t, c.x, f.y + CL.BEAM_HEIGHT + 6, c.z) then bad = "a beam reaches up into the level above" end
                 for k, c2 in ipairs(f.circles) do
                     local firing = false
                     for _, o in ipairs(st) do if o.idx == k and o.state == "fire" then firing = true end end

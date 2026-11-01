@@ -52,6 +52,8 @@ local function Clock(seconds)
 end
 
 -- ── Platforms ─────────────────────────────────────────────────────────────────
+-- Only things that hurt glow in a warning colour (neon yellow strips, red tiles and bars, orange crusher zones and beams). Everything harmless on a floor (belt arrows, pipe bands,
+-- cracks, windmill tips) is plain paint, so a glowing floor piece always means "do not touch".
 local function BuildPlatforms(folder, r)
     local def, L = r.def, r.layout
     local look = def.look or TIER_LOOK[def.tier]
@@ -77,7 +79,7 @@ local function BuildPlatforms(folder, r)
             part.Name, part.Material, part.Color = "ConveyorBelt", Enum.Material.DiamondPlate, Color3.fromRGB(60, 60, 68)
             part.AssemblyLinearVelocity = Vector3.new(p.conveyor, 0, 0)
             for k = -1, 1 do                                         -- arrows showing which way it runs
-                P({ Name = "BeltArrow", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 190, 60), Size = Vector3.new(2.6, 0.2, 1.4), CanCollide = false,
+                P({ Name = "BeltArrow", Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(178, 198, 214), Size = Vector3.new(2.6, 0.2, 1.4), CanCollide = false,
                     CFrame = CFrame.new(p.x + k * (p.sx / 3), p.y + p.sy / 2 + 0.12, p.z) }, group)
             end
             part:SetAttribute("BeltSpeed", p.conveyor)
@@ -90,11 +92,11 @@ local function BuildPlatforms(folder, r)
             local pipe = P({ Name = "PipeWalk", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, Color = Color3.fromRGB(140, 146, 158), Reflectance = 0.1,
                 Size = Vector3.new(p.sx, dia, dia), CFrame = CFrame.new(p.x, top - dia / 2, p.z) }, group)
             for _, end_ in ipairs({ -1, 1 }) do
-                P({ Name = "PipeFlange", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, Color = Color3.fromRGB(255, 190, 60), Size = Vector3.new(0.8, dia + 1.2, dia + 1.2),
+                P({ Name = "PipeFlange", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, Color = Color3.fromRGB(176, 184, 198), Size = Vector3.new(0.8, dia + 1.2, dia + 1.2),
                     CanCollide = false, CFrame = CFrame.new(p.x + end_ * (p.sx / 2 - 0.4), top - dia / 2, p.z) }, group)
             end
             for k = 1, math.max(1, math.floor(p.sx / 8)) do          -- a yellow hazard band every few studs
-                P({ Name = "PipeBand", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Neon, Color = accent, Size = Vector3.new(0.7, dia + 0.3, dia + 0.3),
+                P({ Name = "PipeBand", Shape = Enum.PartType.Cylinder, Material = Enum.Material.SmoothPlastic, Color = accent, Size = Vector3.new(0.7, dia + 0.3, dia + 0.3),
                     CanCollide = false, CFrame = CFrame.new(p.x - p.sx / 2 + (p.sx / (math.floor(p.sx / 8) + 1)) * k, top - dia / 2, p.z) }, group)
             end
             pipe.CanCollide = true
@@ -147,7 +149,7 @@ local function BuildPlatforms(folder, r)
         part:SetAttribute("Respawn", c.respawn)
         part:SetAttribute("CourseId", r.id)
         CollectionService:AddTag(part, "EFCourierCrumble")
-        local crack = P({ Name = "Cracks", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 120, 60), Size = Vector3.new(c.sx * 0.6, 0.12, 0.3), CanCollide = false,
+        local crack = P({ Name = "Cracks", Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(52, 40, 36), Size = Vector3.new(c.sx * 0.6, 0.12, 0.3), CanCollide = false,
             CFrame = CFrame.new(c.x, c.y + c.sy / 2 + 0.06, c.z) }, group)
         crack.Parent = part                                       -- (moves and vanishes with the platform: the client carries children along)
     end
@@ -264,7 +266,7 @@ local function BuildObstacles(folder, r)
             local a, mx, mz = CourierLayout.RotorArm(rt, i, 0)
             local arm = moving("WindmillArm", Vector3.new(rt.radius, THICK_ARM, rt.width), CFrame.new(mx, rt.y - THICK_ARM / 2 + ARM_LIFT, mz) * CFrame.Angles(0, -a, 0), "EFCourierRotor",
                 { CX = rt.x, CZ = rt.z, Y = rt.y - THICK_ARM / 2 + ARM_LIFT, Radius = rt.radius, Arms = rt.arms, Index = i, Omega = rt.omega, Phase = rt.phase, Width = rt.width }, Color3.fromRGB(235, 170, 70))
-            P({ Name = "WindmillTip", Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 240, 150), Size = Vector3.new(0.4, 0.3, rt.width), CanCollide = false,
+            P({ Name = "WindmillTip", Material = Enum.Material.SmoothPlastic, Color = Color3.fromRGB(226, 236, 246), Size = Vector3.new(0.4, 0.3, rt.width), CanCollide = false,
                 CFrame = arm.CFrame * CFrame.new(rt.radius / 2 - 0.4, THICK_ARM / 2 + 0.1, 0) }, arm)
         end
         P({ Name = "WindmillHub", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, Color = Color3.fromRGB(70, 70, 80), Size = Vector3.new(1.4, rt.hub * 2 + 1, rt.hub * 2 + 1), CanCollide = false,
@@ -300,7 +302,7 @@ local function BuildObstacles(folder, r)
             local disc = P({ Name = "BeamDisc", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 90, 40), Transparency = 0.8, CanCollide = false, CanQuery = false,
                 Size = Vector3.new(0.25, c.r * 2, c.r * 2), CFrame = CFrame.new(c.x, f.y + 0.95, c.z) * CFrame.Angles(0, 0, math.pi / 2) }, group)
             local col = P({ Name = "BeamColumn", Shape = Enum.PartType.Cylinder, Material = Enum.Material.Neon, Color = Color3.fromRGB(255, 190, 90), Transparency = 1, CanCollide = false, CanQuery = false, CanTouch = false,
-                Size = Vector3.new(70, c.r * 1.7, c.r * 1.7), CFrame = CFrame.new(c.x, f.y + 35, c.z) * CFrame.Angles(0, 0, math.pi / 2) }, group)
+                Size = Vector3.new(CourierLayout.BEAM_HEIGHT, c.r * 1.7, c.r * 1.7), CFrame = CFrame.new(c.x, f.y + CourierLayout.BEAM_HEIGHT / 2, c.z) * CFrame.Angles(0, 0, math.pi / 2) }, group)
             for key, v in pairs(attrs) do disc:SetAttribute(key, v) col:SetAttribute(key, v) end
             disc:SetAttribute("Role", "disc") col:SetAttribute("Role", "column")
             CollectionService:AddTag(disc, "EFCourierBeam")
