@@ -74,27 +74,47 @@ local function AddCrusher(unit)
     crushers[unit] = { base = nil, o = 0 }
 end
 
+local crumbleResets = {}            -- part -> function that puts the tile back at once (used after a respawn)
+
 local function AddCrumble(part)
     local fallen = false
+    local round = 0                -- bumped on every touch and every reset, so timers from an earlier fall do nothing
+    local original = part.Color
+    local function Restore()
+        part.Color, part.Transparency, part.CanCollide = original, 0, true
+        for _, d in ipairs(part:GetDescendants()) do if d:IsA("BasePart") then d.Transparency = 0 end end
+        fallen = false
+    end
+    crumbleResets[part] = function()
+        round += 1
+        Restore()
+    end
+    part.Destroying:Connect(function() crumbleResets[part] = nil end)
     part.Touched:Connect(function(hit)
         if fallen then return end
         local char = LocalPlayer.Character
         if not (char and hit:IsDescendantOf(char)) then return end
         fallen = true
+        round += 1
+        local mine = round
         local delay, respawn = part:GetAttribute("Delay") or 0.6, part:GetAttribute("Respawn") or 3
-        local original = part.Color
-        task.delay(delay * 0.5, function() part.Color = Color3.fromRGB(255, 120, 60) end)        -- it shakes red, then goes
+        task.delay(delay * 0.5, function() if round == mine then part.Color = Color3.fromRGB(255, 120, 60) end end)        -- it shakes red, then goes
         task.delay(delay, function()
+            if round ~= mine then return end
             part.CanCollide = false
             for _, d in ipairs(part:GetDescendants()) do if d:IsA("BasePart") then d.Transparency = 1 end end
             part.Transparency = 1
         end)
         task.delay(delay + respawn, function()
-            part.Color, part.Transparency, part.CanCollide = original, 0, true
-            for _, d in ipairs(part:GetDescendants()) do if d:IsA("BasePart") then d.Transparency = 0 end end
-            fallen = false
+            if round == mine then Restore() end
         end)
     end)
+end
+
+-- After a fall the player is back at the checkpoint within a couple of seconds, well before a tile they brought down has come back: bring every tile back now,
+-- so the retry is not into a gap that is not their doing
+local function ResetCrumbles()
+    for _, reset in pairs(crumbleResets) do reset() end
 end
 
 -- A platform moved by setting its CFrame does not carry the character standing on it sideways (only up and down happens by itself), so the local player is
@@ -471,6 +491,7 @@ local function OnEvent(kind, p)
         Banner(string.format("%s  +%ds", REASONS[p.reason] or "Back to the checkpoint", p.penalty or 0), Color3.fromRGB(255, 110, 90))
         Flash(Color3.fromRGB(255, 50, 30), 0.45)
         FaceCourse(p.dir)
+        ResetCrumbles()
     elseif kind == "finish" then
         hud.Enabled = false
         if lava then lava:Destroy() lava = nil end
